@@ -1,0 +1,1 @@
+[{"pk": 2, "model": "piston.consumer", "fields": {"status": "accepted", "name": "test", "secret": "testsecret", "user": null, "key": "testkey", "description": ""}}]

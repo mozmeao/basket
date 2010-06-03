@@ -1,0 +1,21 @@
+# This file pulls in everything a developer needs.  If it's a basic package
+# needed to run the site, it belongs in requirements-prod.txt.  If it's a
+# package for developers (testing, docs, etc.), it goes in this file.  IT wants
+# to pull in a minimal set of packages to get a running site.
+
+-r prod.txt
+
+pep8==0.5
+-e git://github.com/jbalogh/check.git#egg=check
+-e git://github.com/django-extensions/django-extensions.git#egg=django_extensions
+-e git://github.com/dcramer/django-devserver.git#egg=django_devserver
+werkzeug
+ipython==0.10
+
+-e git://github.com/jbalogh/test-utils.git#egg=test-utils
+-e git://github.com/jbalogh/django-nose.git#egg=django_nose
+nose==0.11.1
+coverage==3.2b4
+mock==0.6.0
+
+pylint
