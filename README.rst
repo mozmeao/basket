@@ -51,4 +51,5 @@ Production environments
 Production installs often have a few different requirements:
 
 * point Apache's WSGIScriptAlias at /path/to/basket/wsgi/basket.wsgi
+** Jbalogh has a good example WSGI config for Zamboni: http://jbalogh.github.com/zamboni/topics/production/#setting-up-mod-wsgi
 * DEBUG = False in settings
