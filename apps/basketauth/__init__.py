@@ -1,6 +1,8 @@
 from django.http import HttpResponse
+
 import oauth2 as oauth
 from piston.models import Consumer as ConsumerModel
+
 
 class BasketAuthentication(object):
     """
@@ -15,16 +17,13 @@ class BasketAuthentication(object):
 
     def is_authenticated(self, request):
         try:
-            if request.method == 'POST':
-                params = dict(request.POST.items())
-            else:
-                params = {}
+            params = request.POST or {}
 
             oauth_req = oauth.Request.from_request(
-                request.method, 
-                request.build_absolute_uri(), 
-                headers=request.META, 
-                parameters=params, 
+                request.method,
+                request.build_absolute_uri(),
+                headers=request.META,
+                parameters=params,
                 query_string=request.environ.get('QUERY_STRING', ''))
 
             r = self.get_consumer_record(oauth_req.get_parameter('oauth_consumer_key'))
@@ -33,6 +32,7 @@ class BasketAuthentication(object):
             self.server.verify_request(oauth_req, consumer, None)
             return True
         except ConsumerModel.DoesNotExist, e:
+            # TODO: add logging
             return False
         except oauth.Error, e:
             return False
@@ -41,9 +41,7 @@ class BasketAuthentication(object):
         return ConsumerModel.objects.get(key=key)
 
     def challenge(self):
-        response = HttpResponse()
-        response.status_code = 401
+        response = HttpResponse(status=401)
         for k, v in self.server.build_authenticate_header().iteritems():
             response[k] = v
-
         return response

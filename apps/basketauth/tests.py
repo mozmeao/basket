@@ -1,15 +1,17 @@
 import time
-from nose.tools import eq_
-import unittest
+
+from django import test
+
 import oauth2 as oauth
+from nose.tools import eq_
 from piston.models import Consumer as ConsumerModel
+from test_utils import RequestFactory
+
 from . import BasketAuthentication
-from utils import RequestFactory
 
 
-class AuthTest(unittest.TestCase):
-    # why doesn't find+install this fixture?
-    fixtures = ['consumer.json']
+class AuthTest(test.TestCase):
+    fixtures = ['basketauth/consumer.json']
 
     def setUp(self):
         ConsumerModel.objects.create(name='test', key='test', secret='test')
@@ -37,7 +39,8 @@ class AuthTest(unittest.TestCase):
         ConsumerModel.objects.all().delete()
 
     def build_request(self):
-        oauth_req = oauth.Request(method=self.method, url=self.url, parameters=self.params)
+        oauth_req = oauth.Request(method=self.method, url=self.url,
+                                  parameters=self.params)
         oauth_req.sign_request(self.signature_method, self.consumer, self.token)
         header = oauth_req.to_header()
         return self.rf.post(self.url, {}, **header)

@@ -21,6 +21,7 @@ DATABASES = {
         'PASSWORD': '',                  # Not used with sqlite3.
         'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
         'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
+        'OPTIONS':  {'init_command': 'SET storage_engine=InnoDB'},
     }
 }
 
@@ -84,18 +85,13 @@ INSTALLED_APPS = (
 
     'piston',
 
-    #'django.contrib.auth',
+    'django.contrib.auth',
     'django.contrib.contenttypes',
     #'django.contrib.sessions',
     'django.contrib.sites',
     #'django.contrib.messages',
     # Uncomment the next line to enable the admin:
     # 'django.contrib.admin',
-)
-
-# These apps will be removed from INSTALLED_APPS in a production environment.
-DEV_APPS = (
-    'django_nose',
 )
 
 # tests

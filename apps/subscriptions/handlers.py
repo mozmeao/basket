@@ -1,6 +1,9 @@
 from django.core.exceptions import ValidationError
+from django.utils import encoding
+
 from piston.handler import BaseHandler
 from piston.utils import rc
+
 from subscriptions.models import Subscription
 
 def validate(model):
@@ -14,11 +17,11 @@ def validate(model):
             except ValidationError, e:
                 resp = rc.BAD_REQUEST
                 # TODO clean up validation errors
-                resp.write(str(e.message_dict)) 
+                resp.write(encoding.smart_unicode(e.message_dict))
                 return resp
         return wrapper
     return decorator
-        
+
 class SubscriptionHandler(BaseHandler):
     fields = ('email', 'campaign', 'active', 'source')
     model = Subscription

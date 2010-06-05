@@ -1,15 +1,15 @@
 import time
-from nose.tools import eq_
-import unittest
 
 from django.core.exceptions import ValidationError
-from django.test.client import Client
+from django import test
 
+from nose.tools import eq_
 import oauth2 as oauth
 
 from .models import Subscription
 
-class SubscriptionTest(unittest.TestCase):
+class SubscriptionTest(test.TestCase):
+
     def test_validation(self):
         a = Subscription()
         # fail on blank email
@@ -38,7 +38,7 @@ class SubscriptionTest(unittest.TestCase):
     #    eq_(resp.status_code, 200, resp.content)
     #    eq_(count(), 1)
         # new record is active
-        
+
 
     # test email required
     # email format validation

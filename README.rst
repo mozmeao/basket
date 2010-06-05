@@ -15,34 +15,37 @@ Installation
 
 Get the code
 ------------
-`git clone git@github.com:abuchanan/basket.git`
-`cd basket`
+::
+    git clone git@github.com:abuchanan/basket.git
+    cd basket
 
 
 Make a virtualenv
 -----------------
 
-Using virualenvwrapper:
-`mkvirtualenv basket`
+Using virualenvwrapper::
+
+    mkvirtualenv basket
 
 
 Install packages
 ----------------
-
-`pip install -r requirements/prod.txt -r requirements/compiled.txt`
+::
+    pip install -r requirements/prod.txt -r requirements/compiled.txt
 
 
 Settings
 --------
 
 Create a settings_local.py file.  Typical settings can be found in settings_ex.py
-NOTE: make sure you have `from settings import *` at the top, or you'll be confused when things aren't working correctly.
+NOTE: make sure you have ``from settings import *`` at the top, or you'll be
+confused when things aren't working correctly.
 
 
 Database schema
 ---------------
-
-`./manage.py syncdb --noinput`
+::
+    ./manage.py syncdb --noinput
 
 
 Production environments
@@ -50,6 +53,6 @@ Production environments
 
 Production installs often have a few different requirements:
 
-* point Apache's WSGIScriptAlias at /path/to/basket/wsgi/basket.wsgi
-* Jbalogh has a good example WSGI config for Zamboni: http://jbalogh.github.com/zamboni/topics/production/#setting-up-mod-wsgi
-* DEBUG = False in settings
+* point Apache's ``WSGIScriptAlias`` at ``/path/to/basket/wsgi/basket.wsgi``
+* jbalogh has a good example WSGI config for Zamboni: http://jbalogh.github.com/zamboni/topics/production/#setting-up-mod-wsgi
+* ``DEBUG = False`` in settings
