@@ -9,6 +9,6 @@ pytz==2010e
 -e git://github.com/jsocol/commonware.git#egg=commonware
 -e git://github.com/fwenzel/django-mozilla-product-details#egg=django-mozilla-product-details
 
-# This causes trouble with /vendor.
-http://bitbucket.org/jespern/django-piston/get/tip.zip
+mercurial==1.5.4
+-e hg+http://bitbucket.org/jespern/django-piston#egg=django-piston
 oauth2==1.2.0
