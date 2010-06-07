@@ -1,6 +1,7 @@
 from django.http import HttpResponse
 
 import oauth2 as oauth
+
 from piston.models import Consumer as ConsumerModel
 
 
