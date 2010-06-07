@@ -10,6 +10,8 @@ class Subscription(models.Model):
     active = models.BooleanField(default=True)
     source = models.CharField(max_length=255, blank=True)
     locale = models.CharField(max_length=10, blank=True, default='en-US')
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
 
     def clean(self):
         if self.locale == '':
