@@ -4,82 +4,68 @@ from django.core.exceptions import ValidationError
 from django import test
 
 from nose.tools import eq_
-import oauth2 as oauth
-from piston.models import Consumer as ConsumerModel
-from django.test.client import Client
-from test_utils import RequestFactory
 
 from .models import Subscription
+from test_client import TestClient
 
 
 class SubscriptionTest(test.TestCase):
     def setUp(self):
-        ConsumerModel.objects.create(name='test', key='test', secret='test')
-
-        self.rf = RequestFactory()
-        # RequestFactory defaults SERVER_NAME to testserver
-        # it's important that this URL matches that, so the signature matches
-        self.url = "http://testserver/api"
-
-        self.method = "POST"
-        self.consumer = oauth.Consumer(key='test', secret='test')
-        self.signature_method = oauth.SignatureMethod_HMAC_SHA1()
-        # we're only using 2-legged auth, no need for tokens
-        self.token = None
-
-        self.params = {
-            'oauth_consumer_key': self.consumer.key,
-            'oauth_version': '1.0',
-            'oauth_nonce': oauth.generate_nonce(),
-            'oauth_timestamp': int(time.time()),
-        }
-        self.c = Client()
+        self.c = TestClient()
+        self.count = Subscription.objects.count
 
     def tearDown(self):
-        ConsumerModel.objects.all().delete()
+        self.c.tearDown()
 
-    def subscribe(self, **kwargs):
-        kwargs.update(self.params)
-        oauth_req = oauth.Request(method='POST',
-            url='http://testserver/subscriptions/subscribe', paramters=kwargs)
-        oauth.req.sign_request(self.signature_method,
-            self.consumer, self.token)
-        header = oauth_req.to_header()
-        return self.c.post('http://testserver/subscriptions/subscribe',
-            {}, **header)
+    def valid_subscription(self):
+        # email and campaign are required
+        return Subscription(email='foo@foo.com', campaign='test')
 
     def test_validation(self):
-        a = Subscription()
-        # fail on blank email
-        self.assertRaises(ValidationError, a.full_clean)
-        a.email = 'foo'
-        # fail on bad email format
-        self.assertRaises(ValidationError, a.full_clean)
-        a.email = 'foo@foo.com'
-        # fail on blank campaign
-        self.assertRaises(ValidationError, a.full_clean)
-        a.campaign = 'foo'
-        # fail on bad locale
-        a.locale = 'foo'
-        self.assertRaises(ValidationError, a.full_clean)
-        # source can be blank
-        a.source = ''
-        # locale can be blank
-        a.locale = ''
-        # success
-        a.full_clean()
-        # blank locale falls back to en-US
-        eq_(a.locale, 'en-US')
+        # test valid subscription
+        a = self.valid_subscription()
         a.save()
 
-    #def test_create(self):
-    #    resp = self.subscribe(email='')
-    #    eq_(resp.status_code, 400)
-    #    resp = self.subscribe(campaign='')
-    #    eq_(resp.status_code, 400)
-    #    count = Subscription.objects.count
-    #    eq_(count(), 0)
-    #    resp = self.subscribe()
-    #    eq_(resp.status_code, 200, resp.content)
-    #    eq_(count(), 1)
-        # new record is active
+        # fail on blank email
+        a.email = ''
+        self.assertRaises(ValidationError, a.full_clean)
+        # fail on bad email format
+        a.email = 'foo'
+        self.assertRaises(ValidationError, a.full_clean)
+
+        # fail on blank campaign
+        b = self.valid_subscription()
+        b.campaign = ''
+        self.assertRaises(ValidationError, b.full_clean)
+  
+        # fail on bad locale
+        c = self.valid_subscription()
+        c.locale = 'foo'
+        self.assertRaises(ValidationError, c.full_clean)
+
+    def test_locale_fallback(self):
+        """A blank locale will fall back to en-US"""
+
+        a = self.valid_subscription()
+        a.locale = ''
+        a.full_clean()
+        eq_(a.locale, 'en-US')
+
+    def test_active_default(self):
+        """A new record is active be default"""
+
+        a = self.valid_subscription()
+        a.save()
+        eq_(a.active, True)
+
+    def test_status_codes(self):
+        # validation errors return 400
+        resp = self.c.subscribe(email='')
+        eq_(resp.status_code, 400, resp.content)
+        eq_(self.count(), 0)
+        
+        # success returns 200
+        resp = self.c.subscribe(email='foo@bar.com', campaign='foo')
+        eq_(resp.status_code, 200, resp.content)
+        eq_(self.count(), 1)
+        eq_(Subscription.objects.filter(email='foo@bar.com').count(), 1)

@@ -1,3 +1,5 @@
+import logging
+
 from django.http import HttpResponse
 
 import oauth2 as oauth
@@ -18,7 +20,12 @@ class BasketAuthentication(object):
 
     def is_authenticated(self, request):
         try:
-            params = request.POST or {}
+            params = {
+                'oauth_consumer_key': request.POST.get('oauth_consumer_key'),
+                'oauth_version': request.POST.get('oauth_version'),
+                'oauth_nonce': request.POST.get('oauth_nonce'),
+                'oauth_timestamp': request.POST.get('oauth_timestamp'),
+            }
 
             oauth_req = oauth.Request.from_request(
                 request.method,
@@ -27,20 +34,19 @@ class BasketAuthentication(object):
                 parameters=params,
                 query_string=request.environ.get('QUERY_STRING', ''))
 
-            r = self.get_consumer_record(
-                oauth_req.get_parameter('oauth_consumer_key'))
+            key = oauth_req.get_parameter('oauth_consumer_key')
+            r = ConsumerModel.objects.get(key=key)
             consumer = oauth.Consumer(key=r.key, secret=r.secret)
 
             self.server.verify_request(oauth_req, consumer, None)
             return True
-        except ConsumerModel.DoesNotExist:
-            # TODO: add logging
+        except ConsumerModel.DoesNotExist, e:
+            logging.error(e)
             return False
-        except oauth.Error:
+        except oauth.Error, e:
+            logging.error(e)
+            logging.error(params)
             return False
-
-    def get_consumer_record(self, key):
-        return ConsumerModel.objects.get(key=key)
 
     def challenge(self):
         response = HttpResponse(status=401)
