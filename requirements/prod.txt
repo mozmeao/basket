@@ -7,7 +7,6 @@ pytz==2010e
 -e git://github.com/jbalogh/django-cache-machine.git#egg=django-cache-machine
 -e git://github.com/jbalogh/django-queryset-transform.git#egg=django-queryset-transform
 -e git://github.com/jsocol/commonware.git#egg=commonware
--e git://github.com/fwenzel/django-mozilla-product-details#egg=django-mozilla-product-details
 
 mercurial==1.5.4
 -e hg+http://bitbucket.org/jespern/django-piston#egg=django-piston

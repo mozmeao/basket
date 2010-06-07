@@ -1,7 +1,6 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-
-import product_details
 
 
 class Subscription(models.Model):
@@ -19,5 +18,5 @@ class Subscription(models.Model):
     def clean(self):
         if self.locale == '':
             self.locale = 'en-US'
-        if self.locale not in product_details.languages.keys():
+        if self.locale not in settings.LANGUAGES:
             raise ValidationError("Not a valid language")
