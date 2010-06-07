@@ -100,5 +100,5 @@ INSTALLED_APPS = (
 )
 
 # tests
-TEST_RUNNER = 'test_utils.runner.radicaltestsuiterunner'
+TEST_RUNNER = 'test_utils.runner.RadicalTestSuiteRunner'
 
