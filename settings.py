@@ -1,4 +1,5 @@
 import os
+import logging
 
 # Make filepaths relative to settings.
 ROOT = os.path.dirname(os.path.abspath(__file__))
