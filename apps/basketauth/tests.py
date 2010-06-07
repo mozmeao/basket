@@ -40,8 +40,9 @@ class AuthTest(test.TestCase):
 
     def build_request(self):
         oauth_req = oauth.Request(method=self.method, url=self.url,
-                                  parameters=self.params)
-        oauth_req.sign_request(self.signature_method, self.consumer, self.token)
+            parameters=self.params)
+        oauth_req.sign_request(self.signature_method,
+            self.consumer, self.token)
         header = oauth_req.to_header()
         return self.rf.post(self.url, {}, **header)
 

@@ -1,14 +1,12 @@
 from django.conf import settings
-from django.conf.urls.defaults import *
+from django.conf.urls.defaults import include, patterns
 
 from basket import admin
 
 
 urlpatterns = patterns('',
     ('^subscriptions/', include('subscriptions.urls')),
-    
     (r'^admin/doc/', include('django.contrib.admindocs.urls')),
-
     (r'^admin/', include(admin.site.urls)),
 )
 

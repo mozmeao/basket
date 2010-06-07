@@ -11,6 +11,7 @@ from test_utils import RequestFactory
 
 from .models import Subscription
 
+
 class SubscriptionTest(test.TestCase):
     def setUp(self):
         ConsumerModel.objects.create(name='test', key='test', secret='test')
@@ -39,19 +40,22 @@ class SubscriptionTest(test.TestCase):
 
     def subscribe(self, **kwargs):
         kwargs.update(self.params)
-        oauth_req = oauth.Request(method='POST', url='http://testserver/subscriptions/subscribe', paramters=kwargs)
-        oauth.req.sign_request(self.signature_method, self.consumer, self.token)
+        oauth_req = oauth.Request(method='POST',
+            url='http://testserver/subscriptions/subscribe', paramters=kwargs)
+        oauth.req.sign_request(self.signature_method,
+            self.consumer, self.token)
         header = oauth_req.to_header()
-        return self.c.post('http://testserver/subscriptions/subscribe', {}, **header)
+        return self.c.post('http://testserver/subscriptions/subscribe',
+            {}, **header)
 
     def test_validation(self):
         a = Subscription()
         # fail on blank email
         self.assertRaises(ValidationError, a.full_clean)
-        a.email = 'foo';
+        a.email = 'foo'
         # fail on bad email format
         self.assertRaises(ValidationError, a.full_clean)
-        a.email = 'foo@foo.com';
+        a.email = 'foo@foo.com'
         # fail on blank campaign
         self.assertRaises(ValidationError, a.full_clean)
         a.campaign = 'foo'
@@ -79,5 +83,3 @@ class SubscriptionTest(test.TestCase):
     #    eq_(resp.status_code, 200, resp.content)
     #    eq_(count(), 1)
         # new record is active
-
-    # locale must be in list of valid locales

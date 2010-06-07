@@ -27,15 +27,16 @@ class BasketAuthentication(object):
                 parameters=params,
                 query_string=request.environ.get('QUERY_STRING', ''))
 
-            r = self.get_consumer_record(oauth_req.get_parameter('oauth_consumer_key'))
+            r = self.get_consumer_record(
+                oauth_req.get_parameter('oauth_consumer_key'))
             consumer = oauth.Consumer(key=r.key, secret=r.secret)
 
             self.server.verify_request(oauth_req, consumer, None)
             return True
-        except ConsumerModel.DoesNotExist, e:
+        except ConsumerModel.DoesNotExist:
             # TODO: add logging
             return False
-        except oauth.Error, e:
+        except oauth.Error:
             return False
 
     def get_consumer_record(self, key):

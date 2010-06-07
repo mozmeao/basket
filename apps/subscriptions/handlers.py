@@ -6,6 +6,7 @@ from piston.utils import rc
 
 from subscriptions.models import Subscription
 
+
 def validate(model):
     def decorator(target):
         def wrapper(self, request, *args, **kwargs):
@@ -21,6 +22,7 @@ def validate(model):
                 return resp
         return wrapper
     return decorator
+
 
 class SubscriptionHandler(BaseHandler):
     fields = ('email', 'campaign', 'active', 'source')
