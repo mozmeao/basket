@@ -103,4 +103,4 @@ INSTALLED_APPS = (
 # tests
 TEST_RUNNER = 'test_utils.runner.RadicalTestSuiteRunner'
 
-LANGUAGES = ('en-US')
+LANGUAGES = ('en-US', 'es-ES')

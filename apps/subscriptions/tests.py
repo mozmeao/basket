@@ -1,11 +1,10 @@
-import time
-
 from django.core.exceptions import ValidationError
 from django import test
 
 from nose.tools import eq_
+from piston.utils import rc
 
-from .models import Subscription
+from .models import Subscription, Subscriber
 from test_client import TestClient
 
 
@@ -17,21 +16,33 @@ class SubscriptionTest(test.TestCase):
     def tearDown(self):
         self.c.tearDown()
 
-    def valid_subscription(self):
-        # email and campaign are required
-        return Subscription(email='foo@foo.com', campaign='test')
+    def valid_subscriber(self):
+        return Subscriber(email='foo@foo.com')
 
-    def test_validation(self):
-        # test valid subscription
-        a = self.valid_subscription()
+    def valid_subscription(self):
+        subscriber = self.valid_subscriber()
+        subscriber.save()
+        s = Subscription(campaign='test')
+        s.subscriber = subscriber
+        return s
+
+    def test_subscriber_validation(self):
+        # test valid subscriber
+        a = self.valid_subscriber()
         a.save()
 
         # fail on blank email
         a.email = ''
         self.assertRaises(ValidationError, a.full_clean)
+
         # fail on bad email format
         a.email = 'foo'
         self.assertRaises(ValidationError, a.full_clean)
+
+    def test_subscription_validation(self):
+        # test valid subscription
+        a = self.valid_subscription()
+        a.save()
 
         # fail on blank campaign
         b = self.valid_subscription()
@@ -51,6 +62,15 @@ class SubscriptionTest(test.TestCase):
         a.full_clean()
         eq_(a.locale, 'en-US')
 
+    def test_valid_locale(self):
+        """A valid locale, other than en-US, works"""
+
+        a = self.valid_subscription()
+        a.locale = 'es-ES'
+        a.full_clean()
+        a.save()
+        eq_(Subscription.objects.filter(locale='es-ES').count(), 1)
+
     def test_active_default(self):
         """A new record is active be default"""
 
@@ -66,12 +86,12 @@ class SubscriptionTest(test.TestCase):
         
         # success returns 200
         resp = self.c.subscribe(email='foo@bar.com', campaign='foo')
-        eq_(resp.status_code, 200, resp.content)
+        eq_(resp.status_code, 201, resp.content)
         eq_(self.count(), 1)
-        eq_(Subscription.objects.filter(email='foo@bar.com').count(), 1)
+        eq_(Subscription.objects.filter(subscriber__email='foo@bar.com').count(), 1)
 
         # duplicate returns 409
         resp = self.c.subscribe(email='foo@bar.com', campaign='foo')
-        eq_(resp.status_code, 409)
+        eq_(resp.status_code, 409, resp.content)
         eq_(self.count(), 1)
-        eq_(Subscription.objects.filter(email='foo@bar.com').count(), 1)
+        eq_(Subscription.objects.filter(subscriber__email='foo@bar.com').count(), 1)
