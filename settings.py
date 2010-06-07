@@ -44,17 +44,17 @@ USE_I18N = False
 
 # Absolute path to the directory that holds media.
 # Example: "/home/media/media.lawrence.com/"
-MEDIA_ROOT = ''
+MEDIA_ROOT = path('media')
 
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
 # trailing slash if there is a path component (optional in other cases).
 # Examples: "http://media.lawrence.com", "http://example.com/media/"
-MEDIA_URL = ''
+MEDIA_URL = '/media/'
 
 # URL prefix for admin media -- CSS, JavaScript and images. Make sure to use a
 # trailing slash.
 # Examples: "http://foo.com/media/", "/media/".
-ADMIN_MEDIA_PREFIX = '/media/'
+ADMIN_MEDIA_PREFIX = '/admin-media/'
 
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = ''
@@ -63,6 +63,11 @@ SECRET_KEY = ''
 TEMPLATE_LOADERS = (
     'django.template.loaders.filesystem.Loader',
     'django.template.loaders.app_directories.Loader',
+)
+
+TEMPLATE_CONTEXT_PROCESSORS = (
+    'django.core.context_processors.auth',
+    'django.core.context_processors.request',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -82,17 +87,18 @@ TEMPLATE_DIRS = (
 INSTALLED_APPS = (
     'basketauth',
     'subscriptions',
+    'product_details',
 
     'piston',
 
     'django.contrib.auth',
     'django.contrib.contenttypes',
-    #'django.contrib.sessions',
+    'django.contrib.sessions',
     'django.contrib.sites',
     #'django.contrib.messages',
-    # Uncomment the next line to enable the admin:
-    # 'django.contrib.admin',
+    'django.contrib.admin',
 )
 
 # tests
 test_runner = 'test_utils.runner.radicaltestsuiterunner'
+
