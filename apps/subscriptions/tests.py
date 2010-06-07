@@ -69,3 +69,9 @@ class SubscriptionTest(test.TestCase):
         eq_(resp.status_code, 200, resp.content)
         eq_(self.count(), 1)
         eq_(Subscription.objects.filter(email='foo@bar.com').count(), 1)
+
+        # duplicate returns 409
+        resp = self.c.subscribe(email='foo@bar.com', campaign='foo')
+        eq_(resp.status_code, 409)
+        eq_(self.count(), 1)
+        eq_(Subscription.objects.filter(email='foo@bar.com').count(), 1)

@@ -13,11 +13,17 @@ def validate(model):
             try:
                 attrs = self.flatten_dict(request.data)
                 m = model(**attrs)
+                m.validate_unique()
+            except ValidationError, e:
+                resp = rc.DUPLICATE_ENTRY
+                resp.write(encoding.smart_unicode(e.message_dict))
+                return resp
+
+            try:
                 m.full_clean()
                 target(self, request, *args, **kwargs)
             except ValidationError, e:
                 resp = rc.BAD_REQUEST
-                # TODO clean up validation errors
                 resp.write(encoding.smart_unicode(e.message_dict))
                 return resp
         return wrapper
