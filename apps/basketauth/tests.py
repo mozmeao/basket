@@ -4,7 +4,6 @@ from django import test
 
 import oauth2 as oauth
 from nose.tools import eq_
-from piston.models import Consumer as ConsumerModel
 from test_utils import RequestFactory
 
 from . import BasketAuthentication
@@ -14,7 +13,6 @@ class AuthTest(test.TestCase):
     fixtures = ['basketauth/consumer.json']
 
     def setUp(self):
-        ConsumerModel.objects.create(name='test', key='test', secret='test')
 
         self.rf = RequestFactory()
         # RequestFactory defaults SERVER_NAME to testserver
@@ -34,9 +32,6 @@ class AuthTest(test.TestCase):
             'oauth_nonce': oauth.generate_nonce(),
             'oauth_timestamp': int(time.time()),
         }
-
-    def tearDown(self):
-        ConsumerModel.objects.all().delete()
 
     def build_request(self):
         oauth_req = oauth.Request(method=self.method, url=self.url,
