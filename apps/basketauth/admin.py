@@ -6,6 +6,7 @@ class ConsumerAdmin(admin.ModelAdmin):
     readonly_fields = ('key', 'secret')
 
     def save_model(self, request, obj, form, change):
+        obj.status = 'accepted'
         if change is False:
             obj.generate_random_codes()
         else:
