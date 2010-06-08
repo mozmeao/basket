@@ -4,7 +4,8 @@ from django.contrib.auth.admin import GroupAdmin, UserAdmin
 
 from piston.models import Consumer
 from basketauth.admin import ConsumerAdmin
-from subscriptions.models import Subscription, Subscriber
+from subscriptions.admin import SubscriberAdmin
+from subscriptions.models import Subscriber
 
 
 class BasketAdmin(admin.sites.AdminSite):
@@ -14,5 +15,4 @@ site = BasketAdmin()
 site.register(Group, GroupAdmin)
 site.register(User, UserAdmin)
 site.register(Consumer, ConsumerAdmin)
-site.register(Subscriber)
-site.register(Subscription)
+site.register(Subscriber, SubscriberAdmin)
