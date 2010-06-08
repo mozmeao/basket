@@ -46,7 +46,7 @@ class BasketAuthentication(object):
             return False
         except oauth.Error, e:
             logging.error(e)
-            logging.error(params)
+            logging.error(request)
             return False
         except:
             logging.error('fallback error')
