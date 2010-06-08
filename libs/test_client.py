@@ -19,7 +19,6 @@ class TestClient(object):
         self.token = None
 
         self.params = {
-            'oauth_consumer_key': self.consumer.key,
             'oauth_version': '1.0',
             'oauth_nonce': oauth.generate_nonce(),
             'oauth_timestamp': int(time.time()),
@@ -30,15 +29,17 @@ class TestClient(object):
     def tearDown(self):
         ConsumerModel.objects.filter(key='test').delete()
 
-    def subscribe_headers(self):
-        req = oauth.Request(method='POST', url=self.url, parameters=self.params)
+    def subscribe_headers(self, **kwargs):
+        params = self.params.copy()
+        params.update(kwargs)
+        req = oauth.Request(method='POST', url=self.url, parameters=params)
         req.sign_request(self.signature_method, self.consumer, self.token)
         return req.to_header()
     
     def subscribe(self, **kwargs):
-        header = self.subscribe_headers()
+        header = self.subscribe_headers(**kwargs)
         return self.c.post(self.url, kwargs, **header)
 
     def subscribe_request(self, **kwargs):
-        header = self.subscribe_headers()
+        header = self.subscribe_headers(**kwargs)
         return self.rf.post(self.url, kwargs, **header)
