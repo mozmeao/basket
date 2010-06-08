@@ -20,12 +20,10 @@ class BasketAuthentication(object):
 
     def is_authenticated(self, request):
         try:
-            params = {
-                'oauth_consumer_key': request.POST.get('oauth_consumer_key'),
-                'oauth_version': request.POST.get('oauth_version'),
-                'oauth_nonce': request.POST.get('oauth_nonce'),
-                'oauth_timestamp': request.POST.get('oauth_timestamp'),
-            }
+            params = dict(request.POST.items())
+            if 'Authorization' not in request.META and \
+                'HTTP_AUTHORIZATION' in request.META:
+                request.META['Authorization'] = request.META['HTTP_AUTHORIZATION']
 
             oauth_req = oauth.Request.from_request(
                 request.method,
@@ -33,6 +31,9 @@ class BasketAuthentication(object):
                 headers=request.META,
                 parameters=params,
                 query_string=request.environ.get('QUERY_STRING', ''))
+
+            if oauth_req is None:
+                raise oauth.Error
 
             key = oauth_req.get_parameter('oauth_consumer_key')
             r = ConsumerModel.objects.get(key=key)

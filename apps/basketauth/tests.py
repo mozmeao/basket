@@ -23,3 +23,9 @@ class AuthTest(test.TestCase):
         self.c.consumer = oauth.Consumer('fail', 'fail')
         r = self.c.subscribe_request()
         eq_(self.auth_provider.is_authenticated(r), False)
+
+    def test_HTTP_AUTHORIZATION_header(self):
+        r = self.c.subscribe_request(email='foo@bar.com')
+        header = r.META.pop('Authorization')
+        r.META['HTTP_AUTHORIZATION'] = header
+        eq_(self.auth_provider.is_authenticated(r), True)
