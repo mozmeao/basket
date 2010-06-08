@@ -48,6 +48,9 @@ class BasketAuthentication(object):
             logging.error(e)
             logging.error(params)
             return False
+        except:
+            logging.error('fallback error')
+            logging.error(request)
 
     def challenge(self):
         response = HttpResponse(status=401)
