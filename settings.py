@@ -87,6 +87,7 @@ TEMPLATE_DIRS = (
 
 INSTALLED_APPS = (
     'basketauth',
+    'nagios',
     'subscriptions',
 
     'piston',
