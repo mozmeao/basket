@@ -88,7 +88,6 @@ TEMPLATE_DIRS = (
 INSTALLED_APPS = (
     'basketauth',
     'subscriptions',
-    'product_details',
 
     'piston',
 
