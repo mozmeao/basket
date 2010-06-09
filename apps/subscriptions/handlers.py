@@ -10,6 +10,15 @@ from subscriptions.models import Subscription, Subscriber
 class SubscriptionHandler(BaseHandler):
     fields = ('email', 'campaign', 'active', 'source', 'locale')
 
+    def read(self, request):
+        return rc.NOT_IMPLEMENTED
+
+    def update(self, request):
+        return rc.NOT_IMPLEMENTED
+
+    def delete(self, request):
+        return rc.NOT_IMPLEMENTED
+
     def create(self, request):
         try:
             email = request.data.get('email', '')

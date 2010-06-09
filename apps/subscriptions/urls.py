@@ -2,10 +2,10 @@ from django.conf.urls.defaults import *
 
 from piston.resource import Resource
 
-from basketauth import BasketAuthentication
+from piston.authentication import NoAuthentication
 from .handlers import SubscriptionHandler
 
-auth = BasketAuthentication()
+auth = NoAuthentication()
 
 subscribe = Resource(handler=SubscriptionHandler, authentication=auth)
 

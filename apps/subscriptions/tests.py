@@ -1,3 +1,5 @@
+import logging
+
 from django.core.exceptions import ValidationError
 from django import test
 
@@ -95,3 +97,7 @@ class SubscriptionTest(test.TestCase):
         eq_(resp.status_code, 409, resp.content)
         eq_(self.count(), 1)
         eq_(Subscription.objects.filter(subscriber__email='foo@bar.com').count(), 1)
+
+    def test_read(self):
+        resp = self.c.read()
+        eq_(resp.status_code, 501)

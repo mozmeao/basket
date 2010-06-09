@@ -29,17 +29,21 @@ class TestClient(object):
     def tearDown(self):
         ConsumerModel.objects.filter(key='test').delete()
 
-    def subscribe_headers(self, **kwargs):
+    def headers(self, method='POST', **kwargs):
         params = self.params.copy()
         params.update(kwargs)
-        req = oauth.Request(method='POST', url=self.url, parameters=params)
+        req = oauth.Request(method=method, url=self.url, parameters=params)
         req.sign_request(self.signature_method, self.consumer, self.token)
         return req.to_header()
     
     def subscribe(self, **kwargs):
-        header = self.subscribe_headers(**kwargs)
+        header = self.headers(**kwargs)
         return self.c.post(self.url, kwargs, **header)
 
     def subscribe_request(self, **kwargs):
-        header = self.subscribe_headers(**kwargs)
+        header = self.headers(**kwargs)
         return self.rf.post(self.url, kwargs, **header)
+
+    def read(self, **kwargs):
+        header = self.headers(method="GET", **kwargs)
+        return self.c.get(self.url, kwargs, **header)
