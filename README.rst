@@ -94,6 +94,7 @@ Advanced emailing
 If you require special logic for sending your email, you can subclass
 ``emailer.base.BaseEmailer`` in a module of your choice (recommended:
 inside ``libs/custom_emailers``). Then, go to the admin panel and set the
-``emailer_class`` field accordingly for the applicable email template(s). When
-you run the ``sendmail`` command above, your Emailer will be used instead of
-the default one.
+``emailer_class`` field accordingly for the applicable email template(s) (for
+example: ``custom_emailers.reminder.ReminderEmailer``). When you run the
+``sendmail`` command above, your Emailer will be used instead of the default
+one.
