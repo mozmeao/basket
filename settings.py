@@ -1,6 +1,9 @@
 import os
 import logging
 
+# Application version.
+VERSION = (0, 1)
+
 # Make filepaths relative to settings.
 ROOT = os.path.dirname(os.path.abspath(__file__))
 path = lambda *a: os.path.join(ROOT, *a)
@@ -87,6 +90,7 @@ TEMPLATE_DIRS = (
 
 INSTALLED_APPS = (
     'basketauth',
+    'emailer',
     'nagios',
     'subscriptions',
 
