@@ -11,4 +11,4 @@ class SubscriberAdmin(admin.ModelAdmin):
     inlines = [SubscriptionInline,]
 
     def subscription_count(self, obj):
-        return obj.subscription_set.count()
+        return obj.subscriptions.count()

@@ -5,9 +5,9 @@ from django.db import models
 
 class Subscriber(models.Model):
     email = models.EmailField(db_index=True)
-    
+
 class Subscription(models.Model):
-    subscriber = models.ForeignKey(Subscriber)
+    subscriber = models.ForeignKey(Subscriber, related_name='subscriptions')
     campaign = models.CharField(max_length=255, db_index=True)
     active = models.BooleanField(default=True)
     source = models.CharField(max_length=255, blank=True)
