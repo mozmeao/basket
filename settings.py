@@ -109,4 +109,4 @@ TEST_RUNNER = 'test_utils.runner.RadicalTestSuiteRunner'
 
 LANGUAGES = ('en-US', 'es-ES')
 
-LOG_LEVEL = logging.WARNING
+LOG_LEVEL = logging.DEBUG
