@@ -10,7 +10,7 @@ from subscriptions.models import Subscriber
 
 log = logging.getLogger('basket.emailer')
 log.addHandler(logging.StreamHandler())
-log.setLevel(logging.INFO)
+log.setLevel(settings.LOG_LEVEL)
 
 
 class BaseEmailer(object):
