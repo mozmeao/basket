@@ -108,3 +108,5 @@ INSTALLED_APPS = (
 TEST_RUNNER = 'test_utils.runner.RadicalTestSuiteRunner'
 
 LANGUAGES = ('en-US', 'es-ES')
+
+LOG_LEVEL = logging.WARNING
