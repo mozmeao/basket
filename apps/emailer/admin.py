@@ -5,6 +5,7 @@ from .models import Email
 
 class EmailAdmin(admin.ModelAdmin):
     list_display = ('name', 'short_subject', 'short_text', 'recipient_count')
+    exclude = ('mailchimp_campaign',)
     ordering = ('name',)
 
     def short_subject(self, obj):

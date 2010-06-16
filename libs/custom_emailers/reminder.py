@@ -1,9 +1,9 @@
 """Custom emailer for sending a reminder email."""
 import datetime
 
-from emailer.base import BaseEmailer
+from emailer.base import MailChimpEmailer
 
-class ReminderEmailer(BaseEmailer):
+class ReminderEmailer(MailChimpEmailer):
     """
     Send email to subscribers, only after a week has passed since subscribing.
     """

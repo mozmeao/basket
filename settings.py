@@ -19,7 +19,7 @@ MANAGERS = ADMINS
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
+        'ENGINE': 'django.db.backends.mysql',  # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
         'NAME': '',                      # Or path to database file if using sqlite3.
         'USER': '',                      # Not used with sqlite3.
         'PASSWORD': '',                  # Not used with sqlite3.
@@ -110,3 +110,9 @@ TEST_RUNNER = 'test_utils.runner.RadicalTestSuiteRunner'
 LANGUAGES = ('en-US', 'es-ES')
 
 LOG_LEVEL = logging.DEBUG
+
+DEFAULT_FROM_EMAIL = 'basket@mozilla.com'
+DEFAULT_FROM_NAME = 'Mozilla'
+
+# MailChimp API
+MAILCHIMP_API_KEY = ''

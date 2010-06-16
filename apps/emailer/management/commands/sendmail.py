@@ -7,7 +7,6 @@ import tempfile
 import lockfile
 
 from django.core.management.base import LabelCommand, CommandError
-from django.core.urlresolvers import get_callable
 
 from emailer.models import Email
 
@@ -44,13 +43,14 @@ def locked(f):
 class Command(LabelCommand):
     option_list = LabelCommand.option_list + (
         make_option('--force', '-f', dest='force', action='store_true',
-                    default=False, help='Send email even to prior recipients.'),
+                    default=False,
+                    help='Send email even to prior recipients.'),
         make_option('--template', '-t', dest='template',
                     help='Template name of email to be sent (required).'),
     )
-    help='Send an email to the subscribers to a campaign.'
-    args='<campaign campaign ...>'
-    label='campaign'
+    help = 'Send an email to the subscribers to a campaign.'
+    args = '<campaign campaign ...>'
+    label = 'campaign'
 
     @locked
     def handle_label(self, label, **options):
@@ -64,16 +64,18 @@ class Command(LabelCommand):
             if not template_name:
                 raise CommandError('--template option is required.')
             try:
-                self.template = template = Email.objects.get(name=template_name)
+                template = Email.objects.get(name=template_name)
+                self.template = template
             except Email.DoesNotExist:
-                raise CommandError('No email template %s found.' % template_name)
+                raise CommandError(
+                    'No email template %s found.' % template_name)
 
         # Use custom emailer if defined, default otherwise
         emailer_class = getattr(self, 'emailer_class', None)
         if not emailer_class:
             try:
-                self.emailer_class = emailer_class = get_callable(
-                    template.emailer_class or 'emailer.base.BaseEmailer')
+                emailer_class = template.get_emailer_callable()
+                self.emailer_class = emailer_class
             except ImportError, e:
                 raise CommandError(e)
 

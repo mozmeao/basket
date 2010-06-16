@@ -4,6 +4,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core import mail
 
+from greatape import MailChimp
+
 from emailer.models import Recipient
 from subscriptions.models import Subscriber
 
@@ -11,6 +13,8 @@ from subscriptions.models import Subscriber
 log = logging.getLogger('basket.emailer')
 log.addHandler(logging.StreamHandler())
 log.setLevel(settings.LOG_LEVEL)
+
+mailchimp = MailChimp(settings.MAILCHIMP_API_KEY)
 
 
 class BaseEmailer(object):
@@ -61,8 +65,7 @@ class BaseEmailer(object):
         """Return additional headers."""
         return {
             'X-Mailer': 'Basket Emailer %s' % (
-                '.'.join(map(str, settings.VERSION)))
-        }
+                '.'.join(map(str, settings.VERSION)))}
 
     def send_email(self):
         """Send out the email and record the recipients."""
@@ -81,8 +84,8 @@ class BaseEmailer(object):
                 body=self.get_text(),
                 from_email=self.get_from(),
                 to=(recipient.email,),
-                headers=self.get_headers()
-            )
+                headers=self.get_headers())
+
             html = self.get_html()
             if html:
                 msg.attach_alternative(html, 'text/html')
@@ -105,3 +108,44 @@ class BaseEmailer(object):
                     sent.save()
 
         connection.close()
+
+
+class MailChimpEmailer(BaseEmailer):
+    """
+    Send email using MailChimp lists and transactional campaigns
+    """
+
+    def get_recipients(self):
+        """MailChimp recommends maximum batch size of 5-10k"""
+        r = super(MailChimpEmailer, self).get_recipients()
+        return r[0:10000]
+
+    def send_email(self):
+        """Send out the email and record the recipients."""
+        recipients = self.get_recipients()
+        if not recipients:
+            log.info('Nothing to do: List of recipients is empty.')
+            return
+
+        batch = [dict(EMAIL=x.email, EMAIL_TYPE='html') for x in recipients]
+
+        ret = mailchimp.listBatchSubscribe(id=self.email.mailchimp_list,
+                                           batch=batch, double_optin=False)
+
+        failed = [x['email_address'] for x in ret['errors']]
+
+        for recipient in recipients:
+            if recipient.email in failed:
+                log.error('Failed to subscribe %s' % recipient.email)
+            else:
+                log.info('Subscribed %s' % recipient.email)
+                sent = Recipient(subscriber=recipient, email=self.email)
+                try:
+                    sent.validate_unique()
+                except ValidationError:
+                    # Already exists? Sending was probably forced.
+                    pass
+                else:
+                    sent.save()
+
+        mailchimp.campaignSendNow(cid=self.email.mailchimp_campaign)

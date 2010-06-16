@@ -17,7 +17,7 @@ SECRET_KEY = ''
 
 # Email settings
 # cf. http://docs.djangoproject.com/en/dev/ref/settings/ -> EMAIL_*
-DEFAULT_FROM_EMAIL = 'basket@example.com'
+DEFAULT_FROM_EMAIL = 'basket@mozilla.com'
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'mail.example.com'
 EMAIL_PORT = 25
@@ -31,3 +31,6 @@ TEMPLATE_DEBUG = False
 LOG_LEVEL = logging.WARNING
 
 DEBUG_PROPAGATE_EXCEPTIONS = DEBUG
+
+# MailChimp API 
+MAILCHIMP_API_KEY = ''

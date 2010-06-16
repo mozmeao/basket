@@ -13,3 +13,5 @@ mercurial==1.5.4
 -e hg+http://bitbucket.org/jespern/django-piston#egg=django-piston
 oauth2==1.2.0
 lockfile==0.8
+
+-e git://github.com/threadsafelabs/greatape.git#egg=greatape
