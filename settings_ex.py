@@ -34,3 +34,12 @@ DEBUG_PROPAGATE_EXCEPTIONS = DEBUG
 
 # MailChimp API 
 MAILCHIMP_API_KEY = ''
+
+# LDAP
+LDAP = {
+    'host': '',
+    'port': '',
+    'user': '',
+    'password': '',
+    'search_base': 'o=com,dc=mozilla',
+}

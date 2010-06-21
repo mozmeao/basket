@@ -4,6 +4,7 @@ from django import test
 from nose.tools import eq_
 from piston.utils import rc
 
+from .management.commands.unsubscribe import Command as UnsubscribeCommand
 from .models import Subscription, Subscriber
 from test_client import TestClient
 
@@ -99,3 +100,24 @@ class SubscriptionTest(test.TestCase):
     def test_read(self):
         resp = self.c.read()
         eq_(resp.status_code, 501)
+
+
+def unsubscribe_conditional(subscription):
+    return subscription.subscriber.email == 'foo@foo.com'
+    
+class UnsubscribeManagementTest(test.TestCase):
+    fixtures = ['subscriptions']
+
+    def setUp(self):
+        self.command = UnsubscribeCommand()
+        self.run = self.command.handle_label
+        
+    def test_unsubscribe_all(self):
+        self.run('foo')
+        eq_(Subscription.objects.filter(active=True).count(), 0)
+        
+    def test_conditional_unsubscribe(self):
+        self.run('foo', conditional='subscriptions.tests.unsubscribe_conditional')
+        eq_(Subscription.objects.filter(active=True).count(), 1)
+        rec = Subscription.objects.get(subscriber__email='foo@foo.com')
+        eq_(rec.active, False)

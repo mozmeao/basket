@@ -1,44 +1,9 @@
-import functools
 from optparse import make_option
-import os
-import tempfile
-
-import commonware.log
-import lockfile
 
 from django.core.management.base import LabelCommand, CommandError
 
 from emailer.models import Email
-
-
-LOCKFILE_PREFIX = 'basket_emailer_lock'
-log = commonware.log.getLogger('basket')
-
-
-def locked(f):
-    """
-    Decorator that only allows one instance of the same sendmail command to run
-    at a time.
-    """
-    @functools.wraps(f)
-    def wrapper(self, label, **options):
-        name = '_'.join((LOCKFILE_PREFIX, f.__name__, options.get(
-            'template', None), label))
-        file = os.path.join(tempfile.gettempdir(), name)
-        lock = lockfile.FileLock(file)
-        try:
-            # Try to acquire the lock without blocking.
-            lock.acquire(0)
-        except lockfile.LockError:
-            log.debug('Aborting %s; lock acquisition failed.' % name)
-            return 0
-        else:
-            # We have the lock, call the function.
-            try:
-                return f(self, label, **options)
-            finally:
-                lock.release()
-    return wrapper
+from utils import locked
 
 
 class Command(LabelCommand):
@@ -53,7 +18,7 @@ class Command(LabelCommand):
     args = '<campaign campaign ...>'
     label = 'campaign'
 
-    @locked
+    @locked('basket_emailer_lock')
     def handle_label(self, label, **options):
         """
         Locked command handler to avoid running this command more than once

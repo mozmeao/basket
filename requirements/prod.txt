@@ -15,3 +15,5 @@ oauth2==1.2.0
 lockfile==0.8
 
 -e git://github.com/threadsafelabs/greatape.git#egg=greatape
+
+python-ldap==2.3.11
