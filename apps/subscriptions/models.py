@@ -6,6 +6,9 @@ from django.db import models
 class Subscriber(models.Model):
     email = models.EmailField(db_index=True)
 
+    def __str__(self):
+        return self.email
+
 class Subscription(models.Model):
     subscriber = models.ForeignKey(Subscriber, related_name='subscriptions')
     campaign = models.CharField(max_length=255, db_index=True)
