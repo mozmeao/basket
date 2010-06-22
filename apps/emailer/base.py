@@ -48,7 +48,11 @@ class BaseEmailer(object):
 
     def get_from(self):
         """Return "from" email address."""
-        return settings.DEFAULT_FROM_EMAIL
+        if self.email.from_email:
+            return '{name} <{email}>'.format(name=self.email.from_name, 
+                                             email=self.email.from_email)
+        else:
+            return settings.DEFAULT_FROM_EMAIL
 
     def get_recipients(self):
         """
@@ -64,6 +68,7 @@ class BaseEmailer(object):
     def get_headers(self):
         """Return additional headers."""
         return {
+            'Reply-To': self.email.reply_to_email or settings.DEFAULT_FROM_EMAIL,
             'X-Mailer': 'Basket Emailer %s' % (
                 '.'.join(map(str, settings.VERSION)))}
 
