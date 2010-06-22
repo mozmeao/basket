@@ -75,6 +75,7 @@ class Email(models.Model):
             'subject':    self.subject,
             'from_email': settings.DEFAULT_FROM_EMAIL,
             'from_name':  settings.DEFAULT_FROM_NAME,
+            'auto_footer': False,
         }
         content = {
             'html': self.html,
