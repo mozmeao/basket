@@ -109,10 +109,22 @@ TEST_RUNNER = 'test_utils.runner.RadicalTestSuiteRunner'
 
 LANGUAGES = ('en-US', 'es-ES')
 
-LOG_LEVEL = logging.DEBUG
-
 DEFAULT_FROM_EMAIL = 'basket@mozilla.com'
 DEFAULT_FROM_NAME = 'Mozilla'
 
 # MailChimp API
 MAILCHIMP_API_KEY = ''
+
+# Logging
+LOG_LEVEL = logging.DEBUG
+HAS_SYSLOG = True  # syslog is used if HAS_SYSLOG and NOT DEBUG.
+SYSLOG_TAG = "http_app_basket"
+# See PEP 391 and log_settings.py for formatting help.  Each section of LOGGING
+# will get merged into the corresponding section of log_settings.py.
+# Handlers and log levels are set up automatically based on LOG_LEVEL and DEBUG
+# unless you set them here.  Messages will not propagate through a logger
+# unless propagate: True is set.
+LOGGING = {
+    'loggers': {
+    },
+}

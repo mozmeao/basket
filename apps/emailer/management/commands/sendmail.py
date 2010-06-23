@@ -1,9 +1,9 @@
 import functools
-import logging
 from optparse import make_option
 import os
 import tempfile
 
+import commonware.log
 import lockfile
 
 from django.core.management.base import LabelCommand, CommandError
@@ -12,6 +12,7 @@ from emailer.models import Email
 
 
 LOCKFILE_PREFIX = 'basket_emailer_lock'
+log = commonware.log.getLogger('basket')
 
 
 def locked(f):
@@ -29,7 +30,7 @@ def locked(f):
             # Try to acquire the lock without blocking.
             lock.acquire(0)
         except lockfile.LockError:
-            logging.debug('Aborting %s; lock acquisition failed.' % name)
+            log.debug('Aborting %s; lock acquisition failed.' % name)
             return 0
         else:
             # We have the lock, call the function.

@@ -1,5 +1,3 @@
-import logging
-
 from django.core.exceptions import ValidationError
 from django import test
 

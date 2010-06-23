@@ -1,10 +1,13 @@
-import logging
+import commonware.log
 
 from django.http import HttpResponse
 
 import oauth2 as oauth
 
 from piston.models import Consumer as ConsumerModel
+
+
+log = commonware.log.getLogger('basket')
 
 
 class BasketAuthentication(object):
@@ -42,15 +45,15 @@ class BasketAuthentication(object):
             self.server.verify_request(oauth_req, consumer, None)
             return True
         except ConsumerModel.DoesNotExist, e:
-            logging.error(e)
+            log.error(e)
             return False
         except oauth.Error, e:
-            logging.error(e)
-            logging.error(request)
+            log.error(e)
+            log.error(request)
             return False
         except:
-            logging.error('fallback error')
-            logging.error(request)
+            log.error('fallback error')
+            log.error(request)
 
     def challenge(self):
         response = HttpResponse(status=401)

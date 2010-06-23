@@ -1,4 +1,4 @@
-import logging
+import commonware.log
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -10,9 +10,7 @@ from emailer.models import Recipient
 from subscriptions.models import Subscriber
 
 
-log = logging.getLogger('basket.emailer')
-log.addHandler(logging.StreamHandler())
-log.setLevel(settings.LOG_LEVEL)
+log = commonware.log.getLogger('basket')
 
 mailchimp = MailChimp(settings.MAILCHIMP_API_KEY)
 
@@ -74,7 +72,7 @@ class BaseEmailer(object):
             log.info('Nothing to do: List of recipients is empty.')
             return
 
-        log.debug('Establishing SMTP connection...')
+        log.info('Establishing SMTP connection...')
         connection = mail.get_connection()
         connection.open()
 
@@ -91,7 +89,7 @@ class BaseEmailer(object):
                 msg.attach_alternative(html, 'text/html')
 
             try:
-                log.debug('Sending email to %s' % recipient.email)
+                log.info('Sending email to %s' % recipient.email)
                 msg.send(fail_silently=False)
             except Exception, e:
                 log.warning('Sending email to %s failed: %s' % (
