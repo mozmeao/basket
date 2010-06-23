@@ -115,17 +115,15 @@ class MailChimpEmailer(BaseEmailer):
     Send email using MailChimp lists and transactional campaigns
     """
 
-    def get_recipients(self):
-        """MailChimp recommends maximum batch size of 5-10k"""
-        r = super(MailChimpEmailer, self).get_recipients()
-        return r[0:10000]
-
     def send_email(self):
         """Send out the email and record the recipients."""
         recipients = self.get_recipients()
         if not recipients:
             log.info('Nothing to do: List of recipients is empty.')
             return
+
+        # MailChimp recommends max batch size of 10K
+        recipients = recipients[0:10000]
 
         batch = [dict(EMAIL=x.email, EMAIL_TYPE='html') for x in recipients]
 
