@@ -128,7 +128,7 @@ class MailChimpEmailer(BaseEmailer):
         ret = mailchimp.listBatchSubscribe(id=self.email.mailchimp_list,
                                            batch=batch, double_optin=False)
 
-        failed = [x['email_address'] for x in ret['errors']]
+        failed = [x['row']['EMAIL'] for x in ret['errors']]
 
         for recipient in recipients:
             if recipient.email in failed:
