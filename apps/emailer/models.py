@@ -25,6 +25,12 @@ class Email(models.Model):
         'Python class name of custom Emailer to use. Example: '
         '<code>emailer.emailers.MyFancyEmailer</code><br/>Keep empty for '
         'default Emailer.'))
+    from_name = models.CharField(max_length=255, blank=True, help_text=(
+        "The sender's name (not an email address)"))
+    from_email = models.EmailField(blank=True, help_text=(
+        "The sender's address e.g. campaign@mozilla.com"))
+    reply_to_email = models.EmailField(blank=True, help_text=(
+        "The reply-to address"))
     mailchimp_campaign = models.CharField(max_length=20, blank=True)
     mailchimp_list = models.CharField(max_length=20, blank=True, help_text=(
         "MailChimp list ID."
