@@ -68,8 +68,8 @@ class Email(models.Model):
         updates = {
             'list_id':    self.mailchimp_list,
             'subject':    self.subject,
-            'from_email': settings.DEFAULT_FROM_EMAIL,
-            'from_name':  settings.DEFAULT_FROM_NAME,
+            'from_email': self.from_email,
+            'from_name':  self.from_name,
             'auto_footer': False,
             'content': {
                 'html': self.html,
