@@ -135,3 +135,5 @@ LDAP = {
     'password': '',
     'search_base': 'o=com,dc=mozilla',
 }
+
+EMAIL_BACKEND = 'mysmtp.EmailBackend'
