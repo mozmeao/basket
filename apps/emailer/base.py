@@ -47,7 +47,7 @@ class BaseEmailer(object):
     def get_from(self):
         """Return "from" email address."""
         if self.email.from_email:
-            return '{name} <{email}>'.format(name=self.email.from_name, 
+            return '{name} <{email}>'.format(name=self.email.from_name,
                                              email=self.email.from_email)
         else:
             return settings.DEFAULT_FROM_EMAIL
@@ -77,38 +77,48 @@ class BaseEmailer(object):
             log.info('Nothing to do: List of recipients is empty.')
             return
 
+
+        emails = dict((r.email, r.id) for r in recipients)
+
+        d = {
+            'subject': self.get_subject(),
+            'body': self.get_text(),
+            'from_email': self.get_from(),
+            'headers': self.get_headers(),
+        }
+        html = self.get_html()
+
+        messages = []
+        for address in emails:
+            msg = mail.EmailMultiAlternatives(to=(address,), **d)
+            msg.attach_alternative(html, 'text/html')
+            messages.append(msg)
+
+        log.info('Sending email to %s' % ', '.join(emails))
+
         log.info('Establishing SMTP connection...')
         connection = mail.get_connection()
         connection.open()
 
-        for recipient in recipients:
-            msg = mail.EmailMultiAlternatives(
-                subject=self.get_subject(),
-                body=self.get_text(),
-                from_email=self.get_from(),
-                to=(recipient.email,),
-                headers=self.get_headers())
+        # We don't want to silence connection errors, but now we want to see
+        # (success, failed) from send_messages).
+        connection.fail_silently = True
+        success, failed = connection.send_messages(messages)
 
-            html = self.get_html()
-            if html:
-                msg.attach_alternative(html, 'text/html')
+        if failed:
+            log.warning('Failure: %s' % ', '.join(m.to[0] for m in failed))
 
+        for msg in success:
+            email = msg.to[0]
+            log.info('Email sent to %s' % email)
+            sent = Recipient(subscriber_id=emails[email], email=email)
             try:
-                log.info('Sending email to %s' % recipient.email)
-                msg.send(fail_silently=False)
-            except Exception, e:
-                log.warning('Sending email to %s failed: %s' % (
-                    recipient.email, e))
+                sent.validate_unique()
+            except ValidationError, e:
+                # Already exists? Sending was probably forced.
+                pass
             else:
-                log.info('Email sent to %s' % recipient.email)
-                sent = Recipient(subscriber=recipient, email=self.email)
-                try:
-                    sent.validate_unique()
-                except ValidationError, e:
-                    # Already exists? Sending was probably forced.
-                    pass
-                else:
-                    sent.save()
+                sent.save()
 
         connection.close()
 
