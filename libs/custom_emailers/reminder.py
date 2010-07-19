@@ -1,7 +1,7 @@
 """Custom emailer for sending a reminder email."""
 import datetime
 
-from emailer.base import Emailer
+from emailer.base import BaseEmailer
 
 class ReminderEmailer(BaseEmailer):
     """
