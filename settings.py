@@ -137,3 +137,5 @@ LDAP = {
 }
 
 EMAIL_BACKEND = 'mysmtp.EmailBackend'
+
+EMAIL_BACKLOG_TOLERANCE = 200
