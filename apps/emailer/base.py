@@ -94,8 +94,6 @@ class BaseEmailer(object):
             msg.attach_alternative(html, 'text/html')
             messages.append(msg)
 
-        log.info('Sending email to %s' % ', '.join(emails))
-
         log.info('Establishing SMTP connection...')
         connection = mail.get_connection()
         connection.open()
@@ -105,13 +103,12 @@ class BaseEmailer(object):
         connection.fail_silently = True
         success, failed = connection.send_messages(messages)
 
-        if failed:
-            log.warning('Failure: %s' % ', '.join(m.to[0] for m in failed))
+        log.info('%d failed messages' % len(failed))
+        log.info('%d successful messages' % len(success))
 
         for msg in success:
-            email = msg.to[0]
-            log.info('Email sent to %s' % email)
-            sent = Recipient(subscriber_id=emails[email], email=email)
+            dest = msg.to[0]
+            sent = Recipient(subscriber_id=emails[dest], email=self.email)
             try:
                 sent.validate_unique()
             except ValidationError, e:
