@@ -18,7 +18,7 @@ class Command(LabelCommand):
     args = '<campaign campaign ...>'
     label = 'campaign'
 
-    @locked('basket_emailer_lock')
+    @locked('sendmail')
     def handle_label(self, label, **options):
         """
         Locked command handler to avoid running this command more than once

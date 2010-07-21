@@ -17,7 +17,7 @@ def locked(prefix):
     def decorator(f):
         @functools.wraps(f)
         def wrapper(self, *args, **kwargs):
-            name = '_'.join((prefix, f.__name__) + args)
+            name = '_'.join((prefix, f.__name__) + args + tuple('%s_%s' % i for i in kwargs.items()))
             file = os.path.join(tempfile.gettempdir(), name)
             lock = lockfile.FileLock(file)
             try:
