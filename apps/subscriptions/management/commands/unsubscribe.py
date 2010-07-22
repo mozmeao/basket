@@ -3,8 +3,13 @@ from optparse import make_option
 from django.core.management.base import LabelCommand, CommandError
 from django.core.urlresolvers import get_callable
 
+import commonware.log
+
 from subscriptions.models import Subscription
 from utils import locked
+
+
+log = commonware.log.getLogger('basket')
 
 
 class Command(LabelCommand):
@@ -38,6 +43,7 @@ class Command(LabelCommand):
             if conditional_name:
                 try:
                     conditional = get_callable(conditional_name)
+                    log.info("Using conditional %s" % conditional_name)
                 except AttributeError: 
                     raise CommandError(
                         'Conditional %s is not callable.' % conditional_name)
@@ -46,10 +52,14 @@ class Command(LabelCommand):
 
         try:
             targets = Subscription.objects.filter(campaign=label, active=True)
+            log.info("Found %d targets" % targets.count())
+            unsub_count = 0
             for target in targets:
                 if conditional(target):
                     target.active = False
+                    unsub_count += 1
                 target.save()
+            log.info("Unsubscribed %d" % unsub_count)
                      
         except Exception, e:
             raise CommandError(e)
