@@ -14,3 +14,7 @@ def index(request):
             return HttpResponse('ERROR: FxHome email backlog is %d' % delta)
 
     return HttpResponse('SUCCESS')
+
+def unsub(request):
+    count = Subscription.objects.filter(active=False).count()
+    return HttpResponse(count)
