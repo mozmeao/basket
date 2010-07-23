@@ -5,31 +5,30 @@ from django.conf import settings
 import commonware.log
 
 
-log = commonware.log.getLogger('basket')
-
-_conn_cache = {}
+log = commonware.log.getLogger('ldap')
 
 
 def connect_ldap():
     server = '{host}:{port}'.format(**settings.LDAP)
 
-    if server in _conn_cache:
-        log.debug("using cached LDAP connection")
-        return _conn_cache[server]
-
     log.info("Initializing new LDAP connection")
     l = ldap.initialize(server)
+    l.network_timeout = settings.LDAP_TIMEOUT
+    l.timelimit = settings.LDAP_TIMEOUT
+    l.timeout = settings.LDAP_TIMEOUT
     l.simple_bind_s(settings.LDAP['user'], settings.LDAP['password'])
-    _conn_cache[server] = l
     return l
 
 
 def has_account(email):
     l = connect_ldap()
     try:
-        resp = l.search_s(settings.LDAP['search_base'], ldap.SCOPE_SUBTREE,
-                          '(mail={mail})'.format(mail=email), ['mail'])
+        resp = l.search_st(settings.LDAP['search_base'], ldap.SCOPE_SUBTREE,
+                          '(mail={mail})'.format(mail=email), ['mail'], timeout=settings.LDAP_TIMEOUT)
         return bool(resp)
+    except ldap.TIMEOUT:
+        log.warning("ldap search timed out")
+        return False
     except ldap.NO_SUCH_OBJECT:
         log.debug("no account found")
         return False
