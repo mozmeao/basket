@@ -93,6 +93,7 @@ INSTALLED_APPS = (
     'emailer',
     'nagios',
     'subscriptions',
+    'vars',
 
     'piston',
 
@@ -139,3 +140,5 @@ LDAP = {
 EMAIL_BACKEND = 'mysmtp.EmailBackend'
 
 EMAIL_BACKLOG_TOLERANCE = 200
+
+SYNC_UNSUBSCRIBE_LIMIT = 1000
