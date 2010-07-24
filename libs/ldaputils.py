@@ -1,6 +1,7 @@
 import ldap
 
 from django.conf import settings
+from django.utils.encoding import smart_str
 
 import commonware.log
 
@@ -21,8 +22,8 @@ def connect_ldap():
 
 
 def has_account(email):
-    l = connect_ldap()
     try:
+        l = connect_ldap()
         resp = l.search_st(settings.LDAP['search_base'], ldap.SCOPE_SUBTREE,
                           '(mail={mail})'.format(mail=email), ['mail'], timeout=settings.LDAP_TIMEOUT)
         return bool(resp)
@@ -34,4 +35,4 @@ def has_account(email):
         return False
 
 def subscription_has_account(subscription):
-    return has_account(subscription.subscriber.email)
+    return has_account(smart_str(subscription.subscriber.email))
