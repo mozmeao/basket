@@ -8,9 +8,15 @@ import commonware.log
 
 log = commonware.log.getLogger('ldap')
 
+_conn_cache = {}
+
 
 def connect_ldap():
     server = '{host}:{port}'.format(**settings.LDAP)
+
+    if server in _conn_cache:
+        log.debug("using cached LDAP connection")
+        return _conn_cache[server]
 
     log.info("Initializing new LDAP connection")
     l = ldap.initialize(server)
@@ -18,6 +24,7 @@ def connect_ldap():
     l.timelimit = settings.LDAP_TIMEOUT
     l.timeout = settings.LDAP_TIMEOUT
     l.simple_bind_s(settings.LDAP['user'], settings.LDAP['password'])
+    _conn_cache[server] = l
     return l
 
 

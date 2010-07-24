@@ -31,6 +31,7 @@ class Command(BaseCommand):
             targets = Subscription.objects.filter(campaign='firefox-home-instructions', active=True).order_by('id')
 
             start = int(vars.get('sync_unsubscribe_index', 0))
+            log.info(start)
             end = start + limit
             targets = targets[start:end]
             count = targets.count()
