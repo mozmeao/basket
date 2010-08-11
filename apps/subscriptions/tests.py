@@ -18,9 +18,11 @@ class SubscriptionTest(test.TestCase):
         self.c.tearDown()
 
     def valid_subscriber(self):
-        return Subscriber(email='foo@foo.com')
+        """Convenience function for generating a valid Subscriber object"""
+        return Subscriber(email='test@test.com')
 
     def valid_subscription(self):
+        """Convenience function for generating a valid Subscription object"""
         subscriber = self.valid_subscriber()
         subscriber.save()
         s = Subscription(campaign='test')
@@ -37,7 +39,7 @@ class SubscriptionTest(test.TestCase):
         self.assertRaises(ValidationError, a.full_clean)
 
         # fail on bad email format
-        a.email = 'foo'
+        a.email = 'test'
         self.assertRaises(ValidationError, a.full_clean)
 
     def test_subscription_validation(self):
@@ -52,16 +54,16 @@ class SubscriptionTest(test.TestCase):
   
         # fail on bad locale
         c = self.valid_subscription()
-        c.locale = 'foo'
+        c.locale = 'test'
         self.assertRaises(ValidationError, c.full_clean)
 
     def test_locale_fallback(self):
-        """A blank locale will fall back to en-US"""
+        """A blank locale will fall back to en-us"""
 
         a = self.valid_subscription()
         a.locale = ''
         a.full_clean()
-        eq_(a.locale, 'en-US')
+        eq_(a.locale, 'en-us')
 
     def test_valid_locale(self):
         """A valid locale, other than en-US, works"""
@@ -70,10 +72,19 @@ class SubscriptionTest(test.TestCase):
         a.locale = 'es-ES'
         a.full_clean()
         a.save()
+        eq_(Subscription.objects.filter(locale='es-es').count(), 1)
+
+    def test_underscore_locale(self):
+        """Replace underscores with hyphens in locale codes"""
+
+        a = self.valid_subscription()
+        a.locale = 'es_ES'
+        a.full_clean()
+        a.save()
         eq_(Subscription.objects.filter(locale='es-ES').count(), 1)
 
     def test_active_default(self):
-        """A new record is active be default"""
+        """A new record is active by default"""
 
         a = self.valid_subscription()
         a.save()
@@ -86,16 +97,16 @@ class SubscriptionTest(test.TestCase):
         eq_(self.count(), 0)
         
         # success returns 200
-        resp = self.c.subscribe(email='foo@bar.com', campaign='foo')
+        resp = self.c.subscribe(email='test@test.com', campaign='test')
         eq_(resp.status_code, 201, resp.content)
         eq_(self.count(), 1)
-        eq_(Subscription.objects.filter(subscriber__email='foo@bar.com').count(), 1)
+        eq_(Subscription.objects.filter(subscriber__email='test@test.com').count(), 1)
 
         # duplicate returns 409
-        resp = self.c.subscribe(email='foo@bar.com', campaign='foo')
+        resp = self.c.subscribe(email='test@test.com', campaign='test')
         eq_(resp.status_code, 409, resp.content)
         eq_(self.count(), 1)
-        eq_(Subscription.objects.filter(subscriber__email='foo@bar.com').count(), 1)
+        eq_(Subscription.objects.filter(subscriber__email='test@test.com').count(), 1)
 
     def test_read(self):
         resp = self.c.read()
@@ -103,7 +114,7 @@ class SubscriptionTest(test.TestCase):
 
 
 def unsubscribe_conditional(subscription):
-    return subscription.subscriber.email == 'foo@foo.com'
+    return subscription.subscriber.email == 'test@test.com'
     
 class UnsubscribeManagementTest(test.TestCase):
     fixtures = ['subscriptions']
@@ -113,11 +124,11 @@ class UnsubscribeManagementTest(test.TestCase):
         self.run = self.command.handle_label
         
     def test_unsubscribe_all(self):
-        self.run('foo')
+        self.run('test')
         eq_(Subscription.objects.filter(active=True).count(), 0)
         
     def test_conditional_unsubscribe(self):
-        self.run('foo', conditional='subscriptions.tests.unsubscribe_conditional')
+        self.run('test', conditional='subscriptions.tests.unsubscribe_conditional')
         eq_(Subscription.objects.filter(active=True).count(), 1)
-        rec = Subscription.objects.get(subscriber__email='foo@foo.com')
+        rec = Subscription.objects.get(subscriber__email='test@test.com')
         eq_(rec.active, False)

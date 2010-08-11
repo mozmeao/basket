@@ -19,3 +19,5 @@ coverage==3.2b4
 mock==0.6.0
 
 pylint
+
+-e git://github.com/davedash/django-fixture-magic#egg=django_fixture_magic

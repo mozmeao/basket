@@ -1,17 +1,17 @@
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseServerError
 
 from subscriptions.models import Subscription
-from emailer.models import Email
+from emailer.models import Recipient
 
 def index(request):
     # check that the Firefox Home emails are sending
-    subscriptions = Subscription.objects.filter(campaign='firefox-home-instructions')
-    reg = Email.objects.filter(name='iphone-reg')
-    if subscriptions.count() and reg.count():
-        delta = subscriptions.count() - reg[0].recipients.count()
-        if delta > settings.EMAIL_BACKLOG_TOLERANCE:
-            return HttpResponse('ERROR: FxHome email backlog is %d' % delta)
+    s_count = Subscription.objects.filter(campaign='firefox-home-instructions').count()
+    r_count = Recipient.objects.filter(email_id='firefox-home-instructions-initial').count()
+    delta = s_count - r_count
+
+    if delta > settings.EMAIL_BACKLOG_TOLERANCE:
+        return HttpResponseServerError('ERROR: FxHome email backlog is %d' % delta)
 
     return HttpResponse('SUCCESS')
 

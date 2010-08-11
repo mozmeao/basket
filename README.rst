@@ -2,9 +2,7 @@
 Basket
 ======
 
-A RESTful service for storing email addresses
-
-*(These docs are very much a work in progress)*
+Stores email list subscriptions, and can send emails to those lists.
 
 Requirements
 ============
@@ -21,7 +19,6 @@ Get the code
 ::
 
     git clone git@github.com:abuchanan/basket.git
-    cd basket
 
 
 Make a virtualenv
@@ -38,6 +35,10 @@ Install packages
 ::
 
     pip install -r requirements/prod.txt -r requirements/compiled.txt
+
+For developers::
+
+    pip install -r requirements/dev.txt
 
 
 Settings
@@ -68,8 +69,13 @@ Production installs often have a few different requirements:
 Collecting Emails
 =================
 
-TBD
+Send a POST request to /subscriptions/subscribe/ with the following fields
 
+* email address
+* campaign ID
+* locale (optional, defaults to en-US)
+* active (optional, defaults to True)
+* source, i.e. source page URL (optional)
 
 Sending Emails
 ==============
@@ -77,12 +83,15 @@ Sending Emails
 After collecting emails, you'll also want to send some. To do that, first set
 your outgoing email settings appropriately in ``settings_local.py``.
 
-Then, create an email template through the admin interface. Define the
-plain-text email (required) as well as the HTML text (optional).
+Then, create an email. See ./emails/home.py for examples.
 
 To send an email to a campaign, run::
 
-    ./manage.py sendmail --template mytemplatename mycampaignname [other_campaignnames ...]
+    ./manage.py sendmail --email emails.package.email campaignname [other_campaignnames ...]
+
+For example, to send the Firefox Home instructions email, you'd run::
+
+    ./manage.py sendmail --email emails.home.Initial firefox-home-instructions
 
 You can run this as a cron job, as no-one will receive the same email twice,
 unless the ``--force`` option is set.
@@ -92,9 +101,9 @@ Advanced emailing
 -----------------
 
 If you require special logic for sending your email, you can subclass
-``emailer.base.BaseEmailer`` in a module of your choice (recommended:
-inside ``libs/custom_emailers``). Then, go to the admin panel and set the
-``emailer_class`` field accordingly for the applicable email template(s) (for
-example: ``custom_emailers.reminder.ReminderEmailer``). When you run the
-``sendmail`` command above, your Emailer will be used instead of the default
-one.
+``emailer.Emailer`` in a module of your choice (recommended:
+inside ``libs/custom_emailers``). Set the
+``emailer_class`` field accordingly for the applicable email (see emails.home.Reminder for an example). 
+
+When you run the ``sendmail`` command above, your Emailer will be used instead 
+of the default one.
