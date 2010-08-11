@@ -113,9 +113,6 @@ LANGUAGES = ('en-US', 'es-ES')
 DEFAULT_FROM_EMAIL = 'basket@mozilla.com'
 DEFAULT_FROM_NAME = 'Mozilla'
 
-# MailChimp API
-MAILCHIMP_API_KEY = ''
-
 # Logging
 LOG_LEVEL = logging.DEBUG
 HAS_SYSLOG = True  # syslog is used if HAS_SYSLOG and NOT DEBUG.

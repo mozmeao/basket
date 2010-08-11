@@ -4,15 +4,11 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core import mail
 
-from greatape import MailChimp
-
 from emailer.models import Recipient
 from subscriptions.models import Subscriber
 
 
 log = commonware.log.getLogger('basket')
-
-mailchimp = MailChimp(settings.MAILCHIMP_API_KEY)
 
 
 class BaseEmailer(object):
@@ -118,42 +114,3 @@ class BaseEmailer(object):
                 sent.save()
 
         connection.close()
-
-
-class MailChimpEmailer(BaseEmailer):
-    """
-    Send email using MailChimp lists and transactional campaigns
-    """
-
-    def send_email(self):
-        """Send out the email and record the recipients."""
-        recipients = self.get_recipients()
-        if not recipients:
-            log.info('Nothing to do: List of recipients is empty.')
-            return
-
-        # MailChimp recommends max batch size of 10K
-        recipients = recipients[0:10000]
-
-        batch = [dict(EMAIL=x.email, EMAIL_TYPE='html') for x in recipients]
-
-        ret = mailchimp.listBatchSubscribe(id=self.email.mailchimp_list,
-                                           batch=batch, double_optin=False)
-
-        failed = [x['row']['EMAIL'] for x in ret['errors']]
-
-        for recipient in recipients:
-            if recipient.email in failed:
-                log.error('Failed to subscribe %s' % recipient.email)
-            else:
-                log.info('Subscribed %s' % recipient.email)
-                sent = Recipient(subscriber=recipient, email=self.email)
-                try:
-                    sent.validate_unique()
-                except ValidationError:
-                    # Already exists? Sending was probably forced.
-                    pass
-                else:
-                    sent.save()
-
-        mailchimp.campaignSendNow(cid=self.email.mailchimp_campaign)
