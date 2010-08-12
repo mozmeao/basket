@@ -8,7 +8,7 @@ from subscriptions.models import Subscription, Subscriber
 
 
 class SubscriptionHandler(BaseHandler):
-    fields = ('email', 'campaign', 'active', 'source', 'locale')
+    fields = ('email', 'campaign', 'active', 'source', 'locale', 'country')
 
     def read(self, request):
         return rc.NOT_IMPLEMENTED
@@ -37,7 +37,9 @@ class SubscriptionHandler(BaseHandler):
             campaign = request.data.get('campaign', '')
             source = request.data.get('source', '')
             locale = request.data.get('locale', '')
-            m = Subscription(campaign=campaign, source=source, locale=locale)
+            country = request.data.get('country', '')
+            m = Subscription(campaign=campaign, source=source, 
+                             locale=locale, country=country)
             m.subscriber = s
             m.validate_unique()
         except ValidationError, e:

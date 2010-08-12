@@ -18,6 +18,7 @@ class Subscription(models.Model):
     locale = models.CharField(max_length=30, blank=True, default='en-US')
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
+    country = models.CharField(max_length=10, blank=True, default='us')
 
     class Meta:
         unique_together = (('subscriber', 'campaign'),)
