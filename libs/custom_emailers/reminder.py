@@ -1,17 +1,17 @@
 """Custom emailer for sending a reminder email."""
 import datetime
 
-from emailer.base import BaseEmailer
+from emailer import Emailer
 
-class ReminderEmailer(BaseEmailer):
+class ReminderEmailer(Emailer):
     """
     Send email to subscribers, only after a week has passed since subscribing.
     """
 
     delay = datetime.timedelta(weeks=1)
 
-    def get_recipients(self):
-        recipients = super(ReminderEmailer, self).get_recipients()
-        recipients = recipients.exclude(
+    def get_subscriptions(self):
+        subscriptions = super(ReminderEmailer, self).get_subscriptions()
+        subscriptions = subscriptions.exclude(
             subscriptions__created__gte=datetime.datetime.now()-self.delay)
-        return recipients
+        return subscriptions

@@ -1,6 +1,6 @@
 # compiled.txt has other prod packages that need to be compiled.
 
--e git://github.com/django/django@5924f18c1100#egg=django
+-e git://github.com/django/django@36c82ac8#egg=django
 pytz==2010e
 
 -e git://github.com/jbalogh/django-multidb-router.git#egg=django-multidb-router
@@ -15,3 +15,5 @@ oauth2==1.2.0
 lockfile==0.8
 
 python-ldap==2.3.11
+-e git://github.com/jbalogh/jingo.git#egg=jingo
+-e git://github.com/clouserw/tower.git#egg=tower

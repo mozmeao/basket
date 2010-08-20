@@ -44,7 +44,7 @@ SITE_ID = 1
 
 # If you set this to False, Django will make some optimizations so as not
 # to load the internationalization machinery.
-USE_I18N = False
+USE_I18N = True
 
 # Absolute path to the directory that holds media.
 # Example: "/home/media/media.lawrence.com/"
@@ -95,7 +95,9 @@ INSTALLED_APPS = (
     'subscriptions',
     'vars',
 
+    'fixture_magic',
     'piston',
+    'tower',
 
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -108,7 +110,19 @@ INSTALLED_APPS = (
 # tests
 TEST_RUNNER = 'test_utils.runner.RadicalTestSuiteRunner'
 
-LANGUAGES = ('en-US', 'es-ES')
+LANGUAGES = (
+    'af','ak','ast-ES','ar','as','be','bg','bn-BD','bn-IN','br-FR',
+    'ca','ca-valencia','cs','cy','da','de','de-AT','de-CH','de-DE',
+    'dsb','el','en-AU','en-CA','en-GB','en-NZ','en-US','en-ZA','eo',
+    'es','es-AR','es-CL','es-ES','es-MX','et','eu','fa','fi','fj-FJ',
+    'fr','fur-IT','fy-NL','ga','ga-IE','gl','gu-IN','he','hi','hi-IN',
+    'hr','hsb','hu','hy-AM','id','is','it','ja','ja-JP-mac','ka','kk',
+    'kn','ko','ku','la','lt','lv','mg','mi','mk','ml','mn','mr','nb-NO',
+    'ne-NP','nn-NO','nl','nr','nso','oc','or','pa-IN','pl','pt-BR','pt-PT',
+    'ro','rm','ru','rw','si','sk','sl','sq','sr','sr-Latn','ss','st',
+    'sv-SE','ta','ta-IN','ta-LK','te','th','tn','tr','ts','tt-RU','uk','ur',
+    've','vi','wo','xh','zh-CN','zh-TW','zu',)
+LANGUAGES_LOWERED = [x.lower() for x in LANGUAGES]
 
 DEFAULT_FROM_EMAIL = 'basket@mozilla.com'
 DEFAULT_FROM_NAME = 'Mozilla'
@@ -141,3 +155,11 @@ EMAIL_BACKLOG_TOLERANCE = 200
 SYNC_UNSUBSCRIBE_LIMIT = 1000
 
 LDAP_TIMEOUT = 2
+
+def JINJA_CONFIG():
+    import jinja2
+    from django.conf import settings
+    config = {'extensions': ['tower.template.i18n',
+                             'jinja2.ext.with_', 'jinja2.ext.loopcontrols'],
+              'finalize': lambda x: x if x is not None else ''}
+    return config

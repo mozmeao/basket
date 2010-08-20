@@ -2,7 +2,7 @@ from optparse import make_option
 
 from django.core.management.base import LabelCommand, CommandError
 
-from emailer.models import Email
+from emailer import Email
 from utils import locked
 
 
@@ -11,8 +11,8 @@ class Command(LabelCommand):
         make_option('--force', '-f', dest='force', action='store_true',
                     default=False,
                     help='Send email even to prior recipients.'),
-        make_option('--template', '-t', dest='template',
-                    help='Template name of email to be sent (required).'),
+        make_option('--email', '-e', dest='email',
+                    help='Name of email to be sent (required).'),
     )
     help = 'Send an email to the subscribers to a campaign.'
     args = '<campaign campaign ...>'
@@ -24,30 +24,19 @@ class Command(LabelCommand):
         Locked command handler to avoid running this command more than once
         simultaneously.
         """
-        template = getattr(self, 'template', None)
-        if not template:
-            template_name = options.get('template', None)
-            if not template_name:
-                raise CommandError('--template option is required.')
+        email = getattr(self, 'email', None)
+        if not email:
+            email_name = options.get('email', None)
+            if not email_name:
+                raise CommandError('--email option is required.')
             try:
-                template = Email.objects.get(name=template_name)
-                self.template = template
-            except Email.DoesNotExist:
-                raise CommandError(
-                    'No email template %s found.' % template_name)
-
-        # Use custom emailer if defined, default otherwise
-        emailer_class = getattr(self, 'emailer_class', None)
-        if not emailer_class:
-            try:
-                emailer_class = template.get_emailer_callable()
-                self.emailer_class = emailer_class
-            except ImportError, e:
+                email = Email.get(email_name)
+                self.email = email
+            except (ImportError, AttributeError), e:
                 raise CommandError(e)
 
-        emailer = emailer_class(campaign=label, email=template,
-                                force=options['force'])
-        try:
-            emailer.send_email()
-        except Exception, e:
-            raise CommandError(e)
+        force = options.get('force', False)
+        emailer = email.emailer(campaign=label, email=email,
+                                force=force)
+
+        emailer.send_email()

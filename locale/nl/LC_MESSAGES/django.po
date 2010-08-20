@@ -1,0 +1,158 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2010-08-19 18:01-0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: emails/home.py:8
+msgid "Set Up Firefox Home On Your iPhone"
+msgstr "Firefox Home instellen op uw iPhone"
+
+#: emails/home.py:9
+msgid "Firefox Home Account Setup"
+msgstr "Accountset-up voor Firefox Home"
+
+#: templates/emails/firefox-home-instructions-initial.html:4
+msgid "Greetings!"
+msgstr "Goedendag!"
+
+#: templates/emails/firefox-home-instructions-initial.html:8
+msgid ""
+"Follow these five steps to set up Firefox Home and get access to your "
+"desktop Firefox history, bookmarks and even your open tabs on your iPhone:"
+msgstr ""
+"Volg de onderstaande vijf stappen om Firefox Home te installeren en toegang "
+"tot de geschiedenis, bladwijzers en zelfs open tabbladen van uw "
+"desktopversie van Firefox te krijgen via uw iPhone:"
+
+#: templates/emails/firefox-home-instructions-initial.html:12
+msgid "Install the free <a href='{0}'>Firefox Sync add-on</a> on your desktop."
+msgstr ""
+"Installeer de <a href='{0}'>gratis Firefox Sync-add-on</a> op uw "
+"desktopcomputer."
+
+#: templates/emails/firefox-home-instructions-initial.html:13
+msgid ""
+"Firefox Home uses the sync capabilities from the Firefox Sync add-on to "
+"access your Firefox browser information and securely send it to your iPhone."
+msgstr ""
+"Firefox Home gebruikt de synchronisatiemogelijkheden van de Firefox Sync-add-"
+"on om de gegevens van uw Firefox-browser te benaderen en deze veilig naar uw "
+"iPhone te verzenden."
+
+#: templates/emails/firefox-home-instructions-initial.html:17
+msgid ""
+"Once Firefox restarts, follow the prompts to create an account with both a "
+"password and a Secret Phrase."
+msgstr ""
+"Beantwoord na het herstarten van Firefox de vragen om een account met zowel "
+"een wachtwoord als een geheime wachtzin aan te maken."
+
+#: templates/emails/firefox-home-instructions-initial.html:18
+msgid ""
+"Firefox Home uses your Secret Phrase to locally encrypt and protect your "
+"information."
+msgstr ""
+"Firefox Home gebruikt uw geheime wachtzin om uw gegevens lokaal te "
+"versleutelen en te beschermen."
+
+#: templates/emails/firefox-home-instructions-initial.html:22
+msgid ""
+"Firefox Sync will now begin securely synchronizing your data with our "
+"service. This initial synchronization may take up to 20 minutes."
+msgstr ""
+"Firefox Sync zal nu beginnen met het veilig synchroniseren van uw gegevens "
+"met onze service. Deze initiële synchronisatie kan tot 20 minuten duren."
+
+#: templates/emails/firefox-home-instructions-initial.html:23
+msgid ""
+"Firefox Sync will only work if you are not in Private Browsing mode. Once "
+"your initial synchronization is complete, you'll see a Last Update time in "
+"the Tools > Sync menu."
+msgstr ""
+"Firefox Sync zal alleen werken als u zich niet in de modus Privénavigatie "
+"bevindt. Als uw initiële synchronisatie eenmaal is voltooid, ziet u een "
+"tijdtip van de laatste update in het menu Extra > Sync."
+
+#: templates/emails/firefox-home-instructions-initial.html:27
+msgid ""
+"To complete the setup, on your iPhone enter your account, password and "
+"Secret Phrase in the field provided and tap 'Done' on the keypad."
+msgstr ""
+"Vul in de hiervoor bestemde velden op uw iPhone uw accountnaam, wachtwoord "
+"en geheime wachtzin in en tap op “Klaar” op het toetsenbord om de "
+"installatie te voltooien."
+
+#: templates/emails/firefox-home-instructions-initial.html:28
+msgid ""
+"If you're having trouble logging in, <a href='{0}'>click here for help</a>."
+msgstr ""
+"Als u moeite hebt met het aanmelden, <a href='{0}'>klik dan hier voor hulp</"
+"a>."
+
+#: templates/emails/firefox-home-instructions-initial.html:33
+msgid ""
+"Once complete you will be able to access your desktop bookmarks, history, "
+"and open tabs on your iPhone."
+msgstr ""
+"Zodra u hiermee klaar bent, zult u de bladwijzers, geschiedenis en open "
+"tabbladen van uw desktopversie van Firefox via uw iPhone kunnen benaderen."
+
+#: templates/emails/firefox-home-instructions-initial.html:34
+msgid "If your data is not showing up, <a href='{0}'>click here for help</a>."
+msgstr ""
+"Als uw gegevens niet verschijnen, <a href='{0}'>klik dan hier voor hulp</a>."
+
+#: templates/emails/firefox-home-instructions-initial.html:38
+msgid ""
+"If you're having any trouble at all, please <a href='{0}'>visit Firefox Home "
+"Support</a>."
+msgstr ""
+"Als u andere problemen ondervindt, bezoek dan de <a "
+"href='{0}'>ondersteuningspagina voor Firefox Home</a>."
+
+#: templates/emails/firefox-home-instructions-initial.html:40
+msgid ""
+"If you have ideas on how to make Firefox Home even better <a href='{0}'>let "
+"us know</a>!"
+msgstr ""
+"Als u ideeën hebt om Firefox Home nog beter te maken, <a href='{0}'>laat het "
+"ons dan weten</a>!"
+
+#: templates/emails/firefox-home-instructions-initial.html:44
+msgid ""
+"If you do not set up <a href='{0}'>Firefox Home</a> within one week of "
+"receiving this email, one reminder email will be sent to you."
+msgstr ""
+"Als u <a href='{0}'>Firefox Home</a> niet binnen een week na ontvangst van "
+"dit e-mailbericht installeert, zal eenmalig een herinneringsbericht naar u "
+"worden verzonden."
+
+#: templates/emails/firefox-home-instructions-initial.html:47
+msgid ""
+"See our <a href='{0}'>Privacy Policy</a>. Visit us for more information "
+"about <a href='{1}'>Firefox Home</a>."
+msgstr ""
+"Bekijk ook ons <a href='{0}'>privacybeleid</a>. Bezoek <a href='{1}'>Firefox "
+"Home</a> voor meer informatie."
+
+#: templates/emails/firefox-home-instructions-reminder.html:4
+msgid ""
+"A few days ago you expressed interest in setting up Firefox Home on your "
+"iPhone."
+msgstr ""
+"Enkele dagen geleden hebt u interesse getoond in het installeren van Firefox "
+"Home op uw iPhone."

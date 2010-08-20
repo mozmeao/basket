@@ -1,0 +1,156 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2010-08-19 18:01-0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms:  nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%"
+"100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: emails/home.py:8
+msgid "Set Up Firefox Home On Your iPhone"
+msgstr "Skonfiguruj program Firefox Home na swoim iPhonie"
+
+#: emails/home.py:9
+msgid "Firefox Home Account Setup"
+msgstr "Konfiguracja konta Firefox Home"
+
+#: templates/emails/firefox-home-instructions-initial.html:4
+msgid "Greetings!"
+msgstr "Witamy!"
+
+#: templates/emails/firefox-home-instructions-initial.html:8
+msgid ""
+"Follow these five steps to set up Firefox Home and get access to your "
+"desktop Firefox history, bookmarks and even your open tabs on your iPhone:"
+msgstr ""
+"Skorzystaj z pięciu poniższych kroków, by skonfigurować program Firefox Home "
+"i uzyskać na iPhonie dostęp do historii, zakładek, a nawet otwartych kart w "
+"Firefoksie na komputerze:"
+
+#: templates/emails/firefox-home-instructions-initial.html:12
+msgid "Install the free <a href='{0}'>Firefox Sync add-on</a> on your desktop."
+msgstr ""
+"Zainstaluj <a href='{0}'>darmowy dodatek Firefox Sync</a> na komputerze."
+
+#: templates/emails/firefox-home-instructions-initial.html:13
+msgid ""
+"Firefox Home uses the sync capabilities from the Firefox Sync add-on to "
+"access your Firefox browser information and securely send it to your iPhone."
+msgstr ""
+"Firefox Home używa funkcji synchronizacji dodatku Firefox Sync, by uzyskać "
+"dostęp do informacji z przeglądarki Firefox i bezpiecznie przesłać je do "
+"Twojego iPhone'a."
+
+#: templates/emails/firefox-home-instructions-initial.html:17
+msgid ""
+"Once Firefox restarts, follow the prompts to create an account with both a "
+"password and a Secret Phrase."
+msgstr ""
+"Po ponownym uruchomieniu Firefoksa postępuj według wskazówek, by utworzyć "
+"konto chronione hasłem i szyfrem."
+
+#: templates/emails/firefox-home-instructions-initial.html:18
+msgid ""
+"Firefox Home uses your Secret Phrase to locally encrypt and protect your "
+"information."
+msgstr ""
+"Firefox Home używa Twojego szyfru do lokalnego zabezpieczenia Twoich danych."
+
+#: templates/emails/firefox-home-instructions-initial.html:22
+msgid ""
+"Firefox Sync will now begin securely synchronizing your data with our "
+"service. This initial synchronization may take up to 20 minutes."
+msgstr ""
+"Firefox Sync rozpocznie bezpieczną synchronizację Twoich danych z naszą "
+"usługą. Pierwsza synchronizacja może potrwać do 20 minut."
+
+#: templates/emails/firefox-home-instructions-initial.html:23
+msgid ""
+"Firefox Sync will only work if you are not in Private Browsing mode. Once "
+"your initial synchronization is complete, you'll see a Last Update time in "
+"the Tools > Sync menu."
+msgstr ""
+"Firefox Sync działa tylko wtedy, jeśli nie korzystasz z trybu prywatnego w "
+"przeglądarce. Po ukończeniu pierwszej synchronizacji możesz sprawdzić datę "
+"ostatniej aktualizacji w menu Narzędzia > Sync."
+
+#: templates/emails/firefox-home-instructions-initial.html:27
+msgid ""
+"To complete the setup, on your iPhone enter your account, password and "
+"Secret Phrase in the field provided and tap 'Done' on the keypad."
+msgstr ""
+"Aby ukończyć konfigurację, wprowadź na iPhonie nazwę konta, hasło i szyfr we "
+"właściwych polach i wybierz \"Gotowe\" na klawiaturze."
+
+#: templates/emails/firefox-home-instructions-initial.html:28
+msgid ""
+"If you're having trouble logging in, <a href='{0}'>click here for help</a>."
+msgstr ""
+"W razie problemów z logowaniem <a href='{0}'>poszukaj pomocy tutaj</a>."
+
+#: templates/emails/firefox-home-instructions-initial.html:33
+msgid ""
+"Once complete you will be able to access your desktop bookmarks, history, "
+"and open tabs on your iPhone."
+msgstr ""
+"Kiedy Firefox Home zakończy synchronizację, będziesz mieć dostęp do "
+"zakładek, historii i kart z komputera na iPhonie."
+
+#: templates/emails/firefox-home-instructions-initial.html:34
+msgid "If your data is not showing up, <a href='{0}'>click here for help</a>."
+msgstr ""
+"Jeśli nie widzisz swoich danych, <a href='{0}'>poszukaj pomocy tutaj</a>."
+
+#: templates/emails/firefox-home-instructions-initial.html:38
+msgid ""
+"If you're having any trouble at all, please <a href='{0}'>visit Firefox Home "
+"Support</a>."
+msgstr ""
+"Jeśli masz jakiekolwiek kłopoty, odwiedź stronę <a href='{0}'>Firefox Home "
+"Support</a> lub <a href='{0}'>forum MozillaPL</a>."
+
+#: templates/emails/firefox-home-instructions-initial.html:40
+msgid ""
+"If you have ideas on how to make Firefox Home even better <a href='{0}'>let "
+"us know</a>!"
+msgstr ""
+"Masz pomysł, jak ulepszyć program Firefox Home? <a href='{0}'>Daj nam znać</"
+"a>!"
+
+#: templates/emails/firefox-home-instructions-initial.html:44
+msgid ""
+"If you do not set up <a href='{0}'>Firefox Home</a> within one week of "
+"receiving this email, one reminder email will be sent to you."
+msgstr ""
+"Jeśli nie skonfigurujesz programu <a href='{0}'>Firefox Home</a> w ciągu "
+"tygodnia od momentu odebrania tej wiadomości, przyślemy Ci jednorazowe "
+"przypomnienie."
+
+#: templates/emails/firefox-home-instructions-initial.html:47
+msgid ""
+"See our <a href='{0}'>Privacy Policy</a>. Visit us for more information "
+"about <a href='{1}'>Firefox Home</a>."
+msgstr ""
+"Zapoznaj sie z naszą <a href='{0}'>polityką prywatności</a>. Odwiedź naszą "
+"stronę WWW, by dowiedzieć się więcej o programie <a href='{1}'>Firefox Home</"
+"a>."
+
+#: templates/emails/firefox-home-instructions-reminder.html:4
+msgid ""
+"A few days ago you expressed interest in setting up Firefox Home on your "
+"iPhone."
+msgstr ""
+"Kilka dni temu dowiedzieliśmy się, że prawdopodobnie zamierzasz zainstalować "
+"program Firefox Home na swoim iPhonie."

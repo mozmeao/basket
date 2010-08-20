@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.translation.trans_real import to_language
 
 
 class Subscriber(models.Model):
@@ -24,5 +25,9 @@ class Subscription(models.Model):
     def clean(self):
         if self.locale == '':
             self.locale = 'en-US'
-        if self.locale not in settings.LANGUAGES:
+
+        # convert locale codes (en_US) to lang code (en-us)
+        self.locale = to_language(self.locale)
+
+        if self.locale.lower() not in settings.LANGUAGES_LOWERED:
             raise ValidationError("Not a valid language")

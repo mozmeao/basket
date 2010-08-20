@@ -1,0 +1,139 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2010-08-19 18:01-0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: emails/home.py:8
+msgid "Set Up Firefox Home On Your iPhone"
+msgstr "在您的 iPhone 上設定 Firefox Home"
+
+#: emails/home.py:9
+msgid "Firefox Home Account Setup"
+msgstr "Firefox Home 帳號設定"
+
+#: templates/emails/firefox-home-instructions-initial.html:4
+msgid "Greetings!"
+msgstr "您好！"
+
+#: templates/emails/firefox-home-instructions-initial.html:8
+msgid ""
+"Follow these five steps to set up Firefox Home and get access to your "
+"desktop Firefox history, bookmarks and even your open tabs on your iPhone:"
+msgstr ""
+"請依照以下五個步驟來設定 Firefox Home 以在 iPhone 存取存取您電腦上 Firefox 的"
+"歷史紀錄、書籤，甚至是您開啟的分頁。"
+
+#: templates/emails/firefox-home-instructions-initial.html:12
+msgid "Install the free <a href='{0}'>Firefox Sync add-on</a> on your desktop."
+msgstr "在您的電腦上安裝 <a href='{0}'>免費的 Firefox Sync 附加元件</a>"
+
+#: templates/emails/firefox-home-instructions-initial.html:13
+msgid ""
+"Firefox Home uses the sync capabilities from the Firefox Sync add-on to "
+"access your Firefox browser information and securely send it to your iPhone."
+msgstr ""
+"Firefox Home 使用了 Firefox Sync 附加元件的同步功能以存取您的瀏覽器資訊，並安"
+"全地將這些資訊傳送到您的 iPhone。"
+
+#: templates/emails/firefox-home-instructions-initial.html:17
+msgid ""
+"Once Firefox restarts, follow the prompts to create an account with both a "
+"password and a Secret Phrase."
+msgstr ""
+"重新啟動 Firefox 之後，請依照畫面的說明輸入密碼、加密金鑰來建立您的帳號。"
+
+#: templates/emails/firefox-home-instructions-initial.html:18
+msgid ""
+"Firefox Home uses your Secret Phrase to locally encrypt and protect your "
+"information."
+msgstr "Firefox Home 使用您的加密金鑰在本地端進行加密，保護您的資訊。"
+
+#: templates/emails/firefox-home-instructions-initial.html:22
+msgid ""
+"Firefox Sync will now begin securely synchronizing your data with our "
+"service. This initial synchronization may take up to 20 minutes."
+msgstr ""
+"Firefox Sync 將會開始安全地同步您的資料。第一次的同步可能需要最多二十分鐘。"
+
+#: templates/emails/firefox-home-instructions-initial.html:23
+msgid ""
+"Firefox Sync will only work if you are not in Private Browsing mode. Once "
+"your initial synchronization is complete, you'll see a Last Update time in "
+"the Tools > Sync menu."
+msgstr ""
+"Firefox Sync 將只會在您不在私密瀏覽模式時工作。當您完成第一次同步時，您會在工"
+"具選單當中的 Sync 選單看到最後更新時間。"
+
+#: templates/emails/firefox-home-instructions-initial.html:27
+msgid ""
+"To complete the setup, on your iPhone enter your account, password and "
+"Secret Phrase in the field provided and tap 'Done' on the keypad."
+msgstr ""
+"要完成設定，請在您 iPhone 上的 Firefox Home 也輸入帳號、密碼、加密金鑰，並且"
+"按下「完成」。"
+
+#: templates/emails/firefox-home-instructions-initial.html:28
+msgid ""
+"If you're having trouble logging in, <a href='{0}'>click here for help</a>."
+msgstr "如果您登入時發生問題，請 <a href='{0}'>點一下這裡以取得幫助</a>。"
+
+#: templates/emails/firefox-home-instructions-initial.html:33
+msgid ""
+"Once complete you will be able to access your desktop bookmarks, history, "
+"and open tabs on your iPhone."
+msgstr ""
+"當您完成設定之後，您將可以在 iPhone 上存取您電腦的書籤、歷史資訊，以及開啟的"
+"分頁。"
+
+#: templates/emails/firefox-home-instructions-initial.html:34
+msgid "If your data is not showing up, <a href='{0}'>click here for help</a>."
+msgstr "如果您的資料沒有出現，請 <a href='{0}'>點一下這裡以取得幫助</a>。"
+
+#: templates/emails/firefox-home-instructions-initial.html:38
+msgid ""
+"If you're having any trouble at all, please <a href='{0}'>visit Firefox Home "
+"Support</a>."
+msgstr "如果您還有更多問題，請參考 <a href='{0}'>Firefox Home 技術支援</a>。"
+
+#: templates/emails/firefox-home-instructions-initial.html:40
+msgid ""
+"If you have ideas on how to make Firefox Home even better <a href='{0}'>let "
+"us know</a>!"
+msgstr ""
+"如果您有任何可以讓 Firefox Home 變得更好的點子，<a href='{0}'>請讓我們知道</"
+"a>！"
+
+#: templates/emails/firefox-home-instructions-initial.html:44
+msgid ""
+"If you do not set up <a href='{0}'>Firefox Home</a> within one week of "
+"receiving this email, one reminder email will be sent to you."
+msgstr ""
+"如果您沒有在收到這封信之後的一週內設定好 <a href='{0}'>Firefox Home</a>，我們"
+"會再發一封提醒信給您。"
+
+#: templates/emails/firefox-home-instructions-initial.html:47
+msgid ""
+"See our <a href='{0}'>Privacy Policy</a>. Visit us for more information "
+"about <a href='{1}'>Firefox Home</a>."
+msgstr ""
+"也請參考我們的 <a href='{0}'>隱私權保護政策</a>。 請蒞臨我們的網頁以取得更多"
+"關於 <a href='{1}'>Firefox Home</a> 的資訊。"
+
+#: templates/emails/firefox-home-instructions-reminder.html:4
+msgid ""
+"A few days ago you expressed interest in setting up Firefox Home on your "
+"iPhone."
+msgstr "幾天前您似乎對在您的 iPhone 上設定 Firefox Home 有興趣。"
