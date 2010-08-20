@@ -13,5 +13,5 @@ class ReminderEmailer(Emailer):
     def get_subscriptions(self):
         subscriptions = super(ReminderEmailer, self).get_subscriptions()
         subscriptions = subscriptions.exclude(
-            subscriptions__created__gte=datetime.datetime.now()-self.delay)
+            created__gte=datetime.datetime.now()-self.delay)
         return subscriptions
