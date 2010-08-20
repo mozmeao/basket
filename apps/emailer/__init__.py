@@ -151,7 +151,7 @@ class Emailer(object):
 
         for msg in success:
             dest = msg.to[0]
-            sent = Recipient(subscriber_id=emails[dest].id, email_id=self.email.id)
+            sent = Recipient(subscriber_id=emails[dest].subscriber.id, email_id=self.email.id)
             try:
                 sent.validate_unique()
             except ValidationError, e:
