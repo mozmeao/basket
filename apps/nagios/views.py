@@ -6,7 +6,7 @@ from emailer.models import Recipient
 
 def index(request):
     # check that the Firefox Home emails are sending
-    s_count = Subscription.objects.filter(campaign='firefox-home-instructions').count()
+    s_count = Subscription.objects.filter(campaign='firefox-home-instructions', active=True).count()
     r_count = Recipient.objects.filter(email_id='firefox-home-instructions-initial').count()
     delta = s_count - r_count
 
