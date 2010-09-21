@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.http import HttpResponse, HttpResponseServerError
+from django.http import HttpResponse
 
 from subscriptions.models import Subscription
 from emailer.models import Recipient
@@ -11,7 +11,7 @@ def index(request):
     delta = s_count - r_count
 
     if delta > settings.EMAIL_BACKLOG_TOLERANCE:
-        return HttpResponseServerError('ERROR: FxHome email backlog is %d' % delta)
+        return HttpResponseServerError('WARNING: Firefox Home email backlog is %d' % delta)
 
     return HttpResponse('SUCCESS')
 
