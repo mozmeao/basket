@@ -4,6 +4,7 @@ import mock
 from nose.tools import eq_
 
 from . import  charsets, Email, Emailer
+from .models import Recipient
 import mysmtp
 from test_client import TestClient
 
@@ -62,10 +63,13 @@ class EmailTest(test.TestCase):
         backend._send = lambda *a, **k: sent.pop()
 
         conn_mock.return_value = backend
+        eq_(Recipient.objects.all().count(), 0)
         self.emailer.send_email()
+        eq_(Recipient.objects.all().count(), 1)
 
         subs = self.emailer.get_subscriptions()
-        eq_(subs.count(), 1)
+        # zero subscriptions found because failures are marked as unsubscribed
+        eq_(subs.count(), 0)
 
     def test_email_charset(self):
         self.email.lang = 'it'
@@ -75,3 +79,17 @@ class EmailTest(test.TestCase):
 
         for x in msg.get_payload():
             eq_(x.get_charset(), expected)
+
+    @mock.patch('emailer.mail.get_connection')
+    def test_bad_email_unsubscribed(self, conn_mock):
+        sent = [False, False]
+
+        backend = mysmtp.EmailBackend()
+        backend.connection = mock.Mock()
+        backend._send = lambda *a, **k: sent.pop()
+
+        conn_mock.return_value = backend
+        self.emailer.send_email()
+
+        subs = self.emailer.get_subscriptions()
+        eq_(subs.count(), 0)

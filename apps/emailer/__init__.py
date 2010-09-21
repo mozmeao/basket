@@ -160,4 +160,10 @@ class Emailer(object):
             else:
                 sent.save()
 
+        for msg in failed:
+            dest = msg.to[0]
+            email = emails[dest]
+            email.active = False
+            email.save()
+
         connection.close()
