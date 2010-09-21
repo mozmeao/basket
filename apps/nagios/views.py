@@ -11,7 +11,7 @@ def index(request):
     delta = s_count - r_count
 
     if delta > settings.EMAIL_BACKLOG_TOLERANCE:
-        return HttpResponseServerError('WARNING: Firefox Home email backlog is %d' % delta)
+        return HttpResponse('WARNING: Firefox Home email backlog is %d' % delta)
 
     return HttpResponse('SUCCESS')
 
