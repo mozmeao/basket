@@ -117,7 +117,7 @@ LANGUAGES = (
     'dsb','el','en-AU','en-CA','en-GB','en-NZ','en-US','en-ZA','eo',
     'es','es-AR','es-CL','es-ES','es-MX','et','eu','fa','fi','fj-FJ',
     'fr','fur-IT','fy-NL','ga','ga-IE','gl','gu-IN','he','hi','hi-IN',
-    'hr','hsb','hu','hy-AM','id','is','it','ja','ja-JP-mac','ka','kk',
+    'hr','hsb','hu','hy-AM','id','is','it','ja','ja-jp','ja-JP-mac','ka','kk',
     'kn','ko','ku','la','lt','lv','mg','mi','mk','ml','mn','mr','nb-NO',
     'ne-NP','nn-NO','nl','nr','nso','oc','or','pa-IN','pl','pt-BR','pt-PT',
     'ro','rm','ru','rw','si','sk','sl','sq','sr','sr-Latn','ss','st',
