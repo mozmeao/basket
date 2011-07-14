@@ -29,39 +29,17 @@ DATABASES = {
     }
 }
 
-# Local time zone for this installation. Choices can be found here:
-# http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
-# although not all choices may be available on all operating systems.
-# If running in a Windows environment this must be set to the same as your
-# system time zone.
 TIME_ZONE = 'America/Chicago'
-
-# Language code for this installation. All choices can be found here:
-# http://www.i18nguy.com/unicode/language-identifiers.html
 LANGUAGE_CODE = 'en-us'
-
 SITE_ID = 1
-
-# If you set this to False, Django will make some optimizations so as not
-# to load the internationalization machinery.
 USE_I18N = True
 
-# Absolute path to the directory that holds media.
-# Example: "/home/media/media.lawrence.com/"
 MEDIA_ROOT = path('media')
-
-# URL that handles the media served from MEDIA_ROOT. Make sure to use a
-# trailing slash if there is a path component (optional in other cases).
-# Examples: "http://media.lawrence.com", "http://example.com/media/"
 MEDIA_URL = '/media/'
-
-# URL prefix for admin media -- CSS, JavaScript and images. Make sure to use a
-# trailing slash.
-# Examples: "http://foo.com/media/", "/media/".
 ADMIN_MEDIA_PREFIX = '/admin-media/'
 
 # Make this unique, and don't share it with anybody.
-SECRET_KEY = ''
+SECRET_KEY = '0D8AE44F-5714-40EF-9AC8-4AC6EB556161'
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (
@@ -95,6 +73,7 @@ INSTALLED_APPS = (
     'nagios',
     'subscriptions',
     'vars',
+    'news',
 
     'fixture_magic',
     'piston',
@@ -129,7 +108,7 @@ DEFAULT_FROM_EMAIL = 'basket@mozilla.com'
 DEFAULT_FROM_NAME = 'Mozilla'
 
 # Logging
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 HAS_SYSLOG = True  # syslog is used if HAS_SYSLOG and NOT DEBUG.
 SYSLOG_TAG = "http_app_basket"
 # See PEP 391 and log_settings.py for formatting help.  Each section of LOGGING
@@ -150,11 +129,8 @@ LDAP = {
 }
 
 EMAIL_BACKEND = 'mysmtp.EmailBackend'
-
 EMAIL_BACKLOG_TOLERANCE = 200
-
 SYNC_UNSUBSCRIBE_LIMIT = 1000
-
 LDAP_TIMEOUT = 2
 
 def JINJA_CONFIG():
@@ -164,3 +140,8 @@ def JINJA_CONFIG():
                              'jinja2.ext.with_', 'jinja2.ext.loopcontrols'],
               'finalize': lambda x: x if x is not None else ''}
     return config
+
+RESPONSYS_USER = 'MOZILLA_API'
+RESPONSYS_PASS = ''
+RESPONSYS_FOLDER = '!MasterData'
+RESPONSYS_LIST = 'TEST_CONTACTS_LIST'
