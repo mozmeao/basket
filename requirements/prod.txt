@@ -14,6 +14,7 @@ mercurial==1.5.4
 oauth2==1.2.0
 lockfile==0.8
 
-python-ldap==2.3.11
+suds==0.4
+python-ldap==2.3.13
 -e git://github.com/jbalogh/jingo.git#egg=jingo
 -e git://github.com/clouserw/tower.git#egg=tower
