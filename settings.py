@@ -117,6 +117,7 @@ SYSLOG_TAG = "http_app_basket"
 # unless you set them here.  Messages will not propagate through a logger
 # unless propagate: True is set.
 LOGGING = {
+    'version': 1,
     'loggers': {},
 }
 # LDAP
