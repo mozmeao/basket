@@ -4,7 +4,8 @@ from suds import WebFault
 from suds.client import Client
 
 
-class UnathorizedException(Exception):
+class UnauthorizedException(Exception):
+    """Failure to log into Responsys."""
     pass
 
 
@@ -55,7 +56,7 @@ class Responsys(object):
 
         self.client.service.logout()
         self.session = None
-        
+
     @logged_in
     def merge_list_members(self, folder, list_, fields, records):
         """
