@@ -1,6 +1,6 @@
 # compiled.txt has other prod packages that need to be compiled.
 
--e git://github.com/django/django@36c82ac8#egg=django
+git+git://github.com/django/django@36c82ac84afa8f5ca6af951cee99c6e2fe4eb980
 pytz==2010e
 
 -e git://github.com/jbalogh/django-multidb-router.git#egg=django-multidb-router
@@ -9,8 +9,7 @@ pytz==2010e
 -e git://github.com/jsocol/commonware.git#egg=commonware
 -e git://github.com/jbalogh/schematic.git#egg=schematic
 
-mercurial==1.5.4
--e hg+http://bitbucket.org/jespern/django-piston#egg=django-piston
+django-piston==0.2.2
 oauth2==1.2.0
 lockfile==0.8
 

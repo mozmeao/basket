@@ -184,8 +184,6 @@ def update_user(request, type):
     # setup the newsletter fields
     parse_newsletters(record, type, data['newsletters'])
 
-    print record
-
     # save the user's fields
     try:
         rs = Responsys()
