@@ -4,8 +4,8 @@ from suds import WebFault
 from suds.client import Client
 
 
-class UnathorizedException(Exception):
-    pass
+class UnauthorizedException(Exception):pass
+class NewsletterException(Exception): pass
 
 
 def logged_in(f):
@@ -17,8 +17,14 @@ def logged_in(f):
         if not inst.session:
             raise UnauthorizedException("Not logged in to Responsys, "
                                         "must call login()")
-        f(inst, *args, **kwargs)
+        return f(inst, *args, **kwargs)
     return wrapper
+
+
+def fault_msg(fault):
+    if hasattr(fault.detail, 'ListFault'):
+        return fault.detail.ListFault.exceptionMessage
+    return str(fault.detail)
 
 
 class Responsys(object):
@@ -98,5 +104,28 @@ class Responsys(object):
         rule.textValue = 'T'
         rule.rejectRecordIfChannelEmpty = 'E'
         rule.defaultPermissionStatus = 'OPTIN'
+        
+        try:
+            client.service.mergeListMembers(target, data, rule)
+        except WebFault, e:
+            raise NewsletterException(fault_msg(e.fault))
+    
+    @logged_in
+    def retrieve_list_members(self, emails, folder, list_, fields):
+        emails = [emails] if isinstance(emails, basestring) else emails
+        client = self.client
 
-        self.client.service.mergeListMembers(target, data, rule)
+        target = client.factory.create('InteractObject')
+        target.folderName = folder
+        target.objectName = list_
+
+        try:
+            user = client.service.retrieveListMembers(target,
+                                                      'EMAIL_ADDRESS',
+                                                      fields,
+                                                      emails)
+        except WebFault, e:
+            raise NewsletterException(fault_msg(e.fault))
+
+        values = user.recordData.records[0].fieldValues
+        return dict(zip(fields, values))
