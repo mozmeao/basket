@@ -37,17 +37,19 @@ def logged_in(f):
     def wrapper(request, token, *args, **kwargs):
         subscriber = Subscriber.objects.filter(token=token)
         if not subscriber.exists():
-            return HttpResponseForbidden('Must have valid token for this '
-                                         'request')
+            return json_response({'status': 'error',
+                                  'desc': 'Must have valid token for this request'},
+                                 status=403)
         
         request.subscriber = subscriber[0]
         return f(request, token, *args, **kwargs)
     return wrapper
 
 
-def json_response(data):
+def json_response(data, status=200):
     res = HttpResponse(json.dumps(data),
                        mimetype='application/json')
+    res.status_code = status
 
     # Allow all cross-domain requests, this service will restrict
     # access on the server level
