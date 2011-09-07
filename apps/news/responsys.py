@@ -135,3 +135,20 @@ class Responsys(object):
 
         values = user.recordData.records[0].fieldValues
         return dict(zip(fields, values))
+
+    @logged_in
+    def delete_list_members(self, emails, folder, list_):
+        emails = [emails] if isinstance(emails, basestring) else emails
+        client = self.client
+
+        target = client.factory.create('InteractObject')
+        target.folderName = folder
+        target.objectName = list_
+
+        try:
+            client.service.deleteListMembers(target,
+                                             "EMAIL_ADDRESS",
+                                             emails)
+        except WebFault, e:
+            raise NewsletterException(fault_msg(e.fault))
+        

@@ -2,6 +2,7 @@ from functools import wraps
 from datetime import date
 import urlparse
 import json
+import uuid
 
 from django.http import (HttpResponse, HttpResponseRedirect,
                          HttpResponseBadRequest, HttpResponseForbidden)
@@ -13,6 +14,8 @@ from responsys import Responsys, NewsletterException, UnauthorizedException
 
 NEWSLETTERS = {
     'mozilla-and-you': 'MOZILLA_AND_YOU',
+    'mobile': 'ABOUT_MOBILE',
+    'beta': 'FIREFOX_BETA_NEWS',
 }
 
 NEWSLETTER_NAMES = NEWSLETTERS.keys()
@@ -37,8 +40,7 @@ def logged_in(f):
     def wrapper(request, token, *args, **kwargs):
         subscriber = Subscriber.objects.filter(token=token)
         if not subscriber.exists():
-            return json_response({'status': 'error',
-                                  'desc': 'Must have valid token for this request'},
+            return json_response({'desc': 'Must have valid token for this request'},
                                  status=403)
         
         request.subscriber = subscriber[0]
@@ -94,18 +96,18 @@ def user(request, token):
 
     try:
         rs = Responsys()
-        rs.login('MOZILLA_API', '')
+        rs.login(settings.RESPONSYS_USER, settings.RESPONSYS_PASS)
         user = rs.retrieve_list_members(request.subscriber.email,
                                         settings.RESPONSYS_FOLDER,
                                         settings.RESPONSYS_LIST,
                                         fields)
     except NewsletterException, e:
-        return json_response({'status': 'error',
-                              'desc': e.message})
+        return json_response({'desc': e.message},
+                             status=500)
     except UnauthorizedException, e:
-        return json_response({'status': 'error',
-                              'desc': 'Responsys auth failure'})
-            
+        return json_response({'desc': 'Responsys auth failure'},
+                             status=500)
+
     user_data = {
         'email': request.subscriber.email,
         'format': user['EMAIL_FORMAT_'],
@@ -117,8 +119,8 @@ def user(request, token):
 
     rs.logout()
 
-    user_data['status'] = 'ok'
     return json_response(user_data)
+
 
 def parse_newsletters(record, type, newsletters):
     """ Parse the newsletter data from a comma-delimited string and
@@ -134,14 +136,15 @@ def parse_newsletters(record, type, newsletters):
                 record['%s_FLG' % name] = 'Y'
                 record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
 
-    else:
+    
+    if type == Update.UNSUBSCRIBE or type == Update.SET:
         # Unsubscribe the user to these newsletters
         unsubs = newsletters
 
         if type == Update.SET:
             # Unsubscribe to the inversion of these newsletters
-            subs = Set(newsletters)
-            all = Set(NEWSLETTER_NAMES)
+            subs = set(newsletters)
+            all = set(NEWSLETTER_NAMES)
             unsubs = all.difference(subs)
 
         for nl in unsubs:
@@ -161,17 +164,16 @@ def update_user(request, type):
     
     # validate parameters
     if not has_auth and 'email' not in request.POST:
-        return json_response({'status': 'error',
-                              'desc': 'email is required when not using tokens'})
+        return json_response({'desc': 'email is required when not using tokens'},
+                             status=500)
 
     if 'newsletters' not in request.POST:
-        return json_response({'status': 'error',
-                              'desc': 'newsletters is missing'})
+        return json_response({'desc': 'newsletters is missing'},
+                             status=500)
 
     # parse the parameters
     data = request.POST
-    record = {'EMAIL_ADDRESS_': (request.subscriber.email if has_auth
-                                 else data['email'])}
+    record = {'EMAIL_ADDRESS_': data['email']}
 
     extra_fields = {
         'format': 'EMAIL_FORMAT_',
@@ -179,6 +181,7 @@ def update_user(request, type):
         'lang': 'LANGUAGE_ISO2'
     }
 
+    # optionally add more fields
     for field in extra_fields.keys():
         if field in data:
             record[extra_fields[field]] = data[field]
@@ -186,22 +189,70 @@ def update_user(request, type):
     # setup the newsletter fields
     parse_newsletters(record, type, data['newsletters'])
 
+    # make a new token
+    token = str(uuid.uuid4())
+    record['TOKEN'] = token
+
+    if type == Update.SUBSCRIBE:
+        # if we are subscribing, generate a token if the user doesn't
+        # currently exist
+        try:
+            sub = Subscriber.objects.get(email=record['EMAIL_ADDRESS_'])
+            print 'exists: %s' % sub.token
+        except Subscriber.DoesNotExist:
+            sub = Subscriber(email=record['EMAIL_ADDRESS_'], token=token)
+            print 'subscribe/creating-new: %s' % sub.token
+            sub.save()
+    else:
+        # if we are updating an existing user, set a new token
+        sub = Subscriber.objects.get(email=request.subscriber.email)
+        sub.token = token
+        print 'updated: %s' % sub.token
+        sub.save()
+
     # save the user's fields
     try:
         rs = Responsys()
-        rs.login('MOZILLA_API', '')
+        rs.login(settings.RESPONSYS_USER, settings.RESPONSYS_PASS)
+
+        if has_auth and record['EMAIL_ADDRESS_'] != request.subscriber.email:
+            # email has changed, we need to delete the previous user
+            rs.delete_list_members(request.subscriber.email,
+                                   settings.RESPONSYS_FOLDER,
+                                   settings.RESPONSYS_LIST)
+
         rs.merge_list_members(settings.RESPONSYS_FOLDER,
                               settings.RESPONSYS_LIST,
                               record.keys(),
                               record.values())
         rs.logout()
     except NewsletterException, e:
-        return json_response({'status': 'error',
-                              'desc': e.message})
+        return json_response({'desc': e.message},
+                             status=500)
     except UnauthorizedException, e:
-        return json_response({'status': 'error',
-                              'desc': 'Responsys auth failure'})
+        return json_response({'desc': 'Responsys auth failure'},
+                             status=500)
         
 
-    return json_response({'status': 'ok'})
+    return json_response({})
 
+
+@logged_in
+@csrf_exempt
+def delete_user(request, token):
+    try:
+        rs = Responsys()
+        rs.login(settings.RESPONSYS_USER, settings.RESPONSYS_PASS)
+        rs.delete_list_members(request.subscriber.email,
+                               settings.RESPONSYS_FOLDER,
+                               settings.RESPONSYS_LIST)
+        rs.logout()
+    except NewsletterException, e:
+        return json_response({'desc': e.message},
+                             status=500)
+    except UnauthorizedException, e:
+        return json_response({'desc': 'Responsys auth failure'},
+                             status=500)
+
+    request.subscriber.delete()
+    return json_response({})
