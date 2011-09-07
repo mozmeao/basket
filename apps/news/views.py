@@ -198,16 +198,13 @@ def update_user(request, type):
         # currently exist
         try:
             sub = Subscriber.objects.get(email=record['EMAIL_ADDRESS_'])
-            print 'exists: %s' % sub.token
         except Subscriber.DoesNotExist:
             sub = Subscriber(email=record['EMAIL_ADDRESS_'], token=token)
-            print 'subscribe/creating-new: %s' % sub.token
             sub.save()
     else:
         # if we are updating an existing user, set a new token
         sub = Subscriber.objects.get(email=request.subscriber.email)
         sub.token = token
-        print 'updated: %s' % sub.token
         sub.save()
 
     # save the user's fields
