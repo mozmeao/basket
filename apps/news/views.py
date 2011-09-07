@@ -201,6 +201,7 @@ def update_user(request, type):
         except Subscriber.DoesNotExist:
             sub = Subscriber(email=record['EMAIL_ADDRESS_'], token=token)
             sub.save()
+
     else:
         # if we are updating an existing user, set a new token
         sub = Subscriber.objects.get(email=request.subscriber.email)
@@ -231,7 +232,7 @@ def update_user(request, type):
                              status=500)
         
 
-    return json_response({})
+    return json_response({'token': sub.token})
 
 
 @logged_in
