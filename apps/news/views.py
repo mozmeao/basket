@@ -232,7 +232,7 @@ def update_user(request, type):
                              status=500)
         
 
-    return json_response({'token': sub.token})
+    return json_response({})
 
 
 @logged_in
