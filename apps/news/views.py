@@ -16,6 +16,7 @@ NEWSLETTERS = {
     'mozilla-and-you': 'MOZILLA_AND_YOU',
     'mobile': 'ABOUT_MOBILE',
     'beta': 'FIREFOX_BETA_NEWS',
+    'aurora': 'AURORA'
 }
 
 NEWSLETTER_NAMES = NEWSLETTERS.keys()
