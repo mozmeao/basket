@@ -21,7 +21,7 @@ class SubscriptionHandler(BaseHandler):
 
     def create(self, request):
         try:
-            email = request.data.get('email', '')
+            email = request.POST.get('email', '')
             s = Subscriber.objects.get(email=email)
         except Subscriber.DoesNotExist:
             try:
@@ -34,10 +34,10 @@ class SubscriptionHandler(BaseHandler):
                 return resp
 
         try:
-            campaign = request.data.get('campaign', '')
-            source = request.data.get('source', '')
-            locale = request.data.get('locale', '')
-            country = request.data.get('country', '')
+            campaign = request.POST.get('campaign', '')
+            source = request.POST.get('source', '')
+            locale = request.POST.get('locale', '')
+            country = request.POST.get('country', '')
             m = Subscription(campaign=campaign, source=source, 
                              locale=locale, country=country)
             m.subscriber = s
