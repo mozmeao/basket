@@ -194,22 +194,23 @@ def update_user(request, type):
 
     # make a new token
     token = str(uuid.uuid4())
-    record['TOKEN'] = token
 
     if type == Update.SUBSCRIBE:
-        # if we are subscribing, generate a token if the user doesn't
-        # currently exist
+        # if we are subscribing and the user already exists, don't
+        # update the token. otherwise create a new user with the token.
         try:
             sub = Subscriber.objects.get(email=record['EMAIL_ADDRESS_'])
+            token = sub.token
         except Subscriber.DoesNotExist:
             sub = Subscriber(email=record['EMAIL_ADDRESS_'], token=token)
             sub.save()
-
     else:
         # if we are updating an existing user, set a new token
         sub = Subscriber.objects.get(email=request.subscriber.email)
         sub.token = token
         sub.save()
+
+    record['TOKEN'] = token
 
     # save the user's fields
     try:
