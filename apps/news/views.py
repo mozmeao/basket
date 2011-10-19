@@ -177,8 +177,9 @@ def update_user(request, type):
     # parse the parameters
     data = request.POST
     record = {'EMAIL_ADDRESS_': data['email'],
-              'EMAIL_PERMISSION_STATUS': 'Y'}
-
+              'EMAIL_PERMISSION_STATUS': 
+                  'I' if data.get('optin', 'Y') == 'Y' else 'O' }
+    
     extra_fields = {
         'format': 'EMAIL_FORMAT_',
         'country': 'COUNTRY_',

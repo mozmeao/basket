@@ -6,13 +6,15 @@ The following URLs are available (assuming "/news" is app url):
 /news/subscribe
 
   method: POST
-  fields: email, format, country, lang, newsletters
+  fields: email, format, country, lang, newsletters, optin
   returns: { status: ok } on success
            { status: error, desc: <desc>, fields: [<field>, ...] } on error
 
   This method subscribes the user to the newsletters defined in the
   "newsletters" field, which should be a comma-delimited list of
-  newsletters. "email" and "newsletters" are required.
+  newsletters. "email" and "newsletters" are required. "optin" should
+  be Y or N depending if the user should automatically be opted in,
+  default is Y.
 
 /news/unsubscribe
 
@@ -43,7 +45,7 @@ The following URLs are available (assuming "/news" is app url):
   he/she is subscribed to.
 
   method: POST
-  fields: email, format, country, lang, newsletters
+  fields: email, format, country, lang, newsletters, optin
   returns: { status: ok } on success
            { status: error, desc: <desc> } on error
   auth-required
@@ -51,4 +53,4 @@ The following URLs are available (assuming "/news" is app url):
   If POSTed, this method updates the user's data with the supplied
   fields. Note that the user is only subscribed to "newsletters" after
   this, meaning the user will be unsubscribed to all other
-  newsletters.
+  newsletters. "optin" should be Y or N and opts in/out the user.
