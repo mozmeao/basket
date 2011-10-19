@@ -70,6 +70,10 @@ class Update(object):
 
 @csrf_exempt
 def subscribe(request):
+    if 'newsletters' not in request.POST:
+        return json_response({'desc': 'newsletters is missing'},
+                             status=500)
+
     return update_user(request, Update.SUBSCRIBE)
 
 
@@ -170,14 +174,10 @@ def update_user(request, type):
         return json_response({'desc': 'email is required when not using tokens'},
                              status=500)
 
-    if 'newsletters' not in request.POST:
-        return json_response({'desc': 'newsletters is missing'},
-                             status=500)
-
     # parse the parameters
     data = request.POST
     record = {'EMAIL_ADDRESS_': data['email'],
-              'EMAIL_PERMISSION_STATUS': 
+              'EMAIL_PERMISSION_STATUS_': 
                   'I' if data.get('optin', 'Y') == 'Y' else 'O' }
     
     extra_fields = {
@@ -192,7 +192,7 @@ def update_user(request, type):
             record[extra_fields[field]] = data[field]
 
     # setup the newsletter fields
-    parse_newsletters(record, type, data['newsletters'])
+    parse_newsletters(record, type, data.get('newsletters', ''))
 
     # make a new token
     token = str(uuid.uuid4())
@@ -230,11 +230,11 @@ def update_user(request, type):
                               record.keys(),
                               record.values())
 
-        if type == Update.SUBSCRIBE:
-            rs.trigger_custom_event(record['EMAIL_ADDRESS_'],
-                                    settings.RESPONSYS_FOLDER,
-                                    settings.RESPONSYS_LIST,
-                                    'New_Signup_Welcome')
+        # if type == Update.SUBSCRIBE:
+        #     rs.trigger_custom_event(record['EMAIL_ADDRESS_'],
+        #                             settings.RESPONSYS_FOLDER,
+        #                             settings.RESPONSYS_LIST,
+        #                             'New_Signup_Welcome')
 
         rs.logout()
     except NewsletterException, e:
