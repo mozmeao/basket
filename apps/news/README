@@ -19,14 +19,16 @@ The following URLs are available (assuming "/news" is app url):
 /news/unsubscribe
 
   method: POST
-  fields: email, newsletters
+  fields: email, newsletters, optout
   returns: { status: ok } on success
            { status: error, desc: <desc> } on error
   auth-required
 
   This method unsubscribes the user from the newsletters defined in
   the "newsletters" field, which should be a comma-delimited list of
-  newsletters. All fields are required.
+  newsletters. If the "optout" parameter is set to Y, the user will be
+  opted out of all newsletters. "email" and either "newsletters" or
+  "optout" is required.
 
 /news/user
 

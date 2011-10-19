@@ -80,7 +80,15 @@ def subscribe(request):
 @logged_in
 @csrf_exempt
 def unsubscribe(request, token):
-    return update_user(request, Update.UNSUBSCRIBE)
+    data = request.POST.copy()
+
+    if data.get('optout', 'N') == 'Y':
+        data['optin'] = 'N'
+
+        for field in NEWSLETTER_FIELDS:
+            data['newsletters'] = ','.join(NEWSLETTER_NAMES)
+
+    return update_user(request, Update.UNSUBSCRIBE, data)
 
 
 @logged_in
@@ -160,22 +168,22 @@ def parse_newsletters(record, type, newsletters):
                 record['%s_FLG' % name] = 'N'
 
 
-def update_user(request, type):
+def update_user(request, type, data=None):
     """ General method for updating user's preferences and subscribed
     newsletters. Assumes data to be in POST """
 
     if request.method != 'POST':
         return HttpResponseBadRequest("Only POST supported")
 
+    data = data or request.POST
     has_auth = hasattr(request, 'subscriber')
     
     # validate parameters
-    if not has_auth and 'email' not in request.POST:
+    if not has_auth and 'email' not in data:
         return json_response({'desc': 'email is required when not using tokens'},
                              status=500)
 
     # parse the parameters
-    data = request.POST
     record = {'EMAIL_ADDRESS_': data['email'],
               'EMAIL_PERMISSION_STATUS_': 
                   'I' if data.get('optin', 'Y') == 'Y' else 'O' }
