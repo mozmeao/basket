@@ -3,7 +3,6 @@ from functools import wraps
 from suds import WebFault
 from suds.client import Client
 
-
 class UnauthorizedException(Exception):
     """Failure to log into Responsys."""
     pass
@@ -152,3 +151,25 @@ class Responsys(object):
         except WebFault, e:
             raise NewsletterException(fault_msg(e.fault))
         
+    @logged_in
+    def trigger_custom_event(self, email, folder, list_, event_name):
+        client = self.client
+
+        target = client.factory.create('InteractObject')
+        target.folderName = folder
+        target.objectName = list_
+
+        recipient = client.factory.create('Recipient')
+        recipient.emailAddress = email
+        recipient.listName = target
+        
+        recipient_data = client.factory.create('RecipientData')
+        recipient_data.recipient = recipient
+
+        event = client.factory.create('CustomEvent')
+        event.eventName = event_name
+        
+        try:
+            client.service.triggerCustomEvent(event, [recipient_data])
+        except WebFault, e:
+            raise NewsletterException(fault_msg(e.fault))

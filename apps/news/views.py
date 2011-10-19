@@ -176,7 +176,8 @@ def update_user(request, type):
 
     # parse the parameters
     data = request.POST
-    record = {'EMAIL_ADDRESS_': data['email']}
+    record = {'EMAIL_ADDRESS_': data['email'],
+              'EMAIL_PERMISSION_STATUS': 'Y'}
 
     extra_fields = {
         'format': 'EMAIL_FORMAT_',
@@ -227,6 +228,13 @@ def update_user(request, type):
                               settings.RESPONSYS_LIST,
                               record.keys(),
                               record.values())
+
+        if type == Update.SUBSCRIBE:
+            rs.trigger_custom_event(record['EMAIL_ADDRESS_'],
+                                    settings.RESPONSYS_FOLDER,
+                                    settings.RESPONSYS_LIST,
+                                    'New_Signup_Welcome')
+
         rs.logout()
     except NewsletterException, e:
         return json_response({'desc': e.message},
