@@ -162,9 +162,11 @@ class Responsys(object):
         recipient = client.factory.create('Recipient')
         recipient.emailAddress = email
         recipient.listName = target
+        recipient.emailFormat = None
         
         recipient_data = client.factory.create('RecipientData')
         recipient_data.recipient = recipient
+        recipient_data.optionalData = None
 
         event = client.factory.create('CustomEvent')
         event.eventName = event_name

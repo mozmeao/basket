@@ -238,11 +238,11 @@ def update_user(request, type, data=None):
                               record.keys(),
                               record.values())
 
-        # if type == Update.SUBSCRIBE:
-        #     rs.trigger_custom_event(record['EMAIL_ADDRESS_'],
-        #                             settings.RESPONSYS_FOLDER,
-        #                             settings.RESPONSYS_LIST,
-        #                             'New_Signup_Welcome')
+        if type == Update.SUBSCRIBE:
+            rs.trigger_custom_event(record['EMAIL_ADDRESS_'],
+                                    settings.RESPONSYS_FOLDER,
+                                    settings.RESPONSYS_LIST,
+                                    'New_Signup_Welcome')
 
         rs.logout()
     except NewsletterException, e:
