@@ -191,7 +191,8 @@ def update_user(request, type, data=None):
     extra_fields = {
         'format': 'EMAIL_FORMAT_',
         'country': 'COUNTRY_',
-        'lang': 'LANGUAGE_ISO2'
+        'lang': 'LANGUAGE_ISO2',
+        'locale': 'LANG_LOCALE'
     }
 
     # optionally add more fields
@@ -238,7 +239,7 @@ def update_user(request, type, data=None):
                               record.keys(),
                               record.values())
 
-        if type == Update.SUBSCRIBE:
+        if 'trigger_welcome' in data:
             rs.trigger_custom_event(record['EMAIL_ADDRESS_'],
                                     settings.RESPONSYS_FOLDER,
                                     settings.RESPONSYS_LIST,
