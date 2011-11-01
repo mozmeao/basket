@@ -6,7 +6,7 @@ The following URLs are available (assuming "/news" is app url):
 /news/subscribe
 
   method: POST
-  fields: email, format, country, lang, newsletters, optin
+  fields: email, format, country, lang, newsletters, optin, trigger_welcome
   returns: { status: ok } on success
            { status: error, desc: <desc>, fields: [<field>, ...] } on error
 
@@ -14,7 +14,7 @@ The following URLs are available (assuming "/news" is app url):
   "newsletters" field, which should be a comma-delimited list of
   newsletters. "email" and "newsletters" are required. "optin" should
   be Y or N depending if the user should automatically be opted in,
-  default is Y.
+  default is Y. "trigger_welcome" should be Y to fire off a welcome email.
 
 /news/unsubscribe
 

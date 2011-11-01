@@ -238,8 +238,8 @@ def update_user(request, type, data=None):
                               settings.RESPONSYS_LIST,
                               record.keys(),
                               record.values())
-
-        if int(data.get('trigger_welcome', False)):
+        
+        if data.get('trigger_welcome', False) == 'Y':
             rs.trigger_custom_event(record['EMAIL_ADDRESS_'],
                                     settings.RESPONSYS_FOLDER,
                                     settings.RESPONSYS_LIST,
