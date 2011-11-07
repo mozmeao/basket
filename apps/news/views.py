@@ -18,7 +18,18 @@ NEWSLETTERS = {
     'beta': 'FIREFOX_BETA_NEWS',
     'aurora': 'AURORA',
     'about-mozilla': 'ABOUT_MOZILLA',
-    'drumbeat': 'DRUMBEAT_NEWS_GROUP'
+    'drumbeat': 'DRUMBEAT_NEWS_GROUP',
+    'addons': 'ABOUT_ADDONS',
+    'hacks': 'ABOUT_HACKS',
+    'labs': 'ABOUT_LABS',
+    'qa-news': 'QA_NEWS',
+    'student-reps': 'STUDENT_REPS',
+    'about-standards': 'ABOUT_STANDARDS',
+    'mobile-addon-dev': 'MOBILE_ADDON_DEV',
+    'addon-dev': 'ADD_ONS',
+    'join-mozilla': 'JOIN_MOZILLA',
+    'mozilla-phone': 'MOZILLA_PHONE',
+    'app-dev': 'APP_DEV'
 }
 
 NEWSLETTER_NAMES = NEWSLETTERS.keys()
