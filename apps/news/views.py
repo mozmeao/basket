@@ -203,7 +203,8 @@ def update_user(request, type, data=None):
         'format': 'EMAIL_FORMAT_',
         'country': 'COUNTRY_',
         'lang': 'LANGUAGE_ISO2',
-        'locale': 'LANG_LOCALE'
+        'locale': 'LANG_LOCALE',
+        'source_url': 'SOURCE_URL'
     }
 
     # optionally add more fields
