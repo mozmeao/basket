@@ -148,7 +148,7 @@ def user(request, token):
     return json_response(user_data)
 
 
-def parse_newsletters(record, type, newsletters):
+def parse_newsletters(record, type, newsletters, optout):
     """ Parse the newsletter data from a comma-delimited string and
     set the appropriate fields in the record """
 
@@ -159,7 +159,7 @@ def parse_newsletters(record, type, newsletters):
         for nl in newsletters:
             name = newsletter_field(nl)
             if name:
-                record['%s_FLG' % name] = 'Y'
+                record['%s_FLG' % name] = 'N' if optout else 'Y'
                 record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
 
     
@@ -196,8 +196,7 @@ def update_user(request, type, data=None):
 
     # parse the parameters
     record = {'EMAIL_ADDRESS_': data['email'],
-              'EMAIL_PERMISSION_STATUS_': 
-                  'I' if data.get('optin', 'Y') == 'Y' else 'O' }
+              'EMAIL_PERMISSION_STATUS_': 'I'}
     
     extra_fields = {
         'format': 'EMAIL_FORMAT_',
@@ -213,7 +212,10 @@ def update_user(request, type, data=None):
             record[extra_fields[field]] = data[field]
 
     # setup the newsletter fields
-    parse_newsletters(record, type, data.get('newsletters', ''))
+    parse_newsletters(record,
+                      type,
+                      data.get('newsletters', ''),
+                      data.get('optin', 'Y') != 'Y')
 
     # make a new token
     token = str(uuid.uuid4())
