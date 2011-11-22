@@ -78,6 +78,7 @@ INSTALLED_APPS = (
     'fixture_magic',
     'piston',
     'tower',
+    'djcelery',
 
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -146,3 +147,15 @@ RESPONSYS_USER = 'MOZILLA_API'
 RESPONSYS_PASS = ''
 RESPONSYS_FOLDER = '!MasterData'
 RESPONSYS_LIST = 'TEST_CONTACTS_LIST'
+
+# Uncomment these to use Celery, use eager for local dev
+# CELERY_ALWAYS_EAGER = False
+# BROKER_HOST = 'localhost'
+# BROKER_PORT = 5672
+# BROKER_USER = 'basket'
+# BROKER_PASSWORD = 'basket'
+# BROKER_VHOST = '/'
+# CELERY_RESULT_BACKEND = 'amqp'
+
+import djcelery
+djcelery.setup_loader()
