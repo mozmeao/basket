@@ -21,9 +21,10 @@ def logged_in(f):
     def wrapper(request, token, *args, **kwargs):
         subscriber = Subscriber.objects.filter(token=token)
         if not subscriber.exists():
-            return json_response({'desc': 'Must have valid token for this request'},
+            return json_response({'status': 'error',
+                                  'desc': 'Must have valid token for this request'},
                                  status=403)
-        
+
         request.subscriber = subscriber[0]
         return f(request, token, *args, **kwargs)
     return wrapper
@@ -44,6 +45,48 @@ def update_user_task(request, type, data=None):
                              user and user.email,
                              type))
 
+def get_user(email):
+    newsletters = newsletter_fields()
+
+    fields = [
+        'EMAIL_ADDRESS_',
+        'EMAIL_FORMAT_',
+        'COUNTRY_',
+        'LANGUAGE_ISO2'
+    ]
+
+    for nl in newsletters:
+        fields.append('%s_FLG' % nl)
+
+    try:
+        rs = Responsys()
+        rs.login(settings.RESPONSYS_USER, settings.RESPONSYS_PASS)
+        user = rs.retrieve_list_members(email,
+                                        settings.RESPONSYS_FOLDER,
+                                        settings.RESPONSYS_LIST,
+                                        fields)
+    except NewsletterException, e:
+        return json_response({'status': 'error',
+                              'desc': e.message},
+                             status=500)
+    except UnauthorizedException, e:
+        return json_response({'status': 'error',
+                              'desc': 'Responsys auth failure'},
+                             status=500)
+
+    user_data = {
+        'email': email,
+        'format': user['EMAIL_FORMAT_'],
+        'country': user['COUNTRY_'],
+        'lang': user['LANGUAGE_ISO2'],
+        'newsletters': [newsletter_name(nl) for nl in newsletters
+                        if user.get('%s_FLG' % nl, False) == 'Y']
+    }
+
+    rs.logout()
+
+    return json_response(user_data)
+
 ## Views
 
 @csrf_exempt
@@ -52,7 +95,8 @@ def subscribe(request):
         return HttpResponseBadRequest("Only POST supported")
 
     if 'newsletters' not in request.POST:
-        return json_response({'desc': 'newsletters is missing'},
+        return json_response({'status': 'error',
+                              'desc': 'newsletters is missing'},
                              status=500)
 
     # If the user isn't opting in yet, we tell the system to
@@ -74,7 +118,6 @@ def unsubscribe(request, token):
     data = request.POST.copy()
 
     if data.get('optout', 'N') == 'Y':
-        data['optin'] = 'N'
         data['newsletters'] = ','.join(newsletter_names())
 
     update_user_task(request, UNSUBSCRIBE, data)
@@ -88,45 +131,7 @@ def user(request, token):
         update_user_task(request, SET)
         return json_response({})
 
-    newsletters = newsletter_fields()
-
-    fields = [
-        'EMAIL_ADDRESS_',
-        'EMAIL_FORMAT_',
-        'COUNTRY_',
-        'LANGUAGE_ISO2'
-    ]
-
-    for nl in newsletters:
-        fields.append('%s_FLG' % nl)
-
-    try:
-        rs = Responsys()
-        rs.login(settings.RESPONSYS_USER, settings.RESPONSYS_PASS)
-        user = rs.retrieve_list_members(request.subscriber.email,
-                                        settings.RESPONSYS_FOLDER,
-                                        settings.RESPONSYS_LIST,
-                                        fields)
-    except NewsletterException, e:
-        return json_response({'desc': e.message},
-                             status=500)
-    except UnauthorizedException, e:
-        return json_response({'desc': 'Responsys auth failure'},
-                             status=500)
-
-    user_data = {
-        'email': request.subscriber.email,
-        'format': user['EMAIL_FORMAT_'],
-        'country': user['COUNTRY_'],
-        'lang': user['LANGUAGE_ISO2'],
-        'newsletters': [newsletter_name(nl) for nl in newsletters
-                        if user.get('%s_FLG' % nl, False) == 'Y']
-    }
-
-    rs.logout()
-
-    return json_response(user_data)
-
+    return get_user(request.subscriber.email)
 
 @logged_in
 @csrf_exempt
@@ -139,11 +144,29 @@ def delete_user(request, token):
                                settings.RESPONSYS_LIST)
         rs.logout()
     except NewsletterException, e:
-        return json_response({'desc': e.message},
+        return json_response({'status': 'error',
+                              'desc': e.message},
                              status=500)
     except UnauthorizedException, e:
-        return json_response({'desc': 'Responsys auth failure'},
+        return json_response({'status': 'error',
+                              'desc': 'Responsys auth failure'},
                              status=500)
 
     request.subscriber.delete()
     return json_response({})
+
+def debug_user(request):
+    if not 'email' in request.GET or not 'supertoken' in request.GET:
+        return json_response(
+            {'status': 'error',
+             'desc': 'Using debug_user, you need to pass the '
+                     '`email` and `supertoken` GET parameters'},
+            status=500
+        )
+
+    if request.GET['supertoken'] != settings.SUPERTOKEN:
+        return json_response({'status': 'error',
+                              'desc': 'Bad supertoken'},
+                             status=401)
+
+    return get_user(request.GET['email'])
