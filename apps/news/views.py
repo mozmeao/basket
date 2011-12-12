@@ -1,30 +1,62 @@
 from functools import wraps
+from datetime import date
 import urlparse
 import json
+import uuid
 
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import (HttpResponse, HttpResponseRedirect,
+                         HttpResponseBadRequest, HttpResponseForbidden)
 from django.views.decorators.csrf import csrf_exempt 
 from django.conf import settings
 
-from tasks import update_user, SUBSCRIBE, UNSUBSCRIBE, SET
-from newsletters import *
 from models import Subscriber
 from responsys import Responsys, NewsletterException, UnauthorizedException
 
-## Utility functions
+NEWSLETTERS = {
+    'mozilla-and-you': 'MOZILLA_AND_YOU',
+    'mobile': 'ABOUT_MOBILE',
+    'beta': 'FIREFOX_BETA_NEWS',
+    'aurora': 'AURORA',
+    'about-mozilla': 'ABOUT_MOZILLA',
+    'drumbeat': 'DRUMBEAT_NEWS_GROUP',
+    'addons': 'ABOUT_ADDONS',
+    'hacks': 'ABOUT_HACKS',
+    'labs': 'ABOUT_LABS',
+    'qa-news': 'QA_NEWS',
+    'student-reps': 'STUDENT_REPS',
+    'about-standards': 'ABOUT_STANDARDS',
+    'mobile-addon-dev': 'MOBILE_ADDON_DEV',
+    'addon-dev': 'ADD_ONS',
+    'join-mozilla': 'JOIN_MOZILLA',
+    'mozilla-phone': 'MOZILLA_PHONE',
+    'app-dev': 'APP_DEV'
+}
+
+NEWSLETTER_NAMES = NEWSLETTERS.keys()
+NEWSLETTER_FIELDS = NEWSLETTERS.values()
+
+# Utility functions
+
+def newsletter_field(name):
+    return NEWSLETTERS.get(name, False)
+
+
+def newsletter_name(field):
+    i = NEWSLETTER_FIELDS.index(field)
+    return NEWSLETTER_NAMES[i]
+
 
 def logged_in(f):
-    """Decorator to check if the user has permission to view these
-    pages"""
+    """ Decorator to check if the user has permission to view these
+    pages """
 
     @wraps(f)
     def wrapper(request, token, *args, **kwargs):
         subscriber = Subscriber.objects.filter(token=token)
         if not subscriber.exists():
-            return json_response({'status': 'error',
-                                  'desc': 'Must have valid token for this request'},
+            return json_response({'desc': 'Must have valid token for this request'},
                                  status=403)
-
+        
         request.subscriber = subscriber[0]
         return f(request, token, *args, **kwargs)
     return wrapper
@@ -34,19 +66,49 @@ def json_response(data, status=200):
     res = HttpResponse(json.dumps(data),
                        mimetype='application/json')
     res.status_code = status
+
+    # Allow all cross-domain requests, this service will restrict
+    # access on the server level
+    res['Access-Control-Allow-Origin'] = '*'
     return res
 
 
-def update_user_task(request, type, data=None):
-    """Call the update_user task async with the right parameters"""
+class Update(object):
+    SUBSCRIBE=1
+    UNSUBSCRIBE=2
+    SET=3
 
-    user = getattr(request, 'subscriber', None)
-    update_user.apply_async((data or request.POST.copy(),
-                             user and user.email,
-                             type))
 
-def get_user(email):
-    newsletters = newsletter_fields()
+@csrf_exempt
+def subscribe(request):
+    if 'newsletters' not in request.POST:
+        return json_response({'desc': 'newsletters is missing'},
+                             status=500)
+
+    return update_user(request, Update.SUBSCRIBE)
+
+
+@logged_in
+@csrf_exempt
+def unsubscribe(request, token):
+    data = request.POST.copy()
+
+    if data.get('optout', 'N') == 'Y':
+        data['optin'] = 'N'
+
+        for field in NEWSLETTER_FIELDS:
+            data['newsletters'] = ','.join(NEWSLETTER_NAMES)
+
+    return update_user(request, Update.UNSUBSCRIBE, data)
+
+
+@logged_in
+@csrf_exempt
+def user(request, token):
+    if request.method == 'POST':
+        return update_user(request, Update.SET)
+
+    newsletters = NEWSLETTERS.values()
 
     fields = [
         'EMAIL_ADDRESS_',
@@ -61,21 +123,19 @@ def get_user(email):
     try:
         rs = Responsys()
         rs.login(settings.RESPONSYS_USER, settings.RESPONSYS_PASS)
-        user = rs.retrieve_list_members(email,
+        user = rs.retrieve_list_members(request.subscriber.email,
                                         settings.RESPONSYS_FOLDER,
                                         settings.RESPONSYS_LIST,
                                         fields)
     except NewsletterException, e:
-        return json_response({'status': 'error',
-                              'desc': e.message},
+        return json_response({'desc': e.message},
                              status=500)
     except UnauthorizedException, e:
-        return json_response({'status': 'error',
-                              'desc': 'Responsys auth failure'},
+        return json_response({'desc': 'Responsys auth failure'},
                              status=500)
 
     user_data = {
-        'email': email,
+        'email': request.subscriber.email,
         'format': user['EMAIL_FORMAT_'],
         'country': user['COUNTRY_'],
         'lang': user['LANGUAGE_ISO2'],
@@ -87,51 +147,129 @@ def get_user(email):
 
     return json_response(user_data)
 
-## Views
 
-@csrf_exempt
-def subscribe(request):
+def parse_newsletters(record, type, newsletters, optout):
+    """ Parse the newsletter data from a comma-delimited string and
+    set the appropriate fields in the record """
+
+    newsletters = [x.strip() for x in newsletters.split(',')]
+
+    if type == Update.SUBSCRIBE or type == Update.SET:
+        # Subscribe the user to these newsletters
+        for nl in newsletters:
+            name = newsletter_field(nl)
+            if name:
+                record['%s_FLG' % name] = 'N' if optout else 'Y'
+                record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
+
+    
+    if type == Update.UNSUBSCRIBE or type == Update.SET:
+        # Unsubscribe the user to these newsletters
+        unsubs = newsletters
+
+        if type == Update.SET:
+            # Unsubscribe to the inversion of these newsletters
+            subs = set(newsletters)
+            all = set(NEWSLETTER_NAMES)
+            unsubs = all.difference(subs)
+
+        for nl in unsubs:
+            name = newsletter_field(nl)
+            if name:
+                record['%s_FLG' % name] = 'N'
+
+
+def update_user(request, type, data=None):
+    """ General method for updating user's preferences and subscribed
+    newsletters. Assumes data to be in POST """
+
     if request.method != 'POST':
         return HttpResponseBadRequest("Only POST supported")
 
-    if 'newsletters' not in request.POST:
-        return json_response({'status': 'error',
-                              'desc': 'newsletters is missing'},
+    data = data or request.POST
+    has_auth = hasattr(request, 'subscriber')
+    
+    # validate parameters
+    if not has_auth and 'email' not in data:
+        return json_response({'desc': 'email is required when not using tokens'},
                              status=500)
 
-    # If the user isn't opting in yet, we tell the system to
-    # unsubscribe them instead of subscribe them, which sets a flag
-    # for those newsletters that still requires confirmation by other
-    # means (confirmation email, etc)
-    optin = request.POST.get('optin', 'Y') == 'Y'
-    update_user_task(request,
-                     SUBSCRIBE if optin else UNSUBSCRIBE)
-    return json_response({})
+    # parse the parameters
+    record = {'EMAIL_ADDRESS_': data['email'],
+              'EMAIL_PERMISSION_STATUS_': 'I'}
+    
+    extra_fields = {
+        'format': 'EMAIL_FORMAT_',
+        'country': 'COUNTRY_',
+        'lang': 'LANGUAGE_ISO2',
+        'locale': 'LANG_LOCALE',
+        'source_url': 'SOURCE_URL'
+    }
 
+    # optionally add more fields
+    for field in extra_fields.keys():
+        if field in data:
+            record[extra_fields[field]] = data[field]
 
-@logged_in
-@csrf_exempt
-def unsubscribe(request, token):
-    if request.method != 'POST':
-        return HttpResponseBadRequest("Only POST supported")
+    # setup the newsletter fields
+    parse_newsletters(record,
+                      type,
+                      data.get('newsletters', ''),
+                      data.get('optin', 'Y') != 'Y')
 
-    data = request.POST.copy()
+    # make a new token
+    token = str(uuid.uuid4())
 
-    if data.get('optout', 'N') == 'Y':
-        data['newsletters'] = ','.join(newsletter_names())
+    if type == Update.SUBSCRIBE:
+        # if we are subscribing and the user already exists, don't
+        # update the token. otherwise create a new user with the token.
+        try:
+            sub = Subscriber.objects.get(email=record['EMAIL_ADDRESS_'])
+            token = sub.token
+        except Subscriber.DoesNotExist:
+            sub = Subscriber(email=record['EMAIL_ADDRESS_'], token=token)
+            sub.save()
+    else:
+        # if we are updating an existing user, set a new token
+        sub = Subscriber.objects.get(email=request.subscriber.email)
+        sub.token = token
+        sub.save()
 
-    update_user_task(request, UNSUBSCRIBE, data)
-    return json_response({})
+    record['TOKEN'] = token
 
+    # save the user's fields
+    try:
+        rs = Responsys()
+        rs.login(settings.RESPONSYS_USER, settings.RESPONSYS_PASS)
 
-@logged_in
-@csrf_exempt
-def user(request, token):
-    if request.method == 'POST':
-        update_user_task(request, SET)
-        return json_response({})
+        if has_auth and record['EMAIL_ADDRESS_'] != request.subscriber.email:
+            # email has changed, we need to delete the previous user
+            rs.delete_list_members(request.subscriber.email,
+                                   settings.RESPONSYS_FOLDER,
+                                   settings.RESPONSYS_LIST)
 
-    return get_user(request.subscriber.email)
+        rs.merge_list_members(settings.RESPONSYS_FOLDER,
+                              settings.RESPONSYS_LIST,
+                              record.keys(),
+                              record.values())
+        
+        if data.get('trigger_welcome', False) == 'Y':
+            rs.trigger_custom_event(record['EMAIL_ADDRESS_'],
+                                    settings.RESPONSYS_FOLDER,
+                                    settings.RESPONSYS_LIST,
+                                    'New_Signup_Welcome')
+
+        rs.logout()
+    except NewsletterException, e:
+        return json_response({'desc': e.message},
+                             status=500)
+    except UnauthorizedException, e:
+        return json_response({'desc': 'Responsys auth failure'},
+                             status=500)
+        
+
+    return json_response({'token': token})
+
 
 @logged_in
 @csrf_exempt
@@ -144,29 +282,11 @@ def delete_user(request, token):
                                settings.RESPONSYS_LIST)
         rs.logout()
     except NewsletterException, e:
-        return json_response({'status': 'error',
-                              'desc': e.message},
+        return json_response({'desc': e.message},
                              status=500)
     except UnauthorizedException, e:
-        return json_response({'status': 'error',
-                              'desc': 'Responsys auth failure'},
+        return json_response({'desc': 'Responsys auth failure'},
                              status=500)
 
     request.subscriber.delete()
     return json_response({})
-
-def debug_user(request):
-    if not 'email' in request.GET or not 'supertoken' in request.GET:
-        return json_response(
-            {'status': 'error',
-             'desc': 'Using debug_user, you need to pass the '
-                     '`email` and `supertoken` GET parameters'},
-            status=500
-        )
-
-    if request.GET['supertoken'] != settings.SUPERTOKEN:
-        return json_response({'status': 'error',
-                              'desc': 'Bad supertoken'},
-                             status=401)
-
-    return get_user(request.GET['email'])

@@ -1,35 +1,6 @@
 
 This "news" app provides a service for managing Mozilla newsletters.
 
-Available newsletters:
-
-* mozilla-and-you
-* mobile
-* beta
-* aurora
-* about-mozilla
-* drumbeat
-* addons
-* hacks
-* labs
-* qa-news
-* student-reps
-* about-standards
-* mobile-addon-dev
-* addon-dev
-* join-mozilla
-* mozilla-phone
-* app-dev
-
-If 'auth-required' is specified, a token must be suffixed onto the API
-URL, such as:
-
-/news/user/<token>/
-
-This is a user-specific token given away by the email backend or
-basket in some manner (i.e. emailed to the user from basket). This
-token allows clients to do more powerful things with the user.
-
 The following URLs are available (assuming "/news" is app url):
 
 /news/subscribe
@@ -85,13 +56,3 @@ The following URLs are available (assuming "/news" is app url):
   fields. Note that the user is only subscribed to "newsletters" after
   this, meaning the user will be unsubscribed to all other
   newsletters. "optin" should be Y or N and opts in/out the user.
-
-/news/debug-user
-
-  method: GET
-  fields: email, supertoken
-
-  This is the same as a GET request to /user, except that you must
-  pass in the email and a supertoken as GET params. The supertoken is
-  a special token that should never be made public and lets devs debug
-  users to make sure they were entered into the system correctly.
