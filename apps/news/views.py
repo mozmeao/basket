@@ -29,7 +29,8 @@ NEWSLETTERS = {
     'addon-dev': 'ADD_ONS',
     'join-mozilla': 'JOIN_MOZILLA',
     'mozilla-phone': 'MOZILLA_PHONE',
-    'app-dev': 'APP_DEV'
+    'app-dev': 'APP_DEV',
+    'moz-spaces', 'MOZ_SPACE'
 }
 
 NEWSLETTER_NAMES = NEWSLETTERS.keys()
