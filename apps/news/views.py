@@ -30,7 +30,7 @@ NEWSLETTERS = {
     'join-mozilla': 'JOIN_MOZILLA',
     'mozilla-phone': 'MOZILLA_PHONE',
     'app-dev': 'APP_DEV',
-    'moz-spaces', 'MOZ_SPACE'
+    'moz-spaces': 'MOZ_SPACE'
 }
 
 NEWSLETTER_NAMES = NEWSLETTERS.keys()
@@ -291,8 +291,7 @@ def delete_user(request, token):
 
     request.subscriber.delete()
     return json_response({})
-<<<<<<< HEAD
-=======
+
 
 def debug_user(request):
     if not 'email' in request.GET or not 'supertoken' in request.GET:
@@ -338,4 +337,3 @@ def custom_unsub_reason(request):
     rs.logout()
 
     return json_response({'status': 'ok'})
->>>>>>> 63deaf4... add custom method unsub_reason
