@@ -148,6 +148,10 @@ RESPONSYS_PASS = ''
 RESPONSYS_FOLDER = '!MasterData'
 RESPONSYS_LIST = 'TEST_CONTACTS_LIST'
 
+# This is a token that bypasses the news app auth in certain ways to
+# make debugging easier
+# SUPERTOKEN = <token>
+
 # Uncomment these to use Celery, use eager for local dev
 # CELERY_ALWAYS_EAGER = False
 # BROKER_HOST = 'localhost'
