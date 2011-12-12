@@ -290,3 +290,51 @@ def delete_user(request, token):
 
     request.subscriber.delete()
     return json_response({})
+<<<<<<< HEAD
+=======
+
+def debug_user(request):
+    if not 'email' in request.GET or not 'supertoken' in request.GET:
+        return json_response(
+            {'status': 'error',
+             'desc': 'Using debug_user, you need to pass the '
+                     '`email` and `supertoken` GET parameters'},
+            status=500
+        )
+
+    if request.GET['supertoken'] != settings.SUPERTOKEN:
+        return json_response({'status': 'error',
+                              'desc': 'Bad supertoken'},
+                             status=401)
+
+    return get_user(request.GET['email'])
+
+
+# Custom update methods
+
+@csrf_exempt
+def custom_unsub_reason(request):
+    """Update the reason field for the user, which logs why the user
+    unsubscribed from all newsletters."""
+
+    if not 'email' in request.POST or not 'reason' in request.POST:
+        return json_response(
+            {'status': 'error',
+             'desc': 'custom_unsub_reason requires the `email` '
+                     'and `reason` POST parameters'},
+            status=401
+        )
+
+    email = request.POST['email']
+    reason = request.POST['reason']
+
+    rs = Responsys()
+    rs.login(settings.RESPONSYS_USER, settings.RESPONSYS_PASS)
+    rs.merge_list_members(settings.RESPONSYS_FOLDER,
+                          settings.RESPONSYS_LIST,
+                          ['EMAIL_ADDRESS_', 'UNSUBSCRIBE_REASON'],
+                          [email, reason])
+    rs.logout()
+
+    return json_response({'status': 'ok'})
+>>>>>>> 63deaf4... add custom method unsub_reason
