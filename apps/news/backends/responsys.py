@@ -3,15 +3,12 @@ from functools import wraps
 from suds import WebFault
 from suds.client import Client
 
-class UnauthorizedException(Exception):
-    """Failure to log into Responsys."""
-    pass
+from common import *
 
-
-class NewsletterException(Exception):
-    """Error when trying to talk to Responsys"""
-    pass
-
+def fault_msg(fault):
+    if hasattr(fault.detail, 'ListFault'):
+        return fault.detail.ListFault.exceptionMessage
+    return str(fault.detail)
 
 def logged_in(f):
     """ Decorator to ensure an authenticated session with Responsys
@@ -20,17 +17,10 @@ def logged_in(f):
     @wraps(f)
     def wrapper(inst, *args, **kwargs):
         if not inst.session:
-            raise UnauthorizedException("Not logged in to Responsys, "
+            raise UnauthorizedException("Not logged in to the client, "
                                         "must call login()")
         return f(inst, *args, **kwargs)
     return wrapper
-
-
-def fault_msg(fault):
-    if hasattr(fault.detail, 'ListFault'):
-        return fault.detail.ListFault.exceptionMessage
-    return str(fault.detail)
-
 
 class Responsys(object):
     WSDL_URL = 'https://ws2.responsys.net/webservices/wsdl/ResponsysWS_Level1.wsdl'
