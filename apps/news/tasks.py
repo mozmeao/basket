@@ -1,11 +1,15 @@
 import uuid
+from email.utils import formatdate
+import datetime
+from time import mktime
 from datetime import date
 from urllib2 import URLError
 
 from django.conf import settings
 from celery.task import task
 
-from responsys import Responsys, NewsletterException, UnauthorizedException
+from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
+                                  UnauthorizedException)
 from models import Subscriber
 from newsletters import *
 
@@ -17,11 +21,17 @@ UNSUBSCRIBE=2
 SET=3
 
 
+def gmttime():
+    d = datetime.datetime.now() + datetime.timedelta(minutes=10)
+    stamp = mktime(d.timetuple())
+    return formatdate(timeval=stamp, localtime=False, usegmt=True)
+
+
 def parse_newsletters(record, type, newsletters):
     """Utility function to take a list of newsletters and according
     the type of action (subscribe, unsubscribe, and set) set the
     appropriate flags in `record` which is a dict of parameters that
-    will be sent to Responsys."""
+    will be sent to the email provider."""
 
     newsletters = [x.strip() for x in newsletters.split(',')]
 
@@ -52,7 +62,7 @@ def parse_newsletters(record, type, newsletters):
 
 
 @task(default_retry_delay=60)  # retry in 1 minute on failure
-def update_user(data, authed_email, type):
+def update_user(data, authed_email, type, optin):
     """Task for updating user's preferences and newsletters.
 
     ``authed_email`` is the email for the user pulled from the database
@@ -72,7 +82,6 @@ def update_user(data, authed_email, type):
         'format': 'EMAIL_FORMAT_',
         'country': 'COUNTRY_',
         'lang': 'LANGUAGE_ISO2',
-        'locale': 'LANG_LOCALE',
         'source_url': 'SOURCE_URL'
     }
 
@@ -92,37 +101,48 @@ def update_user(data, authed_email, type):
     if created or type != SUBSCRIBE:
         sub.token = str(uuid.uuid4())
         record['TOKEN'] = sub.token
+        record['CREATED_DATE_'] = gmttime()
         sub.save()
+    else:
+        record['TOKEN'] = sub.token
 
-    # Submit the final data to responsys
+    # Submit the final data to the service
     try:
-        rs = Responsys()
-        rs.login(settings.RESPONSYS_USER, settings.RESPONSYS_PASS)
-
-        if authed_email and record['EMAIL_ADDRESS_'] != authed_email:
-            # Email has changed, we need to delete the previous user
-            rs.delete_list_members(authed_email,
-                                   settings.RESPONSYS_FOLDER,
-                                   settings.RESPONSYS_LIST)
-
-        rs.merge_list_members(settings.RESPONSYS_FOLDER,
-                              settings.RESPONSYS_LIST,
-                              record.keys(),
-                              record.values())
+        et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+        record['MODIFIED_DATE_'] = gmttime()
         
-        # Trigger the welcome event unless it is suppressed
-        if data.get('trigger_welcome', False) == 'Y':
-            rs.trigger_custom_event(record['EMAIL_ADDRESS_'],
-                                    settings.RESPONSYS_FOLDER,
-                                    settings.RESPONSYS_LIST,
-                                    'New_Signup_Welcome')
+        if not optin:
+            et.data_ext().add_record('Double_Opt_In', record.keys(), record.values())
+            et.trigger_send('ConfirmEmail',
+                            record['EMAIL_ADDRESS_'],
+                            record['TOKEN'],
+                            record['EMAIL_FORMAT_'])
+        else:
+            et.data_ext().add_record(settings.EXACTTARGET_DATA, record.keys(), record.values())
+            if data.get('trigger_welcome', False) == 'Y':
+                # Trigger the welcome event unless it is suppressed
+                et.trigger_send('WelcomeEmail', 
+                                record['EMAIL_ADDRESS_'],
+                                record['TOKEN'],
+                                record['EMAIL_FORMAT_'])
 
-        rs.logout()
     except URLError, e:
         # URL timeout, try again
         update_user.retry(exc=e)
     except NewsletterException, e:
         log.error('NewsletterException: %s' % e.message)
     except UnauthorizedException, e:
-        log.error('Responsys auth failure')
+        log.error('Email service provider auth failure')
 
+@task(default_retry_delay=60)
+def confirm_user(token):
+    try:
+        ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+        ext.add_record('TokenOptinOrSomething', ['TOKEN'], [token]);
+    except URLError, e:
+        # URL timeout, try again
+        update_user.retry(exc=e)
+    except NewsletterException, e:
+        log.error('NewsletterException: %s' % e.message)
+    except UnauthorizedException, e:
+        log.error('Email service provider auth failure')

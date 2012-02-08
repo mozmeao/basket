@@ -17,16 +17,30 @@ from suds.wsse import *
 
 from common import *
 
+
+WSDL_URL = 'https://webservice.s4.exacttarget.com/etframework.wsdl'
+
+
 def assert_status(obj):
     """Make sure the returned status is OK"""
     if obj.OverallStatus != 'OK':
+        if hasattr(obj, 'Results') and len(obj.Results) > 0:
+            res = obj.Results[0]
+
+            if hasattr(res, 'ErrorMessage') and res.ErrorMessage:
+                raise NewsletterException(res.ErrorMessage)
+            elif hasattr(res, 'ValueErrors') and res.ValueErrors:
+                # For some reason, the value errors array is inside an array
+                val_errs = res.ValueErrors[0]
+                if len(val_errs) > 0:
+                    raise NewsletterException(val_errs[0].ErrorMessage)
         raise NewsletterException(obj.OverallStatus)
 
 
 def assert_result(obj):
     """Make sure the returned object has a result"""
     if not hasattr(obj, 'Results') or len(obj.Results) == 0:
-        raise NewsletterException('No results returns')
+        raise NewsletterException('No results returned')
 
 
 def handle_fault(e):
@@ -47,7 +61,7 @@ def logged_in(f):
     @wraps(f)
     def wrapper(inst, *args, **kwargs):
         if not inst.client:
-            inst.client = Client(inst.__class__.WSDL_URL)
+            inst.client = Client(WSDL_URL)
             
             security = Security()
             token = UsernameToken(inst.user, inst.pass_)
@@ -56,17 +70,19 @@ def logged_in(f):
         return f(inst, *args, **kwargs)
     return wrapper
 
-    
-class ExactTarget(object):
-    WSDL_URL = 'https://webservice.s4.exacttarget.com/etframework.wsdl'
 
-    def __init__(self, user, pass_):
-        self.client = None
+class ExactTargetObject(object):
+
+    def __init__(self, user, pass_, client=None):
+        self.client = client
         self.user = user
         self.pass_ = pass_
     
     def create(self, name):
         return self.client.factory.create(name)
+
+
+class ExactTargetList(ExactTargetObject):
 
     @logged_in
     def add_subscriber(self, list_ids, fields, records):
@@ -186,6 +202,9 @@ class ExactTarget(object):
 
         return lists
 
+
+class ExactTargetDataExt(ExactTargetObject):
+
     @logged_in
     def add_record(self, data_ids, fields, records):
         data_ids = [data_ids] if isinstance(data_ids, basestring) else data_ids
@@ -224,9 +243,9 @@ class ExactTarget(object):
             handle_fault(e)
 
     @logged_in
-    def get_record(self, email, fields):
+    def get_record(self, data_id, email, fields):
         req = self.create('RetrieveRequest')
-        req.ObjectType = 'DataExtensionObject[who]'
+        req.ObjectType = 'DataExtensionObject[%s]' % data_id
         req.Properties = fields
 
         filter_ = self.create('SimpleFilterPart')
@@ -246,3 +265,51 @@ class ExactTarget(object):
             
         return dict((p.Name, p.Value)
                     for p in obj.Results[0].Properties.Property)
+
+    
+class ExactTarget(ExactTargetObject):
+
+    @logged_in
+    def list(self):
+        return ExactTargetList(self.user, self.pass_, self.client)
+
+    @logged_in
+    def data_ext(self):
+        return ExactTargetDataExt(self.user, self.pass_, self.client)
+
+    @logged_in
+    def trigger_send(self, send_name, email, token, format_):
+        defn = self.create('TriggeredSendDefinition')
+        send = self.create('TriggeredSend')
+
+        status = self.create('TriggeredSendStatusEnum')
+        defn.Name = send_name
+        defn.CustomerKey = send_name
+        defn.TriggeredSendStatus = status.Active
+        del defn.SourceAddressType
+        del defn.DomainType
+        del defn.HeaderSalutationSource
+        del defn.FooterSalutationSource
+        del defn.TriggeredSendType
+
+        sub = self.create('Subscriber')
+        sub.EmailAddress = email
+        sub.SubscriberKey = token
+        del sub.EmailTypePreference
+        del sub.Status
+        del sub.PrimarySMSPublicationStatus
+
+        attr = self.create('Attribute')
+        attr.Name = 'TOKEN'
+        attr.Value = token
+        sub.Attributes.append(attr)
+
+        attr = self.create('Attribute')
+        attr.Name = 'EMAIL_FORMAT_'
+        attr.Value = format_
+        sub.Attributes.append(attr)
+
+        send.Subscribers = [sub]
+        send.TriggeredSendDefinition = defn
+        
+        self.client.service.Create(None, [send])

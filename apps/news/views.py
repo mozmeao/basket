@@ -6,10 +6,11 @@ from django.http import HttpResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt 
 from django.conf import settings
 
-from tasks import update_user, SUBSCRIBE, UNSUBSCRIBE, SET
+from tasks import update_user, confirm_user, SUBSCRIBE, UNSUBSCRIBE, SET
 from newsletters import *
 from models import Subscriber
-from responsys import Responsys, NewsletterException, UnauthorizedException
+from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
+                                  UnauthorizedException)
 
 
 ## Utility functions
@@ -38,13 +39,14 @@ def json_response(data, status=200):
     return res
 
 
-def update_user_task(request, type, data=None):
+def update_user_task(request, type, data=None, optin=True):
     """Call the update_user task async with the right parameters"""
 
     user = getattr(request, 'subscriber', None)
     update_user.apply_async((data or request.POST.copy(),
                              user and user.email,
-                             type))
+                             type,
+                             optin))
 
 def get_user(email):
     newsletters = newsletter_fields()
@@ -60,19 +62,17 @@ def get_user(email):
         fields.append('%s_FLG' % nl)
 
     try:
-        rs = Responsys()
-        rs.login(settings.RESPONSYS_USER, settings.RESPONSYS_PASS)
-        user = rs.retrieve_list_members(email,
-                                        settings.RESPONSYS_FOLDER,
-                                        settings.RESPONSYS_LIST,
-                                        fields)
+        ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+        user = ext.get_record(settings.EXACTTARGET_DATA,
+                              email,
+                              fields)
     except NewsletterException, e:
         return json_response({'status': 'error',
                               'desc': e.message},
                              status=500)
     except UnauthorizedException, e:
         return json_response({'status': 'error',
-                              'desc': 'Responsys auth failure'},
+                              'desc': 'Email service provider auth failure'},
                              status=500)
 
     user_data = {
@@ -90,6 +90,17 @@ def get_user(email):
 
 ## Views
 
+
+@logged_in
+@csrf_exempt
+def confirm(request);
+    if request.method != 'POST':
+        return HttpResponseBadRequest("Only POST supported")
+
+    confirm_user.delay(request.subscriber.token)
+    
+    
+
 @csrf_exempt
 def subscribe(request):
     if request.method != 'POST':
@@ -100,13 +111,8 @@ def subscribe(request):
                               'desc': 'newsletters is missing'},
                              status=500)
 
-    # If the user isn't opting in yet, we tell the system to
-    # unsubscribe them instead of subscribe them, which sets a flag
-    # for those newsletters that still requires confirmation by other
-    # means (confirmation email, etc)
     optin = request.POST.get('optin', 'Y') == 'Y'
-    update_user_task(request,
-                     SUBSCRIBE if optin else UNSUBSCRIBE)
+    update_user_task(request, SUBSCRIBE, optin=optin)
     return json_response({})
 
 
@@ -133,28 +139,6 @@ def user(request, token):
         return json_response({})
 
     return get_user(request.subscriber.email)
-
-@logged_in
-@csrf_exempt
-def delete_user(request, token):
-    try:
-        rs = Responsys()
-        rs.login(settings.RESPONSYS_USER, settings.RESPONSYS_PASS)
-        rs.delete_list_members(request.subscriber.email,
-                               settings.RESPONSYS_FOLDER,
-                               settings.RESPONSYS_LIST)
-        rs.logout()
-    except NewsletterException, e:
-        return json_response({'status': 'error',
-                              'desc': e.message},
-                             status=500)
-    except UnauthorizedException, e:
-        return json_response({'status': 'error',
-                              'desc': 'Responsys auth failure'},
-                             status=500)
-
-    request.subscriber.delete()
-    return json_response({})
 
 
 def debug_user(request):
@@ -192,12 +176,9 @@ def custom_unsub_reason(request):
     email = request.POST['email']
     reason = request.POST['reason']
 
-    rs = Responsys()
-    rs.login(settings.RESPONSYS_USER, settings.RESPONSYS_PASS)
-    rs.merge_list_members(settings.RESPONSYS_FOLDER,
-                          settings.RESPONSYS_LIST,
-                          ['EMAIL_ADDRESS_', 'UNSUBSCRIBE_REASON'],
-                          [email, reason])
-    rs.logout()
+    ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+    ext.add_record(settings.EXACTTARGET_DATA,
+                   ['EMAIL_ADDRESS_', 'UNSUBSCRIBE_REASON'],
+                   [email, reason])
 
     return json_response({'status': 'ok'})
