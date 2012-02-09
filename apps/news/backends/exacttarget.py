@@ -231,9 +231,10 @@ class ExactTargetDataExt(ExactTargetObject):
         opt.PropertyName = '*'
         opt.SaveAction = 'UpdateAdd'
 
+        rtype = self.create('RequestType')
         opts = self.create('UpdateOptions')
         opts.SaveOptions.SaveOption = [opt]
-        del opts.RequestType
+        opts.RequestType = rtype.Asynchronous
         del opts.QueuePriority
 
         try:
@@ -311,5 +312,10 @@ class ExactTarget(ExactTargetObject):
 
         send.Subscribers = [sub]
         send.TriggeredSendDefinition = defn
-        
-        self.client.service.Create(None, [send])
+
+        rtype = self.create('RequestType')
+        opts = self.create('CreateOptions')
+        opts.RequestType = rtype.Asynchronous
+        del opts.QueuePriority
+        self.client.service.Create(opts, [send])
+

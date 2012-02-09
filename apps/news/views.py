@@ -43,10 +43,20 @@ def update_user_task(request, type, data=None, optin=True):
     """Call the update_user task async with the right parameters"""
 
     user = getattr(request, 'subscriber', None)
-    update_user.apply_async((data or request.POST.copy(),
-                             user and user.email,
-                             type,
-                             optin))
+
+    # When celery is turned on, use delay to call update_user and
+    # don't catch any exceptions. For now, return an error if
+    # something goes wrong.
+    try:
+        update_user(data or request.POST.copy(),
+                    user and user.email,
+                    type,
+                    optin)
+        return json_response({'status': 'ok'})
+    except (NewsletterException, UnauthorizedException), e:
+        return json_response({'status': 'error',
+                              'desc': e.message},
+                             status=500)
 
 def get_user(email):
     newsletters = newsletter_fields()
@@ -93,12 +103,18 @@ def get_user(email):
 
 @logged_in
 @csrf_exempt
-def confirm(request);
+def confirm(request, token):
     if request.method != 'POST':
         return HttpResponseBadRequest("Only POST supported")
-
-    confirm_user.delay(request.subscriber.token)
     
+    # Until celery is turned on, return a message immediately
+    try:
+        confirm_user(request.subscriber.token)
+        return json_response({'status': 'ok'})
+    except (NewsletterException, UnauthorizedException), e:
+        return json_response({'status': 'error',
+                              'desc': e.message},
+                             status=500)
     
 
 @csrf_exempt
@@ -112,8 +128,7 @@ def subscribe(request):
                              status=500)
 
     optin = request.POST.get('optin', 'Y') == 'Y'
-    update_user_task(request, SUBSCRIBE, optin=optin)
-    return json_response({})
+    return update_user_task(request, SUBSCRIBE, optin=optin)
 
 
 @logged_in
@@ -127,16 +142,14 @@ def unsubscribe(request, token):
     if data.get('optout', 'N') == 'Y':
         data['newsletters'] = ','.join(newsletter_names())
 
-    update_user_task(request, UNSUBSCRIBE, data)
-    return json_response({})
+    return update_user_task(request, UNSUBSCRIBE, data)
 
 
 @logged_in
 @csrf_exempt
 def user(request, token):
     if request.method == 'POST':
-        update_user_task(request, SET)
-        return json_response({})
+        return update_user_task(request, SET)
 
     return get_user(request.subscriber.email)
 

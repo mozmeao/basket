@@ -8,8 +8,8 @@ from urllib2 import URLError
 from django.conf import settings
 from celery.task import task
 
-from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
-                                  UnauthorizedException)
+from backends.exacttarget import (ExactTarget, ExactTargetDataExt, 
+                                  NewsletterException, UnauthorizedException)
 from models import Subscriber
 from newsletters import *
 
@@ -19,6 +19,17 @@ from newsletters import *
 SUBSCRIBE=1
 UNSUBSCRIBE=2
 SET=3
+
+
+# Double optin-in languages
+CONFIRM_SENDS = {
+    'es': 'es_confirmation_email',
+    'es-ES': 'es_confirmation_email',
+    'de': 'de_confirmation_email',
+    'fr': 'fr_confirmation_email',
+    'pt': 'pt_br_confirmation_email',
+    'pt-BR': 'pt_br_confirmation_email'
+}
 
 
 def gmttime():
@@ -106,14 +117,17 @@ def update_user(data, authed_email, type, optin):
     else:
         record['TOKEN'] = sub.token
 
-    # Submit the final data to the service
     try:
+        # Submit the final data to the service
         et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
         record['MODIFIED_DATE_'] = gmttime()
-        
-        if not optin:
-            et.data_ext().add_record('Double_Opt_In', record.keys(), record.values())
-            et.trigger_send('ConfirmEmail',
+        lang = record.get('LANGUAGE_ISO2', None)
+
+        if lang in CONFIRM_SENDS:
+            et.data_ext().add_record(settings.EXACTTARGET_OPTIN_STAGE,
+                                     record.keys(),
+                                     record.values())
+            et.trigger_send(CONFIRM_SENDS[lang],
                             record['EMAIL_ADDRESS_'],
                             record['TOKEN'],
                             record['EMAIL_FORMAT_'])
@@ -125,24 +139,26 @@ def update_user(data, authed_email, type, optin):
                                 record['EMAIL_ADDRESS_'],
                                 record['TOKEN'],
                                 record['EMAIL_FORMAT_'])
-
-    except URLError, e:
-        # URL timeout, try again
-        update_user.retry(exc=e)
-    except NewsletterException, e:
-        log.error('NewsletterException: %s' % e.message)
-    except UnauthorizedException, e:
-        log.error('Email service provider auth failure')
+    except Exception, e:
+        handle_exception(update_user, e)
 
 @task(default_retry_delay=60)
 def confirm_user(token):
     try:
         ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-        ext.add_record('TokenOptinOrSomething', ['TOKEN'], [token]);
-    except URLError, e:
-        # URL timeout, try again
-        update_user.retry(exc=e)
-    except NewsletterException, e:
-        log.error('NewsletterException: %s' % e.message)
-    except UnauthorizedException, e:
-        log.error('Email service provider auth failure')
+        ext.add_record('Confirmation', ['TOKEN'], [token]);
+    except Exception, e:
+        handle_exception(confirm_user, e)
+
+def handle_exception(task, e):
+    # When celery is turn on, hande these exceptions here. Since
+    # celery isn't turned on yet, let them propagate.
+    #
+    # if isinstance(e, URLError):
+    #     # URL timeout, try again
+    #     task.retry(exc=e)
+    # elif isinstance(e, NewsletterException):
+    #     log.error('NewsletterException: %s' % e.message)
+    # elif isinstance(e, UnauthorizedException):
+    #     log.error('Email service provider auth failure')
+    raise e
