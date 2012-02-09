@@ -6,6 +6,11 @@ To watch the SOAP requests:
 import logging
 logging.getLogger('suds.client').addHandler(logging.StreamHandler(sys.__stdout__))
 logging.getLogger('suds.client').setLevel(logging.DEBUG)
+
+Some test code:
+et = ExactTarget('<user>', '<pass>')
+et.data_ext().add_record('Master_Subscribers', ['TOKEN', 'EMAIL_ADDRESS_', 'CREATED_DATE_', 'MODIFIED_DATE_'], ['hello', 'jlong@mozilla.com', '2011-01-01', '2011-01-01'])
+et.trigger_send('WelcomeEmail', 'jlong@mozilla.com', 'hello', 'H')
 """
 
 from functools import wraps
@@ -234,7 +239,8 @@ class ExactTargetDataExt(ExactTargetObject):
         rtype = self.create('RequestType')
         opts = self.create('UpdateOptions')
         opts.SaveOptions.SaveOption = [opt]
-        opts.RequestType = rtype.Asynchronous
+        #opts.RequestType = rtype.Asynchronous
+        del opts.RequestType
         del opts.QueuePriority
 
         try:
