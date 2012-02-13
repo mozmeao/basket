@@ -135,7 +135,7 @@ def update_user(data, authed_email, type, optin):
             et.data_ext().add_record(settings.EXACTTARGET_DATA, record.keys(), record.values())
             if data.get('trigger_welcome', False) == 'Y':
                 # Trigger the welcome event unless it is suppressed
-                et.trigger_send('WelcomeEmail', 
+                et.trigger_send('TestFoo', 
                                 record['EMAIL_ADDRESS_'],
                                 record['TOKEN'],
                                 record['EMAIL_FORMAT_'])

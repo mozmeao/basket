@@ -19,11 +19,18 @@ import sys
 from suds import WebFault
 from suds.client import Client
 from suds.wsse import *
+from suds.cache import ObjectCache
 
 from common import *
 
 
-WSDL_URL = 'https://webservice.s4.exacttarget.com/etframework.wsdl'
+# This is just a cached version. The real URL is:
+# https://webservice.s4.exacttarget.com/etframework.wsdl
+#
+# The cached version has been stripped down to make suds run 1000x
+# faster. I deleted most of the fields in the TriggeredSendDefinition
+# and TriggeredSend objects that we don't use.
+WSDL_URL = 'file://%s/et-wsdl.txt' % os.path.dirname(os.path.abspath(__file__))
 
 
 def assert_status(obj):
@@ -67,7 +74,7 @@ def logged_in(f):
     def wrapper(inst, *args, **kwargs):
         if not inst.client:
             inst.client = Client(WSDL_URL)
-            
+
             security = Security()
             token = UsernameToken(inst.user, inst.pass_)
             security.tokens.append(token)
@@ -230,8 +237,6 @@ class ExactTargetDataExt(ExactTargetObject):
             obj.CustomerKey = id
             objs.append(obj)
 
-        # This does not update appropriately yet, it creates new
-        # records
         opt = self.create('SaveOption')
         opt.PropertyName = '*'
         opt.SaveAction = 'UpdateAdd'
@@ -286,18 +291,13 @@ class ExactTarget(ExactTargetObject):
 
     @logged_in
     def trigger_send(self, send_name, email, token, format_):
-        defn = self.create('TriggeredSendDefinition')
         send = self.create('TriggeredSend')
+        defn = send.TriggeredSendDefinition
 
         status = self.create('TriggeredSendStatusEnum')
         defn.Name = send_name
         defn.CustomerKey = send_name
         defn.TriggeredSendStatus = status.Active
-        del defn.SourceAddressType
-        del defn.DomainType
-        del defn.HeaderSalutationSource
-        del defn.FooterSalutationSource
-        del defn.TriggeredSendType
 
         sub = self.create('Subscriber')
         sub.EmailAddress = email
@@ -317,11 +317,10 @@ class ExactTarget(ExactTargetObject):
         sub.Attributes.append(attr)
 
         send.Subscribers = [sub]
-        send.TriggeredSendDefinition = defn
 
         rtype = self.create('RequestType')
         opts = self.create('CreateOptions')
-        opts.RequestType = rtype.Asynchronous
+        del opts.RequestType
         del opts.QueuePriority
-        self.client.service.Create(opts, [send])
 
+        self.client.service.Create(opts, [send])
