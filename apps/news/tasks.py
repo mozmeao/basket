@@ -112,35 +112,55 @@ def update_user(data, authed_email, type, optin):
     if created or type != SUBSCRIBE:
         sub.token = str(uuid.uuid4())
         record['TOKEN'] = sub.token
-        record['CREATED_DATE_'] = gmttime()
+        #record['CREATED_DATE_'] = gmttime()
         sub.save()
     else:
         record['TOKEN'] = sub.token
 
-    try:
-        # Submit the final data to the service
-        et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-        record['MODIFIED_DATE_'] = gmttime()
-        lang = record.get('LANGUAGE_ISO2', None)
+    # Submit the final data to the service
+    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+    record['MODIFIED_DATE_'] = gmttime()
+    lang = record.get('LANGUAGE_ISO2', None)
 
-        if lang in CONFIRM_SENDS:
-            et.data_ext().add_record(settings.EXACTTARGET_OPTIN_STAGE,
+    target_et = settings.EXACTTARGET_DATA
+    welcome = None
+
+    if lang in CONFIRM_SENDS:
+        # This lang requires double opt-in and a different welcome
+        # email
+        target_et = settings.EXACTTARGET_OPTIN_STAGE
+        welcome = CONFIRM_SENDS[lang]
+    elif data.get('trigger_welcome', False) == 'Y':
+        # Otherwise, send this welcome email unless its suppressed
+        welcome = 'TestFoo'
+
+    try:
+        et.data_ext().add_record(target_et,
+                                 record.keys(),
+                                 record.values())
+    except (NewsletterException, UnauthorizedException), e:
+        # Sometimes a user is in basket's database but not in
+        # ExactTarget because the API failed or something. If that's
+        # the case, any future API call will error because basket
+        # won't add the required CREATED_DATE field. Try to add them
+        # with it here.
+        if e.message.find('CREATED_DATE_') != -1:
+            record['CREATED_DATE_'] = gmttime()
+            et.data_ext().add_record(target_et,
                                      record.keys(),
                                      record.values())
-            et.trigger_send(CONFIRM_SENDS[lang],
-                            record['EMAIL_ADDRESS_'],
-                            record['TOKEN'],
-                            record['EMAIL_FORMAT_'])
         else:
-            et.data_ext().add_record(settings.EXACTTARGET_DATA, record.keys(), record.values())
-            if data.get('trigger_welcome', False) == 'Y':
-                # Trigger the welcome event unless it is suppressed
-                et.trigger_send('TestFoo', 
-                                record['EMAIL_ADDRESS_'],
-                                record['TOKEN'],
-                                record['EMAIL_FORMAT_'])
-    except Exception, e:
-        handle_exception(update_user, e)
+            return handle_exception(update_user, e)
+
+    # This is a separate try because the above one might recover, and
+    # we still need to send the welcome email
+    try:
+        et.trigger_send(welcome,
+                        record['EMAIL_ADDRESS_'],
+                        record['TOKEN'],
+                        record['EMAIL_FORMAT_'])
+    except (NewsletterException, UnauthorizedException), e:
+        return handle_exception(update_user, e)
 
 @task(default_retry_delay=60)
 def confirm_user(token):
