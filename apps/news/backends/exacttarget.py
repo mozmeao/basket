@@ -19,7 +19,6 @@ import sys
 from suds import WebFault
 from suds.client import Client
 from suds.wsse import *
-from suds.cache import ObjectCache
 
 from common import *
 
@@ -46,6 +45,8 @@ def assert_status(obj):
                 val_errs = res.ValueErrors[0]
                 if len(val_errs) > 0:
                     raise NewsletterException(val_errs[0].ErrorMessage)
+            elif hasattr(res, 'StatusCode') and res.StatusCode == 'Error':
+                raise NewsletterException(res.StatusMessage)
         raise NewsletterException(obj.OverallStatus)
 
 
@@ -111,7 +112,6 @@ class ExactTargetList(ExactTargetObject):
             # You will see this throughout all this code.
             del subscriber.EmailTypePreference
             del subscriber.Status
-            del subscriber.PrimarySMSPublicationStatus
 
             for i, v in enumerate(record):
                 if fields[i] == 'email':
@@ -142,8 +142,6 @@ class ExactTargetList(ExactTargetObject):
 
         opts = self.create('UpdateOptions')
         opts.SaveOptions.SaveOption = [opt]
-        del opts.RequestType
-        del opts.QueuePriority
 
         try:
             obj = self.client.service.Update(opts, [subscriber])
@@ -244,9 +242,6 @@ class ExactTargetDataExt(ExactTargetObject):
         rtype = self.create('RequestType')
         opts = self.create('UpdateOptions')
         opts.SaveOptions.SaveOption = [opt]
-        #opts.RequestType = rtype.Asynchronous
-        del opts.RequestType
-        del opts.QueuePriority
 
         try:
             obj = self.client.service.Update(opts, objs)
@@ -304,7 +299,6 @@ class ExactTarget(ExactTargetObject):
         sub.SubscriberKey = token
         del sub.EmailTypePreference
         del sub.Status
-        del sub.PrimarySMSPublicationStatus
 
         attr = self.create('Attribute')
         attr.Name = 'TOKEN'
@@ -320,7 +314,10 @@ class ExactTarget(ExactTargetObject):
 
         rtype = self.create('RequestType')
         opts = self.create('CreateOptions')
-        del opts.RequestType
-        del opts.QueuePriority
 
-        self.client.service.Create(opts, [send])
+        try:
+            obj = self.client.service.Create(opts, [send])
+            assert_status(obj)
+            assert_result(obj)        
+        except WebFault, e:
+            handle_fault(e)

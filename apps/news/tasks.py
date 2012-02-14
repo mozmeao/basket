@@ -90,7 +90,6 @@ def update_user(data, authed_email, type, optin):
               'EMAIL_PERMISSION_STATUS_': 'I'}
     
     extra_fields = {
-        'format': 'EMAIL_FORMAT_',
         'country': 'COUNTRY_',
         'lang': 'LANGUAGE_ISO2',
         'source_url': 'SOURCE_URL'
@@ -100,6 +99,8 @@ def update_user(data, authed_email, type, optin):
     for field in extra_fields.keys():
         if field in data:
             record[extra_fields[field]] = data[field]
+
+    record['EMAIL_FORMAT_'] = data.get('format', 'H')
 
     # Set the newsletter flags in the record
     parse_newsletters(record, type, data.get('newsletters', ''))
@@ -132,7 +133,7 @@ def update_user(data, authed_email, type, optin):
         welcome = CONFIRM_SENDS[lang]
     elif data.get('trigger_welcome', False) == 'Y':
         # Otherwise, send this welcome email unless its suppressed
-        welcome = 'TestFoo'
+        welcome = 'TestFoo2'
 
     try:
         et.data_ext().add_record(target_et,
@@ -155,10 +156,11 @@ def update_user(data, authed_email, type, optin):
     # This is a separate try because the above one might recover, and
     # we still need to send the welcome email
     try:
-        et.trigger_send(welcome,
-                        record['EMAIL_ADDRESS_'],
-                        record['TOKEN'],
-                        record['EMAIL_FORMAT_'])
+        if welcome:
+            et.trigger_send(welcome,
+                            record['EMAIL_ADDRESS_'],
+                            record['TOKEN'],
+                            record.get('EMAIL_FORMAT_', 'H'))
     except (NewsletterException, UnauthorizedException), e:
         return handle_exception(update_user, e)
 

@@ -152,8 +152,6 @@
       </simpleType>
       <complexType abstract="true" name="Options">
         <sequence>
-          <element name="Client" type="tns:ClientID" minOccurs="0" maxOccurs="1" />
-          <element name="SendResponseTo" type="tns:AsyncResponse" minOccurs="0" maxOccurs="unbounded" />
           <element name="SaveOptions" minOccurs="0" maxOccurs="1">
             <complexType>
               <sequence>
@@ -161,13 +159,6 @@
               </sequence>
             </complexType>
           </element>
-          <element name="Priority" minOccurs="0" type="xsd:byte" />
-          <element name="ConversationID" minOccurs="0" type="xsd:string" />
-          <element name="SequenceCode" minOccurs="0" type="xsd:int" />
-          <element name="CallsInConversation" minOccurs="0" type="xsd:int" />
-          <element name="ScheduledTime" minOccurs="0" type="xsd:dateTime" />
-          <element name="RequestType" minOccurs="0" type="tns:RequestType" />
-          <element name="QueuePriority" minOccurs="0" type="tns:Priority" />
         </sequence>
       </complexType>
       <complexType name="TaskResult">
@@ -246,9 +237,6 @@
       <complexType name="CreateOptions">
         <complexContent>
           <extension base="tns:Options">
-            <sequence>
-              <element name="Container" type="tns:ContainerID" minOccurs="0" maxOccurs="1" />
-            </sequence>
           </extension>
         </complexContent>
       </complexType>
@@ -257,7 +245,6 @@
         <complexContent>
           <extension base="tns:Options">
             <sequence>
-              <element name="Container" type="tns:ContainerID" minOccurs="0" maxOccurs="1" />
               <element name="Action" type="xsd:string" minOccurs="0" maxOccurs="1" />
             </sequence>
           </extension>
@@ -1950,23 +1937,8 @@
               <element name="EmailAddress" minOccurs="0" maxOccurs="1" type="xsd:string" />
               <element name="Attributes" minOccurs="0" maxOccurs="unbounded" type="tns:Attribute" />
               <element name="SubscriberKey" minOccurs="0" maxOccurs="1" type="xsd:string" />
-              <element name="UnsubscribedDate" minOccurs="0" maxOccurs="1" type="xsd:dateTime" />
               <element name="Status" minOccurs="0" maxOccurs="1" type="tns:SubscriberStatus" />
-              <element name="PartnerType" minOccurs="0" maxOccurs="1" type="xsd:string" />
               <element name="EmailTypePreference" minOccurs="0" maxOccurs="1" type="tns:EmailType" />
-              <element name="Lists" minOccurs="0" maxOccurs="unbounded" type="tns:SubscriberList" />
-              <element name="GlobalUnsubscribeCategory" minOccurs="0" maxOccurs="1" type="tns:GlobalUnsubscribeCategory" />
-              <element name="SubscriberTypeDefinition" minOccurs="0" maxOccurs="1" type="tns:SubscriberTypeDefinition" />
-              <element name="Addresses" minOccurs="0">
-                <complexType>
-                  <sequence>
-                    <element name="Address" type="tns:SubscriberAddress" minOccurs="0" maxOccurs="unbounded" />
-                  </sequence>
-                </complexType>
-              </element>
-              <element name="PrimarySMSAddress" minOccurs="0" maxOccurs="1" type="tns:SMSAddress" />
-              <element name="PrimarySMSPublicationStatus" minOccurs="0" type="tns:SubscriberAddressStatus" />
-              <element name="PrimaryEmailAddress" minOccurs="0" type="tns:EmailAddress" />
               <element name="Locale" minOccurs="0" maxOccurs="1" type="tns:Locale" />
             </sequence>
           </extension>
@@ -2933,14 +2905,6 @@
         <complexContent>
           <extension base="tns:ObjectExtension">
             <sequence>
-              <element name="Name" minOccurs="0" maxOccurs="1" type="xsd:string" />
-              <element name="Keys" minOccurs="0" maxOccurs="1">
-                <complexType>
-                  <sequence>
-                    <element name="Key" minOccurs="0" maxOccurs="unbounded" type="tns:APIProperty" />
-                  </sequence>
-                </complexType>
-              </element>
             </sequence>
           </extension>
         </complexContent>
