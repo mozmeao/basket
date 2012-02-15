@@ -133,7 +133,8 @@ def update_user(data, authed_email, type, optin):
         welcome = CONFIRM_SENDS[lang]
     elif data.get('trigger_welcome', False) == 'Y':
         # Otherwise, send this welcome email unless its suppressed
-        welcome = 'TestFoo2'
+        # This is the CustomerKey of the en-US welcome email
+        welcome = '39'
 
     try:
         et.data_ext().add_record(target_et,
