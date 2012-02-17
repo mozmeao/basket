@@ -125,11 +125,13 @@ def update_user(data, authed_email, type, optin):
     target_et = settings.EXACTTARGET_DATA
     welcome = None
 
-    if lang in CONFIRM_SENDS:
+    if lang in CONFIRM_SENDS and type == SUBSCRIBE:
         # This lang requires double opt-in and a different welcome
         # email
         target_et = settings.EXACTTARGET_OPTIN_STAGE
         welcome = CONFIRM_SENDS[lang]
+        record['SubscriberKey'] = record['TOKEN']
+        record['EmailAddress'] = record['EMAIL_ADDRESS_']
     elif data.get('trigger_welcome', False) == 'Y':
         # Otherwise, send this welcome email unless its suppressed
         # This is the CustomerKey of the en-US welcome email

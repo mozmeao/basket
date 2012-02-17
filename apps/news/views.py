@@ -176,20 +176,20 @@ def custom_unsub_reason(request):
     """Update the reason field for the user, which logs why the user
     unsubscribed from all newsletters."""
 
-    if not 'email' in request.POST or not 'reason' in request.POST:
+    if not 'token' in request.POST or not 'reason' in request.POST:
         return json_response(
             {'status': 'error',
-             'desc': 'custom_unsub_reason requires the `email` '
+             'desc': 'custom_unsub_reason requires the `token` '
                      'and `reason` POST parameters'},
             status=401
         )
 
-    email = request.POST['email']
+    token = request.POST['token']
     reason = request.POST['reason']
 
     ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
     ext.add_record(settings.EXACTTARGET_DATA,
-                   ['EMAIL_ADDRESS_', 'UNSUBSCRIBE_REASON'],
-                   [email, reason])
+                   ['TOKEN', 'UNSUBSCRIBE_REASON'],
+                   [token, reason])
 
     return json_response({'status': 'ok'})
