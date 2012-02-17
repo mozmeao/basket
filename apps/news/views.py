@@ -58,7 +58,7 @@ def update_user_task(request, type, data=None, optin=True):
                               'desc': e.message},
                              status=500)
 
-def get_user(email):
+def get_user(token):
     newsletters = newsletter_fields()
 
     fields = [
@@ -74,7 +74,7 @@ def get_user(email):
     try:
         ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
         user = ext.get_record(settings.EXACTTARGET_DATA,
-                              email,
+                              token,
                               fields)
     except NewsletterException, e:
         return json_response({'status': 'error',
@@ -86,15 +86,13 @@ def get_user(email):
                              status=500)
 
     user_data = {
-        'email': email,
+        'email': user['EMAIL_ADDRESS_'],
         'format': user['EMAIL_FORMAT_'],
         'country': user['COUNTRY_'],
         'lang': user['LANGUAGE_ISO2'],
         'newsletters': [newsletter_name(nl) for nl in newsletters
                         if user.get('%s_FLG' % nl, False) == 'Y']
     }
-
-    rs.logout()
 
     return json_response(user_data)
 
@@ -151,7 +149,7 @@ def user(request, token):
     if request.method == 'POST':
         return update_user_task(request, SET)
 
-    return get_user(request.subscriber.email)
+    return get_user(request.subscriber.token)
 
 
 def debug_user(request):

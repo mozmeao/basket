@@ -250,15 +250,15 @@ class ExactTargetDataExt(ExactTargetObject):
             handle_fault(e)
 
     @logged_in
-    def get_record(self, data_id, email, fields):
+    def get_record(self, data_id, token, fields):
         req = self.create('RetrieveRequest')
         req.ObjectType = 'DataExtensionObject[%s]' % data_id
         req.Properties = fields
 
         filter_ = self.create('SimpleFilterPart')
-        filter_.Value = email
+        filter_.Value = token
         filter_.SimpleOperator = 'equals'
-        filter_.Property = 'email'
+        filter_.Property = 'TOKEN'
         req.Filter = filter_
 
         del req.Options

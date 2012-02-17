@@ -108,12 +108,11 @@ def update_user(data, authed_email, type, optin):
     # Get the user or create them
     (sub, created) = Subscriber.objects.get_or_create(email=record['EMAIL_ADDRESS_'])
 
-    # Update the token if it's a new user or they aren't simply
-    # subscribing from a newsletter form (tokens are one-time use)
-    if created or type != SUBSCRIBE:
+    # Create a token if it's a new user 
+    if created:
         sub.token = str(uuid.uuid4())
         record['TOKEN'] = sub.token
-        #record['CREATED_DATE_'] = gmttime()
+        record['CREATED_DATE_'] = gmttime()
         sub.save()
     else:
         record['TOKEN'] = sub.token
