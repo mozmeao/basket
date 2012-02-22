@@ -58,7 +58,7 @@ def update_user_task(request, type, data=None, optin=True):
                               'desc': e.message},
                              status=500)
 
-def get_user(token):
+def get_user(token=None, email=None):
     newsletters = newsletter_fields()
 
     fields = [
@@ -74,7 +74,7 @@ def get_user(token):
     try:
         ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
         user = ext.get_record(settings.EXACTTARGET_DATA,
-                              token,
+                              token or email,
                               fields)
     except NewsletterException, e:
         return json_response({'status': 'error',
@@ -166,7 +166,7 @@ def debug_user(request):
                               'desc': 'Bad supertoken'},
                              status=401)
 
-    return get_user(request.GET['email'])
+    return get_user(email=request.GET['email'])
 
 
 # Custom update methods
