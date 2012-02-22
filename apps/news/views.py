@@ -74,8 +74,9 @@ def get_user(token=None, email=None):
     try:
         ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
         user = ext.get_record(settings.EXACTTARGET_DATA,
-                              token or email,
-                              fields)
+                              email or token,
+                              fields,
+                              'EMAIL_ADDRESS_' if email else 'TOKEN')
     except NewsletterException, e:
         return json_response({'status': 'error',
                               'desc': e.message},
