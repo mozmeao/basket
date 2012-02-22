@@ -297,7 +297,7 @@ class ExactTarget(ExactTargetObject):
         sub = self.create('Subscriber')
         sub.EmailAddress = email
         sub.SubscriberKey = token
-        del sub.EmailTypePreference
+        sub.EmailTypePreference = 'HTML' if format_ == 'H' else 'Text'
         del sub.Status
 
         attr = self.create('Attribute')
