@@ -100,7 +100,13 @@ def update_user(data, authed_email, type, optin):
         if field in data:
             record[extra_fields[field]] = data[field]
 
-    record['EMAIL_FORMAT_'] = data.get('format', 'H')
+    fmt = data.get('format', 'H').lower()
+    if fmt == 'text':
+        fmt = 'T'
+    elif fmt == 'html':
+        fmt = 'H'
+
+    record['EMAIL_FORMAT_'] = fmt.upper()
 
     # Set the newsletter flags in the record
     parse_newsletters(record, type, data.get('newsletters', ''))
