@@ -45,6 +45,8 @@ The following URLs are available (assuming "/news" is app url):
   be Y or N depending if the user should automatically be opted in,
   default is Y. "trigger_welcome" should be Y to fire off a welcome email.
 
+  format can be any of the following values: H, html, T, or text
+
 /news/unsubscribe
 
   method: POST
