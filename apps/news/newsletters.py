@@ -17,7 +17,6 @@ newsletters = {
     'addons': 'ABOUT_ADDONS',
     'hacks': 'ABOUT_HACKS',
     'labs': 'ABOUT_LABS',
-    'qa-news': 'QA_NEWS',
     #'student-reps': 'STUDENT_REPS',
     'about-standards': 'ABOUT_STANDARDS',
     # 'mobile-addon-dev': 'MOBILE_ADDON_DEV',
