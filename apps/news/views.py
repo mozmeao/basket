@@ -1,12 +1,14 @@
 from functools import wraps
 import urlparse
 import json
+import uuid
 
 from django.http import HttpResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt 
 from django.conf import settings
 
-from tasks import update_user, confirm_user, SUBSCRIBE, UNSUBSCRIBE, SET
+from tasks import (update_user, confirm_user, update_student_reps,
+                   SUBSCRIBE, UNSUBSCRIBE, SET, gmttime)
 from newsletters import *
 from models import Subscriber
 from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
@@ -65,7 +67,9 @@ def get_user(token=None, email=None):
         'EMAIL_ADDRESS_',
         'EMAIL_FORMAT_',
         'COUNTRY_',
-        'LANGUAGE_ISO2'
+        'LANGUAGE_ISO2',
+        'TOKEN',
+        'CREATED_DATE_',
     ]
 
     for nl in newsletters:
@@ -91,6 +95,8 @@ def get_user(token=None, email=None):
         'format': user['EMAIL_FORMAT_'],
         'country': user['COUNTRY_'],
         'lang': user['LANGUAGE_ISO2'],
+        'token': user['TOKEN'],
+        'created-date': user['CREATED_DATE_'],
         'newsletters': [newsletter_name(nl) for nl in newsletters
                         if user.get('%s_FLG' % nl, False) == 'Y']
     }
@@ -194,3 +200,14 @@ def custom_unsub_reason(request):
                    [token, reason])
 
     return json_response({'status': 'ok'})
+
+@csrf_exempt
+def custom_student_reps(request):
+    data = dict(request.POST.items())
+    try:
+        update_student_reps(data)
+        return json_response({'status': 'ok'})
+    except (NewsletterException, UnauthorizedException), e:
+        return json_response({'status': 'error',
+                              'desc': e.message},
+                             status=500)

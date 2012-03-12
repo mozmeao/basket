@@ -177,8 +177,66 @@ def confirm_user(token):
     try:
         ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
         ext.add_record('Confirmation', ['TOKEN'], [token]);
-    except Exception, e:
+    except (NewsletterException, UnauthorizedException), e:
         handle_exception(confirm_user, e)
+
+@task(default_retry_delay=60)
+def update_student_reps(data):
+    data.pop('privacy')
+    fmt = data.pop('format', 'H')
+    country = data.pop('country')
+    email = data.pop('email')
+
+    fmt = fmt.lower()
+    if fmt == 'text':
+        fmt = 'T'
+    elif fmt == 'html':
+        fmt = 'H'
+
+    # Get the user or create them
+    (sub, created) = Subscriber.objects.get_or_create(email=email)
+
+    # Create a token if it's a new user 
+    if created:
+        sub.token = str(uuid.uuid4())
+        data['TOKEN'] = sub.token
+        sub.save()
+    else:
+        data['TOKEN'] = sub.token
+        
+    data['STUDENT_REPS_FLG'] = data.get('STUDENT_REPS_FLG', 'N')
+    data['STUDENT_REPS_DATE'] = gmttime()        
+    data['STUDENT_REPS_MEMBER_FLG'] = 'Y'
+    data['STUDENT_REPS_MEMBER_DATE'] = gmttime()
+    data['EMAIL_FORMAT_'] = fmt
+    data['EMAIL_ADDRESS'] = email
+
+    try:
+        ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+        ext.add_record('Student_Reps',
+                       data.keys(),
+                       data.values())
+    except (NewsletterException, UnauthorizedException), e:
+        return handle_exception(update_student_reps, e)
+
+    # Need to add the user to the Master_Subscriber table now
+    record = {
+        'EMAIL_ADDRESS_': email,
+        'TOKEN': data['TOKEN'],
+        'STUDENT_REPS_FLG': data.get('STUDENT_REPS_FLG', 'N'),
+        'STUDENT_REPS_DATE': data['STUDENT_REPS_DATE'],
+        'MODIFIED_DATE_': gmttime()
+    }
+
+    if created:
+        record['CREATED_DATE_'] = gmttime()
+
+    try:
+        ext.add_record('Master_Subscribers',
+                       record.keys(),
+                       record.values())
+    except (NewsletterException, UnauthorizedException), e:
+        return handle_exception(update_student_reps, e)
 
 def handle_exception(task, e):
     # When celery is turn on, hande these exceptions here. Since
