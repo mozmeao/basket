@@ -285,7 +285,7 @@ class ExactTarget(ExactTargetObject):
         return ExactTargetDataExt(self.user, self.pass_, self.client)
 
     @logged_in
-    def trigger_send(self, send_name, email, token, format_):
+    def trigger_send(self, send_name, fields):
         send = self.create('TriggeredSend')
         defn = send.TriggeredSendDefinition
 
@@ -295,20 +295,18 @@ class ExactTarget(ExactTargetObject):
         defn.TriggeredSendStatus = status.Active
 
         sub = self.create('Subscriber')
-        sub.EmailAddress = email
-        sub.SubscriberKey = token
-        sub.EmailTypePreference = 'HTML' if format_ == 'H' else 'Text'
+        sub.EmailAddress = fields.pop('EMAIL_ADDRESS_')
+        sub.SubscriberKey = fields['TOKEN']
+        sub.EmailTypePreference = ('HTML'
+                                   if fields['EMAIL_FORMAT_'] == 'H'
+                                   else 'Text')
         del sub.Status
 
-        attr = self.create('Attribute')
-        attr.Name = 'TOKEN'
-        attr.Value = token
-        sub.Attributes.append(attr)
-
-        attr = self.create('Attribute')
-        attr.Name = 'EMAIL_FORMAT_'
-        attr.Value = format_
-        sub.Attributes.append(attr)
+        for k, v in fields.items():
+            attr = self.create('Attribute')
+            attr.Name = k
+            attr.Value = v
+            sub.Attributes.append(attr)
 
         send.Subscribers = [sub]
 

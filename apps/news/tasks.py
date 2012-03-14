@@ -166,9 +166,9 @@ def update_user(data, authed_email, type, optin):
     try:
         if welcome:
             et.trigger_send(welcome,
-                            record['EMAIL_ADDRESS_'],
-                            record['TOKEN'],
-                            record.get('EMAIL_FORMAT_', 'H'))
+                            {'EMAIL_ADDRESS_': record['EMAIL_ADDRESS_'],
+                             'TOKEN': record['TOKEN'],
+                             'EMAIL_FORMAT_': record.get('EMAIL_FORMAT_', 'H')})
     except (NewsletterException, UnauthorizedException), e:
         return handle_exception(update_user, e)
 
@@ -212,10 +212,18 @@ def update_student_reps(data):
     data['EMAIL_ADDRESS'] = email
 
     try:
-        ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+        et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+        ext = et.data_ext()
         ext.add_record('Student_Reps',
                        data.keys(),
                        data.values())
+        et.trigger_send(893,
+                        {'EMAIL_ADDRESS_': email,
+                         'TOKEN': data['TOKEN'],
+                         'EMAIL_FORMAT_': fmt,
+                         'STUDENT_REPS_FLG': data['STUDENT_REPS_FLG'],
+                         'STUDENT_REPS_MEMBER_FLG': data['STUDENT_REPS_MEMBER_FLG'],
+                         'FIRST_NAME': data['FIRST_NAME']})
     except (NewsletterException, UnauthorizedException), e:
         return handle_exception(update_student_reps, e)
 
@@ -237,7 +245,7 @@ def update_student_reps(data):
                        record.values())
     except (NewsletterException, UnauthorizedException), e:
         return handle_exception(update_student_reps, e)
-
+    
 def handle_exception(task, e):
     # When celery is turn on, hande these exceptions here. Since
     # celery isn't turned on yet, let them propagate.
