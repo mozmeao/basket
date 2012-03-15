@@ -148,18 +148,10 @@ def update_user(data, authed_email, type, optin):
                                  record.keys(),
                                  record.values())
     except (NewsletterException, UnauthorizedException), e:
-        # Sometimes a user is in basket's database but not in
-        # ExactTarget because the API failed or something. If that's
-        # the case, any future API call will error because basket
-        # won't add the required CREATED_DATE field. Try to add them
-        # with it here.
-        if e.message.find('CREATED_DATE_') != -1:
-            record['CREATED_DATE_'] = gmttime()
-            et.data_ext().add_record(target_et,
-                                     record.keys(),
-                                     record.values())
-        else:
-            return handle_exception(update_user, e)
+        return handle_exception_and_fix(target_et,
+                                        record,
+                                        update_user,
+                                        e)
 
     # This is a separate try because the above one might recover, and
     # we still need to send the welcome email
@@ -244,8 +236,24 @@ def update_student_reps(data):
                        record.keys(),
                        record.values())
     except (NewsletterException, UnauthorizedException), e:
-        return handle_exception(update_student_reps, e)
-    
+        return handle_exception_and_fix('Master_Subscribers',
+                                        record,
+                                        update_student_reps,
+                                        e)
+
+def handle_exception_and_fix(ext_name, record, task, e):
+    # Sometimes a user is in basket's database but not in
+    # ExactTarget because the API failed or something. If that's
+    # the case, any future API call will error because basket
+    # won't add the required CREATED_DATE field. Try to add them
+    # with it here.
+    if e.message.find('CREATED_DATE_') != -1:
+        record['CREATED_DATE_'] = gmttime()
+        ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+        ext.add_record(ext_name, record.keys(), record.values())
+    else:
+        return handle_exception(task, e)
+
 def handle_exception(task, e):
     # When celery is turn on, hande these exceptions here. Since
     # celery isn't turned on yet, let them propagate.
