@@ -138,7 +138,7 @@ def update_user(data, authed_email, type, optin):
         welcome = CONFIRM_SENDS[lang]
         record['SubscriberKey'] = record['TOKEN']
         record['EmailAddress'] = record['EMAIL_ADDRESS_']
-    elif data.get('trigger_welcome', False) == 'Y':
+    elif data.get('trigger_welcome', 'Y') == 'Y' and type == SUBSCRIBE:
         # Otherwise, send this welcome email unless its suppressed
         # This is the CustomerKey of the en-US welcome email
         welcome = '39'
