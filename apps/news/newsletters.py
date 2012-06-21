@@ -9,6 +9,7 @@ __all__ = ('newsletter_field', 'newsletter_name', 'newsletter_fields', 'newslett
 
 newsletters = {
     'mozilla-and-you': 'MOZILLA_AND_YOU',
+    'firefox-tips': 'FIREFOX_TIPS',
     'mobile': 'ABOUT_MOBILE',
     'beta': 'FIREFOX_BETA_NEWS',
     'aurora': 'AURORA',
