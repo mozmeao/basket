@@ -4,6 +4,7 @@ This "news" app provides a service for managing Mozilla newsletters.
 Available newsletters:
 
 * mozilla-and-you
+* firefox-tips
 * mobile
 * beta
 * aurora
