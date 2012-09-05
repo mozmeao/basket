@@ -26,8 +26,10 @@ CONFIRM_SENDS = {
     'es-ES': 'es_confirmation_email',
     'de': 'de_confirmation_email',
     'fr': 'fr_confirmation_email',
+    'id': 'id_confirmation_email',
     'pt': 'pt_br_confirmation_email',
     'pt-BR': 'pt_br_confirmation_email',
+    'ru': 'ru_confirmation_email_2',
 }
 SMS_MESSAGES = (
     'SMS_Android',
