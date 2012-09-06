@@ -8,7 +8,7 @@ from urllib2 import URLError
 from django.conf import settings
 from celery.task import task
 
-from backends.exacttarget import (ExactTarget, ExactTargetDataExt, 
+from backends.exacttarget import (ExactTarget, ExactTargetDataExt,
                                   NewsletterException, UnauthorizedException)
 from models import Subscriber
 from newsletters import *
@@ -54,7 +54,6 @@ def parse_newsletters(record, type, newsletters):
                 record['%s_FLG' % name] = 'Y'
                 record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
 
-    
     if type == UNSUBSCRIBE or type == SET:
         # Unsubscribe the user to these newsletters
         unsubs = newsletters
@@ -84,11 +83,11 @@ def update_user(data, authed_email, type, optin):
     # Validate parameters
     if not authed_email and 'email' not in data:
         log.error('No user or email provided')
- 
+
     # Parse the parameters
     record = {'EMAIL_ADDRESS_': data['email'],
               'EMAIL_PERMISSION_STATUS_': 'I'}
-    
+
     extra_fields = {
         'country': 'COUNTRY_',
         'lang': 'LANGUAGE_ISO2',
@@ -114,7 +113,7 @@ def update_user(data, authed_email, type, optin):
     # Get the user or create them
     (sub, created) = Subscriber.objects.get_or_create(email=record['EMAIL_ADDRESS_'])
 
-    # Create a token if it's a new user 
+    # Create a token if it's a new user
     if created:
         sub.token = str(uuid.uuid4())
         record['TOKEN'] = sub.token
@@ -164,6 +163,7 @@ def update_user(data, authed_email, type, optin):
     except (NewsletterException, UnauthorizedException), e:
         return handle_exception(update_user, e)
 
+
 @task(default_retry_delay=60)
 def confirm_user(token):
     try:
@@ -171,6 +171,7 @@ def confirm_user(token):
         ext.add_record('Confirmation', ['TOKEN'], [token]);
     except (NewsletterException, UnauthorizedException), e:
         handle_exception(confirm_user, e)
+
 
 @task(default_retry_delay=60)
 def update_student_reps(data):
@@ -188,16 +189,16 @@ def update_student_reps(data):
     # Get the user or create them
     (sub, created) = Subscriber.objects.get_or_create(email=email)
 
-    # Create a token if it's a new user 
+    # Create a token if it's a new user
     if created:
         sub.token = str(uuid.uuid4())
         data['TOKEN'] = sub.token
         sub.save()
     else:
         data['TOKEN'] = sub.token
-        
+
     data['STUDENT_REPS_FLG'] = data.get('STUDENT_REPS_FLG', 'N')
-    data['STUDENT_REPS_DATE'] = gmttime()        
+    data['STUDENT_REPS_DATE'] = gmttime()
     data['STUDENT_REPS_MEMBER_FLG'] = 'Y'
     data['STUDENT_REPS_MEMBER_DATE'] = gmttime()
     data['EMAIL_FORMAT_'] = fmt
@@ -241,6 +242,21 @@ def update_student_reps(data):
                                         update_student_reps,
                                         e)
 
+
+@task(default_retry_delay=60)
+def add_sms_user(send_name, mobile_number, optin):
+    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+    try:
+        et.trigger_send_sms(send_name, mobile_number)
+        if optin:
+            record = {'Phone': mobile_number, 'SubscriberKey': mobile_number}
+            et.data_ext().add_record('Mobile_Subscribers',
+                                     record.keys(),
+                                     record.values())
+    except (NewsletterException, UnauthorizedException), e:
+        handle_exception(add_sms_user, e)
+
+
 def handle_exception_and_fix(ext_name, record, task, e):
     # Sometimes a user is in basket's database but not in
     # ExactTarget because the API failed or something. If that's
@@ -253,6 +269,7 @@ def handle_exception_and_fix(ext_name, record, task, e):
         ext.add_record(ext_name, record.keys(), record.values())
     else:
         return handle_exception(task, e)
+
 
 def handle_exception(task, e):
     # When celery is turn on, hande these exceptions here. Since
