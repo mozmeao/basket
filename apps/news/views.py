@@ -4,10 +4,11 @@ import json
 import uuid
 
 from django.http import HttpResponse, HttpResponseBadRequest
-from django.views.decorators.csrf import csrf_exempt 
+from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
+import re
 
-from tasks import (update_user, confirm_user, update_student_reps,
+from tasks import (add_sms_user, update_user, confirm_user, update_student_reps,
                    SUBSCRIBE, UNSUBSCRIBE, SET, gmttime)
 from newsletters import *
 from models import Subscriber
@@ -111,7 +112,7 @@ def get_user(token=None, email=None):
 def confirm(request, token):
     if request.method != 'POST':
         return HttpResponseBadRequest("Only POST supported")
-    
+
     # Until celery is turned on, return a message immediately
     try:
         confirm_user(request.subscriber.token)
@@ -120,7 +121,7 @@ def confirm(request, token):
         return json_response({'status': 'error',
                               'desc': e.message},
                              status=500)
-    
+
 
 @csrf_exempt
 def subscribe(request):
@@ -134,6 +135,41 @@ def subscribe(request):
 
     optin = request.POST.get('optin', 'Y') == 'Y'
     return update_user_task(request, SUBSCRIBE, optin=optin)
+
+
+@csrf_exempt
+def subscribe_sms(request):
+    if request.method != 'POST':
+        return HttpResponseBadRequest("Only POST supported")
+
+    if 'mobile_number' not in request.POST:
+        return json_response({'status': 'error',
+                              'desc': 'mobile_number is missing'},
+                             status=500)
+
+    msg_name = request.POST.get('msg_name', 'SMS_Android')
+    mobile = request.POST['mobile_number']
+    mobile = re.sub(r'\D+', '', mobile)
+    if len(mobile) == 10:
+        mobile = '1' + mobile
+    elif len(mobile) != 11 or mobile[0] != '1':
+        return json_response({'status': 'error',
+                              'desc': 'mobile_number must be a US number'},
+                             status=500)
+
+    optin = request.POST.get('optin', 'N') == 'Y'
+
+    # When celery is turned on, use delay to call update_user and
+    # don't catch any exceptions. For now, return an error if
+    # something goes wrong.
+    try:
+        add_sms_user(msg_name, mobile, optin)
+        return json_response({'status': 'ok'})
+    except (NewsletterException, UnauthorizedException), e:
+        return json_response({'status': 'error',
+                              'desc': e.message},
+                             status=500)
+
 
 
 @logged_in

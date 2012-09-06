@@ -2,7 +2,7 @@
 This library provides a Python interface for working with
 ExactTarget's SOAP API.
 
-To watch the SOAP requests:        
+To watch the SOAP requests:
 import logging
 logging.getLogger('suds.client').addHandler(logging.StreamHandler(sys.__stdout__))
 logging.getLogger('suds.client').setLevel(logging.DEBUG)
@@ -14,7 +14,6 @@ et.trigger_send('WelcomeEmail', 'jlong@mozilla.com', 'hello', 'H')
 """
 
 from functools import wraps
-import sys
 
 from suds import WebFault
 from suds.client import Client
@@ -90,7 +89,7 @@ class ExactTargetObject(object):
         self.client = client
         self.user = user
         self.pass_ = pass_
-    
+
     def create(self, name):
         return self.client.factory.create(name)
 
@@ -133,7 +132,7 @@ class ExactTargetList(ExactTargetObject):
             lst.ID = list_id
             del lst.Status
             lsts.append(lst)
-        
+
         subscriber.Lists = lsts
 
         opt = self.create('SaveOption')
@@ -148,7 +147,7 @@ class ExactTargetList(ExactTargetObject):
             assert_status(obj)
         except WebFault, e:
             handle_fault(e)
-        
+
     @logged_in
     def get_subscriber(self, email, list_id, fields):
         req = self.create('RetrieveRequest')
@@ -182,7 +181,7 @@ class ExactTargetList(ExactTargetObject):
                         res[field] = attr.Value
 
         return res
-        
+
     @logged_in
     def get_lists_for_subscriber(self, emails):
         emails = [emails] if isinstance(emails, basestring) else emails
@@ -266,14 +265,14 @@ class ExactTargetDataExt(ExactTargetObject):
         try:
             obj = self.client.service.Retrieve(req)
             assert_status(obj)
-            assert_result(obj)        
+            assert_result(obj)
         except WebFault, e:
             handle_fault(e)
-            
+
         return dict((p.Name, p.Value)
                     for p in obj.Results[0].Properties.Property)
 
-    
+
 class ExactTarget(ExactTargetObject):
 
     @logged_in
@@ -316,6 +315,32 @@ class ExactTarget(ExactTargetObject):
         try:
             obj = self.client.service.Create(opts, [send])
             assert_status(obj)
-            assert_result(obj)        
+            assert_result(obj)
+        except WebFault, e:
+            handle_fault(e)
+
+    @logged_in
+    def trigger_send_sms(self, send_name, mobile_number):
+        send = self.create('SMSTriggeredSend')
+        send.Number = mobile_number
+        defn = send.SMSTriggeredSendDefinition
+        defn.Name = send_name
+        defn.CustomerKey = send_name
+
+        sub = self.create('Subscriber')
+        sub.SubscriberKey = mobile_number
+        sub.EmailTypePreference = 'Text'
+
+        del sub.Status
+
+        send.Subscriber = sub
+
+        rtype = self.create('RequestType')
+        opts = self.create('CreateOptions')
+
+        try:
+            obj = self.client.service.Create(opts, [send])
+            assert_status(obj)
+            assert_result(obj)
         except WebFault, e:
             handle_fault(e)
