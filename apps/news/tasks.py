@@ -3,7 +3,6 @@ from email.utils import formatdate
 import datetime
 from time import mktime
 from datetime import date
-from urllib2 import URLError
 
 from django.conf import settings
 from celery.task import task
@@ -16,9 +15,9 @@ from newsletters import *
 
 # A few constants to indicate the type of action to take
 # on a user with a list of newsletters
-SUBSCRIBE=1
-UNSUBSCRIBE=2
-SET=3
+SUBSCRIBE = 1
+UNSUBSCRIBE = 2
+SET = 3
 
 
 # Double optin-in languages
@@ -28,8 +27,11 @@ CONFIRM_SENDS = {
     'de': 'de_confirmation_email',
     'fr': 'fr_confirmation_email',
     'pt': 'pt_br_confirmation_email',
-    'pt-BR': 'pt_br_confirmation_email'
+    'pt-BR': 'pt_br_confirmation_email',
 }
+SMS_MESSAGES = (
+    'SMS_Android',
+)
 
 
 def gmttime():
@@ -91,7 +93,7 @@ def update_user(data, authed_email, type, optin):
     extra_fields = {
         'country': 'COUNTRY_',
         'lang': 'LANGUAGE_ISO2',
-        'source_url': 'SOURCE_URL'
+        'source_url': 'SOURCE_URL',
     }
 
     # Optionally add more fields
@@ -111,7 +113,8 @@ def update_user(data, authed_email, type, optin):
     parse_newsletters(record, type, data.get('newsletters', ''))
 
     # Get the user or create them
-    (sub, created) = Subscriber.objects.get_or_create(email=record['EMAIL_ADDRESS_'])
+    (sub, created) = Subscriber.objects.get_or_create(
+        email=record['EMAIL_ADDRESS_'])
 
     # Create a token if it's a new user
     if created:
@@ -156,10 +159,11 @@ def update_user(data, authed_email, type, optin):
     # we still need to send the welcome email
     try:
         if welcome:
-            et.trigger_send(welcome,
-                            {'EMAIL_ADDRESS_': record['EMAIL_ADDRESS_'],
-                             'TOKEN': record['TOKEN'],
-                             'EMAIL_FORMAT_': record.get('EMAIL_FORMAT_', 'H')})
+            et.trigger_send(welcome, {
+                'EMAIL_ADDRESS_': record['EMAIL_ADDRESS_'],
+                'TOKEN': record['TOKEN'],
+                'EMAIL_FORMAT_': record.get('EMAIL_FORMAT_', 'H'),
+            })
     except (NewsletterException, UnauthorizedException), e:
         return handle_exception(update_user, e)
 
@@ -167,8 +171,9 @@ def update_user(data, authed_email, type, optin):
 @task(default_retry_delay=60)
 def confirm_user(token):
     try:
-        ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-        ext.add_record('Confirmation', ['TOKEN'], [token]);
+        ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
+                                 settings.EXACTTARGET_PASS)
+        ext.add_record('Confirmation', ['TOKEN'], [token])
     except (NewsletterException, UnauthorizedException), e:
         handle_exception(confirm_user, e)
 
@@ -210,13 +215,14 @@ def update_student_reps(data):
         ext.add_record('Student_Reps',
                        data.keys(),
                        data.values())
-        et.trigger_send(893,
-                        {'EMAIL_ADDRESS_': email,
-                         'TOKEN': data['TOKEN'],
-                         'EMAIL_FORMAT_': fmt,
-                         'STUDENT_REPS_FLG': data['STUDENT_REPS_FLG'],
-                         'STUDENT_REPS_MEMBER_FLG': data['STUDENT_REPS_MEMBER_FLG'],
-                         'FIRST_NAME': data['FIRST_NAME']})
+        et.trigger_send(893, {
+            'EMAIL_ADDRESS_': email,
+            'TOKEN': data['TOKEN'],
+            'EMAIL_FORMAT_': fmt,
+            'STUDENT_REPS_FLG': data['STUDENT_REPS_FLG'],
+            'STUDENT_REPS_MEMBER_FLG': data['STUDENT_REPS_MEMBER_FLG'],
+            'FIRST_NAME': data['FIRST_NAME'],
+        })
     except (NewsletterException, UnauthorizedException), e:
         return handle_exception(update_student_reps, e)
 
@@ -226,7 +232,7 @@ def update_student_reps(data):
         'TOKEN': data['TOKEN'],
         'STUDENT_REPS_FLG': data.get('STUDENT_REPS_FLG', 'N'),
         'STUDENT_REPS_DATE': data['STUDENT_REPS_DATE'],
-        'MODIFIED_DATE_': gmttime()
+        'MODIFIED_DATE_': gmttime(),
     }
 
     if created:
@@ -245,6 +251,8 @@ def update_student_reps(data):
 
 @task(default_retry_delay=60)
 def add_sms_user(send_name, mobile_number, optin):
+    if send_name not in SMS_MESSAGES:
+        return
     et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
     try:
         et.trigger_send_sms(send_name, mobile_number)
@@ -265,7 +273,8 @@ def handle_exception_and_fix(ext_name, record, task, e):
     # with it here.
     if e.message.find('CREATED_DATE_') != -1:
         record['CREATED_DATE_'] = gmttime()
-        ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+        ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
+                                 settings.EXACTTARGET_PASS)
         ext.add_record(ext_name, record.keys(), record.values())
     else:
         return handle_exception(task, e)

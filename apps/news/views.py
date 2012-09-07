@@ -1,15 +1,14 @@
 from functools import wraps
-import urlparse
 import json
-import uuid
 
-from django.http import HttpResponse, HttpResponseBadRequest
+from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.conf import settings
 import re
 
-from tasks import (add_sms_user, update_user, confirm_user, update_student_reps,
-                   SUBSCRIBE, UNSUBSCRIBE, SET, gmttime)
+from tasks import (add_sms_user, update_user, confirm_user,
+                   update_student_reps, SUBSCRIBE, UNSUBSCRIBE)
 from newsletters import *
 from models import Subscriber
 from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
@@ -26,9 +25,10 @@ def logged_in(f):
     def wrapper(request, token, *args, **kwargs):
         subscriber = Subscriber.objects.filter(token=token)
         if not subscriber.exists():
-            return json_response({'status': 'error',
-                                  'desc': 'Must have valid token for this request'},
-                                 status=403)
+            return json_response({
+                'status': 'error',
+                'desc': 'Must have valid token for this request',
+            }, status=403)
 
         request.subscriber = subscriber[0]
         return f(request, token, *args, **kwargs)
@@ -61,6 +61,7 @@ def update_user_task(request, type, data=None, optin=True):
                               'desc': e.message},
                              status=500)
 
+
 def get_user(token=None, email=None):
     newsletters = newsletter_fields()
 
@@ -77,7 +78,8 @@ def get_user(token=None, email=None):
         fields.append('%s_FLG' % nl)
 
     try:
-        ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+        ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
+                                 settings.EXACTTARGET_PASS)
         user = ext.get_record(settings.EXACTTARGET_DATA,
                               email or token,
                               fields,
@@ -99,7 +101,7 @@ def get_user(token=None, email=None):
         'token': user['TOKEN'],
         'created-date': user['CREATED_DATE_'],
         'newsletters': [newsletter_name(nl) for nl in newsletters
-                        if user.get('%s_FLG' % nl, False) == 'Y']
+                        if user.get('%s_FLG' % nl, False) == 'Y'],
     }
 
     return json_response(user_data)
@@ -107,12 +109,10 @@ def get_user(token=None, email=None):
 ## Views
 
 
+@require_POST
 @logged_in
 @csrf_exempt
 def confirm(request, token):
-    if request.method != 'POST':
-        return HttpResponseBadRequest("Only POST supported")
-
     # Until celery is turned on, return a message immediately
     try:
         confirm_user(request.subscriber.token)
@@ -123,11 +123,9 @@ def confirm(request, token):
                              status=500)
 
 
+@require_POST
 @csrf_exempt
 def subscribe(request):
-    if request.method != 'POST':
-        return HttpResponseBadRequest("Only POST supported")
-
     if 'newsletters' not in request.POST:
         return json_response({'status': 'error',
                               'desc': 'newsletters is missing'},
@@ -137,15 +135,13 @@ def subscribe(request):
     return update_user_task(request, SUBSCRIBE, optin=optin)
 
 
+@require_POST
 @csrf_exempt
 def subscribe_sms(request):
-    if request.method != 'POST':
-        return HttpResponseBadRequest("Only POST supported")
-
     if 'mobile_number' not in request.POST:
         return json_response({'status': 'error',
                               'desc': 'mobile_number is missing'},
-                             status=500)
+                             status=400)
 
     msg_name = request.POST.get('msg_name', 'SMS_Android')
     mobile = request.POST['mobile_number']
@@ -155,7 +151,7 @@ def subscribe_sms(request):
     elif len(mobile) != 11 or mobile[0] != '1':
         return json_response({'status': 'error',
                               'desc': 'mobile_number must be a US number'},
-                             status=500)
+                             status=400)
 
     optin = request.POST.get('optin', 'N') == 'Y'
 
@@ -171,13 +167,10 @@ def subscribe_sms(request):
                              status=500)
 
 
-
+@require_POST
 @logged_in
 @csrf_exempt
 def unsubscribe(request, token):
-    if request.method != 'POST':
-        return HttpResponseBadRequest("Only POST supported")
-
     data = request.POST.copy()
 
     if data.get('optout', 'N') == 'Y':
@@ -186,23 +179,20 @@ def unsubscribe(request, token):
     return update_user_task(request, UNSUBSCRIBE, data)
 
 
+@require_POST
 @logged_in
 @csrf_exempt
 def user(request, token):
-    if request.method == 'POST':
-        return update_user_task(request, SET)
-
     return get_user(request.subscriber.token)
 
 
 def debug_user(request):
     if not 'email' in request.GET or not 'supertoken' in request.GET:
-        return json_response(
-            {'status': 'error',
-             'desc': 'Using debug_user, you need to pass the '
-                     '`email` and `supertoken` GET parameters'},
-            status=500
-        )
+        return json_response({
+            'status': 'error',
+            'desc': 'Using debug_user, you need to pass the '
+                    '`email` and `supertoken` GET parameters',
+        }, status=500)
 
     if request.GET['supertoken'] != settings.SUPERTOKEN:
         return json_response({'status': 'error',
@@ -220,22 +210,23 @@ def custom_unsub_reason(request):
     unsubscribed from all newsletters."""
 
     if not 'token' in request.POST or not 'reason' in request.POST:
-        return json_response(
-            {'status': 'error',
-             'desc': 'custom_unsub_reason requires the `token` '
-                     'and `reason` POST parameters'},
-            status=401
-        )
+        return json_response({
+            'status': 'error',
+            'desc': 'custom_unsub_reason requires the `token` '
+                    'and `reason` POST parameters',
+        }, status=401)
 
     token = request.POST['token']
     reason = request.POST['reason']
 
-    ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+    ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
+                             settings.EXACTTARGET_PASS)
     ext.add_record(settings.EXACTTARGET_DATA,
                    ['TOKEN', 'UNSUBSCRIBE_REASON'],
                    [token, reason])
 
     return json_response({'status': 'ok'})
+
 
 @csrf_exempt
 def custom_student_reps(request):
