@@ -26,6 +26,7 @@ newsletters = {
     'mozilla-phone': 'MOZILLA_PHONE',
     'app-dev': 'APP_DEV',
     'moz-spaces': 'MOZ_SPACE',
+    'affiliates': 'AFFILIATES',
 }
 
 
