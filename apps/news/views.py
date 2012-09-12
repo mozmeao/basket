@@ -179,10 +179,12 @@ def unsubscribe(request, token):
     return update_user_task(request, UNSUBSCRIBE, data)
 
 
-@require_POST
 @logged_in
 @csrf_exempt
 def user(request, token):
+    if request.method == 'POST':
+        return update_user_task(request, SET)
+
     return get_user(request.subscriber.token)
 
 
