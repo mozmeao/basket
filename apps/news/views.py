@@ -8,7 +8,7 @@ from django.conf import settings
 import re
 
 from tasks import (add_sms_user, update_user, confirm_user,
-                   update_student_reps, SUBSCRIBE, UNSUBSCRIBE)
+                   update_student_reps, SET, SUBSCRIBE, UNSUBSCRIBE)
 from newsletters import *
 from models import Subscriber
 from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
