@@ -23,14 +23,15 @@ def logged_in(f):
 
     @wraps(f)
     def wrapper(request, token, *args, **kwargs):
-        subscriber = Subscriber.objects.filter(token=token)
-        if not subscriber.exists():
+        try:
+            subscriber = Subscriber.objects.get(token=token)
+        except Subscriber.DoesNotExist:
             return json_response({
                 'status': 'error',
                 'desc': 'Must have valid token for this request',
             }, status=403)
 
-        request.subscriber = subscriber[0]
+        request.subscriber = subscriber
         return f(request, token, *args, **kwargs)
     return wrapper
 
@@ -45,17 +46,29 @@ def json_response(data, status=200):
 def update_user_task(request, type, data=None, optin=True):
     """Call the update_user task async with the right parameters"""
 
-    user = getattr(request, 'subscriber', None)
+    sub = getattr(request, 'subscriber', None)
+    data = data or request.POST.copy()
+    email = data.get('email')
+    created = False
+    if not sub:
+        if email:
+            sub, created = Subscriber.objects.get_or_create(email=email)
+        else:
+            return json_response({'status': 'error',
+                                  'desc': 'An email address or token '
+                                          'is required.'},
+                                 status=400)
 
     # When celery is turned on, use delay to call update_user and
     # don't catch any exceptions. For now, return an error if
     # something goes wrong.
     try:
-        update_user(data or request.POST.copy(),
-                    user and user.email,
-                    type,
-                    optin)
-        return json_response({'status': 'ok'})
+        update_user(data, sub.email, sub.token, created, type, optin)
+        return json_response({
+            'status': 'ok',
+            'token': sub.token,
+            'created': created,
+        })
     except (NewsletterException, UnauthorizedException), e:
         return json_response({'status': 'error',
                               'desc': e.message},
@@ -87,7 +100,7 @@ def get_user(token=None, email=None):
     except NewsletterException, e:
         return json_response({'status': 'error',
                               'desc': e.message},
-                             status=500)
+                             status=400)
     except UnauthorizedException, e:
         return json_response({'status': 'error',
                               'desc': 'Email service provider auth failure'},
@@ -129,7 +142,7 @@ def subscribe(request):
     if 'newsletters' not in request.POST:
         return json_response({'status': 'error',
                               'desc': 'newsletters is missing'},
-                             status=500)
+                             status=400)
 
     optin = request.POST.get('optin', 'Y') == 'Y'
     return update_user_task(request, SUBSCRIBE, optin=optin)
@@ -194,7 +207,7 @@ def debug_user(request):
             'status': 'error',
             'desc': 'Using debug_user, you need to pass the '
                     '`email` and `supertoken` GET parameters',
-        }, status=500)
+        }, status=400)
 
     if request.GET['supertoken'] != settings.SUPERTOKEN:
         return json_response({'status': 'error',
@@ -216,7 +229,7 @@ def custom_unsub_reason(request):
             'status': 'error',
             'desc': 'custom_unsub_reason requires the `token` '
                     'and `reason` POST parameters',
-        }, status=401)
+        }, status=400)
 
     token = request.POST['token']
     reason = request.POST['reason']
