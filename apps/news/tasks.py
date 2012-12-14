@@ -76,7 +76,7 @@ def parse_newsletters(record, type, newsletters):
 
 
 @task(default_retry_delay=60)  # retry in 1 minute on failure
-def update_user(data, authed_email, type, optin):
+def update_user(data, email, token, created, type, optin):
     """Task for updating user's preferences and newsletters.
 
     ``authed_email`` is the email for the user pulled from the database
@@ -84,13 +84,15 @@ def update_user(data, authed_email, type, optin):
 
     log = update_user.get_logger()
 
-    # Validate parameters
-    if not authed_email and 'email' not in data:
-        log.error('No user or email provided')
-
     # Parse the parameters
-    record = {'EMAIL_ADDRESS_': data['email'],
-              'EMAIL_PERMISSION_STATUS_': 'I'}
+    record = {
+        'EMAIL_ADDRESS_': email,
+        'TOKEN': token,
+        'EMAIL_PERMISSION_STATUS_': 'I',
+        'MODIFIED_DATE_': gmttime(),
+    }
+    if created:
+        record['CREATED_DATE_'] = gmttime()
 
     extra_fields = {
         'country': 'COUNTRY_',
@@ -99,7 +101,7 @@ def update_user(data, authed_email, type, optin):
     }
 
     # Optionally add more fields
-    for field in extra_fields.keys():
+    for field in extra_fields:
         if field in data:
             record[extra_fields[field]] = data[field]
 
@@ -114,22 +116,8 @@ def update_user(data, authed_email, type, optin):
     # Set the newsletter flags in the record
     parse_newsletters(record, type, data.get('newsletters', ''))
 
-    # Get the user or create them
-    (sub, created) = Subscriber.objects.get_or_create(
-        email=record['EMAIL_ADDRESS_'])
-
-    # Create a token if it's a new user
-    if created:
-        sub.token = str(uuid.uuid4())
-        record['TOKEN'] = sub.token
-        record['CREATED_DATE_'] = gmttime()
-        sub.save()
-    else:
-        record['TOKEN'] = sub.token
-
     # Submit the final data to the service
     et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-    record['MODIFIED_DATE_'] = gmttime()
     lang = record.get('LANGUAGE_ISO2', None)
 
     target_et = settings.EXACTTARGET_DATA
@@ -148,14 +136,9 @@ def update_user(data, authed_email, type, optin):
         welcome = '39'
 
     try:
-        et.data_ext().add_record(target_et,
-                                 record.keys(),
-                                 record.values())
+        et.data_ext().add_record(target_et, record.keys(), record.values())
     except (NewsletterException, UnauthorizedException), e:
-        return handle_exception_and_fix(target_et,
-                                        record,
-                                        update_user,
-                                        e)
+        return handle_exception_and_fix(target_et, record, update_user, e)
 
     # This is a separate try because the above one might recover, and
     # we still need to send the welcome email

@@ -79,6 +79,7 @@ INSTALLED_APPS = (
     'piston',
     'tower',
     'djcelery',
+    'django_nose',
 
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -88,8 +89,9 @@ INSTALLED_APPS = (
     'django.contrib.admin',
 )
 
-# tests
-TEST_RUNNER = 'test_utils.runner.RadicalTestSuiteRunner'
+# This is broken for now
+# TODO: Fix this
+#TEST_RUNNER = 'test_utils.runner.RadicalTestSuiteRunner'
 
 LANGUAGES = (
     'af','ak','ast-ES','ar','as','be','bg','bn-BD','bn-IN','br-FR',
