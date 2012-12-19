@@ -34,6 +34,41 @@ CONFIRM_SENDS = {
 SMS_MESSAGES = (
     'SMS_Android',
 )
+PHONEBOOK_GROUPS = (
+    'SYSTEMS_ADMINISTRATION',
+    'BOOT2GECKO',
+    'LOCALIZATION',
+    'QUALITY_ASSURANCE',
+    'CREATIVE',
+    'METRICS',
+    'MARKETING',
+    'POLICY',
+    'WEB_DEVELOPMENT',
+    'CODING',
+    'SUPPORT',
+    'UX',
+    'COMMUNICATIONS',
+    'PROGRAM_MANAGEMENT',
+    'LABS',
+    'WEBFWD',
+    'SECURITY',
+    'DEVELOPER_DOCUMENTATION',
+    'DEVELOPER_TOOLS',
+    'MOBILE',
+    'THUNDERBIRD',
+    'APPS',
+    'EVANGELISM',
+    'GRAPHICS',
+    'LEGAL',
+    'ADD-ONS',
+    'AUTOMATION',
+    'RECRUITING',
+    'PERSONA',
+    'BUSINESS_DEVELOPMENT',
+    'PEOPLE',
+    'ACCESSIBILITY',
+    'FUNDRAISING',
+)
 
 
 def gmttime():
@@ -73,6 +108,26 @@ def parse_newsletters(record, type, newsletters):
             if name:
                 record['%s_FLG' % name] = 'N'
                 record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
+
+
+@task(default_retry_delay=60)
+def update_phonebook(data, email, token):
+    record = {
+        'EMAIL_ADDRESS': email,
+        'TOKEN': token,
+    }
+    if 'city' in data:
+        record['CITY'] = data['city']
+    if 'country' in data:
+        record['COUNTRY'] = data['country']
+
+    record.update((k, v) for k, v in data.items() if k in PHONEBOOK_GROUPS)
+
+    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+    try:
+        et.data_ext().add_record('PHONEBOOK', record.keys(), record.values())
+    except (NewsletterException, UnauthorizedException), e:
+        return handle_exception(update_user, e)
 
 
 @task(default_retry_delay=60)  # retry in 1 minute on failure
@@ -179,14 +234,7 @@ def update_student_reps(data):
     # Get the user or create them
     (sub, created) = Subscriber.objects.get_or_create(email=email)
 
-    # Create a token if it's a new user
-    if created:
-        sub.token = str(uuid.uuid4())
-        data['TOKEN'] = sub.token
-        sub.save()
-    else:
-        data['TOKEN'] = sub.token
-
+    data['TOKEN'] = sub.token
     data['STUDENT_REPS_FLG'] = data.get('STUDENT_REPS_FLG', 'N')
     data['STUDENT_REPS_DATE'] = gmttime()
     data['STUDENT_REPS_MEMBER_FLG'] = 'Y'

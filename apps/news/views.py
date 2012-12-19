@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST
 from django.conf import settings
 import re
 
-from tasks import (add_sms_user, update_user, confirm_user,
+from tasks import (add_sms_user, update_user, confirm_user, update_phonebook,
                    update_student_reps, SET, SUBSCRIBE, UNSUBSCRIBE)
 from newsletters import *
 from models import Subscriber
@@ -248,6 +248,20 @@ def custom_student_reps(request):
     data = dict(request.POST.items())
     try:
         update_student_reps(data)
+        return json_response({'status': 'ok'})
+    except (NewsletterException, UnauthorizedException), e:
+        return json_response({'status': 'error',
+                              'desc': e.message},
+                             status=500)
+
+
+@require_POST
+@logged_in
+@csrf_exempt
+def custom_update_phonebook(request, token):
+    sub = request.subscriber
+    try:
+        update_phonebook(dict(request.POST.items()), sub.email, sub.token)
         return json_response({'status': 'ok'})
     except (NewsletterException, UnauthorizedException), e:
         return json_response({'status': 'error',
