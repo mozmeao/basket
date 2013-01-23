@@ -27,6 +27,7 @@ newsletters = {
     'app-dev': 'APP_DEV',
     'moz-spaces': 'MOZ_SPACE',
     'affiliates': 'AFFILIATES',
+    'firefox-os': 'FIREFOX_OS',
 }
 
 
