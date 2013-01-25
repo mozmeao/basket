@@ -12,6 +12,8 @@ DATABASES = {
     }
 }
 
+SUPERTOKEN = 'change me to something unique and do not share'
+
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = ''
 
