@@ -75,7 +75,7 @@ def update_user_task(request, type, data=None, optin=True):
                              status=500)
 
 
-def get_user(token=None, email=None):
+def get_user_data(token=None, email=None):
     newsletters = newsletter_fields()
 
     fields = [
@@ -106,7 +106,7 @@ def get_user(token=None, email=None):
                               'desc': 'Email service provider auth failure'},
                              status=500)
 
-    user_data = {
+    return {
         'email': user['EMAIL_ADDRESS_'],
         'format': user['EMAIL_FORMAT_'],
         'country': user['COUNTRY_'],
@@ -117,7 +117,10 @@ def get_user(token=None, email=None):
                         if user.get('%s_FLG' % nl, False) == 'Y'],
     }
 
-    return json_response(user_data)
+
+def get_user(token=None, email=None):
+    return json_response(get_user_data(token, email))
+
 
 ## Views
 
@@ -214,7 +217,17 @@ def debug_user(request):
                               'desc': 'Bad supertoken'},
                              status=401)
 
-    return get_user(email=request.GET['email'])
+    email = request.GET['email']
+    user_data = get_user_data(email=email)
+    try:
+        user = Subscriber.objects.get(email=email)
+        user_data['in_basket'] = True
+        user_data['basket_token'] = user.token
+    except Subscriber.DoesNotExist:
+        user_data['in_basket'] = False
+        user_data['basket_token'] = ''
+
+    return json_response(user_data)
 
 
 # Custom update methods

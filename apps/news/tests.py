@@ -1,5 +1,6 @@
 import json
 
+from django.conf import settings
 from django.test import TestCase
 
 from mock import patch
@@ -23,6 +24,48 @@ class UserTest(TestCase):
         update_user.assert_called_with({'fake': ['data']},
                                        'test@example.com',
                                        'asdf', False, tasks.SET, True)
+
+
+class DebugUserTest(TestCase):
+    def setUp(self):
+        self.sub = Subscriber.objects.create(email='dude@example.com')
+
+    @patch('news.views.get_user_data')
+    def test_basket_data_included(self, et_mock):
+        """
+        The token from the basket DB should be included, and can be
+        different from that returned by ET
+        """
+        et_mock.return_value = {
+            'email': self.sub.email,
+            'token': 'not-the-users-basket-token',
+        }
+        resp = self.client.get('/news/debug-user/', {
+            'email': self.sub.email,
+            'supertoken': settings.SUPERTOKEN,
+        })
+        resp_data = json.loads(resp.content)
+        self.assertEqual(resp_data['basket_token'], self.sub.token)
+        self.assertNotEqual(resp_data['token'], self.sub.token)
+        self.assertTrue(resp_data['in_basket'])
+
+    @patch('news.views.get_user_data')
+    def test_user_not_in_basket(self, et_mock):
+        """
+        It's possible the user is in ET but not basket. Response should
+        indicate that.
+        """
+        et_mock.return_value = {
+            'email': 'donnie@example.com',
+            'token': 'not-the-users-basket-token',
+        }
+        resp = self.client.get('/news/debug-user/', {
+            'email': 'donnie@example.com',
+            'supertoken': settings.SUPERTOKEN,
+        })
+        resp_data = json.loads(resp.content)
+        self.assertEqual(resp_data['token'], 'not-the-users-basket-token')
+        self.assertFalse(resp_data['in_basket'])
 
 
 class UpdatePhonebookTest(TestCase):
