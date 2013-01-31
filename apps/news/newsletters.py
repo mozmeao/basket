@@ -28,6 +28,7 @@ newsletters = {
     'moz-spaces': 'MOZ_SPACE',
     'affiliates': 'AFFILIATES',
     'firefox-os': 'FIREFOX_OS',
+    'firefox-flicks': 'FLICKS',
 }
 
 
