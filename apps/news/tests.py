@@ -8,7 +8,33 @@ from test_utils import RequestFactory
 
 from news import views
 from news import tasks
+from news.backends.exacttarget import NewsletterException
 from news.models import Subscriber
+
+
+class SubscriberTest(TestCase):
+    def test_get_and_sync_creates(self):
+        """
+        Subscriber.objects.get_and_sync() should create if email doesn't exist.
+        """
+        with self.assertRaises(Subscriber.DoesNotExist):
+            Subscriber.objects.get(email='dude@example.com')
+
+        Subscriber.objects.get_and_sync('dude@example.com', 'asdfjkl')
+        sub = Subscriber.objects.get(email='dude@example.com')
+        self.assertEqual(sub.token, 'asdfjkl')
+
+    def test_get_and_sync_updates(self):
+        """
+        Subscriber.objects.get_and_sync() should update token if it doesn't
+        match.
+        """
+        Subscriber.objects.create(email='dude@example.com',
+                                  token='asdf')
+
+        Subscriber.objects.get_and_sync('dude@example.com', 'asdfjkl')
+        sub = Subscriber.objects.get(email='dude@example.com')
+        self.assertEqual(sub.token, 'asdfjkl')
 
 
 class UserTest(TestCase):
@@ -24,6 +50,43 @@ class UserTest(TestCase):
         update_user.assert_called_with({'fake': ['data']},
                                        'test@example.com',
                                        'asdf', False, tasks.SET, True)
+
+    @patch('news.views.ExactTargetDataExt')
+    def test_missing_user_created(self, et_ext):
+        """
+        If a user is in ET but not Basket, it should be created.
+        """
+        data_ext = et_ext()
+        data_ext.get_record.return_value = {
+            'EMAIL_ADDRESS_': 'dude@example.com',
+            'EMAIL_FORMAT_': 'HTML',
+            'COUNTRY_': 'us',
+            'LANGUAGE_ISO2': 'en',
+            'TOKEN': 'asdf',
+            'CREATED_DATE_': 'Yesterday',
+        }
+        with self.assertRaises(Subscriber.DoesNotExist):
+            Subscriber.objects.get(email='dude@example.com')
+
+        resp = self.client.get('/news/user/asdf/')
+        self.assertEqual(data_ext.get_record.call_count, 1)
+        self.assertEqual(resp.status_code, 200)
+        sub = Subscriber.objects.get(email='dude@example.com')
+        self.assertEqual(sub.token, 'asdf')
+
+    @patch('news.views.ExactTargetDataExt')
+    def test_user_not_in_et(self, et_ext):
+        """A user not found in ET should produce an error response."""
+        data_ext = et_ext()
+        data_ext.get_record.side_effect = NewsletterException('DANGER!')
+        Subscriber.objects.create(email='dude@example.com', token='asdfjkl')
+        resp = self.client.get('/news/user/asdfjkl/')
+        self.assertEqual(resp.status_code, 400)
+        resp_data = json.loads(resp.content)
+        self.assertDictEqual(resp_data, {
+            'status': 'error',
+            'desc': 'DANGER!',
+        })
 
 
 class DebugUserTest(TestCase):
@@ -83,7 +146,7 @@ class UpdatePhonebookTest(TestCase):
             'country': 'US',
             'WEB_DEVELOPMENT': 'y',
             'DOES_NOT_EXIST': 'y',
-            }
+        }
         self.client.post(self.url, data)
         pb_mock.assert_called_with(data, self.sub.email, self.sub.token)
 

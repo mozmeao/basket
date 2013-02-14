@@ -17,30 +17,43 @@ from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
 
 ## Utility functions
 
+
+class HttpResponseJSON(HttpResponse):
+    def __init__(self, data, status=None):
+        super(HttpResponseJSON, self).__init__(content=json.dumps(data),
+                                               content_type='application/json',
+                                               status=status)
+
+
 def logged_in(f):
     """Decorator to check if the user has permission to view these
     pages"""
 
     @wraps(f)
     def wrapper(request, token, *args, **kwargs):
+        subscriber = None
+        subscriber_data = None
         try:
             subscriber = Subscriber.objects.get(token=token)
         except Subscriber.DoesNotExist:
-            return json_response({
+            # Check with ET to see if our DB is just out of sync
+            subscriber_data = get_user_data(token=token, sync_data=True)
+            if subscriber_data['status'] == 'ok':
+                try:
+                    subscriber = Subscriber.objects.get(token=token)
+                except Subscriber.DoesNotExist:
+                    pass
+
+        if not subscriber:
+            return HttpResponseJSON({
                 'status': 'error',
                 'desc': 'Must have valid token for this request',
-            }, status=403)
+            }, 403)
 
+        request.subscriber_data = subscriber_data
         request.subscriber = subscriber
         return f(request, token, *args, **kwargs)
     return wrapper
-
-
-def json_response(data, status=200):
-    res = HttpResponse(json.dumps(data),
-                       mimetype='application/json')
-    res.status_code = status
-    return res
 
 
 def update_user_task(request, type, data=None, optin=True):
@@ -54,28 +67,29 @@ def update_user_task(request, type, data=None, optin=True):
         if email:
             sub, created = Subscriber.objects.get_or_create(email=email)
         else:
-            return json_response({'status': 'error',
-                                  'desc': 'An email address or token '
-                                          'is required.'},
-                                 status=400)
+            return HttpResponseJSON({
+                'status': 'error',
+                'desc': 'An email address or token is required.',
+            }, 400)
 
     # When celery is turned on, use delay to call update_user and
     # don't catch any exceptions. For now, return an error if
     # something goes wrong.
     try:
         update_user(data, sub.email, sub.token, created, type, optin)
-        return json_response({
+        return HttpResponseJSON({
             'status': 'ok',
             'token': sub.token,
             'created': created,
         })
     except (NewsletterException, UnauthorizedException), e:
-        return json_response({'status': 'error',
-                              'desc': e.message},
-                             status=500)
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': e.message,
+        }, 500)
 
 
-def get_user_data(token=None, email=None):
+def get_user_data(token=None, email=None, sync_data=False):
     newsletters = newsletter_fields()
 
     fields = [
@@ -98,15 +112,20 @@ def get_user_data(token=None, email=None):
                               fields,
                               'EMAIL_ADDRESS_' if email else 'TOKEN')
     except NewsletterException, e:
-        return json_response({'status': 'error',
-                              'desc': e.message},
-                             status=400)
+        return {
+            'status': 'error',
+            'status_code': 400,
+            'desc': e.message,
+        }
     except UnauthorizedException, e:
-        return json_response({'status': 'error',
-                              'desc': 'Email service provider auth failure'},
-                             status=500)
+        return {
+            'status': 'error',
+            'status_code': 500,
+            'desc': 'Email service provider auth failure',
+        }
 
-    return {
+    user_data = {
+        'status': 'ok',
         'email': user['EMAIL_ADDRESS_'],
         'format': user['EMAIL_FORMAT_'],
         'country': user['COUNTRY_'],
@@ -117,9 +136,17 @@ def get_user_data(token=None, email=None):
                         if user.get('%s_FLG' % nl, False) == 'Y'],
     }
 
+    if sync_data:
+        # if user not in our db create it, if token mismatch fix it.
+        Subscriber.objects.get_and_sync(user_data['email'], user_data['token'])
 
-def get_user(token=None, email=None):
-    return json_response(get_user_data(token, email))
+    return user_data
+
+
+def get_user(token=None, email=None, sync_data=False):
+    user_data = get_user_data(token, email, sync_data)
+    status_code = user_data.pop('status_code', 200)
+    return HttpResponseJSON(user_data, status_code)
 
 
 ## Views
@@ -132,20 +159,19 @@ def confirm(request, token):
     # Until celery is turned on, return a message immediately
     try:
         confirm_user(request.subscriber.token)
-        return json_response({'status': 'ok'})
+        return HttpResponseJSON({'status': 'ok'})
     except (NewsletterException, UnauthorizedException), e:
-        return json_response({'status': 'error',
-                              'desc': e.message},
-                             status=500)
+        return HttpResponseJSON({'status': 'error', 'desc': e.message}, 500)
 
 
 @require_POST
 @csrf_exempt
 def subscribe(request):
     if 'newsletters' not in request.POST:
-        return json_response({'status': 'error',
-                              'desc': 'newsletters is missing'},
-                             status=400)
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'newsletters is missing',
+        }, 400)
 
     optin = request.POST.get('optin', 'Y') == 'Y'
     return update_user_task(request, SUBSCRIBE, optin=optin)
@@ -155,9 +181,10 @@ def subscribe(request):
 @csrf_exempt
 def subscribe_sms(request):
     if 'mobile_number' not in request.POST:
-        return json_response({'status': 'error',
-                              'desc': 'mobile_number is missing'},
-                             status=400)
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'mobile_number is missing',
+        }, 400)
 
     msg_name = request.POST.get('msg_name', 'SMS_Android')
     mobile = request.POST['mobile_number']
@@ -165,9 +192,10 @@ def subscribe_sms(request):
     if len(mobile) == 10:
         mobile = '1' + mobile
     elif len(mobile) != 11 or mobile[0] != '1':
-        return json_response({'status': 'error',
-                              'desc': 'mobile_number must be a US number'},
-                             status=400)
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'mobile_number must be a US number',
+        }, 400)
 
     optin = request.POST.get('optin', 'N') == 'Y'
 
@@ -176,11 +204,9 @@ def subscribe_sms(request):
     # something goes wrong.
     try:
         add_sms_user(msg_name, mobile, optin)
-        return json_response({'status': 'ok'})
+        return HttpResponseJSON({'status': 'ok'})
     except (NewsletterException, UnauthorizedException), e:
-        return json_response({'status': 'error',
-                              'desc': e.message},
-                             status=500)
+        return HttpResponseJSON({'status': 'error', 'desc': e.message}, 500)
 
 
 @require_POST
@@ -201,24 +227,27 @@ def user(request, token):
     if request.method == 'POST':
         return update_user_task(request, SET)
 
+    if request.subscriber_data:
+        return HttpResponseJSON(request.subscriber_data)
+
     return get_user(request.subscriber.token)
 
 
 def debug_user(request):
     if not 'email' in request.GET or not 'supertoken' in request.GET:
-        return json_response({
+        return HttpResponseJSON({
             'status': 'error',
             'desc': 'Using debug_user, you need to pass the '
                     '`email` and `supertoken` GET parameters',
-        }, status=400)
+        }, 400)
 
     if request.GET['supertoken'] != settings.SUPERTOKEN:
-        return json_response({'status': 'error',
-                              'desc': 'Bad supertoken'},
-                             status=401)
+        return HttpResponseJSON({'status': 'error', 'desc': 'Bad supertoken'},
+                                401)
 
     email = request.GET['email']
     user_data = get_user_data(email=email)
+    status_code = user_data.pop('status_code', 200)
     try:
         user = Subscriber.objects.get(email=email)
         user_data['in_basket'] = True
@@ -227,7 +256,7 @@ def debug_user(request):
         user_data['in_basket'] = False
         user_data['basket_token'] = ''
 
-    return json_response(user_data)
+    return HttpResponseJSON(user_data, status_code)
 
 
 # Custom update methods
@@ -238,11 +267,11 @@ def custom_unsub_reason(request):
     unsubscribed from all newsletters."""
 
     if not 'token' in request.POST or not 'reason' in request.POST:
-        return json_response({
+        return HttpResponseJSON({
             'status': 'error',
             'desc': 'custom_unsub_reason requires the `token` '
                     'and `reason` POST parameters',
-        }, status=400)
+        }, 400)
 
     token = request.POST['token']
     reason = request.POST['reason']
@@ -253,7 +282,7 @@ def custom_unsub_reason(request):
                    ['TOKEN', 'UNSUBSCRIBE_REASON'],
                    [token, reason])
 
-    return json_response({'status': 'ok'})
+    return HttpResponseJSON({'status': 'ok'})
 
 
 @csrf_exempt
@@ -261,11 +290,9 @@ def custom_student_reps(request):
     data = dict(request.POST.items())
     try:
         update_student_reps(data)
-        return json_response({'status': 'ok'})
+        return HttpResponseJSON({'status': 'ok'})
     except (NewsletterException, UnauthorizedException), e:
-        return json_response({'status': 'error',
-                              'desc': e.message},
-                             status=500)
+        return HttpResponseJSON({'status': 'error', 'desc': e.message}, 500)
 
 
 @require_POST
@@ -275,8 +302,6 @@ def custom_update_phonebook(request, token):
     sub = request.subscriber
     try:
         update_phonebook(dict(request.POST.items()), sub.email, sub.token)
-        return json_response({'status': 'ok'})
+        return HttpResponseJSON({'status': 'ok'})
     except (NewsletterException, UnauthorizedException), e:
-        return json_response({'status': 'error',
-                              'desc': e.message},
-                             status=500)
+        return HttpResponseJSON({'status': 'error', 'desc': e.message}, 500)
