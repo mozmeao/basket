@@ -18,7 +18,9 @@ Get the code
 
 ::
 
-    git clone git@github.com:abuchanan/basket.git
+    git clone git@github.com:abuchanan/basket.git --recursive
+
+The `--recursive` is important!
 
 
 Make a virtualenv
@@ -26,7 +28,7 @@ Make a virtualenv
 
 Using virualenvwrapper::
 
-    mkvirtualenv basket
+    mkvirtualenv --python=python2.6 basket
 
 
 Install packages
@@ -34,7 +36,7 @@ Install packages
 
 ::
 
-    pip install -r requirements/prod.txt -r requirements/compiled.txt
+    pip install -r requirements/compiled.txt
 
 For developers::
 
