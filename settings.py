@@ -29,6 +29,12 @@ DATABASES = {
     }
 }
 
+ALLOWED_HOSTS = [
+    '.allizom.org',
+    'basket.mozilla.com',
+    'basket.mozilla.org',
+]
+
 TIME_ZONE = 'America/Chicago'
 LANGUAGE_CODE = 'en-us'
 SITE_ID = 1
