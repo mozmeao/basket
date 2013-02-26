@@ -7,8 +7,15 @@ from django.views.decorators.http import require_POST
 from django.conf import settings
 import re
 
-from tasks import (add_sms_user, update_user, confirm_user, update_phonebook,
-                   update_student_reps, SET, SUBSCRIBE, UNSUBSCRIBE)
+from tasks import (
+    add_sms_user,
+    confirm_user,
+    update_custom_unsub,
+    update_phonebook,
+    update_student_reps,
+    update_user,
+    SET, SUBSCRIBE, UNSUBSCRIBE,
+)
 from newsletters import *
 from models import Subscriber
 from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
@@ -75,18 +82,12 @@ def update_user_task(request, type, data=None, optin=True):
     # When celery is turned on, use delay to call update_user and
     # don't catch any exceptions. For now, return an error if
     # something goes wrong.
-    try:
-        update_user(data, sub.email, sub.token, created, type, optin)
-        return HttpResponseJSON({
-            'status': 'ok',
-            'token': sub.token,
-            'created': created,
-        })
-    except (NewsletterException, UnauthorizedException), e:
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': e.message,
-        }, 500)
+    update_user.delay(data, sub.email, sub.token, created, type, optin)
+    return HttpResponseJSON({
+        'status': 'ok',
+        'token': sub.token,
+        'created': created,
+    })
 
 
 def get_user_data(token=None, email=None, sync_data=False):
@@ -156,12 +157,8 @@ def get_user(token=None, email=None, sync_data=False):
 @logged_in
 @csrf_exempt
 def confirm(request, token):
-    # Until celery is turned on, return a message immediately
-    try:
-        confirm_user(request.subscriber.token)
-        return HttpResponseJSON({'status': 'ok'})
-    except (NewsletterException, UnauthorizedException), e:
-        return HttpResponseJSON({'status': 'error', 'desc': e.message}, 500)
+    confirm_user.delay(request.subscriber.token)
+    return HttpResponseJSON({'status': 'ok'})
 
 
 @require_POST
@@ -199,14 +196,8 @@ def subscribe_sms(request):
 
     optin = request.POST.get('optin', 'N') == 'Y'
 
-    # When celery is turned on, use delay to call update_user and
-    # don't catch any exceptions. For now, return an error if
-    # something goes wrong.
-    try:
-        add_sms_user(msg_name, mobile, optin)
-        return HttpResponseJSON({'status': 'ok'})
-    except (NewsletterException, UnauthorizedException), e:
-        return HttpResponseJSON({'status': 'error', 'desc': e.message}, 500)
+    add_sms_user.delay(msg_name, mobile, optin)
+    return HttpResponseJSON({'status': 'ok'})
 
 
 @require_POST
@@ -273,26 +264,15 @@ def custom_unsub_reason(request):
                     'and `reason` POST parameters',
         }, 400)
 
-    token = request.POST['token']
-    reason = request.POST['reason']
-
-    ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
-                             settings.EXACTTARGET_PASS)
-    ext.add_record(settings.EXACTTARGET_DATA,
-                   ['TOKEN', 'UNSUBSCRIBE_REASON'],
-                   [token, reason])
-
+    update_custom_unsub.delay(request.POST['token'], request.POST['reason'])
     return HttpResponseJSON({'status': 'ok'})
 
 
 @csrf_exempt
 def custom_student_reps(request):
     data = dict(request.POST.items())
-    try:
-        update_student_reps(data)
-        return HttpResponseJSON({'status': 'ok'})
-    except (NewsletterException, UnauthorizedException), e:
-        return HttpResponseJSON({'status': 'error', 'desc': e.message}, 500)
+    update_student_reps.delay(data)
+    return HttpResponseJSON({'status': 'ok'})
 
 
 @require_POST
@@ -300,8 +280,5 @@ def custom_student_reps(request):
 @csrf_exempt
 def custom_update_phonebook(request, token):
     sub = request.subscriber
-    try:
-        update_phonebook(dict(request.POST.items()), sub.email, sub.token)
-        return HttpResponseJSON({'status': 'ok'})
-    except (NewsletterException, UnauthorizedException), e:
-        return HttpResponseJSON({'status': 'error', 'desc': e.message}, 500)
+    update_phonebook.delay(dict(request.POST.items()), sub.email, sub.token)
+    return HttpResponseJSON({'status': 'ok'})
