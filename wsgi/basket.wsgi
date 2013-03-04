@@ -2,6 +2,7 @@ import os
 import site
 from datetime import datetime
 
+
 # Remember when mod_wsgi loaded this file so we can track it in nagios.
 wsgi_loaded = datetime.now()
 
@@ -16,6 +17,9 @@ import django.conf
 import django.core.handlers.wsgi
 import django.core.management
 import django.utils
+
+import djcelery
+djcelery.setup_loader()
 
 # Do validate and activate translations like using `./manage.py runserver`.
 # http://blog.dscpl.com.au/2010/03/improved-wsgi-script-for-use-with.html

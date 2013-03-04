@@ -1,11 +1,15 @@
-import uuid
-from email.utils import formatdate
 import datetime
-from time import mktime
+from functools import wraps
+import logging
+import uuid
 from datetime import date
+from email.utils import formatdate
+from time import mktime
+from urllib2 import URLError
 
 from django.conf import settings
-from celery.task import task
+from django_statsd.clients import statsd
+from celery.task import Task, task
 
 from backends.exacttarget import (ExactTarget, ExactTargetDataExt,
                                   NewsletterException, UnauthorizedException)
@@ -13,12 +17,13 @@ from models import Subscriber
 from newsletters import *
 
 
+log = logging.getLogger(__name__)
+
 # A few constants to indicate the type of action to take
 # on a user with a list of newsletters
 SUBSCRIBE = 1
 UNSUBSCRIBE = 2
 SET = 3
-
 
 # Double optin-in languages
 CONFIRM_SENDS = {
@@ -71,6 +76,45 @@ PHONEBOOK_GROUPS = (
 )
 
 
+class ETTask(Task):
+    abstract = True
+    default_retry_delay = 60 * 5  # 5 minutes
+    max_retries = 6  # ~ 30 min
+
+    def on_success(self, *args, **kwargs):
+        statsd.incr(self.name + '.success')
+
+    def on_failure(self, *args, **kwargs):
+        statsd.incr(self.name + '.failure')
+
+    def on_retry(self, *args, **kwargs):
+        statsd.incr(self.name + '.retry')
+
+
+def et_task(func):
+    """Decorator to standardize ET Celery tasks."""
+    @task(base=ETTask)
+    @wraps(func)
+    def wrapped(*args, **kwargs):
+        statsd.incr(wrapped.name + '.total')
+        try:
+            return func(*args, **kwargs)
+        except URLError, e:
+            # connection problem. try again later.
+            wrapped.retry(exc=e)
+        except NewsletterException, e:
+            statsd.incr(wrapped.name + '.error')
+            log.exception('NewsletterException: %s' % e.message)
+            raise e
+        except UnauthorizedException, e:
+            statsd.incr(wrapped.name + '.auth_error')
+            log.exception('Email service provider auth failure')
+            raise e
+
+    return wrapped
+
+
+
 def gmttime():
     d = datetime.datetime.now() + datetime.timedelta(minutes=10)
     stamp = mktime(d.timetuple())
@@ -110,7 +154,7 @@ def parse_newsletters(record, type, newsletters):
                 record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
 
 
-@task(default_retry_delay=60)
+@et_task
 def update_phonebook(data, email, token):
     record = {
         'EMAIL_ADDRESS': email,
@@ -124,13 +168,10 @@ def update_phonebook(data, email, token):
     record.update((k, v) for k, v in data.items() if k in PHONEBOOK_GROUPS)
 
     et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-    try:
-        et.data_ext().add_record('PHONEBOOK', record.keys(), record.values())
-    except (NewsletterException, UnauthorizedException), e:
-        return handle_exception(update_user, e)
+    et.data_ext().add_record('PHONEBOOK', record.keys(), record.values())
 
 
-@task(default_retry_delay=60)  # retry in 1 minute on failure
+@et_task
 def update_user(data, email, token, created, type, optin):
     """Task for updating user's preferences and newsletters.
 
@@ -192,33 +233,27 @@ def update_user(data, email, token, created, type, optin):
 
     try:
         et.data_ext().add_record(target_et, record.keys(), record.values())
-    except (NewsletterException, UnauthorizedException), e:
-        return handle_exception_and_fix(target_et, record, update_user, e)
+    except NewsletterException, e:
+        return attempt_fix(target_et, record, update_user, e)
 
     # This is a separate try because the above one might recover, and
     # we still need to send the welcome email
-    try:
-        if welcome:
-            et.trigger_send(welcome, {
-                'EMAIL_ADDRESS_': record['EMAIL_ADDRESS_'],
-                'TOKEN': record['TOKEN'],
-                'EMAIL_FORMAT_': record.get('EMAIL_FORMAT_', 'H'),
-            })
-    except (NewsletterException, UnauthorizedException), e:
-        return handle_exception(update_user, e)
+    if welcome:
+        et.trigger_send(welcome, {
+            'EMAIL_ADDRESS_': record['EMAIL_ADDRESS_'],
+            'TOKEN': record['TOKEN'],
+            'EMAIL_FORMAT_': record.get('EMAIL_FORMAT_', 'H'),
+        })
 
 
-@task(default_retry_delay=60)
+@et_task
 def confirm_user(token):
-    try:
-        ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
-                                 settings.EXACTTARGET_PASS)
-        ext.add_record('Confirmation', ['TOKEN'], [token])
-    except (NewsletterException, UnauthorizedException), e:
-        handle_exception(confirm_user, e)
+    ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
+                             settings.EXACTTARGET_PASS)
+    ext.add_record('Confirmation', ['TOKEN'], [token])
 
 
-@task(default_retry_delay=60)
+@et_task
 def update_student_reps(data):
     data.pop('privacy')
     fmt = data.pop('format', 'H')
@@ -242,22 +277,19 @@ def update_student_reps(data):
     data['EMAIL_FORMAT_'] = fmt
     data['EMAIL_ADDRESS'] = email
 
-    try:
-        et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-        ext = et.data_ext()
-        ext.add_record('Student_Reps',
-                       data.keys(),
-                       data.values())
-        et.trigger_send(893, {
-            'EMAIL_ADDRESS_': email,
-            'TOKEN': data['TOKEN'],
-            'EMAIL_FORMAT_': fmt,
-            'STUDENT_REPS_FLG': data['STUDENT_REPS_FLG'],
-            'STUDENT_REPS_MEMBER_FLG': data['STUDENT_REPS_MEMBER_FLG'],
-            'FIRST_NAME': data['FIRST_NAME'],
-        })
-    except (NewsletterException, UnauthorizedException), e:
-        return handle_exception(update_student_reps, e)
+    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+    ext = et.data_ext()
+    ext.add_record('Student_Reps',
+                   data.keys(),
+                   data.values())
+    et.trigger_send(893, {
+        'EMAIL_ADDRESS_': email,
+        'TOKEN': data['TOKEN'],
+        'EMAIL_FORMAT_': fmt,
+        'STUDENT_REPS_FLG': data['STUDENT_REPS_FLG'],
+        'STUDENT_REPS_MEMBER_FLG': data['STUDENT_REPS_MEMBER_FLG'],
+        'FIRST_NAME': data['FIRST_NAME'],
+    })
 
     # Need to add the user to the Master_Subscriber table now
     record = {
@@ -275,30 +307,34 @@ def update_student_reps(data):
         ext.add_record('Master_Subscribers',
                        record.keys(),
                        record.values())
-    except (NewsletterException, UnauthorizedException), e:
-        return handle_exception_and_fix('Master_Subscribers',
-                                        record,
-                                        update_student_reps,
-                                        e)
+    except NewsletterException, e:
+        return attempt_fix('Master_Subscribers', record, update_student_reps, e)
 
 
-@task(default_retry_delay=60)
+@et_task
 def add_sms_user(send_name, mobile_number, optin):
     if send_name not in SMS_MESSAGES:
         return
     et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-    try:
-        et.trigger_send_sms(send_name, mobile_number)
-        if optin:
-            record = {'Phone': mobile_number, 'SubscriberKey': mobile_number}
-            et.data_ext().add_record('Mobile_Subscribers',
-                                     record.keys(),
-                                     record.values())
-    except (NewsletterException, UnauthorizedException), e:
-        handle_exception(add_sms_user, e)
+    et.trigger_send_sms(send_name, mobile_number)
+    if optin:
+        record = {'Phone': mobile_number, 'SubscriberKey': mobile_number}
+        et.data_ext().add_record('Mobile_Subscribers',
+                                 record.keys(),
+                                 record.values())
 
 
-def handle_exception_and_fix(ext_name, record, task, e):
+@et_task
+def update_custom_unsub(token, reason):
+    """Record a user's custom unsubscribe reason."""
+    ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
+                             settings.EXACTTARGET_PASS)
+    ext.add_record(settings.EXACTTARGET_DATA,
+                   ['TOKEN', 'UNSUBSCRIBE_REASON'],
+                   [token, reason])
+
+
+def attempt_fix(ext_name, record, task, e):
     # Sometimes a user is in basket's database but not in
     # ExactTarget because the API failed or something. If that's
     # the case, any future API call will error because basket
@@ -310,18 +346,5 @@ def handle_exception_and_fix(ext_name, record, task, e):
                                  settings.EXACTTARGET_PASS)
         ext.add_record(ext_name, record.keys(), record.values())
     else:
-        return handle_exception(task, e)
+        raise e
 
-
-def handle_exception(task, e):
-    # When celery is turn on, hande these exceptions here. Since
-    # celery isn't turned on yet, let them propagate.
-    #
-    # if isinstance(e, URLError):
-    #     # URL timeout, try again
-    #     task.retry(exc=e)
-    # elif isinstance(e, NewsletterException):
-    #     log.error('NewsletterException: %s' % e.message)
-    # elif isinstance(e, UnauthorizedException):
-    #     log.error('Email service provider auth failure')
-    raise e
