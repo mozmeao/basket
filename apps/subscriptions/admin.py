@@ -15,10 +15,14 @@ class SubscriptionAdmin(admin.ModelAdmin):
     search_fields = ['subscriber__email', 'source']
     actions_on_top = False
     actions_on_bottom = False
-    
+
 class SubscriberAdmin(admin.ModelAdmin):
     list_display = ('email', 'subscription_count')
     inlines = [SubscriptionInline,]
 
     def subscription_count(self, obj):
         return obj.subscriptions.count()
+
+
+admin.site.register(Subscription, SubscriptionAdmin)
+admin.site.register(Subscriber, SubscriberAdmin)

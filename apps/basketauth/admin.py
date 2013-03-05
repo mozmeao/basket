@@ -1,4 +1,7 @@
 from django.contrib import admin
+from django.contrib.admin.sites import NotRegistered
+
+from piston.models import Consumer
 
 
 class ConsumerAdmin(admin.ModelAdmin):
@@ -11,3 +14,11 @@ class ConsumerAdmin(admin.ModelAdmin):
             obj.generate_random_codes()
         else:
             obj.save()
+
+
+try:
+    admin.site.unregister(Consumer)
+except NotRegistered:
+    pass
+
+admin.site.register(Consumer, ConsumerAdmin)
