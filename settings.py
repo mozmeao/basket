@@ -145,6 +145,12 @@ EMAIL_BACKLOG_TOLERANCE = 200
 SYNC_UNSUBSCRIBE_LIMIT = 1000
 LDAP_TIMEOUT = 2
 
+# Default newsletter welcome message ID for HTML format.
+# There must also exist a text-format message with the same
+# ID with "_T" appended, e.g. "39_T"
+DEFAULT_WELCOME_MESSAGE_ID = '39'
+
+
 def JINJA_CONFIG():
     import jinja2
     from django.conf import settings
@@ -174,3 +180,15 @@ CELERY_IGNORE_RESULT = True
 
 import djcelery
 djcelery.setup_loader()
+
+CACHES = {
+    # We're not using it, but Django insists that we define a 'default' cache
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    },
+    'newsletters': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'newsletters',
+        'TIMEOUT': 3600,   # cache is cleared when newsletters are changed
+    }
+}

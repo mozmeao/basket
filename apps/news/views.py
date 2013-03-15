@@ -1,12 +1,15 @@
 from functools import wraps
 import json
-
-from django.http import HttpResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
-from django.conf import settings
 import re
 
+from django.conf import settings
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_GET, require_POST
+
+from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
+                                  UnauthorizedException)
+from models import Newsletter, Subscriber
 from tasks import (
     add_sms_user,
     confirm_user,
@@ -16,10 +19,7 @@ from tasks import (
     update_user,
     SET, SUBSCRIBE, UNSUBSCRIBE,
 )
-from newsletters import *
-from models import Subscriber
-from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
-                                  UnauthorizedException)
+from .newsletters import newsletter_fields, newsletter_name, newsletter_names
 
 
 ## Utility functions
@@ -79,9 +79,6 @@ def update_user_task(request, type, data=None, optin=True):
                 'desc': 'An email address or token is required.',
             }, 400)
 
-    # When celery is turned on, use delay to call update_user and
-    # don't catch any exceptions. For now, return an error if
-    # something goes wrong.
     update_user.delay(data, sub.email, sub.token, created, type, optin)
     return HttpResponseJSON({
         'status': 'ok',
@@ -282,3 +279,22 @@ def custom_update_phonebook(request, token):
     sub = request.subscriber
     update_phonebook.delay(dict(request.POST.items()), sub.email, sub.token)
     return HttpResponseJSON({'status': 'ok'})
+
+
+# Get data about current newsletters
+@require_GET
+def newsletters(request):
+    # Get the newsletters as a dictionary of dictionaries that are
+    # easily jsonified
+
+    result = {}
+    for newsletter in Newsletter.objects.all().values():
+        newsletter['languages'] = newsletter['languages'].split(",")
+        result[newsletter['slug']] = newsletter
+        del newsletter['id']  # caller doesn't need to know our pkey
+        del newsletter['slug']  # or our slug
+
+    return HttpResponseJSON({
+        'status': 'ok',
+        'newsletters': result,
+    })

@@ -1,15 +1,18 @@
 import json
 
 from django.conf import settings
+from django.core.urlresolvers import reverse
 from django.test import TestCase
 
 from mock import patch
+from news.newsletters import newsletter_fields
+from news.tasks import update_user, SUBSCRIBE
 from test_utils import RequestFactory
 
-from news import views
+from news import models
 from news import tasks
+from news import views
 from news.backends.exacttarget import NewsletterException
-from news.models import Subscriber
 
 
 class SubscriberTest(TestCase):
@@ -17,11 +20,11 @@ class SubscriberTest(TestCase):
         """
         Subscriber.objects.get_and_sync() should create if email doesn't exist.
         """
-        with self.assertRaises(Subscriber.DoesNotExist):
-            Subscriber.objects.get(email='dude@example.com')
+        with self.assertRaises(models.Subscriber.DoesNotExist):
+            models.Subscriber.objects.get(email='dude@example.com')
 
-        Subscriber.objects.get_and_sync('dude@example.com', 'asdfjkl')
-        sub = Subscriber.objects.get(email='dude@example.com')
+        models.Subscriber.objects.get_and_sync('dude@example.com', 'asdfjkl')
+        sub = models.Subscriber.objects.get(email='dude@example.com')
         self.assertEqual(sub.token, 'asdfjkl')
 
     def test_get_and_sync_updates(self):
@@ -29,11 +32,11 @@ class SubscriberTest(TestCase):
         Subscriber.objects.get_and_sync() should update token if it doesn't
         match.
         """
-        Subscriber.objects.create(email='dude@example.com',
+        models.Subscriber.objects.create(email='dude@example.com',
                                   token='asdf')
 
-        Subscriber.objects.get_and_sync('dude@example.com', 'asdfjkl')
-        sub = Subscriber.objects.get(email='dude@example.com')
+        models.Subscriber.objects.get_and_sync('dude@example.com', 'asdfjkl')
+        sub = models.Subscriber.objects.get(email='dude@example.com')
         self.assertEqual(sub.token, 'asdfjkl')
 
 
@@ -43,7 +46,7 @@ class UserTest(TestCase):
         """If the user view is sent a POST request, it should attempt to update
         the user's info.
         """
-        subscriber = Subscriber(email='test@example.com', token='asdf')
+        subscriber = models.Subscriber(email='test@example.com', token='asdf')
         subscriber.save()
 
         self.client.post('/news/user/asdf/', {'fake': 'data'})
@@ -65,13 +68,13 @@ class UserTest(TestCase):
             'TOKEN': 'asdf',
             'CREATED_DATE_': 'Yesterday',
         }
-        with self.assertRaises(Subscriber.DoesNotExist):
-            Subscriber.objects.get(email='dude@example.com')
+        with self.assertRaises(models.Subscriber.DoesNotExist):
+            models.Subscriber.objects.get(email='dude@example.com')
 
         resp = self.client.get('/news/user/asdf/')
         self.assertEqual(data_ext.get_record.call_count, 1)
         self.assertEqual(resp.status_code, 200)
-        sub = Subscriber.objects.get(email='dude@example.com')
+        sub = models.Subscriber.objects.get(email='dude@example.com')
         self.assertEqual(sub.token, 'asdf')
 
     @patch('news.views.ExactTargetDataExt')
@@ -79,7 +82,8 @@ class UserTest(TestCase):
         """A user not found in ET should produce an error response."""
         data_ext = et_ext()
         data_ext.get_record.side_effect = NewsletterException('DANGER!')
-        Subscriber.objects.create(email='dude@example.com', token='asdfjkl')
+        models.Subscriber.objects.create(email='dude@example.com',
+                                         token='asdfjkl')
         resp = self.client.get('/news/user/asdfjkl/')
         self.assertEqual(resp.status_code, 400)
         resp_data = json.loads(resp.content)
@@ -91,7 +95,7 @@ class UserTest(TestCase):
 
 class DebugUserTest(TestCase):
     def setUp(self):
-        self.sub = Subscriber.objects.create(email='dude@example.com')
+        self.sub = models.Subscriber.objects.create(email='dude@example.com')
 
     @patch('news.views.get_user_data')
     def test_basket_data_included(self, et_mock):
@@ -133,7 +137,7 @@ class DebugUserTest(TestCase):
 
 class UpdatePhonebookTest(TestCase):
     def setUp(self):
-        self.sub = Subscriber.objects.create(email='dude@example.com')
+        self.sub = models.Subscriber.objects.create(email='dude@example.com')
         self.url = '/news/custom_update_phonebook/%s/' % self.sub.token
 
     @patch('news.views.update_phonebook.delay')
@@ -177,7 +181,7 @@ class UpdatePhonebookTest(TestCase):
 
 class UpdateUserTest(TestCase):
     def setUp(self):
-        self.sub = Subscriber.objects.create(email='dude@example.com')
+        self.sub = models.Subscriber.objects.create(email='dude@example.com')
         self.rf = RequestFactory()
 
     @patch('news.views.update_user.delay')
@@ -222,7 +226,7 @@ class UpdateUserTest(TestCase):
         """
         req = self.rf.post('/testing/', {'email': 'donnie@example.com'})
         resp = views.update_user_task(req, tasks.SUBSCRIBE)
-        sub = Subscriber.objects.get(email='donnie@example.com')
+        sub = models.Subscriber.objects.get(email='donnie@example.com')
         resp_data = json.loads(resp.content)
         self.assertDictEqual(resp_data, {
             'status': 'ok',
@@ -244,3 +248,115 @@ class UpdateUserTest(TestCase):
         self.assertEqual(resp.status_code, 400)
         errors = json.loads(resp.content)
         self.assertEqual(errors['status'], 'error')
+
+    @patch('news.tasks.ExactTarget')
+    def test_update_send_welcome(self, et_mock):
+        """
+        Update sends welcome
+        """
+        et = et_mock()
+        nl1 = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en-US,fr',
+        )
+        data = {
+            'country': 'US',
+            'newsletters': nl1.slug,
+        }
+
+        welcome = '39'  # Default welcome
+        update_user(data=data, email=self.sub.email,
+                    token=self.sub.token,
+                    created=True,
+                    type=SUBSCRIBE, optin=True)
+        et.trigger_send.assert_called_with(
+            welcome,
+            {
+                'EMAIL_FORMAT_': 'H',
+                'EMAIL_ADDRESS_': self.sub.email,
+                'TOKEN': self.sub.token,
+            },
+        )
+
+        # Can specify a different welcome
+        welcome = 'MyWelcome_H'
+        data['welcome_message'] = welcome
+        update_user(data=data, email=self.sub.email,
+                    token=self.sub.token,
+                    created=True,
+                    type=SUBSCRIBE, optin=True)
+        et.trigger_send.assert_called_with(
+            welcome,
+            {
+                'EMAIL_FORMAT_': 'H',
+                'EMAIL_ADDRESS_': self.sub.email,
+                'TOKEN': self.sub.token,
+            },
+        )
+
+
+class TestNewslettersAPI(TestCase):
+    def setUp(self):
+        self.url = reverse('newsletters_api')
+        self.rf = RequestFactory()
+
+    def test_newsletters_view(self):
+        # We can fetch the newsletter data
+        nl1 = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=False,
+            languages='en-US,fr',
+        )
+
+        models.Newsletter.objects.create(slug='slug2')
+
+        req = self.rf.get(self.url)
+        resp = views.newsletters(req)
+        data = json.loads(resp.content)
+        newsletters = data['newsletters']
+        self.assertEqual(2, len(newsletters))
+        # Find the 'slug' newsletter in the response
+        obj = newsletters['slug']
+
+        self.assertEqual(nl1.title, obj['title'])
+        self.assertEqual(nl1.active, obj['active'])
+        for lang in ['en-US', 'fr']:
+            self.assertIn(lang, obj['languages'])
+
+    def test_strip_languages(self):
+        # If someone edits Newsletter and puts whitespace in the languages
+        # field, we strip it on save
+        nl1 = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=False,
+            languages='en-US, fr, de ',
+            )
+        nl1 = models.Newsletter.objects.get(id=nl1.id)
+        self.assertEqual('en-US,fr,de', nl1.languages)
+
+    def test_cache_clearing(self):
+        # Our caching of newsletter data doesn't result in wrong answers
+        # when newsletters change
+        models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            vendor_id='VEND1',
+            active=False,
+            languages='en-US, fr, de ',
+            )
+        vendor_ids = newsletter_fields()
+        self.assertEqual([u'VEND1'], vendor_ids)
+        # Now add another newsletter
+        models.Newsletter.objects.create(
+            slug='slug2',
+            title='title2',
+            vendor_id='VEND2',
+            active=False,
+            languages='en-US, fr, de ',
+        )
+        vendor_ids2 = set(newsletter_fields())
+        self.assertEqual(set([u'VEND1', u'VEND2']), vendor_ids2)
