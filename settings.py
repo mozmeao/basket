@@ -168,11 +168,9 @@ BROKER_HOST = 'localhost'
 BROKER_PORT = 5672
 BROKER_USER = 'basket'
 BROKER_PASSWORD = 'basket'
-BROKER_VHOST = '/'
-CELERY_RESULT_BACKEND = 'amqp'
+BROKER_VHOST = 'basket'
 CELERY_DISABLE_RATE_LIMITS = True
 CELERY_IGNORE_RESULT = True
-CELERY_STORE_ERRORS_EVEN_IF_IGNORED = True
 
 import djcelery
 djcelery.setup_loader()
