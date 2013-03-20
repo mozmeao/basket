@@ -4,15 +4,15 @@ from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 
-from mock import patch
-from news.newsletters import newsletter_fields
-from news.tasks import update_user, SUBSCRIBE
+from mock import ANY, patch
 from test_utils import RequestFactory
 
 from news import models
 from news import tasks
 from news import views
 from news.backends.exacttarget import NewsletterException
+from news.newsletters import newsletter_fields
+from news.tasks import update_user, SUBSCRIBE
 
 
 class SubscriberTest(TestCase):
@@ -38,6 +38,66 @@ class SubscriberTest(TestCase):
         models.Subscriber.objects.get_and_sync('dude@example.com', 'asdfjkl')
         sub = models.Subscriber.objects.get(email='dude@example.com')
         self.assertEqual(sub.token, 'asdfjkl')
+
+
+class SubscribeTest(TestCase):
+    fixtures = ['newsletters']
+
+    def test_no_newsletters_error(self):
+        """
+        Should return an error and not create a subscriber if
+        no newsletters were specified.
+        """
+        resp = self.client.post('/news/subscribe/', {
+            'email': 'dude@example.com',
+        })
+        self.assertEqual(resp.status_code, 400)
+        data = json.loads(resp.content)
+        self.assertEqual(data['status'], 'error')
+        self.assertEqual(data['desc'], 'newsletters is missing')
+        with self.assertRaises(models.Subscriber.DoesNotExist):
+            models.Subscriber.objects.get(email='dude@example.com')
+
+        resp = self.client.post('/news/subscribe/', {
+            'email': 'dude@example.com',
+            'newsletters': '',
+        })
+        self.assertEqual(resp.status_code, 400)
+        data = json.loads(resp.content)
+        self.assertEqual(data['status'], 'error')
+        self.assertEqual(data['desc'], 'newsletters is missing')
+        with self.assertRaises(models.Subscriber.DoesNotExist):
+            models.Subscriber.objects.get(email='dude@example.com')
+
+    def test_invalid_newsletters_error(self):
+        """
+        Should return an error and not create a subscriber if
+        newsletters are invalid.
+        """
+        resp = self.client.post('/news/subscribe/', {
+            'email': 'dude@example.com',
+            'newsletters': 'mozilla-and-you,does-not-exist',
+        })
+        self.assertEqual(resp.status_code, 400)
+        data = json.loads(resp.content)
+        self.assertEqual(data['status'], 'error')
+        self.assertEqual(data['desc'], 'invalid newsletter')
+        with self.assertRaises(models.Subscriber.DoesNotExist):
+            models.Subscriber.objects.get(email='dude@example.com')
+
+    @patch('news.views.update_user.delay')
+    def test_subscribe_success(self, uu_mock):
+        """Subscription should work."""
+        resp = self.client.post('/news/subscribe/', {
+            'email': 'dude@example.com',
+            'newsletters': 'mozilla-and-you',
+        })
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.content)
+        self.assertEqual(data['status'], 'ok')
+        sub = models.Subscriber.objects.get(email='dude@example.com')
+        uu_mock.assert_called_with(ANY, sub.email, sub.token,
+                                   True, views.SUBSCRIBE, True)
 
 
 class UserTest(TestCase):
