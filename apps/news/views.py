@@ -68,6 +68,17 @@ def update_user_task(request, type, data=None, optin=True):
 
     sub = getattr(request, 'subscriber', None)
     data = data or request.POST.copy()
+
+    newsletters = data.get('newsletters', None)
+    if newsletters:
+        all_newsletters = newsletter_names()
+        for nl in [x.strip() for x in newsletters.split(',')]:
+            if nl not in all_newsletters:
+                return HttpResponseJSON({
+                    'status': 'error',
+                    'desc': 'invalid newsletter',
+                }, 400)
+
     email = data.get('email')
     created = False
     if not sub:
@@ -161,7 +172,8 @@ def confirm(request, token):
 @require_POST
 @csrf_exempt
 def subscribe(request):
-    if 'newsletters' not in request.POST:
+    newsletters = request.POST.get('newsletters', None)
+    if not newsletters:
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'newsletters is missing',
