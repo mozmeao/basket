@@ -1,7 +1,6 @@
 import datetime
 from functools import wraps
 import logging
-import uuid
 from datetime import date
 from email.utils import formatdate
 from time import mktime
@@ -13,8 +12,8 @@ from celery.task import Task, task
 
 from backends.exacttarget import (ExactTarget, ExactTargetDataExt,
                                   NewsletterException, UnauthorizedException)
-from models import Subscriber
-from newsletters import *
+from .models import Subscriber
+from .newsletters import newsletter_field, newsletter_names
 
 
 log = logging.getLogger(__name__)
@@ -114,7 +113,6 @@ def et_task(func):
     return wrapped
 
 
-
 def gmttime():
     d = datetime.datetime.now() + datetime.timedelta(minutes=10)
     stamp = mktime(d.timetuple())
@@ -178,8 +176,6 @@ def update_user(data, email, token, created, type, optin):
     ``authed_email`` is the email for the user pulled from the database
     with their token, if exists."""
 
-    log = update_user.get_logger()
-
     # Parse the parameters
     record = {
         'EMAIL_ADDRESS_': email,
@@ -201,13 +197,11 @@ def update_user(data, email, token, created, type, optin):
         if field in data:
             record[extra_fields[field]] = data[field]
 
-    fmt = data.get('format', 'H').lower()
-    if fmt == 'text':
-        fmt = 'T'
-    elif fmt == 'html':
-        fmt = 'H'
+    fmt = 'T' if data.get('format', 'H').upper().startswith('T') else 'H'
 
-    record['EMAIL_FORMAT_'] = fmt.upper()
+    # From here on, fmt is either 'H' or 'T', preferring 'H'
+
+    record['EMAIL_FORMAT_'] = fmt
 
     # Set the newsletter flags in the record
     parse_newsletters(record, type, data.get('newsletters', ''))
@@ -228,8 +222,16 @@ def update_user(data, email, token, created, type, optin):
         record['EmailAddress'] = record['EMAIL_ADDRESS_']
     elif data.get('trigger_welcome', 'Y') == 'Y' and type == SUBSCRIBE:
         # Otherwise, send this welcome email unless its suppressed
-        # This is the CustomerKey of the en-US welcome email
-        welcome = '39'
+        if 'welcome_message' in data:
+            welcome = data['welcome_message']
+        else:
+            # TODO: use welcome message from newsletters(s) once we decide
+            # how to handle subscribing to more than one newsletter
+            welcome = settings.DEFAULT_WELCOME_MESSAGE_ID
+
+    # If user preferred text, send welcome in text
+    if fmt == 'T':
+        welcome = welcome + "_T"
 
     try:
         et.data_ext().add_record(target_et, record.keys(), record.values())
@@ -242,7 +244,7 @@ def update_user(data, email, token, created, type, optin):
         et.trigger_send(welcome, {
             'EMAIL_ADDRESS_': record['EMAIL_ADDRESS_'],
             'TOKEN': record['TOKEN'],
-            'EMAIL_FORMAT_': record.get('EMAIL_FORMAT_', 'H'),
+            'EMAIL_FORMAT_': fmt,
         })
 
 
@@ -257,7 +259,7 @@ def confirm_user(token):
 def update_student_reps(data):
     data.pop('privacy')
     fmt = data.pop('format', 'H')
-    country = data.pop('country')
+    data.pop('country')
     email = data.pop('email')
 
     fmt = fmt.lower()
@@ -308,7 +310,8 @@ def update_student_reps(data):
                        record.keys(),
                        record.values())
     except NewsletterException, e:
-        return attempt_fix('Master_Subscribers', record, update_student_reps, e)
+        return attempt_fix('Master_Subscribers', record, update_student_reps,
+                           e)
 
 
 @et_task
@@ -347,4 +350,3 @@ def attempt_fix(ext_name, record, task, e):
         ext.add_record(ext_name, record.keys(), record.values())
     else:
         raise e
-

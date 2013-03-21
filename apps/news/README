@@ -1,7 +1,10 @@
 
 This "news" app provides a service for managing Mozilla newsletters.
 
-Available newsletters:
+`fixtures/newsletters.json` is a fixture that can be used to load some initial
+data, but is probably out of date by the time you read this.
+
+Available newsletters (might be out of date):
 
 * mozilla-and-you
 * firefox-tips

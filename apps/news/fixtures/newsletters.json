@@ -1,0 +1,268 @@
+[
+  {
+    "pk": 1, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "MOZILLA_AND_YOU", 
+      "description": "A monthly newsletter packed with tips to improve your browsing experience.", 
+      "show": true, 
+      "welcome": "", 
+      "languages": "de,en-US,es,fr,id,pt-BR,ru", 
+      "active": true, 
+      "title": "Firefox & You", 
+      "slug": "mozilla-and-you"
+    }
+  }, 
+  {
+    "pk": 2, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "ABOUT_MOBILE", 
+      "description": "Get the power of Firefox in the palm of your hand.", 
+      "show": true, 
+      "welcome": "", 
+      "languages": "de,en-US,es,fr,id,pt-BR,ru", 
+      "active": true, 
+      "title": "Firefox for Android", 
+      "slug": "mobile"
+    }
+  }, 
+  {
+    "pk": 3, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "FIREFOX_TIPS", 
+      "description": "Get a weekly tip on how to super-charge your Firefox experience.", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": false, 
+      "title": "Firefox Weekly Tips", 
+      "slug": "firefox-tips"
+    }
+  }, 
+  {
+    "pk": 5, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "AURORA", 
+      "description": "Aurora", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": false, 
+      "title": "Aurora", 
+      "slug": "aurora"
+    }
+  }, 
+  {
+    "pk": 6, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "ABOUT_MOZILLA", 
+      "description": "News from the Mozilla Project", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": true, 
+      "title": "About Mozilla", 
+      "slug": "about-mozilla"
+    }
+  }, 
+  {
+    "pk": 19, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "FLICKS", 
+      "description": "", 
+      "show": true, 
+      "welcome": "Firefox_Flicks_Welcome", 
+      "languages": "en-US", 
+      "active": true, 
+      "title": "Firefox Flicks", 
+      "slug": "firefox-flicks"
+    }
+  }, 
+  {
+    "pk": 18, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "AFFILIATES", 
+      "description": "", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": false, 
+      "title": "Firefox Affiliates", 
+      "slug": "affiliates"
+    }
+  }, 
+  {
+    "pk": 17, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "APP_DEV", 
+      "description": "", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": false, 
+      "title": "Firefox Apps & Hacks", 
+      "slug": "app-dev"
+    }
+  }, 
+  {
+    "pk": 16, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "MOZILLA_PHONE", 
+      "description": "", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": true, 
+      "title": "Mozillians", 
+      "slug": "mozilla-phone"
+    }
+  }, 
+  {
+    "pk": 15, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "JOIN_MOZILLA", 
+      "description": "", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": false, 
+      "title": "Join Mozilla", 
+      "slug": "join-mozilla"
+    }
+  }, 
+  {
+    "pk": 14, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "ADD_ONS", 
+      "description": "", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": false, 
+      "title": "Addon Development", 
+      "slug": "addon-dev"
+    }
+  }, 
+  {
+    "pk": 7, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "DRUMBEAT_NEWS_GROUP", 
+      "description": "", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": false, 
+      "title": "Drumbeat Newsgroup", 
+      "slug": "drumbeat"
+    }
+  }, 
+  {
+    "pk": 8, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "ABOUT_ADDONS", 
+      "description": "", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": false, 
+      "title": "About Addons", 
+      "slug": "addons"
+    }
+  }, 
+  {
+    "pk": 9, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "ABOUT_LABS", 
+      "description": "", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": false, 
+      "title": "About Labs", 
+      "slug": "labs"
+    }
+  }, 
+  {
+    "pk": 10, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "n/a", 
+      "description": "", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": false, 
+      "title": "QA News", 
+      "slug": "qa-news"
+    }
+  }, 
+  {
+    "pk": 12, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "ABOUT_STANDARDS", 
+      "description": "", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": false, 
+      "title": "About Standards", 
+      "slug": "about-standards"
+    }
+  }, 
+  {
+    "pk": 13, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "MOBILE_ADDON_DEV", 
+      "description": "", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": false, 
+      "title": "Mobile Addon Development", 
+      "slug": "mobile-addon-dev"
+    }
+  }, 
+  {
+    "pk": 11, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "STUDENT_REPS", 
+      "description": "", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": true, 
+      "title": "Student Reps", 
+      "slug": "student-reps"
+    }
+  }, 
+  {
+    "pk": 4, 
+    "model": "news.newsletter", 
+    "fields": {
+      "vendor_id": "FIREFOX_BETA_NEWS", 
+      "description": "Read about the latest features for Firefox desktop and mobile before the final release.", 
+      "show": false, 
+      "welcome": "", 
+      "languages": "en-US", 
+      "active": true, 
+      "title": "Beta News", 
+      "slug": "beta"
+    }
+  }
+]

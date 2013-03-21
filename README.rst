@@ -26,7 +26,7 @@ The `--recursive` is important!
 Make a virtualenv
 -----------------
 
-Using virualenvwrapper::
+Using virtualenvwrapper::
 
     mkvirtualenv --python=python2.6 basket
 
@@ -105,7 +105,22 @@ Advanced emailing
 If you require special logic for sending your email, you can subclass
 ``emailer.Emailer`` in a module of your choice (recommended:
 inside ``libs/custom_emailers``). Set the
-``emailer_class`` field accordingly for the applicable email (see emails.home.Reminder for an example). 
+``emailer_class`` field accordingly for the applicable email (see emails.home.Reminder for an example).
 
-When you run the ``sendmail`` command above, your Emailer will be used instead 
+When you run the ``sendmail`` command above, your Emailer will be used instead
 of the default one.
+
+Testing
+=======
+
+::
+
+    ./manage.py test [appnames]
+
+For example::
+
+    ./manage.py test emailer news
+
+You can also run particular test classes::
+
+    ./manage.py test news.TestNewsletters
