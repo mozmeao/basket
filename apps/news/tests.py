@@ -420,3 +420,20 @@ class TestNewslettersAPI(TestCase):
         )
         vendor_ids2 = set(newsletter_fields())
         self.assertEqual(set([u'VEND1', u'VEND2']), vendor_ids2)
+
+    def test_cache_clear_on_delete(self):
+        # Our caching of newsletter data doesn't result in wrong answers
+        # when newsletters are deleted
+        nl1 = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            vendor_id='VEND1',
+            active=False,
+            languages='en-US, fr, de ',
+            )
+        vendor_ids = newsletter_fields()
+        self.assertEqual([u'VEND1'], vendor_ids)
+        # Now delete it
+        nl1.delete()
+        vendor_ids = newsletter_fields()
+        self.assertEqual([], vendor_ids)
