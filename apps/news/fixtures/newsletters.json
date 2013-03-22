@@ -194,21 +194,7 @@
       "title": "About Labs", 
       "slug": "labs"
     }
-  }, 
-  {
-    "pk": 10, 
-    "model": "news.newsletter", 
-    "fields": {
-      "vendor_id": "n/a", 
-      "description": "", 
-      "show": false, 
-      "welcome": "", 
-      "languages": "en-US", 
-      "active": false, 
-      "title": "QA News", 
-      "slug": "qa-news"
-    }
-  }, 
+  },
   {
     "pk": 12, 
     "model": "news.newsletter", 
@@ -221,20 +207,6 @@
       "active": false, 
       "title": "About Standards", 
       "slug": "about-standards"
-    }
-  }, 
-  {
-    "pk": 13, 
-    "model": "news.newsletter", 
-    "fields": {
-      "vendor_id": "MOBILE_ADDON_DEV", 
-      "description": "", 
-      "show": false, 
-      "welcome": "", 
-      "languages": "en-US", 
-      "active": false, 
-      "title": "Mobile Addon Development", 
-      "slug": "mobile-addon-dev"
     }
   }, 
   {
