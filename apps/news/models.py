@@ -2,6 +2,8 @@ from uuid import uuid4
 
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 
 class SubscriberManager(models.Manager):
@@ -87,3 +89,10 @@ class Newsletter(models.Model):
     def welcome_id(self):
         """Return newsletter's welcome message ID, or the default one"""
         return self.welcome or settings.DEFAULT_WELCOME_MESSAGE_ID
+
+
+@receiver(post_delete, sender=Newsletter)
+def post_newsletter_delete(sender, **kwargs):
+    # Cannot import earlier due to circular import
+    from news.newsletters import clear_newsletter_cache
+    clear_newsletter_cache()
