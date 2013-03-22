@@ -14,7 +14,7 @@ admin.site.register(Subscriber, SubscriberAdmin)
 
 class NewsletterAdmin(admin.ModelAdmin):
     list_display = ['title', 'show', 'active', 'description', 'welcome',
-                    'languages']
+                    'languages', 'vendor_id']
 
 
 admin.site.register(Newsletter, NewsletterAdmin)
