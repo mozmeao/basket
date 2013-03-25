@@ -6,13 +6,14 @@ from email.utils import formatdate
 from time import mktime
 from urllib2 import URLError
 
+from celery.task import Task, task
+
 from django.conf import settings
 from django_statsd.clients import statsd
-from celery.task import Task, task
 
 from backends.exacttarget import (ExactTarget, ExactTargetDataExt,
                                   NewsletterException, UnauthorizedException)
-from .models import Subscriber
+from .models import Newsletter, Subscriber
 from .newsletters import newsletter_field, newsletter_names
 
 
@@ -125,8 +126,6 @@ def parse_newsletters(record, type, newsletters):
     appropriate flags in `record` which is a dict of parameters that
     will be sent to the email provider."""
 
-    newsletters = [x.strip() for x in newsletters.split(',')]
-
     if type == SUBSCRIBE or type == SET:
         # Subscribe the user to these newsletters
         for nl in newsletters:
@@ -203,8 +202,10 @@ def update_user(data, email, token, created, type, optin):
 
     record['EMAIL_FORMAT_'] = fmt
 
+    newsletters = [x.strip() for x in data.get('newsletters', '').split(',')]
+
     # Set the newsletter flags in the record
-    parse_newsletters(record, type, data.get('newsletters', ''))
+    parse_newsletters(record, type, newsletters)
 
     # Submit the final data to the service
     et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
@@ -224,9 +225,12 @@ def update_user(data, email, token, created, type, optin):
         # Otherwise, send this welcome email unless its suppressed
         if 'welcome_message' in data:
             welcome = data['welcome_message']
+        elif len(newsletters) == 1:
+            # If just one newsletter, use its welcome message;
+            newsletter = Newsletter.objects.get(slug=newsletters[0])
+            welcome = newsletter.welcome_id
         else:
-            # TODO: use welcome message from newsletters(s) once we decide
-            # how to handle subscribing to more than one newsletter
+            # otherwise, just send one copy of the default welcome.
             welcome = settings.DEFAULT_WELCOME_MESSAGE_ID
 
     # If user preferred text, send welcome in text
