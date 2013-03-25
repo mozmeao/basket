@@ -398,6 +398,22 @@ class TestNewslettersAPI(TestCase):
         nl1 = models.Newsletter.objects.get(id=nl1.id)
         self.assertEqual('en-US,fr,de', nl1.languages)
 
+    def test_newsletters_cached(self):
+        models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            vendor_id='VEND1',
+            active=False,
+            languages='en-US, fr, de ',
+            )
+        # This should get the data cached
+        newsletter_fields()
+        # Now request it again and it shouldn't have to generate the
+        # data from scratch.
+        with patch('news.newsletters._get_newsletters_data') as get:
+            newsletter_fields()
+        self.assertFalse(get.called)
+
     def test_cache_clearing(self):
         # Our caching of newsletter data doesn't result in wrong answers
         # when newsletters change
