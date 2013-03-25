@@ -7,12 +7,10 @@ from django.test import TestCase
 from mock import ANY, patch
 from test_utils import RequestFactory
 
-from news import models
-from news import tasks
-from news import views
+from news import models, tasks, views
 from news.backends.exacttarget import NewsletterException
 from news.newsletters import newsletter_fields
-from news.tasks import update_user, SUBSCRIBE
+from news.tasks import SUBSCRIBE, update_user
 
 
 class SubscriberTest(TestCase):
@@ -310,9 +308,82 @@ class UpdateUserTest(TestCase):
         self.assertEqual(errors['status'], 'error')
 
     @patch('news.tasks.ExactTarget')
+    def test_update_send_newsletter_welcome(self, et_mock):
+        # If we just subscribe to one newsletter, we send that
+        # newsletter's particular welcome message
+        et = et_mock()
+        welcome_id = "TEST_WELCOME"
+        nl = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en,fr',
+            welcome=welcome_id,
+        )
+        data = {
+            'country': 'US',
+            'newsletters': nl.slug,
+            'trigger_welcome': 'Y',
+        }
+        update_user(data=data,
+                    email=self.sub.email,
+                    token=self.sub.token,
+                    created=True,
+                    type=SUBSCRIBE,
+                    optin=True)
+        et.trigger_send.assert_called_with(
+            welcome_id,
+            {
+                'EMAIL_FORMAT_': 'H',
+                'EMAIL_ADDRESS_': self.sub.email,
+                'TOKEN': self.sub.token,
+            },
+        )
+
+    @patch('news.tasks.ExactTarget')
+    def test_update_send_newsletters_welcome(self, et_mock):
+        # If we subscribe to multiple newsletters, even if they
+        # have custom welcome messages, we send the default
+        et = et_mock()
+        nl1 = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en,fr',
+            welcome="WELCOME1",
+        )
+        nl2 = models.Newsletter.objects.create(
+            slug='slug2',
+            title='title',
+            active=True,
+            languages='en,fr',
+            welcome="WELCOME2",
+        )
+        data = {
+            'country': 'US',
+            'newsletters': "%s,%s" % (nl1.slug, nl2.slug),
+            'trigger_welcome': 'Y',
+            }
+        update_user(data=data,
+                    email=self.sub.email,
+                    token=self.sub.token,
+                    created=True,
+                    type=SUBSCRIBE,
+                    optin=True)
+        et.trigger_send.assert_called_with(
+            settings.DEFAULT_WELCOME_MESSAGE_ID,
+            {
+                'EMAIL_FORMAT_': 'H',
+                'EMAIL_ADDRESS_': self.sub.email,
+                'TOKEN': self.sub.token,
+                },
+            )
+
+    @patch('news.tasks.ExactTarget')
     def test_update_send_welcome(self, et_mock):
         """
-        Update sends welcome
+        Update sends default welcome if newsletter has none,
+        or, we can specify a particular welcome
         """
         et = et_mock()
         nl1 = models.Newsletter.objects.create(
@@ -326,13 +397,12 @@ class UpdateUserTest(TestCase):
             'newsletters': nl1.slug,
         }
 
-        welcome = '39'  # Default welcome
         update_user(data=data, email=self.sub.email,
                     token=self.sub.token,
                     created=True,
                     type=SUBSCRIBE, optin=True)
         et.trigger_send.assert_called_with(
-            welcome,
+            settings.DEFAULT_WELCOME_MESSAGE_ID,
             {
                 'EMAIL_FORMAT_': 'H',
                 'EMAIL_ADDRESS_': self.sub.email,
@@ -394,7 +464,7 @@ class TestNewslettersAPI(TestCase):
             title='title',
             active=False,
             languages='en-US, fr, de ',
-            )
+        )
         nl1 = models.Newsletter.objects.get(id=nl1.id)
         self.assertEqual('en-US,fr,de', nl1.languages)
 
@@ -407,7 +477,7 @@ class TestNewslettersAPI(TestCase):
             vendor_id='VEND1',
             active=False,
             languages='en-US, fr, de ',
-            )
+        )
         vendor_ids = newsletter_fields()
         self.assertEqual([u'VEND1'], vendor_ids)
         # Now add another newsletter
@@ -430,7 +500,7 @@ class TestNewslettersAPI(TestCase):
             vendor_id='VEND1',
             active=False,
             languages='en-US, fr, de ',
-            )
+        )
         vendor_ids = newsletter_fields()
         self.assertEqual([u'VEND1'], vendor_ids)
         # Now delete it
