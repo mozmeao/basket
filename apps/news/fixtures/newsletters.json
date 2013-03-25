@@ -7,7 +7,7 @@
       "description": "A monthly newsletter packed with tips to improve your browsing experience.", 
       "show": true, 
       "welcome": "", 
-      "languages": "de,en-US,es,fr,id,pt-BR,ru", 
+      "languages": "de,en,es,fr,id,pt-BR,ru", 
       "active": true, 
       "title": "Firefox & You", 
       "slug": "mozilla-and-you"
@@ -21,7 +21,7 @@
       "description": "Get the power of Firefox in the palm of your hand.", 
       "show": true, 
       "welcome": "", 
-      "languages": "de,en-US,es,fr,id,pt-BR,ru", 
+      "languages": "de,en,es,fr,id,pt-BR,ru", 
       "active": true, 
       "title": "Firefox for Android", 
       "slug": "mobile"
@@ -35,7 +35,7 @@
       "description": "Get a weekly tip on how to super-charge your Firefox experience.", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": false, 
       "title": "Firefox Weekly Tips", 
       "slug": "firefox-tips"
@@ -49,7 +49,7 @@
       "description": "Aurora", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": false, 
       "title": "Aurora", 
       "slug": "aurora"
@@ -63,7 +63,7 @@
       "description": "News from the Mozilla Project", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": true, 
       "title": "About Mozilla", 
       "slug": "about-mozilla"
@@ -77,7 +77,7 @@
       "description": "", 
       "show": true, 
       "welcome": "Firefox_Flicks_Welcome", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": true, 
       "title": "Firefox Flicks", 
       "slug": "firefox-flicks"
@@ -91,7 +91,7 @@
       "description": "", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": false, 
       "title": "Firefox Affiliates", 
       "slug": "affiliates"
@@ -105,7 +105,7 @@
       "description": "", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": false, 
       "title": "Firefox Apps & Hacks", 
       "slug": "app-dev"
@@ -119,7 +119,7 @@
       "description": "", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": true, 
       "title": "Mozillians", 
       "slug": "mozilla-phone"
@@ -133,7 +133,7 @@
       "description": "", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": false, 
       "title": "Join Mozilla", 
       "slug": "join-mozilla"
@@ -147,7 +147,7 @@
       "description": "", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": false, 
       "title": "Addon Development", 
       "slug": "addon-dev"
@@ -161,7 +161,7 @@
       "description": "", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": false, 
       "title": "Drumbeat Newsgroup", 
       "slug": "drumbeat"
@@ -175,7 +175,7 @@
       "description": "", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": false, 
       "title": "About Addons", 
       "slug": "addons"
@@ -189,7 +189,7 @@
       "description": "", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": false, 
       "title": "About Labs", 
       "slug": "labs"
@@ -203,7 +203,7 @@
       "description": "", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": false, 
       "title": "About Standards", 
       "slug": "about-standards"
@@ -217,7 +217,7 @@
       "description": "", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": true, 
       "title": "Student Reps", 
       "slug": "student-reps"
@@ -231,7 +231,7 @@
       "description": "Read about the latest features for Firefox desktop and mobile before the final release.", 
       "show": false, 
       "welcome": "", 
-      "languages": "en-US", 
+      "languages": "en", 
       "active": true, 
       "title": "Beta News", 
       "slug": "beta"
