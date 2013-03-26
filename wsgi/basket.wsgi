@@ -2,6 +2,14 @@ import os
 import site
 from datetime import datetime
 
+try:
+    import newrelic.agent
+except ImportError:
+    newrelic = False
+
+
+if newrelic:
+    newrelic.agent.initialize(os.environ['NEWRELIC_PYTHON_INI_FILE'])
 
 # Remember when mod_wsgi loaded this file so we can track it in nagios.
 wsgi_loaded = datetime.now()
@@ -33,6 +41,9 @@ django_app = django.core.handlers.wsgi.WSGIHandler()
 def application(env, start_response):
     env['wsgi.loaded'] = wsgi_loaded
     return django_app(env, start_response)
+
+if newrelic:
+    application = newrelic.agent.wsgi_application()(application)
 
 # Uncomment this to figure out what's going on with the mod_wsgi environment.
 # def application(env, start_response):
