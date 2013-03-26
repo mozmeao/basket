@@ -9,7 +9,11 @@ except ImportError:
 
 
 if newrelic:
-    newrelic.agent.initialize(os.environ['NEWRELIC_PYTHON_INI_FILE'])
+    newrelic_ini = os.getenv('NEWRELIC_PYTHON_INI_FILE', False)
+    if newrelic_ini:
+        newrelic.agent.initialize(newrelic_ini)
+    else:
+        newrelic = False
 
 # Remember when mod_wsgi loaded this file so we can track it in nagios.
 wsgi_loaded = datetime.now()
