@@ -4,7 +4,7 @@ backend-specific data for working with them in the email provider.
 It's used to lookup the backend-specific newsletter name from a
 generic one passed by the user. This decouples the API from any
 specific email provider."""
-from django.core.cache import get_cache
+from django.core.cache import cache
 
 from news.models import Newsletter
 
@@ -12,50 +12,67 @@ from news.models import Newsletter
 __all__ = ('clear_newsletter_cache', 'newsletter_field', 'newsletter_name',
            'newsletter_fields', 'newsletter_names')
 
-cache = get_cache('newsletters')
+
+CACHE_KEY = "newsletters_cache_data"
+
+
+def _newsletters():
+    """Returns a data structure with the data about newsletters.
+    It's cached until clear_newsletter_cache() is called, so we're
+    not constantly hitting the database for data that rarely changes.
+
+    The returned data structure looks like::
+
+        {
+            'by_name': {
+                'newsletter_name_1': a Newsletter object,
+                'newsletter_name_2': another Newsletter object,
+            },
+            'by_vendor_id': {
+                'NEWSLETTER_ID_1': a Newsletter object,
+                'NEWSLETTER_ID_2': another Newsletter object,
+            }
+        }
+    """
+    data = cache.get(CACHE_KEY)
+    if data is None:
+        data = _get_newsletters_data()
+        cache.set(CACHE_KEY, data)
+
+    return data
+
+
+def _get_newsletters_data():
+    by_name = {}
+    by_vendor_id = {}
+    for nl in Newsletter.objects.all():
+        by_name[nl.slug] = nl
+        by_vendor_id[nl.vendor_id] = nl
+    return {
+        'by_name': by_name,
+        'by_vendor_id': by_vendor_id,
+        }
 
 
 def newsletter_field(name):
-    """Lookup the backend-specific field for the newsletter"""
-    key = "newsletter_field|%s" % name
-    data = cache.get(key)
-    if data is None:
-        data = Newsletter.objects.get(slug=name).vendor_id
-        cache.set(key, data)
-    return data
+    """Lookup the backend-specific field (vendor ID) for the newsletter"""
+    return _newsletters()['by_name'][name].vendor_id
 
 
 def newsletter_name(field):
     """Lookup the generic name for this newsletter field"""
-    key = "newsletter_name|%s" % field
-    data = cache.get(key)
-    if data is None:
-        data = Newsletter.objects.get(vendor_id=field).slug
-        cache.set(key, data)
-    return data
+    return _newsletters()['by_vendor_id'][field].slug
 
 
 def newsletter_names():
     """Get a list of all the available newsletters"""
-    key = "newsletter_names"
-    data = cache.get(key)
-    if data is None:
-        data = list(Newsletter.objects.all().values_list('slug',
-                                                         flat=True))
-        cache.set(key, data)
-    return data
+    return _newsletters()['by_name'].keys()
 
 
 def newsletter_fields():
     """Get a list of all the newsletter backend-specific fields"""
-    key = "newsletter_fields"
-    data = cache.get(key)
-    if data is None:
-        data = list(Newsletter.objects.all().values_list('vendor_id',
-                                                         flat=True))
-        cache.set(key, data)
-    return data
+    return  _newsletters()['by_vendor_id'].keys()
 
 
 def clear_newsletter_cache():
-    cache.clear()
+    cache.delete(CACHE_KEY)

@@ -182,13 +182,7 @@ import djcelery
 djcelery.setup_loader()
 
 CACHES = {
-    # We're not using it, but Django insists that we define a 'default' cache
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     },
-    'newsletters': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'newsletters',
-        'TIMEOUT': 3600,   # cache is cleared when newsletters are changed
-    }
 }
