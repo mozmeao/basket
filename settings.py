@@ -88,6 +88,7 @@ INSTALLED_APPS = (
     'tower',
     'djcelery',
     'django_nose',
+    'south',
 
     'django.contrib.auth',
     'django.contrib.contenttypes',
