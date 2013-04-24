@@ -15,7 +15,7 @@ from tasks import (
     confirm_user,
     update_custom_unsub,
     update_phonebook,
-    update_student_reps,
+    update_student_ambassadors,
     update_user,
     SET, SUBSCRIBE, UNSUBSCRIBE,
 )
@@ -277,10 +277,13 @@ def custom_unsub_reason(request):
     return HttpResponseJSON({'status': 'ok'})
 
 
+@require_POST
+@logged_in
 @csrf_exempt
-def custom_student_reps(request):
-    data = dict(request.POST.items())
-    update_student_reps.delay(data)
+def custom_update_student_ambassadors(request, token):
+    sub = request.subscriber
+    update_student_ambassadors.delay(dict(request.POST.items()), sub.email,
+                                     sub.token)
     return HttpResponseJSON({'status': 'ok'})
 
 
