@@ -35,6 +35,7 @@ CONFIRM_SENDS = {
     'pt': 'pt_br_confirmation_email',
     'pt-BR': 'pt_br_confirmation_email',
     'ru': 'ru_confirmation_email_2',
+    'pl': 'pl_confirmation_email',
 }
 SMS_MESSAGES = (
     'SMS_Android',
