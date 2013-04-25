@@ -89,6 +89,7 @@ INSTALLED_APPS = (
     'djcelery',
     'django_nose',
     'south',
+    'raven.contrib.django.raven_compat',
 
     'django.contrib.auth',
     'django.contrib.contenttypes',
