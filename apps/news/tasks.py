@@ -170,6 +170,14 @@ def update_phonebook(data, email, token):
 
 
 @et_task
+def update_student_ambassadors(data, email, token):
+    data['EMAIL_ADDRESS'] = email
+    data['TOKEN'] = token
+    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+    et.data_ext().add_record('Student_Ambassadors', data.keys(), data.values())
+
+
+@et_task
 def update_user(data, email, token, created, type, optin):
     """Task for updating user's preferences and newsletters.
 
@@ -258,65 +266,6 @@ def confirm_user(token):
     ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
                              settings.EXACTTARGET_PASS)
     ext.add_record('Confirmation', ['TOKEN'], [token])
-
-
-@et_task
-def update_student_reps(data):
-    data.pop('privacy')
-    fmt = data.pop('format', 'H')
-    data.pop('country')
-    email = data.pop('email')
-
-    fmt = fmt.lower()
-    if fmt == 'text':
-        fmt = 'T'
-    elif fmt == 'html':
-        fmt = 'H'
-
-    # Get the user or create them
-    (sub, created) = Subscriber.objects.get_or_create(email=email)
-
-    data['TOKEN'] = sub.token
-    data['STUDENT_REPS_FLG'] = data.get('STUDENT_REPS_FLG', 'N')
-    data['STUDENT_REPS_DATE'] = gmttime()
-    data['STUDENT_REPS_MEMBER_FLG'] = 'Y'
-    data['STUDENT_REPS_MEMBER_DATE'] = gmttime()
-    data['EMAIL_FORMAT_'] = fmt
-    data['EMAIL_ADDRESS'] = email
-
-    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-    ext = et.data_ext()
-    ext.add_record('Student_Reps',
-                   data.keys(),
-                   data.values())
-    et.trigger_send(893, {
-        'EMAIL_ADDRESS_': email,
-        'TOKEN': data['TOKEN'],
-        'EMAIL_FORMAT_': fmt,
-        'STUDENT_REPS_FLG': data['STUDENT_REPS_FLG'],
-        'STUDENT_REPS_MEMBER_FLG': data['STUDENT_REPS_MEMBER_FLG'],
-        'FIRST_NAME': data['FIRST_NAME'],
-    })
-
-    # Need to add the user to the Master_Subscriber table now
-    record = {
-        'EMAIL_ADDRESS_': email,
-        'TOKEN': data['TOKEN'],
-        'STUDENT_REPS_FLG': data.get('STUDENT_REPS_FLG', 'N'),
-        'STUDENT_REPS_DATE': data['STUDENT_REPS_DATE'],
-        'MODIFIED_DATE_': gmttime(),
-    }
-
-    if created:
-        record['CREATED_DATE_'] = gmttime()
-
-    try:
-        ext.add_record('Master_Subscribers',
-                       record.keys(),
-                       record.values())
-    except NewsletterException, e:
-        return attempt_fix('Master_Subscribers', record, update_student_reps,
-                           e)
 
 
 @et_task
