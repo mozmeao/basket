@@ -7,6 +7,7 @@ from time import mktime
 from urllib2 import URLError
 
 from celery.task import Task, task
+from raven.contrib.django.raven_compat.models import client as sentry
 
 from django.conf import settings
 from django_statsd.clients import statsd
@@ -85,7 +86,10 @@ class ETTask(Task):
     def on_success(self, *args, **kwargs):
         statsd.incr(self.name + '.success')
 
-    def on_failure(self, *args, **kwargs):
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        sentry.captureException(exc_info=einfo.exc_info,
+                                task_args=args,
+                                task_kwargs=kwargs)
         statsd.incr(self.name + '.failure')
 
     def on_retry(self, *args, **kwargs):
@@ -102,7 +106,9 @@ def et_task(func):
             return func(*args, **kwargs)
         except URLError, e:
             # connection problem. try again later.
+            log.exception('Problem connecting to Exact Target')
             wrapped.retry(exc=e)
+            raise e
         except NewsletterException, e:
             statsd.incr(wrapped.name + '.error')
             log.exception('NewsletterException: %s' % e.message)
@@ -110,6 +116,9 @@ def et_task(func):
         except UnauthorizedException, e:
             statsd.incr(wrapped.name + '.auth_error')
             log.exception('Email service provider auth failure')
+            raise e
+        except Exception, e:
+            log.exception('Unknown error')
             raise e
 
     return wrapped

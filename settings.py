@@ -120,19 +120,6 @@ LANGUAGES_LOWERED = [x.lower() for x in LANGUAGES]
 DEFAULT_FROM_EMAIL = 'basket@mozilla.com'
 DEFAULT_FROM_NAME = 'Mozilla'
 
-# Logging
-LOG_LEVEL = logging.INFO
-HAS_SYSLOG = True  # syslog is used if HAS_SYSLOG and NOT DEBUG.
-SYSLOG_TAG = "http_app_basket"
-# See PEP 391 and log_settings.py for formatting help.  Each section of LOGGING
-# will get merged into the corresponding section of log_settings.py.
-# Handlers and log levels are set up automatically based on LOG_LEVEL and DEBUG
-# unless you set them here.  Messages will not propagate through a logger
-# unless propagate: True is set.
-LOGGING = {
-    'version': 1,
-    'loggers': {},
-}
 # LDAP
 LDAP = {
     'host': '',
@@ -186,5 +173,47 @@ djcelery.setup_loader()
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    },
+}
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': True,
+    'root': {
+        'level': 'WARNING',
+        'handlers': ['sentry'],
+    },
+    'formatters': {
+        'verbose': {
+            'format': '%(levelname)s %(asctime)s %(module)s %(message)s'
+        },
+    },
+    'handlers': {
+        'sentry': {
+            'level': 'ERROR',
+            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose'
+        }
+    },
+    'loggers': {
+        'django.db.backends': {
+            'level': 'ERROR',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'raven': {
+            'level': 'DEBUG',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'sentry.errors': {
+            'level': 'DEBUG',
+            'handlers': ['console'],
+            'propagate': False,
+        },
     },
 }
