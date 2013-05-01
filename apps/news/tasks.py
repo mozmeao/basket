@@ -106,19 +106,19 @@ def et_task(func):
             return func(*args, **kwargs)
         except URLError, e:
             # connection problem. try again later.
-            log.exception('Problem connecting to Exact Target')
+            sentry.captureException(task_args=args, task_kwargs=kwargs)
+            # raises retry exception or e
             wrapped.retry(exc=e)
-            raise e
         except NewsletterException, e:
             statsd.incr(wrapped.name + '.error')
-            log.exception('NewsletterException: %s' % e.message)
+            sentry.captureException(task_args=args, task_kwargs=kwargs)
             raise e
         except UnauthorizedException, e:
             statsd.incr(wrapped.name + '.auth_error')
-            log.exception('Email service provider auth failure')
+            sentry.captureException(task_args=args, task_kwargs=kwargs)
             raise e
         except Exception, e:
-            log.exception('Unknown error')
+            sentry.captureException(task_args=args, task_kwargs=kwargs)
             raise e
 
     return wrapped
