@@ -251,10 +251,6 @@ def update_user(data, email, token, created, type, optin):
             # otherwise, just send one copy of the default welcome.
             welcome = settings.DEFAULT_WELCOME_MESSAGE_ID
 
-    # If user preferred text, send welcome in text
-    if fmt == 'T':
-        welcome = welcome + "_T"
-
     try:
         et.data_ext().add_record(target_et, record.keys(), record.values())
     except NewsletterException, e:
@@ -263,6 +259,10 @@ def update_user(data, email, token, created, type, optin):
     # This is a separate try because the above one might recover, and
     # we still need to send the welcome email
     if welcome:
+        # If user preferred text, send welcome in text
+        if fmt == 'T':
+            welcome += "_T"
+
         et.trigger_send(welcome, {
             'EMAIL_ADDRESS_': record['EMAIL_ADDRESS_'],
             'TOKEN': record['TOKEN'],

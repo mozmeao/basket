@@ -400,7 +400,7 @@ class UpdateUserTest(TestCase):
             'country': 'US',
             'newsletters': "%s,%s" % (nl1.slug, nl2.slug),
             'trigger_welcome': 'Y',
-            }
+        }
         update_user(data=data,
                     email=self.sub.email,
                     token=self.sub.token,
@@ -413,8 +413,8 @@ class UpdateUserTest(TestCase):
                 'EMAIL_FORMAT_': 'H',
                 'EMAIL_ADDRESS_': self.sub.email,
                 'TOKEN': self.sub.token,
-                },
-            )
+            },
+        )
 
     @patch('news.tasks.ExactTarget')
     def test_update_send_welcome(self, et_mock):
@@ -462,6 +462,31 @@ class UpdateUserTest(TestCase):
                 'TOKEN': self.sub.token,
             },
         )
+
+    @patch('news.tasks.ExactTarget')
+    def test_update_user_works_with_no_welcome(self, et_mock):
+        """update_user was throwing errors when asked not to send a welcome"""
+        et = et_mock()
+        nl1 = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en-US,fr',
+        )
+        data = {
+            'country': 'US',
+            'newsletters': nl1.slug,
+            'trigger_welcome': 'N',
+            'format': 'T',
+        }
+
+        update_user(data=data, email=self.sub.email,
+                    token=self.sub.token,
+                    created=True,
+                    type=SUBSCRIBE, optin=True)
+
+        self.assertTrue(et.data_ext.return_value.add_record.called)
+        self.assertFalse(et.trigger_send.called)
 
 
 class TestNewslettersAPI(TestCase):
