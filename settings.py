@@ -1,5 +1,4 @@
 import os
-import logging
 
 # Application version.
 VERSION = (0, 1)
@@ -198,22 +197,5 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose'
         }
-    },
-    'loggers': {
-        'django.db.backends': {
-            'level': 'ERROR',
-            'handlers': ['console'],
-            'propagate': False,
-        },
-        'raven': {
-            'level': 'DEBUG',
-            'handlers': ['console'],
-            'propagate': False,
-        },
-        'sentry.errors': {
-            'level': 'DEBUG',
-            'handlers': ['console'],
-            'propagate': False,
-        },
     },
 }

@@ -32,8 +32,6 @@ EMAIL_HOST_PASSWORD = 'secret'
 DEBUG = False
 TEMPLATE_DEBUG = False
 
-LOG_LEVEL = logging.WARNING
-
 DEBUG_PROPAGATE_EXCEPTIONS = DEBUG
 CELERY_ALWAYS_EAGER = True
 
@@ -48,3 +46,9 @@ LDAP = {
 
 EXACTTARGET_USER = ''
 EXACTTARGET_PASS = ''
+EXACTTARGET_DATA = ''
+
+LOGGING['root'] = {
+    'level': 'DEBUG',
+    'handlers': ['console'],
+}
