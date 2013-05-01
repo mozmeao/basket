@@ -51,17 +51,23 @@ def _get_newsletters_data():
     return {
         'by_name': by_name,
         'by_vendor_id': by_vendor_id,
-        }
+    }
 
 
 def newsletter_field(name):
     """Lookup the backend-specific field (vendor ID) for the newsletter"""
-    return _newsletters()['by_name'][name].vendor_id
+    try:
+        return _newsletters()['by_name'][name].vendor_id
+    except KeyError:
+        return None
 
 
 def newsletter_name(field):
     """Lookup the generic name for this newsletter field"""
-    return _newsletters()['by_vendor_id'][field].slug
+    try:
+        return _newsletters()['by_vendor_id'][field].slug
+    except KeyError:
+        return None
 
 
 def newsletter_names():

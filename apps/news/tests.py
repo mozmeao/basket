@@ -10,7 +10,7 @@ from test_utils import RequestFactory
 from news import models, tasks, views
 from news.backends.exacttarget import NewsletterException
 from news.newsletters import newsletter_fields
-from news.tasks import SUBSCRIBE, update_user
+from news.tasks import SET, SUBSCRIBE, update_user
 
 
 class SubscriberTest(TestCase):
@@ -487,6 +487,40 @@ class UpdateUserTest(TestCase):
 
         self.assertTrue(et.data_ext.return_value.add_record.called)
         self.assertFalse(et.trigger_send.called)
+
+    @patch('news.tasks.ExactTarget')
+    def test_update_user_set_works_no_newsletters(self, et_mock):
+        """
+        A blank `newsletters` field when the update type is SET indicates
+        that the person wishes to unsubscribe from all newsletters. This has
+        caused exceptions because '' is not a valid newsletter name.
+        """
+        et = et_mock()
+        nl1 = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en-US,fr',
+            vendor_id='TITLE_UNKNOWN',
+        )
+        data = {
+            'lang': 'en',
+            'country': 'US',
+            'newsletters': '',
+            'format': 'H',
+        }
+
+        update_user(data, self.sub.email, self.sub.token, False, SET, True)
+        # no welcome should be triggered for SET
+        self.assertFalse(et.trigger_send.called)
+        et.data_ext.return_value.add_record.assert_called_with(
+            ANY,
+            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
+             u'TITLE_UNKNOWN_FLG', 'TOKEN', 'MODIFIED_DATE_',
+             'EMAIL_PERMISSION_STATUS_', u'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
+            ['H', 'dude@example.com', 'en', 'N', ANY, ANY, 'I', ANY, 'US']
+        )
+
 
 
 class TestNewslettersAPI(TestCase):
