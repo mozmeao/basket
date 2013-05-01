@@ -86,10 +86,7 @@ class ETTask(Task):
     def on_success(self, *args, **kwargs):
         statsd.incr(self.name + '.success')
 
-    def on_failure(self, exc, task_id, args, kwargs, einfo):
-        sentry.captureException(exc_info=einfo.exc_info,
-                                task_args=args,
-                                task_kwargs=kwargs)
+    def on_failure(self, *args, **kwargs):
         statsd.incr(self.name + '.failure')
 
     def on_retry(self, *args, **kwargs):
@@ -106,20 +103,11 @@ def et_task(func):
             return func(*args, **kwargs)
         except URLError, e:
             # connection problem. try again later.
-            sentry.captureException(task_args=args, task_kwargs=kwargs)
+            sentry.captureException(extra={'args': args,
+                                           'kwargs': kwargs,
+                                           'retrying': True})
             # raises retry exception or e
             wrapped.retry(exc=e)
-        except NewsletterException, e:
-            statsd.incr(wrapped.name + '.error')
-            sentry.captureException(task_args=args, task_kwargs=kwargs)
-            raise e
-        except UnauthorizedException, e:
-            statsd.incr(wrapped.name + '.auth_error')
-            sentry.captureException(task_args=args, task_kwargs=kwargs)
-            raise e
-        except Exception, e:
-            sentry.captureException(task_args=args, task_kwargs=kwargs)
-            raise e
 
     return wrapped
 
