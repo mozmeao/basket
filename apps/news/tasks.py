@@ -13,9 +13,9 @@ from django.conf import settings
 from django_statsd.clients import statsd
 
 from backends.exacttarget import (ExactTarget, ExactTargetDataExt,
-                                  NewsletterException, UnauthorizedException)
-from .models import Newsletter, Subscriber
-from .newsletters import newsletter_field, newsletter_names
+                                  NewsletterException)
+from .models import Newsletter
+from .newsletters import newsletter_field
 
 
 log = logging.getLogger(__name__)
@@ -118,33 +118,51 @@ def gmttime():
     return formatdate(timeval=stamp, localtime=False, usegmt=True)
 
 
-def parse_newsletters(record, type, newsletters):
+def parse_newsletters(record, type, newsletters, cur_newsletters):
     """Utility function to take a list of newsletters and according
     the type of action (subscribe, unsubscribe, and set) set the
     appropriate flags in `record` which is a dict of parameters that
-    will be sent to the email provider."""
+    will be sent to the email provider.
+
+    Parameters are only set for the newsletters whose subscription
+    status needs to change, so that we don't unnecessarily update the
+    last modification timestamp of newsletters.
+
+    :param dict record: Parameters that will be sent to ET
+    :param integer type: SUBSCRIBE means add these newsletters to the
+        user's subscriptions if not already there, UNSUBSCRIBE means remove
+        these newsletters from the user's subscriptions if there, and SET
+        means change the user's subscriptions to exactly this set of
+        newsletters.
+    :param list newsletters: List of the slugs of the newsletters to be
+        subscribed, unsubscribed, or set.
+    :param set cur_newsletters: Set of the slugs of the newsletters that
+        the user is currently subscribed to.
+    """
 
     if type == SUBSCRIBE or type == SET:
-        # Subscribe the user to these newsletters
+        # Subscribe the user to these newsletters if not already
         for nl in newsletters:
             name = newsletter_field(nl)
-            if name:
+            if name and nl not in cur_newsletters:
                 record['%s_FLG' % name] = 'Y'
                 record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
 
     if type == UNSUBSCRIBE or type == SET:
         # Unsubscribe the user to these newsletters
-        unsubs = newsletters
 
         if type == SET:
-            # Unsubscribe to the inversion of these newsletters
-            subs = set(newsletters)
-            all = set(newsletter_names())
-            unsubs = all.difference(subs)
+            # Unsubscribe from the newsletters currently subscribed to
+            # but not in the new list
+            unsubs = cur_newsletters - set(newsletters)
+        else:  # type == UNSUBSCRIBE
+            # unsubscribe from the specified newsletters
+            unsubs = newsletters
 
         for nl in unsubs:
+            # Unsubscribe from any unsubs that the user is currently subbed to
             name = newsletter_field(nl)
-            if name:
+            if name and nl in cur_newsletters:
                 record['%s_FLG' % name] = 'N'
                 record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
 
@@ -210,8 +228,15 @@ def update_user(data, email, token, created, type, optin):
 
     newsletters = [x.strip() for x in data.get('newsletters', '').split(',')]
 
+    # Can't import this earlier, circular import
+    from .views import get_user_data
+
+    # Get the user's current settings
+    user_data = get_user_data(token=token)
+    cur_newsletters = set(user_data['newsletters'])
+
     # Set the newsletter flags in the record
-    parse_newsletters(record, type, newsletters)
+    parse_newsletters(record, type, newsletters, cur_newsletters)
 
     # Submit the final data to the service
     et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
