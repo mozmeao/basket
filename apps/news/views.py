@@ -4,6 +4,7 @@ import re
 
 from django.conf import settings
 from django.http import HttpResponse
+from django.views.decorators.cache import cache_control, never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
@@ -223,6 +224,7 @@ def unsubscribe(request, token):
 
 @logged_in
 @csrf_exempt
+@never_cache
 def user(request, token):
     if request.method == 'POST':
         return update_user_task(request, SET)
@@ -233,6 +235,7 @@ def user(request, token):
     return get_user(request.subscriber.token)
 
 
+@never_cache
 def debug_user(request):
     if not 'email' in request.GET or not 'supertoken' in request.GET:
         return HttpResponseJSON({
@@ -298,6 +301,7 @@ def custom_update_phonebook(request, token):
 
 # Get data about current newsletters
 @require_GET
+@cache_control(max_age=300)
 def newsletters(request):
     # Get the newsletters as a dictionary of dictionaries that are
     # easily jsonified
