@@ -1,3 +1,4 @@
+import datetime
 import json
 
 from django.conf import settings
@@ -10,7 +11,7 @@ from test_utils import RequestFactory
 from news import models, tasks, views
 from news.backends.exacttarget import NewsletterException
 from news.newsletters import newsletter_fields
-from news.tasks import SET, SUBSCRIBE, update_user
+from news.tasks import SET, SUBSCRIBE, UNSUBSCRIBE, update_user
 
 
 class SubscriberTest(TestCase):
@@ -240,7 +241,8 @@ class UpdatePhonebookTest(TestCase):
 class UpdateStudentAmbassadorsTest(TestCase):
     def setUp(self):
         self.sub = models.Subscriber.objects.create(email='dude@example.com')
-        self.url = '/news/custom_update_student_ambassadors/%s/' % self.sub.token
+        self.url = '/news/custom_update_student_ambassadors/%s/' % \
+                   self.sub.token
         self.data = {'FIRST_NAME': 'Foo',
                      'LAST_NAME': 'Bar',
                      'STUDENTS_CURRENT_STATUS': 'student',
@@ -278,6 +280,15 @@ class UpdateUserTest(TestCase):
     def setUp(self):
         self.sub = models.Subscriber.objects.create(email='dude@example.com')
         self.rf = RequestFactory()
+        self.user_data = {
+            'EMAIL_ADDRESS_': 'dude@example.com',
+            'EMAIL_FORMAT_': 'H',
+            'COUNTRY_': 'us',
+            'LANGUAGE_ISO2': 'en',
+            'TOKEN': 'token',
+            'CREATED_DATE_': datetime.datetime.now(),
+            'TITLE_UNKNOWN_FLG': 'Y',
+        }
 
     @patch('news.views.update_user.delay')
     def test_update_user_task_helper(self, uu_mock):
@@ -344,8 +355,9 @@ class UpdateUserTest(TestCase):
         errors = json.loads(resp.content)
         self.assertEqual(errors['status'], 'error')
 
+    @patch('news.views.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
-    def test_update_send_newsletter_welcome(self, et_mock):
+    def test_update_send_newsletter_welcome(self, et_mock, etde_mock):
         # If we just subscribe to one newsletter, we send that
         # newsletter's particular welcome message
         et = et_mock()
@@ -377,8 +389,9 @@ class UpdateUserTest(TestCase):
             },
         )
 
+    @patch('news.views.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
-    def test_update_send_newsletters_welcome(self, et_mock):
+    def test_update_send_newsletters_welcome(self, et_mock, etde_mock):
         # If we subscribe to multiple newsletters, even if they
         # have custom welcome messages, we send the default
         et = et_mock()
@@ -416,8 +429,9 @@ class UpdateUserTest(TestCase):
             },
         )
 
+    @patch('news.views.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
-    def test_update_send_welcome(self, et_mock):
+    def test_update_send_welcome(self, et_mock, etde_mock):
         """
         Update sends default welcome if newsletter has none,
         or, we can specify a particular welcome
@@ -463,8 +477,9 @@ class UpdateUserTest(TestCase):
             },
         )
 
+    @patch('news.views.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
-    def test_update_user_works_with_no_welcome(self, et_mock):
+    def test_update_user_works_with_no_welcome(self, et_mock, etde_mock):
         """update_user was throwing errors when asked not to send a welcome"""
         et = et_mock()
         nl1 = models.Newsletter.objects.create(
@@ -488,14 +503,18 @@ class UpdateUserTest(TestCase):
         self.assertTrue(et.data_ext.return_value.add_record.called)
         self.assertFalse(et.trigger_send.called)
 
+    @patch('news.views.newsletter_fields')
+    @patch('news.views.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
-    def test_update_user_set_works_no_newsletters(self, et_mock):
+    def test_update_user_set_works_no_newsletters(self, et_mock, etde_mock,
+                                                  newsletter_fields):
         """
         A blank `newsletters` field when the update type is SET indicates
         that the person wishes to unsubscribe from all newsletters. This has
         caused exceptions because '' is not a valid newsletter name.
         """
         et = et_mock()
+        etde = etde_mock()
         nl1 = models.Newsletter.objects.create(
             slug='slug',
             title='title',
@@ -510,17 +529,170 @@ class UpdateUserTest(TestCase):
             'format': 'H',
         }
 
+        newsletter_fields.return_value = [nl1.vendor_id]
+
+        # Mock user data - we want our user subbed to our newsletter to start
+        etde.get_record.return_value = self.user_data
+
         update_user(data, self.sub.email, self.sub.token, False, SET, True)
         # no welcome should be triggered for SET
         self.assertFalse(et.trigger_send.called)
+        # We should have looked up the user's data
+        self.assertTrue(etde.get_record.called)
         et.data_ext.return_value.add_record.assert_called_with(
             ANY,
             ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
              u'TITLE_UNKNOWN_FLG', 'TOKEN', 'MODIFIED_DATE_',
              'EMAIL_PERMISSION_STATUS_', u'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
-            ['H', 'dude@example.com', 'en', 'N', ANY, ANY, 'I', ANY, 'US']
+            ['H', 'dude@example.com', 'en',
+             'N', ANY, ANY,
+             'I', ANY, 'US'],
         )
 
+    @patch('news.views.newsletter_fields')
+    @patch('news.views.ExactTargetDataExt')
+    @patch('news.tasks.ExactTarget')
+    def test_resubscribe_doesnt_update_newsletter(self, et_mock, etde_mock,
+                                                  newsletter_fields):
+        """
+        When subscribing to things the user is already subscribed to, we
+        do not pass that newsletter's _FLG and _DATE to ET because we
+        don't want that newsletter's _DATE to be updated for no reason.
+        """
+        et = et_mock()
+        etde = etde_mock()
+        nl1 = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en-US,fr',
+            vendor_id='TITLE_UNKNOWN',
+        )
+        # We're going to ask to subscribe to this one again
+        data = {
+            'lang': 'en',
+            'country': 'US',
+            'newsletters': 'slug',
+            'format': 'H',
+        }
+
+        newsletter_fields.return_value = [nl1.vendor_id]
+
+        # Mock user data - we want our user subbed to our newsletter to start
+        etde.get_record.return_value = self.user_data
+
+        update_user(data, self.sub.email, self.sub.token, False, SUBSCRIBE,
+                    True)
+        # We should have looked up the user's data
+        self.assertTrue(etde.get_record.called)
+        # We should not have mentioned this newsletter in our call to ET
+        et.data_ext.return_value.add_record.assert_called_with(
+            ANY,
+            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
+             'TOKEN', 'MODIFIED_DATE_',
+             'EMAIL_PERMISSION_STATUS_', 'COUNTRY_'],
+            ['H', 'dude@example.com', 'en',
+             ANY, ANY,
+             'I', 'US'],
+        )
+
+    @patch('news.views.newsletter_fields')
+    @patch('news.views.ExactTargetDataExt')
+    @patch('news.tasks.ExactTarget')
+    def test_set_doesnt_update_newsletter(self, et_mock, etde_mock,
+                                                  newsletter_fields):
+        """
+        When setting the newsletters to ones the user is already subscribed
+        to, we do not pass that newsletter's _FLG and _DATE to ET because we
+        don't want that newsletter's _DATE to be updated for no reason.
+        """
+        et = et_mock()
+        etde = etde_mock()
+        nl1 = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en-US,fr',
+            vendor_id='TITLE_UNKNOWN',
+        )
+        # We're going to ask to subscribe to this one again
+        data = {
+            'lang': 'en',
+            'country': 'US',
+            'newsletters': 'slug',
+            'format': 'H',
+        }
+
+        newsletter_fields.return_value = [nl1.vendor_id]
+
+        # Mock user data - we want our user subbed to our newsletter to start
+        etde.get_record.return_value = self.user_data
+
+        update_user(data, self.sub.email, self.sub.token, False, SET, True)
+        # We should have looked up the user's data
+        self.assertTrue(etde.get_record.called)
+        # We should not have mentioned this newsletter in our call to ET
+        et.data_ext.return_value.add_record.assert_called_with(
+            ANY,
+            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
+             'TOKEN', 'MODIFIED_DATE_',
+             'EMAIL_PERMISSION_STATUS_', 'COUNTRY_'],
+            ['H', 'dude@example.com', 'en',
+             ANY, ANY,
+             'I', 'US'],
+        )
+
+    @patch('news.views.newsletter_fields')
+    @patch('news.views.ExactTargetDataExt')
+    @patch('news.tasks.ExactTarget')
+    def test_unsub_is_careful(self, et_mock, etde_mock, newsletter_fields):
+        """
+        When unsubscribing, we only unsubscribe things the user is
+        currently subscribed to.
+        """
+        et = et_mock()
+        etde = etde_mock()
+        nl1 = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en-US,fr',
+            vendor_id='TITLE_UNKNOWN',
+        )
+        nl2 = models.Newsletter.objects.create(
+            slug='slug2',
+            title='title2',
+            active=True,
+            languages='en-US,fr',
+            vendor_id='TITLE2_UNKNOWN',
+        )
+        # We're going to ask to unsubscribe from both
+        data = {
+            'lang': 'en',
+            'country': 'US',
+            'newsletters': 'slug,slug2',
+            'format': 'H',
+        }
+
+        newsletter_fields.return_value = [nl1.vendor_id, nl2.vendor_id]
+
+        # We're only subscribed to TITLE_UNKNOWN though, not the other one
+        etde.get_record.return_value = self.user_data
+
+        update_user(data, self.sub.email, self.sub.token, False, UNSUBSCRIBE,
+                    True)
+        # We should have looked up the user's data
+        self.assertTrue(etde.get_record.called)
+        # We should only mention TITLE_UNKNOWN, not TITLE2_UNKNOWN
+        et.data_ext.return_value.add_record.assert_called_with(
+            ANY,
+            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
+             u'TITLE_UNKNOWN_FLG', 'TOKEN', 'MODIFIED_DATE_',
+             'EMAIL_PERMISSION_STATUS_', u'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
+            ['H', 'dude@example.com', 'en',
+             'N', ANY, ANY,
+             'I', ANY, 'US'],
+        )
 
 
 class TestNewslettersAPI(TestCase):
