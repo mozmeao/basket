@@ -6,11 +6,10 @@ from email.utils import formatdate
 from time import mktime
 from urllib2 import URLError
 
-from celery.task import Task, task
-from raven.contrib.django.raven_compat.models import client as sentry
-
 from django.conf import settings
 from django_statsd.clients import statsd
+
+from celery.task import Task, task
 
 from backends.exacttarget import (ExactTarget, ExactTargetDataExt,
                                   NewsletterException)
@@ -101,12 +100,9 @@ def et_task(func):
         statsd.incr(wrapped.name + '.total')
         try:
             return func(*args, **kwargs)
-        except URLError, e:
-            # connection problem. try again later.
-            sentry.captureException(extra={'args': args,
-                                           'kwargs': kwargs,
-                                           'retrying': True})
-            # raises retry exception or e
+        except URLError as e:
+            # connection issue. try again later.
+            # raises retry exception or e after max
             wrapped.retry(exc=e)
 
     return wrapped
