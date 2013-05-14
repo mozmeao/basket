@@ -642,6 +642,90 @@ class UpdateUserTest(TestCase):
              'I', 'US'],
         )
 
+    @patch('news.tasks.ExactTarget')
+    @patch('news.views.get_user_data')
+    def test_set_does_update_newsletter_on_error(self, get_user_mock, et_mock):
+        """
+        When setting the newsletters it should ensure that they're set right
+        if we can't get the user's data for some reason.
+        """
+        get_user_mock.return_value = {
+            'status': 'error',
+        }
+        et = et_mock()
+        models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en-US,fr',
+            vendor_id='TITLE_UNKNOWN',
+        )
+        # We're going to ask to subscribe to this one again
+        data = {
+            'lang': 'en',
+            'country': 'US',
+            'newsletters': 'slug',
+            'format': 'H',
+        }
+
+        update_user(data, self.sub.email, self.sub.token, False, SET, True)
+        # We should have mentioned this newsletter in our call to ET
+        et.data_ext.return_value.add_record.assert_called_with(
+            ANY,
+            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
+             'TITLE_UNKNOWN_FLG', 'TOKEN', 'MODIFIED_DATE_',
+             'EMAIL_PERMISSION_STATUS_', 'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
+            ['H', 'dude@example.com', 'en',
+             'Y', ANY, ANY,
+             'I', ANY, 'US'],
+        )
+
+    @patch('news.tasks.ExactTarget')
+    @patch('news.views.get_user_data')
+    def test_unsub_is_not_careful_on_error(self, get_user_mock, et_mock):
+        """
+        When unsubscribing, we unsubscribe from the requested lists if we can't
+        get user_data for some reason.
+        """
+        get_user_mock.return_value = {
+            'status': 'error',
+        }
+        et = et_mock()
+        models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en-US,fr',
+            vendor_id='TITLE_UNKNOWN',
+        )
+        models.Newsletter.objects.create(
+            slug='slug2',
+            title='title2',
+            active=True,
+            languages='en-US,fr',
+            vendor_id='TITLE2_UNKNOWN',
+        )
+        # We're going to ask to unsubscribe from both
+        data = {
+            'lang': 'en',
+            'country': 'US',
+            'newsletters': 'slug,slug2',
+            'format': 'H',
+        }
+
+        update_user(data, self.sub.email, self.sub.token, False, UNSUBSCRIBE,
+                    True)
+        # We should mention both TITLE_UNKNOWN, and TITLE2_UNKNOWN
+        et.data_ext.return_value.add_record.assert_called_with(
+            ANY,
+            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', u'TITLE2_UNKNOWN_FLG',
+             'LANGUAGE_ISO2', u'TITLE2_UNKNOWN_DATE', u'TITLE_UNKNOWN_FLG',
+             'TOKEN', 'MODIFIED_DATE_', 'EMAIL_PERMISSION_STATUS_',
+             u'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
+            ['H', 'dude@example.com', 'N', 'en', ANY, 'N', ANY, ANY, 'I',
+             ANY, 'US'],
+        )
+
     @patch('news.views.newsletter_fields')
     @patch('news.views.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
@@ -691,6 +775,44 @@ class UpdateUserTest(TestCase):
              'EMAIL_PERMISSION_STATUS_', u'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
             ['H', 'dude@example.com', 'en',
              'N', ANY, ANY,
+             'I', ANY, 'US'],
+        )
+
+    @patch('news.tasks.ExactTarget')
+    @patch('news.views.get_user_data')
+    def test_user_data_error(self, get_user_mock, et_mock):
+        """
+        Bug 871764: error from user data causing subscription to fail
+        """
+        get_user_mock.return_value = {
+            'status': 'error',
+        }
+        et = et_mock()
+        models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en-US,fr',
+            vendor_id='TITLE_UNKNOWN',
+        )
+        # We're going to ask to subscribe to this one again
+        data = {
+            'lang': 'en',
+            'country': 'US',
+            'newsletters': 'slug',
+            'format': 'H',
+        }
+
+        update_user(data, self.sub.email, self.sub.token, False, SUBSCRIBE,
+                    True)
+        # We should have mentioned this newsletter in our call to ET
+        et.data_ext.return_value.add_record.assert_called_with(
+            ANY,
+            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
+             'TITLE_UNKNOWN_FLG', 'TOKEN', 'MODIFIED_DATE_',
+             'EMAIL_PERMISSION_STATUS_', 'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
+            ['H', 'dude@example.com', 'en',
+             'Y', ANY, ANY,
              'I', ANY, 'US'],
         )
 
