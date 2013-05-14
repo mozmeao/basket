@@ -14,7 +14,7 @@ from celery.task import Task, task
 from backends.exacttarget import (ExactTarget, ExactTargetDataExt,
                                   NewsletterException)
 from .models import Newsletter
-from .newsletters import newsletter_field
+from .newsletters import newsletter_field, newsletter_names
 
 
 log = logging.getLogger(__name__)
@@ -133,14 +133,15 @@ def parse_newsletters(record, type, newsletters, cur_newsletters):
     :param list newsletters: List of the slugs of the newsletters to be
         subscribed, unsubscribed, or set.
     :param set cur_newsletters: Set of the slugs of the newsletters that
-        the user is currently subscribed to.
+        the user is currently subscribed to. None if there was an error.
     """
 
     if type == SUBSCRIBE or type == SET:
         # Subscribe the user to these newsletters if not already
         for nl in newsletters:
             name = newsletter_field(nl)
-            if name and nl not in cur_newsletters:
+            if name and (cur_newsletters is None or
+                         nl not in cur_newsletters):
                 record['%s_FLG' % name] = 'Y'
                 record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
 
@@ -150,7 +151,12 @@ def parse_newsletters(record, type, newsletters, cur_newsletters):
         if type == SET:
             # Unsubscribe from the newsletters currently subscribed to
             # but not in the new list
-            unsubs = cur_newsletters - set(newsletters)
+            if cur_newsletters is not None:
+                unsubs = cur_newsletters - set(newsletters)
+            else:
+                subs = set(newsletters)
+                all = set(newsletter_names())
+                unsubs = all - subs
         else:  # type == UNSUBSCRIBE
             # unsubscribe from the specified newsletters
             unsubs = newsletters
@@ -158,7 +164,7 @@ def parse_newsletters(record, type, newsletters, cur_newsletters):
         for nl in unsubs:
             # Unsubscribe from any unsubs that the user is currently subbed to
             name = newsletter_field(nl)
-            if name and nl in cur_newsletters:
+            if name and (cur_newsletters is None or nl in cur_newsletters):
                 record['%s_FLG' % name] = 'N'
                 record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
 
@@ -229,7 +235,9 @@ def update_user(data, email, token, created, type, optin):
 
     # Get the user's current settings
     user_data = get_user_data(token=token)
-    cur_newsletters = set(user_data['newsletters'])
+    cur_newsletters = user_data.get('newsletters', None)
+    if cur_newsletters is not None:
+        cur_newsletters = set(cur_newsletters)
 
     # Set the newsletter flags in the record
     parse_newsletters(record, type, newsletters, cur_newsletters)
