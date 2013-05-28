@@ -32,7 +32,7 @@ class SubscriberTest(TestCase):
         match.
         """
         models.Subscriber.objects.create(email='dude@example.com',
-                                  token='asdf')
+                                         token='asdf')
 
         models.Subscriber.objects.get_and_sync('dude@example.com', 'asdfjkl')
         sub = models.Subscriber.objects.get(email='dude@example.com')
@@ -371,6 +371,7 @@ class UpdateUserTest(TestCase):
         )
         data = {
             'country': 'US',
+            'format': 'H',
             'newsletters': nl.slug,
             'trigger_welcome': 'Y',
         }
@@ -411,6 +412,7 @@ class UpdateUserTest(TestCase):
         )
         data = {
             'country': 'US',
+            'format': 'H',
             'newsletters': "%s,%s" % (nl1.slug, nl2.slug),
             'trigger_welcome': 'Y',
         }
@@ -445,6 +447,7 @@ class UpdateUserTest(TestCase):
         )
         data = {
             'country': 'US',
+            'format': 'H',
             'newsletters': nl1.slug,
         }
 
@@ -600,7 +603,7 @@ class UpdateUserTest(TestCase):
     @patch('news.views.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
     def test_set_doesnt_update_newsletter(self, et_mock, etde_mock,
-                                                  newsletter_fields):
+                                          newsletter_fields):
         """
         When setting the newsletters to ones the user is already subscribed
         to, we do not pass that newsletter's _FLG and _DATE to ET because we
@@ -816,6 +819,113 @@ class UpdateUserTest(TestCase):
              'I', ANY, 'US'],
         )
 
+    @patch('news.tasks.ExactTarget')
+    @patch('news.views.get_user_data')
+    def test_update_user_without_format_doesnt_send_format(self,
+                                                           get_user_mock,
+                                                           et_mock):
+        """
+        ET format not changed if update_user call doesn't specify.
+
+        If update_user call doesn't specify a format (e.g. if bedrock
+        doesn't get a changed value on a form submission), then Basket
+        doesn't send any format to ET.
+
+        It does use the user's choice of format to send them their
+        welcome message.
+        """
+        models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en-US,fr',
+            vendor_id='TITLE_UNKNOWN',
+        )
+        get_user_mock.return_value = {
+            'status': 'ok',
+            'format': 'T',
+        }
+        et = et_mock()
+        data = {
+            'lang': 'en',
+            'country': 'US',
+            'newsletters': 'slug',
+            'trigger_welcome': 'Y',
+        }
+        update_user(data, self.sub.email, self.sub.token, False, SUBSCRIBE,
+                    True)
+        # We'll pass no format to ET
+        et.data_ext.return_value.add_record.assert_called_with(
+            ANY,
+            ['EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
+             'TITLE_UNKNOWN_FLG', 'TOKEN', 'MODIFIED_DATE_',
+             'EMAIL_PERMISSION_STATUS_', 'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
+            ['dude@example.com', 'en',
+             'Y', ANY, ANY,
+             'I', ANY, 'US'],
+        )
+        # We'll send their welcome in T format because that is the
+        # user's preference in ET
+        et.trigger_send.assert_called_with(
+            '39_T',
+            {'EMAIL_FORMAT_': 'T',
+             'EMAIL_ADDRESS_': 'dude@example.com',
+             'TOKEN': ANY}
+        )
+
+    @patch('news.tasks.ExactTarget')
+    @patch('news.views.get_user_data')
+    def test_update_user_wo_format_or_pref(self,
+                                           get_user_mock,
+                                           et_mock):
+        """
+        ET format not changed if update_user call doesn't specify.
+
+        If update_user call doesn't specify a format (e.g. if bedrock
+        doesn't get a changed value on a form submission), then Basket
+        doesn't send any format to ET.
+
+        If the user does not have any format preference in ET, then
+        the welcome is sent in HTML.
+        """
+        models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en-US,fr',
+            vendor_id='TITLE_UNKNOWN',
+        )
+        get_user_mock.return_value = {
+            'status': 'ok',
+        }
+        et = et_mock()
+        data = {
+            'lang': 'en',
+            'country': 'US',
+            'newsletters': 'slug',
+            'trigger_welcome': 'Y',
+        }
+        update_user(data, self.sub.email, self.sub.token, False, SUBSCRIBE,
+                    True)
+        # We'll pass no format to ET
+        et.data_ext.return_value.add_record.assert_called_with(
+            ANY,
+            ['EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
+             'TITLE_UNKNOWN_FLG', 'TOKEN', 'MODIFIED_DATE_',
+             'EMAIL_PERMISSION_STATUS_', 'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
+            ['dude@example.com', 'en',
+             'Y', ANY, ANY,
+             'I', ANY, 'US'],
+        )
+        # We'll send their welcome in H format because that is the
+        # default when we have no other preference known.
+        et.trigger_send.assert_called_with(
+            '39',
+            {'EMAIL_FORMAT_': 'H',
+             'EMAIL_ADDRESS_': 'dude@example.com',
+             'TOKEN': ANY}
+        )
+
 
 class TestNewslettersAPI(TestCase):
     def setUp(self):
@@ -865,7 +975,7 @@ class TestNewslettersAPI(TestCase):
             vendor_id='VEND1',
             active=False,
             languages='en-US, fr, de ',
-            )
+        )
         # This should get the data cached
         newsletter_fields()
         # Now request it again and it shouldn't have to generate the
