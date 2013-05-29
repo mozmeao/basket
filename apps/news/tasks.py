@@ -222,12 +222,6 @@ def update_user(data, email, token, created, type, optin):
         if field in data:
             record[extra_fields[field]] = data[field]
 
-    fmt = 'T' if data.get('format', 'H').upper().startswith('T') else 'H'
-
-    # From here on, fmt is either 'H' or 'T', preferring 'H'
-
-    record['EMAIL_FORMAT_'] = fmt
-
     newsletters = [x.strip() for x in data.get('newsletters', '').split(',')]
 
     # Can't import this earlier, circular import
@@ -241,6 +235,18 @@ def update_user(data, email, token, created, type, optin):
 
     # Set the newsletter flags in the record
     parse_newsletters(record, type, newsletters, cur_newsletters)
+
+    # We need an HTML/Text format choice for sending welcome messages, and
+    # optionally to update their ET record
+    if 'format' in data:  # Submitted in call
+        fmt = 'T' if data.get('format', 'H').upper().startswith('T') else 'H'
+        # We only set the format in ET if the call asked us to
+        record['EMAIL_FORMAT_'] = fmt
+    elif 'format' in user_data:  # Existing user preference
+        fmt = user_data['format']
+    else:  # Default to 'H'
+        fmt = 'H'
+    # From here on, fmt is either 'H' or 'T', preferring 'H'
 
     # Submit the final data to the service
     et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
