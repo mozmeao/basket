@@ -19,6 +19,8 @@ class SubscriberManager(models.Manager):
         if not created and sub.token != token:
             sub.token = token
             sub.save()
+            # FIXME: this could mean there's another record in Exact Target
+            # with the other token
 
         return sub
 
@@ -70,6 +72,10 @@ class Newsletter(models.Model):
         max_length=200,
         help_text="Comma-separated list of the language codes that this "
                   "newsletter supports",
+    )
+    requires_double_optin = models.BooleanField(
+        help_text="True if subscribing to this newsletter requires someone"
+                  "to respond to a confirming email.",
     )
 
     def __unicode__(self):

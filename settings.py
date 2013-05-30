@@ -152,6 +152,10 @@ RESPONSYS_PASS = ''
 RESPONSYS_FOLDER = '!MasterData'
 RESPONSYS_LIST = 'TEST_CONTACTS_LIST'
 
+
+# Name of the database where we put someone's token when they confirm
+EXACTTARGET_CONFIRMATION = 'Confirmation'
+
 # This is a token that bypasses the news app auth in certain ways to
 # make debugging easier
 # SUPERTOKEN = <token>
