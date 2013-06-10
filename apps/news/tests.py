@@ -13,14 +13,14 @@ from test_utils import RequestFactory
 
 from news import models, tasks, views
 from news.backends.exacttarget import NewsletterException
-from news.newsletters import newsletter_fields
-from news.tasks import (FFOS_VENDOR_ID, FFAY_VENDOR_ID,
+from news.newsletters import newsletter_fields, newsletter_languages
+from news.tasks import (FFAY_VENDOR_ID,FFOS_VENDOR_ID,
                         SET, SUBSCRIBE, UNSUBSCRIBE,
                         UU_ALREADY_CONFIRMED,
                         UU_EXEMPT_NEW, UU_EXEMPT_PENDING,
                         UU_MUST_CONFIRM_NEW, UU_MUST_CONFIRM_PENDING,
                         update_user)
-from news.views import get_user_data
+from news.views import get_user_data, language_code_is_valid
 
 
 class SubscriberTest(TestCase):
@@ -93,6 +93,42 @@ class SubscribeTest(TestCase):
         with self.assertRaises(models.Subscriber.DoesNotExist):
             models.Subscriber.objects.get(email='dude@example.com')
 
+    def test_invalid_language_error(self):
+        """
+        Should return an error and not create a subscriber if
+        language invalid.
+        """
+        resp = self.client.post('/news/subscribe/', {
+            'email': 'dude@example.com',
+            'newsletters': 'mozilla-and-you',
+            'lang': 'zz'
+        })
+        self.assertEqual(resp.status_code, 400)
+        data = json.loads(resp.content)
+        self.assertEqual(data['status'], 'error')
+        self.assertEqual(data['desc'], 'invalid language')
+        with self.assertRaises(models.Subscriber.DoesNotExist):
+            models.Subscriber.objects.get(email='dude@example.com')
+
+    @patch('news.views.get_user_data')
+    @patch('news.views.update_user.delay')
+    def test_blank_language_okay(self, uu_mock, get_user_data):
+        """
+        Should work if language is left blank.
+        """
+        get_user_data.return_value = None  # new user
+        resp = self.client.post('/news/subscribe/', {
+            'email': 'dude@example.com',
+            'newsletters': 'mozilla-and-you',
+            'lang': ''
+        })
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.content)
+        self.assertEqual(data['status'], 'ok')
+        sub = models.Subscriber.objects.get(email='dude@example.com')
+        uu_mock.assert_called_with(ANY, sub.email, sub.token,
+                                   True, views.SUBSCRIBE, True)
+
     @patch('news.views.get_user_data')
     @patch('news.views.update_user.delay')
     def test_subscribe_success(self, uu_mock, get_user_data):
@@ -123,6 +159,20 @@ class UserTest(TestCase):
         update_user.assert_called_with({'fake': ['data']},
                                        'test@example.com',
                                        'asdf', False, tasks.SET, True)
+
+    def test_user_set_bad_language(self):
+        """If the user view is sent a POST request with an invalid
+        language, it fails.
+        """
+        subscriber = models.Subscriber(email='test@example.com', token='asdf')
+        subscriber.save()
+
+        resp = self.client.post('/news/user/asdf/',
+                                {'fake': 'data', 'lang': 'zz'})
+        self.assertEqual(resp.status_code, 400)
+        data = json.loads(resp.content)
+        self.assertEqual(data['status'], 'error')
+        self.assertEqual(data['desc'], 'invalid language')
 
     @patch('news.views.ExactTargetDataExt')
     def test_missing_user_created(self, et_ext):
@@ -1142,6 +1192,35 @@ class TestNewslettersAPI(TestCase):
         nl1 = models.Newsletter.objects.get(id=nl1.id)
         self.assertEqual('en-US,fr,de', nl1.languages)
 
+    def test_newsletter_languages(self):
+        # newsletter_languages() returns the set of languages
+        # of the newsletters
+        # (Note that newsletter_languages() is not part of the external
+        # API, but is used internally)
+        models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=False,
+            languages='en-US',
+            vendor_id='VENDOR1',
+        )
+        models.Newsletter.objects.create(
+            slug='slug2',
+            title='title',
+            active=False,
+            languages='fr, de ',
+            vendor_id='VENDOR2',
+        )
+        models.Newsletter.objects.create(
+            slug='slug3',
+            title='title',
+            active=False,
+            languages='en-US, fr',
+            vendor_id='VENDOR3',
+        )
+        expect = set(['en-US', 'fr', 'de'])
+        self.assertEqual(expect, newsletter_languages())
+
     def test_newsletters_cached(self):
         models.Newsletter.objects.create(
             slug='slug',
@@ -1571,3 +1650,69 @@ class TestConfirmationLogic(TestCase):
                           is_english=False,
                           type=SUBSCRIBE,
                           expected_result=UU_ALREADY_CONFIRMED)
+
+
+class TestLanguageCodeIsValid(TestCase):
+    @patch('news.views.newsletter_languages')
+    def test_empty_string(self, n_l):
+        """Empty string is accepted as a language code"""
+        self.assertTrue(language_code_is_valid(''))
+
+    @patch('news.views.newsletter_languages')
+    def test_none(self, n_l):
+        """None is a TypeError"""
+        with self.assertRaises(TypeError):
+            language_code_is_valid(None)
+
+    @patch('news.views.newsletter_languages')
+    def test_zero(self, n_l):
+        """0 is a TypeError"""
+        with self.assertRaises(TypeError):
+            language_code_is_valid(0)
+
+    @patch('news.views.newsletter_languages')
+    def test_exact_2_letter(self, n_l):
+        """2-letter code that's in the list is valid"""
+        n_l.return_value = ['az']
+        self.assertTrue(language_code_is_valid('az'))
+
+    @patch('news.views.newsletter_languages')
+    def test_exact_5_letter(self, n_l):
+        """5-letter code that's in the list is valid"""
+        n_l.return_value = ['az-BY']
+        self.assertTrue(language_code_is_valid('az-BY'))
+
+    @patch('news.views.newsletter_languages')
+    def test_prefix(self, n_l):
+        """2-letter code that's a prefix of something in the list is valid"""
+        n_l.return_value = ['az-BY']
+        self.assertTrue(language_code_is_valid('az'))
+
+    @patch('news.views.newsletter_languages')
+    def test_long_version(self, n_l):
+        """5-letter code is valid if an entry in the list is a prefix of it"""
+        n_l.return_value = ['az']
+        self.assertTrue(language_code_is_valid('az-BY'))
+
+    @patch('news.views.newsletter_languages')
+    def test_case_insensitive(self, n_l):
+        """Matching is not case sensitive"""
+        n_l.return_value = ['aZ', 'Qw-wE']
+        self.assertTrue(language_code_is_valid('az-BY'))
+        self.assertTrue(language_code_is_valid('az'))
+        self.assertTrue(language_code_is_valid('QW'))
+
+    @patch('news.views.newsletter_languages')
+    def test_wrong_length(self, n_l):
+        """A code that's a prefix of something in the list, but not a valid
+        length, is not valid. Or vice-versa."""
+        n_l.return_value = ['az-BY']
+        self.assertFalse(language_code_is_valid('az-'))
+        self.assertFalse(language_code_is_valid('a'))
+        self.assertFalse(language_code_is_valid('az-BY2'))
+
+    @patch('news.views.newsletter_languages')
+    def test_no_match(self, n_l):
+        """Return False if there's no match any way we try."""
+        n_l.return_value = ['az']
+        self.assertFalse(language_code_is_valid('by'))
