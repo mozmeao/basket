@@ -77,7 +77,18 @@ def newsletter_names():
 
 def newsletter_fields():
     """Get a list of all the newsletter backend-specific fields"""
-    return  _newsletters()['by_vendor_id'].keys()
+    return _newsletters()['by_vendor_id'].keys()
+
+
+def newsletter_languages():
+    """
+    Return a set of the 2 or 5 char codes of all the languages
+    supported by newsletters.
+    """
+    lang_set = set()
+    for newsletter in _newsletters()['by_name'].values():
+        lang_set |= set(newsletter.language_list)
+    return lang_set
 
 
 def clear_newsletter_cache():

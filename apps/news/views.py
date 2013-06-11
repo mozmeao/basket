@@ -21,7 +21,8 @@ from tasks import (
     update_student_ambassadors,
     update_user,
 )
-from .newsletters import newsletter_fields, newsletter_names
+from .newsletters import (newsletter_fields, newsletter_languages,
+                          newsletter_names)
 
 
 ## Utility functions
@@ -59,7 +60,6 @@ def lookup_subscriber(token=None, email=None):
     The user_data is only provided if we had to ask ET about this
     email/token (and found it there); otherwise, it's None.
     """
-
     if not (token or email):
         raise Exception("lookup_subscriber needs token or email")
     kwargs = {}
@@ -74,7 +74,7 @@ def lookup_subscriber(token=None, email=None):
         created = True
         # Check with ET to see if our DB is just out of sync
         user_data = get_user_data(sync_data=True, **kwargs)
-        if user_data:
+        if user_data and user_data['status'] == 'ok':
             # Found them in ET and updated subscriber db locally
             subscriber = Subscriber.objects.get(**kwargs)
         else:
@@ -111,6 +111,33 @@ def logged_in(f):
     return wrapper
 
 
+def language_code_is_valid(code):
+    """Return True if ``code`` is the empty string, or one of the language
+    codes associated with a newsletter.  Since language codes come in both
+    2-letter and 5-letter varieties ("en" and "en-US"), we consider codes
+    to also match if the 5-letter code starts with the 2-letter code.
+
+    Not case sensitive.
+
+    Raises TypeError if anything but a string is passed in.
+    """
+    if not isinstance(code, basestring):
+        raise TypeError("Language code must be a string")
+
+    # Accept empty string, or newsletter languages. Lowercase all the things.
+    langs = [''] + [lang.lower() for lang in newsletter_languages()]
+    code = code.lower()
+
+    if code in langs:
+        return True
+    elif len(code) in [2, 5]:
+        # If the length is valid, consider 2-letter matches
+        code2 = code[:2]
+        if any(code2 == lang[:2] for lang in langs):
+            return True
+    return False
+
+
 def update_user_task(request, type, data=None, optin=True):
     """Call the update_user task async with the right parameters"""
 
@@ -126,6 +153,12 @@ def update_user_task(request, type, data=None, optin=True):
                     'status': 'error',
                     'desc': 'invalid newsletter',
                 }, 400)
+
+    if 'lang' in data and not language_code_is_valid(data['lang']):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'invalid language',
+        }, 400)
 
     email = data.get('email')
     if not (email or sub):

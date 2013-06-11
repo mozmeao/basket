@@ -97,6 +97,11 @@ class Newsletter(models.Model):
         """Return newsletter's welcome message ID, or the default one"""
         return self.welcome or settings.DEFAULT_WELCOME_MESSAGE_ID
 
+    @property
+    def language_list(self):
+        """Return language codes for this newsletter as a list"""
+        return [x.strip() for x in self.languages.split(",")]
+
 
 @receiver(post_delete, sender=Newsletter)
 def post_newsletter_delete(sender, **kwargs):
