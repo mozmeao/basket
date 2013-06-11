@@ -44,9 +44,15 @@ LDAP = {
     'search_base': 'o=com,dc=mozilla',
 }
 
+#: Credentials for Exact Target account
 EXACTTARGET_USER = ''
 EXACTTARGET_PASS = ''
+#: Name of the database of people who have confirmed
 EXACTTARGET_DATA = ''
+#: Name of the database of people waiting for confirmation
+EXACTTARGET_OPTIN_STAGE = ''
+# Name of the database where we put someone's token when they confirm
+EXACTTARGET_CONFIRMATION = 'Confirmation'
 
 LOGGING['root'] = {
     'level': 'DEBUG',

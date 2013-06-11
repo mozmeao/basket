@@ -4,22 +4,27 @@ ExactTarget's SOAP API.
 
 To watch the SOAP requests:
 import logging
-logging.getLogger('suds.client').addHandler(logging.StreamHandler(sys.__stdout__))
-logging.getLogger('suds.client').setLevel(logging.DEBUG)
+logger = getLogger('suds.client')
+logger.addHandler(logging.StreamHandler(sys.__stdout__))
+logger.setLevel(logging.DEBUG)
 
 Some test code:
 et = ExactTarget('<user>', '<pass>')
-et.data_ext().add_record('Master_Subscribers', ['TOKEN', 'EMAIL_ADDRESS_', 'CREATED_DATE_', 'MODIFIED_DATE_'], ['hello', 'jlong@mozilla.com', '2011-01-01', '2011-01-01'])
+et.data_ext().add_record('Master_Subscribers',
+   ['TOKEN', 'EMAIL_ADDRESS_', 'CREATED_DATE_', 'MODIFIED_DATE_'],
+   ['hello', 'jlong@mozilla.com', '2011-01-01', '2011-01-01'])
 et.trigger_send('WelcomeEmail', 'jlong@mozilla.com', 'hello', 'H')
 """
 
+import os
 from functools import wraps
 
 from suds import WebFault
 from suds.client import Client
-from suds.wsse import *
+from suds.wsse import Security, UsernameToken
 
-from common import *
+from .common import NewsletterException, NewsletterNoResultsException, \
+    UnauthorizedException
 
 
 # This is just a cached version. The real URL is:
@@ -52,7 +57,7 @@ def assert_status(obj):
 def assert_result(obj):
     """Make sure the returned object has a result"""
     if not hasattr(obj, 'Results') or len(obj.Results) == 0:
-        raise NewsletterException('No results returned')
+        raise NewsletterNoResultsException('No results returned')
 
 
 def handle_fault(e):
@@ -238,7 +243,7 @@ class ExactTargetDataExt(ExactTargetObject):
         opt.PropertyName = '*'
         opt.SaveAction = 'UpdateAdd'
 
-        rtype = self.create('RequestType')
+        self.create('RequestType')
         opts = self.create('UpdateOptions')
         opts.SaveOptions.SaveOption = [opt]
 
@@ -268,6 +273,10 @@ class ExactTargetDataExt(ExactTargetObject):
             assert_result(obj)
         except WebFault, e:
             handle_fault(e)
+
+        # FIXME: Exact Target could have returned multiple results, but we
+        # only return the first one here. This is a place we could try to
+        # fix data duplication.
 
         return dict((p.Name, p.Value)
                     for p in obj.Results[0].Properties.Property)
@@ -309,7 +318,7 @@ class ExactTarget(ExactTargetObject):
 
         send.Subscribers = [sub]
 
-        rtype = self.create('RequestType')
+        self.create('RequestType')
         opts = self.create('CreateOptions')
 
         try:
@@ -335,7 +344,7 @@ class ExactTarget(ExactTargetObject):
 
         send.Subscriber = sub
 
-        rtype = self.create('RequestType')
+        self.create('RequestType')
         opts = self.create('CreateOptions')
 
         try:

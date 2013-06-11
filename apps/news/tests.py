@@ -1,9 +1,12 @@
 import datetime
 import json
+from urllib2 import URLError
+from uuid import uuid4
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test import TestCase
+from django.utils.unittest import skip
 
 from mock import ANY, patch
 from test_utils import RequestFactory
@@ -11,7 +14,13 @@ from test_utils import RequestFactory
 from news import models, tasks, views
 from news.backends.exacttarget import NewsletterException
 from news.newsletters import newsletter_fields
-from news.tasks import SET, SUBSCRIBE, UNSUBSCRIBE, update_user
+from news.tasks import (FFOS_VENDOR_ID, FFAY_VENDOR_ID,
+                        SET, SUBSCRIBE, UNSUBSCRIBE,
+                        UU_ALREADY_CONFIRMED,
+                        UU_EXEMPT_NEW, UU_EXEMPT_PENDING,
+                        UU_MUST_CONFIRM_NEW, UU_MUST_CONFIRM_PENDING,
+                        update_user)
+from news.views import get_user_data
 
 
 class SubscriberTest(TestCase):
@@ -84,9 +93,11 @@ class SubscribeTest(TestCase):
         with self.assertRaises(models.Subscriber.DoesNotExist):
             models.Subscriber.objects.get(email='dude@example.com')
 
+    @patch('news.views.get_user_data')
     @patch('news.views.update_user.delay')
-    def test_subscribe_success(self, uu_mock):
+    def test_subscribe_success(self, uu_mock, get_user_data):
         """Subscription should work."""
+        get_user_data.return_value = None  # new user
         resp = self.client.post('/news/subscribe/', {
             'email': 'dude@example.com',
             'newsletters': 'mozilla-and-you',
@@ -289,21 +300,41 @@ class UpdateUserTest(TestCase):
             'CREATED_DATE_': datetime.datetime.now(),
             'TITLE_UNKNOWN_FLG': 'Y',
         }
+        # User data in format that get_user_data() returns it
+        self.get_user_data = {
+            'email': 'dude@example.com',
+            'format': 'H',
+            'country': 'us',
+            'lang': 'en',
+            'token': 'token',
+            'newsletters': ['slug'],
+            'confirmed': True,
+            'master': True,
+            'pending': False,
+            'status': 'ok',
+        }
 
     @patch('news.views.update_user.delay')
     def test_update_user_task_helper(self, uu_mock):
         """
         `update_user` should always get an email and token.
         """
+        # Fake an incoming request which we've already looked up and
+        # found a corresponding subscriber for
         req = self.rf.post('/testing/', {'stuff': 'whanot'})
         req.subscriber = self.sub
+        # Call update_user to subscribe
         resp = views.update_user_task(req, tasks.SUBSCRIBE)
         resp_data = json.loads(resp.content)
+        # We should get back 'ok' status and the token from that
+        # subscriber.
         self.assertDictEqual(resp_data, {
             'status': 'ok',
             'token': self.sub.token,
             'created': False,
         })
+        # We should have called update_user with the email, token,
+        # created=False, type=SUBSCRIBE, optin=True
         uu_mock.assert_called_with({'stuff': ['whanot']},
                                    self.sub.email, self.sub.token,
                                    False, tasks.SUBSCRIBE, True)
@@ -313,32 +344,50 @@ class UpdateUserTest(TestCase):
         """
         Should find sub from submitted email when not provided.
         """
+        # Request, pretend we were untable to find a subscriber
+        # so we don't set req.subscriber
         req = self.rf.post('/testing/', {'email': self.sub.email})
+        # See what update_user does
         resp = views.update_user_task(req, tasks.SUBSCRIBE)
+        # Should be okay
+        self.assertEqual(200, resp.status_code)
         resp_data = json.loads(resp.content)
+        # Should have found the token for the given email
         self.assertDictEqual(resp_data, {
             'status': 'ok',
             'token': self.sub.token,
             'created': False,
         })
+        # We should have called update_user with the email, token,
+        # created=False, type=SUBSCRIBE, optin=True
         uu_mock.assert_called_with({'email': [self.sub.email]},
                                    self.sub.email, self.sub.token,
                                    False, tasks.SUBSCRIBE, True)
 
+    @patch('news.views.look_for_user')
     @patch('news.views.update_user.delay')
-    def test_update_user_task_helper_create(self, uu_mock):
+    def test_update_user_task_helper_create(self, uu_mock, look_for_user):
         """
         Should create a user and tell the task about it if email not known.
         """
+        # Pretend we are unable to find the user in ET
+        look_for_user.return_value = None
+        # Pass in a new email
         req = self.rf.post('/testing/', {'email': 'donnie@example.com'})
         resp = views.update_user_task(req, tasks.SUBSCRIBE)
+        # Should work
+        self.assertEqual(200, resp.status_code)
+        # There should be a new subscriber for this email
         sub = models.Subscriber.objects.get(email='donnie@example.com')
         resp_data = json.loads(resp.content)
+        # The call should have returned the subscriber's new token
         self.assertDictEqual(resp_data, {
             'status': 'ok',
             'token': sub.token,
             'created': True,
         })
+        # We should have called update_user with the email, token,
+        # created=False, type=SUBSCRIBE, optin=True
         uu_mock.assert_called_with({'email': [sub.email]},
                                    sub.email, sub.token,
                                    True, tasks.SUBSCRIBE, True)
@@ -348,19 +397,36 @@ class UpdateUserTest(TestCase):
         """
         Should not call the task if no email or token provided.
         """
+        # Pretend there was no email given - bad request
         req = self.rf.post('/testing/', {'stuff': 'whanot'})
         resp = views.update_user_task(req, tasks.SUBSCRIBE)
+        # We don't try to call update_user
         self.assertFalse(uu_mock.called)
+        # We respond with a 400
         self.assertEqual(resp.status_code, 400)
         errors = json.loads(resp.content)
+        # The response also says there was an error
         self.assertEqual(errors['status'], 'error')
+        # and has a useful error description
+        self.assertEqual(errors['desc'],
+                         u'An email address or token is required.')
 
-    @patch('news.views.ExactTargetDataExt')
-    @patch('news.tasks.ExactTarget')
-    def test_update_send_newsletter_welcome(self, et_mock, etde_mock):
-        # If we just subscribe to one newsletter, we send that
-        # newsletter's particular welcome message
-        et = et_mock()
+    @patch('news.tasks.apply_updates')
+    @patch('news.tasks.send_message')
+    @patch('news.views.get_user_data')
+    def test_update_send_newsletter_welcome(self, get_user_data, send_message,
+                                            apply_updates):
+        # When we subscribe to one newsletter, and no confirmation is
+        # needed, we send that newsletter's particular welcome message
+
+        # User already exists in ET and is confirmed
+        # User does not subscribe to anything yet
+        self.get_user_data['confirmed'] = True
+        self.get_user_data['newsletters'] = []
+        self.get_user_data['token'] = self.sub.token
+        get_user_data.return_value = self.get_user_data
+
+        # A newsletter with a welcome message
         welcome_id = "TEST_WELCOME"
         nl = models.Newsletter.objects.create(
             slug='slug',
@@ -368,6 +434,7 @@ class UpdateUserTest(TestCase):
             active=True,
             languages='en,fr',
             welcome=welcome_id,
+            vendor_id='VENDOR1',
         )
         data = {
             'country': 'US',
@@ -375,14 +442,52 @@ class UpdateUserTest(TestCase):
             'newsletters': nl.slug,
             'trigger_welcome': 'Y',
         }
-        update_user(data=data,
-                    email=self.sub.email,
-                    token=self.sub.token,
-                    created=True,
-                    type=SUBSCRIBE,
-                    optin=True)
+        rc = update_user(data=data,
+                         email=self.sub.email,
+                         token=self.sub.token,
+                         created=True,
+                         type=SUBSCRIBE,
+                         optin=True)
+        self.assertEqual(UU_ALREADY_CONFIRMED, rc)
+        apply_updates.assert_called()
+        # The welcome should have been sent
+        send_message.assert_called()
+        send_message.assert_called_with('EN_' + welcome_id, self.sub.email,
+                                        self.sub.token, 'H')
+
+    @patch('news.views.get_user_data')
+    @patch('news.views.ExactTargetDataExt')
+    @patch('news.tasks.ExactTarget')
+    def test_update_send_welcome(self, et_mock, etde_mock, get_user_data):
+        """
+        Update sends default welcome if newsletter has none,
+        or, we can specify a particular welcome
+        """
+        et = et_mock()
+        # Newsletter with no defined welcome message
+        nl1 = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en-US,fr',
+            vendor_id='VENDOR1',
+        )
+        data = {
+            'country': 'US',
+            'newsletters': nl1.slug,
+        }
+
+        self.get_user_data['token'] = self.sub.token
+        self.get_user_data['newsletters'] = []
+        get_user_data.return_value = self.get_user_data
+
+        rc = update_user(data=data, email=self.sub.email,
+                         token=self.sub.token,
+                         created=True,
+                         type=SUBSCRIBE, optin=True)
+        self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         et.trigger_send.assert_called_with(
-            welcome_id,
+            'EN_' + settings.DEFAULT_WELCOME_MESSAGE_ID,
             {
                 'EMAIL_FORMAT_': 'H',
                 'EMAIL_ADDRESS_': self.sub.email,
@@ -390,18 +495,40 @@ class UpdateUserTest(TestCase):
             },
         )
 
-    @patch('news.views.ExactTargetDataExt')
-    @patch('news.tasks.ExactTarget')
-    def test_update_send_newsletters_welcome(self, et_mock, etde_mock):
-        # If we subscribe to multiple newsletters, even if they
-        # have custom welcome messages, we send the default
-        et = et_mock()
+        # FIXME? I think we don't need the ability for the caller
+        # to override the welcome message
+        # Can specify a different welcome
+        # welcome = 'MyWelcome_H'
+        # data['welcome_message'] = welcome
+        # update_user(data=data, email=self.sub.email,
+        #             token=self.sub.token,
+        #             created=True,
+        #             type=SUBSCRIBE, optin=True)
+        # et.trigger_send.assert_called_with(
+        #     welcome,
+        #     {
+        #         'EMAIL_FORMAT_': 'H',
+        #         'EMAIL_ADDRESS_': self.sub.email,
+        #         'TOKEN': self.sub.token,
+        #     },
+        # )
+
+    @patch('news.tasks.apply_updates')
+    @patch('news.tasks.send_message')
+    @patch('news.views.get_user_data')
+    def test_update_send_newsletters_welcome(self, get_user_data,
+                                             send_message,
+                                             apply_updates):
+        # If we subscribe to multiple newsletters, and no confirmation is
+        # needed, we send each of their welcome messages
+        get_user_data.return_value = None  # Does not exist yet
         nl1 = models.Newsletter.objects.create(
             slug='slug',
             title='title',
             active=True,
             languages='en,fr',
             welcome="WELCOME1",
+            vendor_id='VENDOR1',
         )
         nl2 = models.Newsletter.objects.create(
             slug='slug2',
@@ -409,115 +536,123 @@ class UpdateUserTest(TestCase):
             active=True,
             languages='en,fr',
             welcome="WELCOME2",
+            vendor_id='VENDOR2',
         )
         data = {
             'country': 'US',
+            'lang': 'en',
             'format': 'H',
             'newsletters': "%s,%s" % (nl1.slug, nl2.slug),
             'trigger_welcome': 'Y',
         }
-        update_user(data=data,
-                    email=self.sub.email,
-                    token=self.sub.token,
-                    created=True,
-                    type=SUBSCRIBE,
-                    optin=True)
-        et.trigger_send.assert_called_with(
-            settings.DEFAULT_WELCOME_MESSAGE_ID,
-            {
-                'EMAIL_FORMAT_': 'H',
-                'EMAIL_ADDRESS_': self.sub.email,
-                'TOKEN': self.sub.token,
-            },
-        )
+        rc = update_user(data=data,
+                         email=self.sub.email,
+                         token=self.sub.token,
+                         created=True,
+                         type=SUBSCRIBE,
+                         optin=True)
+        self.assertEqual(UU_EXEMPT_NEW, rc)
+        self.assertEqual(2, send_message.call_count)
+        calls_args = [x[0] for x in send_message.call_args_list]
+        self.assertIn(('EN_WELCOME1', self.sub.email, self.sub.token, 'H'),
+                      calls_args)
+        self.assertIn(('EN_WELCOME2', self.sub.email, self.sub.token, 'H'),
+                      calls_args)
 
-    @patch('news.views.ExactTargetDataExt')
-    @patch('news.tasks.ExactTarget')
-    def test_update_send_welcome(self, et_mock, etde_mock):
-        """
-        Update sends default welcome if newsletter has none,
-        or, we can specify a particular welcome
-        """
-        et = et_mock()
+    @patch('news.tasks.apply_updates')
+    @patch('news.tasks.send_message')
+    @patch('news.views.get_user_data')
+    def test_update_user_works_with_no_welcome(self, get_user_data,
+                                               send_message,
+                                               apply_updates):
+        """update_user was throwing errors when asked not to send a welcome"""
         nl1 = models.Newsletter.objects.create(
             slug='slug',
             title='title',
             active=True,
             languages='en-US,fr',
+            vendor_id='VENDOR1',
         )
         data = {
             'country': 'US',
             'format': 'H',
             'newsletters': nl1.slug,
+            'trigger_welcome': 'N',
+            'format': 'T',
+            'lang': 'en',
         }
+        self.get_user_data['confirmed'] = True
+        get_user_data.return_value = self.get_user_data
+        rc = update_user(data=data, email=self.sub.email,
+                         token=self.sub.token,
+                         created=True,
+                         type=SUBSCRIBE, optin=True)
+        self.assertEqual(UU_ALREADY_CONFIRMED, rc)
+        apply_updates.assert_called()
+        send_message.assert_called()
 
-        update_user(data=data, email=self.sub.email,
-                    token=self.sub.token,
-                    created=True,
-                    type=SUBSCRIBE, optin=True)
-        et.trigger_send.assert_called_with(
-            settings.DEFAULT_WELCOME_MESSAGE_ID,
-            {
-                'EMAIL_FORMAT_': 'H',
-                'EMAIL_ADDRESS_': self.sub.email,
-                'TOKEN': self.sub.token,
-            },
-        )
-
-        # Can specify a different welcome
-        welcome = 'MyWelcome_H'
-        data['welcome_message'] = welcome
-        update_user(data=data, email=self.sub.email,
-                    token=self.sub.token,
-                    created=True,
-                    type=SUBSCRIBE, optin=True)
-        et.trigger_send.assert_called_with(
-            welcome,
-            {
-                'EMAIL_FORMAT_': 'H',
-                'EMAIL_ADDRESS_': self.sub.email,
-                'TOKEN': self.sub.token,
-            },
-        )
-
-    @patch('news.views.ExactTargetDataExt')
-    @patch('news.tasks.ExactTarget')
-    def test_update_user_works_with_no_welcome(self, et_mock, etde_mock):
-        """update_user was throwing errors when asked not to send a welcome"""
-        et = et_mock()
+    @patch('news.tasks.apply_updates')
+    @patch('news.tasks.send_message')
+    @patch('news.views.get_user_data')
+    def test_ffos_welcome(self, get_user_data, send_message, apply_updates):
+        """If the user has subscribed to Firefox OS,
+        then we send the welcome for Firefox OS but not for Firefox & You.
+        (identified by their vendor IDs).
+        """
+        get_user_data.return_value = None  # User does not exist yet
         nl1 = models.Newsletter.objects.create(
             slug='slug',
             title='title',
             active=True,
-            languages='en-US,fr',
+            languages='en,fr',
+            welcome="FFOS_WELCOME",
+            vendor_id=FFOS_VENDOR_ID,
+        )
+        nl2 = models.Newsletter.objects.create(
+            slug='slug2',
+            title='title',
+            active=True,
+            languages='en,fr',
+            welcome="FF&Y_WELCOME",
+            vendor_id=FFAY_VENDOR_ID,
         )
         data = {
             'country': 'US',
-            'newsletters': nl1.slug,
-            'trigger_welcome': 'N',
-            'format': 'T',
+            'lang': 'en',
+            'newsletters': "%s,%s" % (nl1.slug, nl2.slug),
+            'trigger_welcome': 'Y',
         }
+        rc = update_user(data=data,
+                         email=self.sub.email,
+                         token=self.sub.token,
+                         created=True,
+                         type=SUBSCRIBE,
+                         optin=True)
+        self.assertEqual(UU_EXEMPT_NEW, rc)
+        self.assertEqual(1, send_message.call_count)
+        calls_args = [x[0] for x in send_message.call_args_list]
+        self.assertIn(('EN_FFOS_WELCOME', self.sub.email, self.sub.token, 'H'),
+                      calls_args)
+        self.assertNotIn(('EN_FF&Y_WELCOME', self.sub.email,
+                          self.sub.token, 'H'),
+                         calls_args)
 
-        update_user(data=data, email=self.sub.email,
-                    token=self.sub.token,
-                    created=True,
-                    type=SUBSCRIBE, optin=True)
-
-        self.assertTrue(et.data_ext.return_value.add_record.called)
-        self.assertFalse(et.trigger_send.called)
-
+    @patch('news.tasks.apply_updates')
+    @patch('news.tasks.send_message')
+    @patch('news.views.get_user_data')
     @patch('news.views.newsletter_fields')
-    @patch('news.views.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
-    def test_update_user_set_works_no_newsletters(self, et_mock, etde_mock,
-                                                  newsletter_fields):
+    def test_update_user_set_works_if_no_newsletters(self, et_mock,
+                                                     newsletter_fields,
+                                                     get_user_data,
+                                                     send_message,
+                                                     apply_updates):
         """
         A blank `newsletters` field when the update type is SET indicates
         that the person wishes to unsubscribe from all newsletters. This has
         caused exceptions because '' is not a valid newsletter name.
         """
         et = et_mock()
-        etde = etde_mock()
         nl1 = models.Newsletter.objects.create(
             slug='slug',
             title='title',
@@ -535,34 +670,48 @@ class UpdateUserTest(TestCase):
         newsletter_fields.return_value = [nl1.vendor_id]
 
         # Mock user data - we want our user subbed to our newsletter to start
-        etde.get_record.return_value = self.user_data
+        self.get_user_data['confirmed'] = True
+        self.get_user_data['newsletters'] = ['slug']
+        get_user_data.return_value = self.get_user_data
 
-        update_user(data, self.sub.email, self.sub.token, False, SET, True)
+        rc = update_user(data, self.sub.email, self.sub.token,
+                         False, SET, True)
+        self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         # no welcome should be triggered for SET
         self.assertFalse(et.trigger_send.called)
         # We should have looked up the user's data
-        self.assertTrue(etde.get_record.called)
-        et.data_ext.return_value.add_record.assert_called_with(
-            ANY,
-            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
-             u'TITLE_UNKNOWN_FLG', 'TOKEN', 'MODIFIED_DATE_',
-             'EMAIL_PERMISSION_STATUS_', u'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
-            ['H', 'dude@example.com', 'en',
-             'N', ANY, ANY,
-             'I', ANY, 'US'],
-        )
+        get_user_data.assert_called()
+        # We'll specifically unsubscribe each newsletter the user is
+        # subscribed to.
+        apply_updates.assert_called_with(settings.EXACTTARGET_DATA,
+                                         {'EMAIL_FORMAT_': 'H',
+                                          'EMAIL_ADDRESS_': 'dude@example.com',
+                                          'LANGUAGE_ISO2': 'en',
+                                          'TOKEN': ANY,
+                                          'MODIFIED_DATE_': ANY,
+                                          'EMAIL_PERMISSION_STATUS_': 'I',
+                                          'COUNTRY_': 'US',
+                                          'TITLE_UNKNOWN_FLG': 'N',
+                                          'TITLE_UNKNOWN_DATE': ANY,
+                                          })
 
+    @patch('news.tasks.apply_updates')
+    @patch('news.tasks.send_message')
+    @patch('news.views.get_user_data')
     @patch('news.views.newsletter_fields')
     @patch('news.views.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
     def test_resubscribe_doesnt_update_newsletter(self, et_mock, etde_mock,
-                                                  newsletter_fields):
+                                                  newsletter_fields,
+                                                  get_user_data,
+                                                  send_message,
+                                                  apply_updates):
         """
         When subscribing to things the user is already subscribed to, we
         do not pass that newsletter's _FLG and _DATE to ET because we
         don't want that newsletter's _DATE to be updated for no reason.
         """
-        et = et_mock()
+        et_mock()
         etde = etde_mock()
         nl1 = models.Newsletter.objects.create(
             slug='slug',
@@ -579,38 +728,41 @@ class UpdateUserTest(TestCase):
             'format': 'H',
         }
 
+        get_user_data.return_value = self.get_user_data
+
         newsletter_fields.return_value = [nl1.vendor_id]
 
         # Mock user data - we want our user subbed to our newsletter to start
         etde.get_record.return_value = self.user_data
 
-        update_user(data, self.sub.email, self.sub.token, False, SUBSCRIBE,
-                    True)
+        rc = update_user(data, self.sub.email, self.sub.token,
+                         False, SUBSCRIBE, True)
+        self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         # We should have looked up the user's data
-        self.assertTrue(etde.get_record.called)
+        get_user_data.assert_called()
         # We should not have mentioned this newsletter in our call to ET
-        et.data_ext.return_value.add_record.assert_called_with(
-            ANY,
-            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
-             'TOKEN', 'MODIFIED_DATE_',
-             'EMAIL_PERMISSION_STATUS_', 'COUNTRY_'],
-            ['H', 'dude@example.com', 'en',
-             ANY, ANY,
-             'I', 'US'],
-        )
+        apply_updates.assert_called_with(settings.EXACTTARGET_DATA,
+                                         {'EMAIL_FORMAT_': 'H',
+                                          'EMAIL_ADDRESS_': 'dude@example.com',
+                                          'LANGUAGE_ISO2': 'en',
+                                          'TOKEN': ANY,
+                                          'MODIFIED_DATE_': ANY,
+                                          'EMAIL_PERMISSION_STATUS_': 'I',
+                                          'COUNTRY_': 'US',
+                                          })
 
+    @patch('news.views.get_user_data')
     @patch('news.views.newsletter_fields')
-    @patch('news.views.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
-    def test_set_doesnt_update_newsletter(self, et_mock, etde_mock,
-                                          newsletter_fields):
+    def test_set_doesnt_update_newsletter(self, et_mock,
+                                          newsletter_fields,
+                                          get_user_data):
         """
         When setting the newsletters to ones the user is already subscribed
         to, we do not pass that newsletter's _FLG and _DATE to ET because we
         don't want that newsletter's _DATE to be updated for no reason.
         """
         et = et_mock()
-        etde = etde_mock()
         nl1 = models.Newsletter.objects.create(
             slug='slug',
             title='title',
@@ -629,11 +781,12 @@ class UpdateUserTest(TestCase):
         newsletter_fields.return_value = [nl1.vendor_id]
 
         # Mock user data - we want our user subbed to our newsletter to start
-        etde.get_record.return_value = self.user_data
+        get_user_data.return_value = self.get_user_data
+        #etde.get_record.return_value = self.user_data
 
         update_user(data, self.sub.email, self.sub.token, False, SET, True)
         # We should have looked up the user's data
-        self.assertTrue(etde.get_record.called)
+        self.assertTrue(get_user_data.called)
         # We should not have mentioned this newsletter in our call to ET
         et.data_ext.return_value.add_record.assert_called_with(
             ANY,
@@ -645,6 +798,7 @@ class UpdateUserTest(TestCase):
              'I', 'US'],
         )
 
+    @skip("FIXME: What should we do if we can't talk to ET")  # FIXME
     @patch('news.tasks.ExactTarget')
     @patch('news.views.get_user_data')
     def test_set_does_update_newsletter_on_error(self, get_user_mock, et_mock):
@@ -683,6 +837,7 @@ class UpdateUserTest(TestCase):
              'I', ANY, 'US'],
         )
 
+    @skip("FIXME: What should we do if we can't talk to ET")  # FIXME
     @patch('news.tasks.ExactTarget')
     @patch('news.views.get_user_data')
     def test_unsub_is_not_careful_on_error(self, get_user_mock, et_mock):
@@ -729,10 +884,12 @@ class UpdateUserTest(TestCase):
              ANY, 'US'],
         )
 
+    @patch('news.views.get_user_data')
     @patch('news.views.newsletter_fields')
     @patch('news.views.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
-    def test_unsub_is_careful(self, et_mock, etde_mock, newsletter_fields):
+    def test_unsub_is_careful(self, et_mock, etde_mock, newsletter_fields,
+                              get_user_data):
         """
         When unsubscribing, we only unsubscribe things the user is
         currently subscribed to.
@@ -760,16 +917,18 @@ class UpdateUserTest(TestCase):
             'newsletters': 'slug,slug2',
             'format': 'H',
         }
+        get_user_data.return_value = self.get_user_data
 
         newsletter_fields.return_value = [nl1.vendor_id, nl2.vendor_id]
 
         # We're only subscribed to TITLE_UNKNOWN though, not the other one
         etde.get_record.return_value = self.user_data
 
-        update_user(data, self.sub.email, self.sub.token, False, UNSUBSCRIBE,
-                    True)
+        rc = update_user(data, self.sub.email, self.sub.token, False,
+                         UNSUBSCRIBE, True)
+        self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         # We should have looked up the user's data
-        self.assertTrue(etde.get_record.called)
+        self.assertTrue(get_user_data.called)
         # We should only mention TITLE_UNKNOWN, not TITLE2_UNKNOWN
         et.data_ext.return_value.add_record.assert_called_with(
             ANY,
@@ -781,14 +940,18 @@ class UpdateUserTest(TestCase):
              'I', ANY, 'US'],
         )
 
+    @skip('Do not know what to do in this case')  # FIXME
     @patch('news.tasks.ExactTarget')
     @patch('news.views.get_user_data')
     def test_user_data_error(self, get_user_mock, et_mock):
         """
         Bug 871764: error from user data causing subscription to fail
+
+        FIXME: SO, if we can't talk to ET, what SHOULD we do?
         """
         get_user_mock.return_value = {
             'status': 'error',
+            'desc': 'fake error for testing',
         }
         et = et_mock()
         models.Newsletter.objects.create(
@@ -806,8 +969,9 @@ class UpdateUserTest(TestCase):
             'format': 'H',
         }
 
-        update_user(data, self.sub.email, self.sub.token, False, SUBSCRIBE,
-                    True)
+        with self.assertRaises(URLError):
+            update_user(data, self.sub.email, self.sub.token, False,
+                        SUBSCRIBE, True)
         # We should have mentioned this newsletter in our call to ET
         et.data_ext.return_value.add_record.assert_called_with(
             ANY,
@@ -844,6 +1008,10 @@ class UpdateUserTest(TestCase):
         get_user_mock.return_value = {
             'status': 'ok',
             'format': 'T',
+            'confirmed': True,
+            'master': True,
+            'email': 'dude@example.com',
+            'token': 'foo-token',
         }
         et = et_mock()
         data = {
@@ -867,7 +1035,7 @@ class UpdateUserTest(TestCase):
         # We'll send their welcome in T format because that is the
         # user's preference in ET
         et.trigger_send.assert_called_with(
-            '39_T',
+            'EN_39_T',
             {'EMAIL_FORMAT_': 'T',
              'EMAIL_ADDRESS_': 'dude@example.com',
              'TOKEN': ANY}
@@ -897,6 +1065,10 @@ class UpdateUserTest(TestCase):
         )
         get_user_mock.return_value = {
             'status': 'ok',
+            'confirmed': True,
+            'master': True,
+            'email': 'dude@example.com',
+            'token': 'foo-token',
         }
         et = et_mock()
         data = {
@@ -920,7 +1092,7 @@ class UpdateUserTest(TestCase):
         # We'll send their welcome in H format because that is the
         # default when we have no other preference known.
         et.trigger_send.assert_called_with(
-            '39',
+            'EN_39',
             {'EMAIL_FORMAT_': 'H',
              'EMAIL_ADDRESS_': 'dude@example.com',
              'TOKEN': ANY}
@@ -939,9 +1111,10 @@ class TestNewslettersAPI(TestCase):
             title='title',
             active=False,
             languages='en-US,fr',
+            vendor_id='VENDOR1',
         )
 
-        models.Newsletter.objects.create(slug='slug2')
+        models.Newsletter.objects.create(slug='slug2', vendor_id='VENDOR2')
 
         req = self.rf.get(self.url)
         resp = views.newsletters(req)
@@ -964,6 +1137,7 @@ class TestNewslettersAPI(TestCase):
             title='title',
             active=False,
             languages='en-US, fr, de ',
+            vendor_id='VENDOR1',
         )
         nl1 = models.Newsletter.objects.get(id=nl1.id)
         self.assertEqual('en-US,fr,de', nl1.languages)
@@ -1023,3 +1197,377 @@ class TestNewslettersAPI(TestCase):
         nl1.delete()
         vendor_ids = newsletter_fields()
         self.assertEqual([], vendor_ids)
+
+
+class TestGetUserData(TestCase):
+
+    def generic_test(self,
+                     master,
+                     optin,
+                     confirm,
+                     error,
+                     expected_result):
+        """
+        Call get_user_data with the given conditions and verify
+        that the return value matches the expected result.
+        The expected result can include `ANY` values for don't-cares.
+
+        :param master: What should be returned if we query the master DB
+        :param optin: What should be returned if we query the opt-in DB
+        :param confirm: What should be returned if we query the confirmed DB
+        :param error: Exception to raise
+        :param expected_result: Expected return value of get_user_data, or
+            expected exception raised if any
+        """
+
+        # Use this method to mock look_for_user so that we can return
+        # different values given the input arguments
+        def mock_look_for_user(database, email, token, fields):
+            if error:
+                raise error
+            if database == settings.EXACTTARGET_DATA:
+                return master
+            elif database == settings.EXACTTARGET_OPTIN_STAGE:
+                return optin
+            elif database == settings.EXACTTARGET_CONFIRMATION:
+                return optin
+            else:
+                raise Exception("INVALID INPUT TO mock_look_for_user - "
+                                "database %r unknown" % database)
+
+        with patch('news.views.look_for_user') as look_for_user:
+            look_for_user.side_effect = mock_look_for_user
+            result = get_user_data()
+
+        self.assertEqual(expected_result, result)
+
+    def test_setting_are_sane(self):
+        # This is more to test that the settings are sane for running the
+        # tests and complain loudly, than to test the code.
+        # We need settings for the data table names,
+        # and also verify that all the table name settings are
+        # different.
+        self.assertTrue(hasattr(settings, 'EXACTTARGET_DATA'))
+        self.assertTrue(settings.EXACTTARGET_DATA)
+        self.assertTrue(hasattr(settings, 'EXACTTARGET_OPTIN_STAGE'))
+        self.assertTrue(settings.EXACTTARGET_OPTIN_STAGE)
+        self.assertTrue(hasattr(settings, 'EXACTTARGET_CONFIRMATION'))
+        self.assertTrue(settings.EXACTTARGET_CONFIRMATION)
+        self.assertNotEqual(settings.EXACTTARGET_DATA,
+                            settings.EXACTTARGET_OPTIN_STAGE)
+        self.assertNotEqual(settings.EXACTTARGET_DATA,
+                            settings.EXACTTARGET_CONFIRMATION)
+        self.assertNotEqual(settings.EXACTTARGET_OPTIN_STAGE,
+                            settings.EXACTTARGET_CONFIRMATION)
+
+    def test_not_in_et(self):
+        # User not in Exact Target, return None
+        self.generic_test(None, None, None, False, None)
+
+    def test_et_error(self):
+        # Error calling Exact Target, return error code
+        err_msg = "Mock error for testing"
+        error = NewsletterException(err_msg)
+        expected = {
+            'status': 'error',
+            'desc': err_msg,
+            'status_code': 400,
+        }
+        self.generic_test(ANY, ANY, ANY, error, expected)
+
+    def test_in_master(self):
+        """
+        If user is in master, get_user_data returns whatever
+        look_for_user returns.
+        """
+        mock_user = {'dummy': 'Just a dummy user'}
+        self.generic_test(mock_user, ANY, ANY, False, mock_user)
+
+    def test_in_opt_in(self):
+        """
+        If user is in opt_in, get_user_data returns whatever
+        look_for_user returns.
+        """
+        mock_user = {'token': 'Just a dummy user'}
+        self.generic_test(None, mock_user, ANY, False, mock_user)
+
+
+class TestConfirmationLogic(TestCase):
+    def generic_test(self, user_in_basket, user_in_master,
+                     user_in_optin, user_in_confirmed,
+                     newsletter_with_required_confirmation,
+                     newsletter_without_required_confirmation,
+                     is_english, type,
+                     expected_result):
+        # Generic test routine - given a bunch of initial conditions and
+        # an expected result, set up the conditions, make the call,
+        # and verify we get the expected result.
+        email = "dude@example.com"
+        token = uuid4()
+
+        if user_in_basket:
+            models.Subscriber.objects.create(email=email, token=token)
+
+        # What should get_user_data return?
+        user = {}
+
+        if user_in_master or user_in_confirmed or user_in_optin:
+            user['status'] = 'ok'
+            user['email'] = email
+            user['format'] = 'T'
+            user['token'] = token
+            user['master'] = user_in_master
+            user['confirmed'] = user_in_master or user_in_confirmed
+            user['pending'] = user_in_optin and not user_in_confirmed
+            user['newsletters'] = []   # start with none so whatever we call
+                    # update_user with is a new subscription
+        else:
+            # User not in Exact Target at all
+            user = None
+
+        # Call data
+        data = {}
+        if is_english:
+            data['lang'] = 'en'
+            data['country'] = 'us'
+        else:
+            data['lang'] = 'fr'
+            data['country'] = 'fr'
+
+        # make some newsletters
+        nl_required = models.Newsletter.objects.create(
+            slug='slug1',
+            vendor_id='VENDOR1',
+            requires_double_optin=True,
+        )
+        nl_not_required = models.Newsletter.objects.create(
+            slug='slug2',
+            vendor_id='VENDOR2',
+            requires_double_optin=False,
+        )
+
+        newsletters = []
+        if newsletter_with_required_confirmation:
+            newsletters.append(nl_required.slug)
+        if newsletter_without_required_confirmation:
+            newsletters.append(nl_not_required.slug)
+        data['newsletters'] = ','.join(newsletters)
+
+        # Mock data from ET
+        with patch('news.views.get_user_data') as get_user_data:
+            get_user_data.return_value = user
+
+            # Don't actually call ET
+            with patch('news.tasks.apply_updates'):
+                with patch('news.tasks.send_welcomes'):
+                    with patch('news.tasks.send_confirm_notice'):
+                        created = not user_in_basket
+                        rc = update_user(data, email, token, created, type,
+                                         True)
+        self.assertEqual(expected_result, rc)
+
+    #
+    # Tests for brand new users
+    #
+
+    def test_new_english_non_required(self):
+        self.generic_test(user_in_basket=False,
+                          user_in_master=False,
+                          user_in_optin=False,
+                          user_in_confirmed=False,
+                          newsletter_with_required_confirmation=False,
+                          newsletter_without_required_confirmation=True,
+                          is_english=True,
+                          type=SUBSCRIBE,
+                          expected_result=UU_EXEMPT_NEW)
+
+    def test_new_non_english_non_required(self):
+        self.generic_test(user_in_basket=False,
+                          user_in_master=False,
+                          user_in_optin=False,
+                          user_in_confirmed=False,
+                          newsletter_with_required_confirmation=False,
+                          newsletter_without_required_confirmation=True,
+                          is_english=False,
+                          type=SUBSCRIBE,
+                          expected_result=UU_EXEMPT_NEW)
+
+    def test_new_english_required_and_not(self):
+        self.generic_test(user_in_basket=False,
+                          user_in_master=False,
+                          user_in_optin=False,
+                          user_in_confirmed=False,
+                          newsletter_with_required_confirmation=True,
+                          newsletter_without_required_confirmation=True,
+                          is_english=True,
+                          type=SUBSCRIBE,
+                          expected_result=UU_EXEMPT_NEW)
+
+    def test_new_non_english_required_and_not(self):
+        self.generic_test(user_in_basket=False,
+                          user_in_master=False,
+                          user_in_optin=False,
+                          user_in_confirmed=False,
+                          newsletter_with_required_confirmation=True,
+                          newsletter_without_required_confirmation=True,
+                          is_english=False,
+                          type=SUBSCRIBE,
+                          expected_result=UU_EXEMPT_NEW)
+
+    def test_new_non_english_required(self):
+        self.generic_test(user_in_basket=False,
+                          user_in_master=False,
+                          user_in_optin=False,
+                          user_in_confirmed=False,
+                          newsletter_with_required_confirmation=True,
+                          newsletter_without_required_confirmation=False,
+                          is_english=False,
+                          type=SUBSCRIBE,
+                          expected_result=UU_MUST_CONFIRM_NEW)
+
+    #
+    # Tests for users already pending confirmation
+    #
+
+    def test_pending_english_required(self):
+        # Should exempt them and confirm them
+        self.generic_test(user_in_basket=False,
+                          user_in_master=False,
+                          user_in_optin=True,
+                          user_in_confirmed=False,
+                          newsletter_with_required_confirmation=True,
+                          newsletter_without_required_confirmation=False,
+                          is_english=True,
+                          type=SUBSCRIBE,
+                          expected_result=UU_EXEMPT_PENDING)
+
+    def test_pending_english_not_required(self):
+        # Should exempt them and confirm them
+        self.generic_test(user_in_basket=False,
+                          user_in_master=False,
+                          user_in_optin=True,
+                          user_in_confirmed=False,
+                          newsletter_with_required_confirmation=True,
+                          newsletter_without_required_confirmation=True,
+                          is_english=True,
+                          type=SUBSCRIBE,
+                          expected_result=UU_EXEMPT_PENDING)
+
+    def test_pending_non_english_required(self):
+        # Still have to confirm
+        self.generic_test(user_in_basket=False,
+                          user_in_master=False,
+                          user_in_optin=True,
+                          user_in_confirmed=False,
+                          newsletter_with_required_confirmation=True,
+                          newsletter_without_required_confirmation=False,
+                          is_english=False,
+                          type=SUBSCRIBE,
+                          expected_result=UU_MUST_CONFIRM_PENDING)
+
+    def test_pending_non_english_not_required(self):
+        # Should exempt them and confirm them
+        self.generic_test(user_in_basket=False,
+                          user_in_master=False,
+                          user_in_optin=True,
+                          user_in_confirmed=False,
+                          newsletter_with_required_confirmation=True,
+                          newsletter_without_required_confirmation=True,
+                          is_english=False,
+                          type=SUBSCRIBE,
+                          expected_result=UU_EXEMPT_PENDING)
+
+    #
+    # Tests for users who have confirmed but not yet been moved to master
+    #
+
+    def test_confirmed_english_required(self):
+        self.generic_test(user_in_basket=False,
+                          user_in_master=False,
+                          user_in_optin=True,
+                          user_in_confirmed=True,
+                          newsletter_with_required_confirmation=True,
+                          newsletter_without_required_confirmation=False,
+                          is_english=True,
+                          type=SUBSCRIBE,
+                          expected_result=UU_ALREADY_CONFIRMED)
+
+    def test_confirmed_non_english_required(self):
+        self.generic_test(user_in_basket=False,
+                          user_in_master=False,
+                          user_in_optin=True,
+                          user_in_confirmed=True,
+                          newsletter_with_required_confirmation=True,
+                          newsletter_without_required_confirmation=False,
+                          is_english=False,
+                          type=SUBSCRIBE,
+                          expected_result=UU_ALREADY_CONFIRMED)
+
+    def test_confirmed_english_not_required(self):
+        self.generic_test(user_in_basket=False,
+                          user_in_master=False,
+                          user_in_optin=True,
+                          user_in_confirmed=True,
+                          newsletter_with_required_confirmation=False,
+                          newsletter_without_required_confirmation=True,
+                          is_english=True,
+                          type=SUBSCRIBE,
+                          expected_result=UU_ALREADY_CONFIRMED)
+
+    def test_confirmed_non_english_not_required(self):
+        self.generic_test(user_in_basket=False,
+                          user_in_master=False,
+                          user_in_optin=True,
+                          user_in_confirmed=True,
+                          newsletter_with_required_confirmation=False,
+                          newsletter_without_required_confirmation=True,
+                          is_english=False,
+                          type=SUBSCRIBE,
+                          expected_result=UU_ALREADY_CONFIRMED)
+    #
+    # Tests for users who are already in master
+    #
+
+    def test_master_english_required(self):
+        self.generic_test(user_in_basket=False,
+                          user_in_master=True,
+                          user_in_optin=False,
+                          user_in_confirmed=True,
+                          newsletter_with_required_confirmation=True,
+                          newsletter_without_required_confirmation=False,
+                          is_english=True,
+                          type=SUBSCRIBE,
+                          expected_result=UU_ALREADY_CONFIRMED)
+
+    def test_master_non_english_required(self):
+        self.generic_test(user_in_basket=False,
+                          user_in_master=True,
+                          user_in_optin=False,
+                          user_in_confirmed=True,
+                          newsletter_with_required_confirmation=True,
+                          newsletter_without_required_confirmation=False,
+                          is_english=False,
+                          type=SUBSCRIBE,
+                          expected_result=UU_ALREADY_CONFIRMED)
+
+    def test_master_english_not_required(self):
+        self.generic_test(user_in_basket=False,
+                          user_in_master=True,
+                          user_in_optin=False,
+                          user_in_confirmed=True,
+                          newsletter_with_required_confirmation=False,
+                          newsletter_without_required_confirmation=True,
+                          is_english=True,
+                          type=SUBSCRIBE,
+                          expected_result=UU_ALREADY_CONFIRMED)
+
+    def test_master_non_english_not_required(self):
+        self.generic_test(user_in_basket=False,
+                          user_in_master=True,
+                          user_in_optin=False,
+                          user_in_confirmed=True,
+                          newsletter_with_required_confirmation=False,
+                          newsletter_without_required_confirmation=True,
+                          is_english=False,
+                          type=SUBSCRIBE,
+                          expected_result=UU_ALREADY_CONFIRMED)

@@ -11,8 +11,7 @@ from django_statsd.clients import statsd
 
 from celery.task import Task, task
 
-from backends.exacttarget import (ExactTarget, ExactTargetDataExt,
-                                  NewsletterException)
+from .backends.exacttarget import (ExactTarget, ExactTargetDataExt)
 from .models import Newsletter
 from .newsletters import newsletter_field, newsletter_names
 
@@ -77,6 +76,11 @@ PHONEBOOK_GROUPS = (
 )
 
 
+# Vendor IDs for Firefox OS and Firefox & You:
+FFOS_VENDOR_ID = 'FIREFOX_OS'
+FFAY_VENDOR_ID = 'MOZILLA_AND_YOU'
+
+
 class ETTask(Task):
     abstract = True
     default_retry_delay = 60 * 5  # 5 minutes
@@ -134,8 +138,13 @@ def parse_newsletters(record, type, newsletters, cur_newsletters):
         subscribed, unsubscribed, or set.
     :param set cur_newsletters: Set of the slugs of the newsletters that
         the user is currently subscribed to. None if there was an error.
+    :returns: (to_subscribe, to_unsubscribe) - lists of slugs of the
+        newsletters that we will request new subscriptions to, or request
+        unsubscription from, respectively.
     """
 
+    to_subscribe = []
+    to_unsubscribe = []
     if type == SUBSCRIBE or type == SET:
         # Subscribe the user to these newsletters if not already
         for nl in newsletters:
@@ -144,6 +153,7 @@ def parse_newsletters(record, type, newsletters, cur_newsletters):
                          nl not in cur_newsletters):
                 record['%s_FLG' % name] = 'Y'
                 record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
+                to_subscribe.append(nl)
 
     if type == UNSUBSCRIBE or type == SET:
         # Unsubscribe the user to these newsletters
@@ -167,6 +177,8 @@ def parse_newsletters(record, type, newsletters, cur_newsletters):
             if name and (cur_newsletters is None or nl in cur_newsletters):
                 record['%s_FLG' % name] = 'N'
                 record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
+                to_unsubscribe.append(nl)
+    return to_subscribe, to_unsubscribe
 
 
 @et_task
@@ -194,14 +206,36 @@ def update_student_ambassadors(data, email, token):
     et.data_ext().add_record('Student_Ambassadors', data.keys(), data.values())
 
 
+# Return codes for update_user
+UU_ALREADY_CONFIRMED = 1
+UU_EXEMPT_PENDING = 2
+UU_EXEMPT_NEW = 3
+UU_MUST_CONFIRM_PENDING = 4
+UU_MUST_CONFIRM_NEW = 5
+
+
 @et_task
 def update_user(data, email, token, created, type, optin):
     """Task for updating user's preferences and newsletters.
 
-    ``authed_email`` is the email for the user pulled from the database
-    with their token, if exists."""
+    :param dict data: POST data from the form submission
+    :param string email: User's email address
+    :param string token: User's token
+    :param boolean created: Whether a new user was created in Basket
+    :param int type: What kind of API call it was. Could be
+        SUBSCRIBE, UNSUBSCRIBE, or SET.
+    :param boolean optin: whether the POST had an OPTIN parameter
+        with value "Y".  (Unused)
+
+    :returns: One of the return codes UU_ALREADY_CONFIRMED,
+        etc. (see code) to indicate what case we figured out we were
+        doing.  (These are primarily for tests to use.)
+    :raises: URLError if there are any errors that would be worth retrying.
+        Our task wrapper will retry in that case.
+    """
 
     # Parse the parameters
+    # `record` will contain the data we send to ET in the format they want.
     record = {
         'EMAIL_ADDRESS_': email,
         'TOKEN': token,
@@ -222,19 +256,30 @@ def update_user(data, email, token, created, type, optin):
         if field in data:
             record[extra_fields[field]] = data[field]
 
-    newsletters = [x.strip() for x in data.get('newsletters', '').split(',')]
+    lang = record.get('LANGUAGE_ISO2', None)
 
     # Can't import this earlier, circular import
     from .views import get_user_data
 
-    # Get the user's current settings
+    # Get the user's current settings from ET, if any
     user_data = get_user_data(token=token)
-    cur_newsletters = user_data.get('newsletters', None)
-    if cur_newsletters is not None:
-        cur_newsletters = set(cur_newsletters)
-
-    # Set the newsletter flags in the record
-    parse_newsletters(record, type, newsletters, cur_newsletters)
+    # If we don't find the user, get_user_data returns None. Create
+    # a minimal dictionary to use going forward. This will happen
+    # often due to new people signing up.
+    if user_data is None:
+        user_data = {
+            'email': email,
+            'token': token,
+            'master': False,
+            'pending': False,
+            'confirmed': False,
+            'lang': lang,
+            'status': 'ok',
+        }
+    elif user_data.get('status', 'error') != 'ok':
+        # Error talking to ET - raise URLError so we retry later
+        log.error("Some error with Exact Target: %r" % user_data)
+        raise URLError("Some error with Exact Target: %r" % user_data)
 
     # We need an HTML/Text format choice for sending welcome messages, and
     # optionally to update their ET record
@@ -248,56 +293,207 @@ def update_user(data, email, token, created, type, optin):
         fmt = 'H'
     # From here on, fmt is either 'H' or 'T', preferring 'H'
 
-    # Submit the final data to the service
-    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-    lang = record.get('LANGUAGE_ISO2', None)
+    newsletters = [x.strip() for x in data.get('newsletters', '').split(',')]
 
-    target_et = settings.EXACTTARGET_DATA
-    welcome = None
+    cur_newsletters = user_data.get('newsletters', None)
+    if cur_newsletters is not None:
+        cur_newsletters = set(cur_newsletters)
 
-    if lang in CONFIRM_SENDS and type == SUBSCRIBE:
-        # This lang requires double opt-in and a different welcome
-        # email
-        target_et = settings.EXACTTARGET_OPTIN_STAGE
-        welcome = CONFIRM_SENDS[lang]
-        record['SubscriberKey'] = record['TOKEN']
-        record['EmailAddress'] = record['EMAIL_ADDRESS_']
-    elif data.get('trigger_welcome', 'Y') == 'Y' and type == SUBSCRIBE:
-        # Otherwise, send this welcome email unless its suppressed
-        if 'welcome_message' in data:
-            welcome = data['welcome_message']
-        elif len(newsletters) == 1:
-            # If just one newsletter, use its welcome message;
-            newsletter = Newsletter.objects.get(slug=newsletters[0])
-            welcome = newsletter.welcome_id
+    # Set the newsletter flags in the record by comparing to their
+    # current subscriptions.
+    to_subscribe, to_unsubscribe = parse_newsletters(record, type,
+                                                     newsletters,
+                                                     cur_newsletters)
+
+    # Are they subscribing to any newsletters that don't require confirmation?
+    newsletter_objects = Newsletter.objects.filter(slug__in=to_subscribe)
+    any_newsletter_doesnt_require_confirmation = newsletter_objects.filter(
+        requires_double_optin=False).exists()
+    # When signing up in English, or including any newsletter that does not
+    # require confirmation, user gets a pass on confirming and goes straight
+    # to confirmed.
+    exempt_from_confirmation = lang is None\
+        or lang == ''\
+        or lang.lower().startswith('en') \
+        or any_newsletter_doesnt_require_confirmation
+
+    MASTER = settings.EXACTTARGET_DATA
+    OPT_IN = settings.EXACTTARGET_OPTIN_STAGE
+
+    if user_data['confirmed']:
+        # The user is already confirmed.
+        # Just add any new subs to whichever of master or optin list is
+        # appropriate, and send welcomes.
+        target_et = MASTER if user_data['master'] else OPT_IN
+        apply_updates(target_et, record)
+        send_welcomes(user_data, to_subscribe, fmt)
+        return_code = UU_ALREADY_CONFIRMED
+    elif exempt_from_confirmation:
+        # This user is not confirmed, but they
+        # qualify to be excepted from confirmation.
+        if user_data['pending']:
+            # We were waiting for them to confirm.  Update the data in
+            # their record (currently in the Opt-in table), then go
+            # ahead and confirm them. This will also send welcomes.
+            apply_updates(OPT_IN, record)
+            confirm_user(user_data['token'], user_data)
+            return_code = UU_EXEMPT_PENDING
         else:
-            # otherwise, just send one copy of the default welcome.
-            welcome = settings.DEFAULT_WELCOME_MESSAGE_ID
+            # Brand new user: Add them directly to master subscriber DB
+            # and send welcomes.
+            record['CREATED_DATE_'] = gmttime()
+            apply_updates(MASTER, record)
+            send_welcomes(user_data, to_subscribe, fmt)
+            return_code = UU_EXEMPT_NEW
+    else:
+        # This user must confirm
+        if user_data['pending']:
+            return_code = UU_MUST_CONFIRM_PENDING
+        else:
+            # Creating a new record, need a couple more fields
+            record['CREATED_DATE_'] = gmttime()
+            record['SubscriberKey'] = record['TOKEN']
+            record['EmailAddress'] = record['EMAIL_ADDRESS_']
+            return_code = UU_MUST_CONFIRM_NEW
+        # Create or update OPT_IN record and send email telling them (or
+        # reminding them) to confirm.
+        apply_updates(OPT_IN, record)
+        send_confirm_notice(email, token, lang, fmt)
+    return return_code
 
-    try:
-        et.data_ext().add_record(target_et, record.keys(), record.values())
-    except NewsletterException, e:
-        return attempt_fix(target_et, record, update_user, e)
 
-    # This is a separate try because the above one might recover, and
-    # we still need to send the welcome email
-    if welcome:
-        # If user preferred text, send welcome in text
-        if fmt == 'T':
-            welcome += "_T"
+def apply_updates(target_et, record):
+    """Send the record data to ET to update the database named
+    target_et.
 
-        et.trigger_send(welcome, {
-            'EMAIL_ADDRESS_': record['EMAIL_ADDRESS_'],
-            'TOKEN': record['TOKEN'],
-            'EMAIL_FORMAT_': fmt,
-        })
+    :param str target_et: Target database, e.g. settings.EXACTTARGET_DATA
+        or settings.EXACTTARGET_CONFIRMATION.
+    :param dict record: Data to send
+    """
+    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+    et.data_ext().add_record(target_et, record.keys(), record.values())
+
+
+def send_message(message_id, email, token, format):
+    """
+    Ask ET to send a message.
+
+    :param str message_id: ID of the message in ET
+    :param str email: email to send it to
+    :param str token: token of the email user
+    :param str format: 'H' or 'T' - whether to send in HTML or Text
+       (message_id should also be for a message in matching format)
+    """
+    log.info("Sending message %s to %s %s in %s" %
+             (message_id, email, token, format))
+    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+    et.trigger_send(
+        message_id,
+        {
+            'EMAIL_ADDRESS_': email,
+            'TOKEN': token,
+            'EMAIL_FORMAT_': format,
+        }
+    )
+
+
+def send_confirm_notice(email, token, lang, format):
+    """
+    Send email to user with link to confirm their subscriptions.
+    """
+    # Confirmation notices are language-dependent. Try first
+    # to see if we have their exact language; if not, try the
+    # first two chars.
+    if lang not in CONFIRM_SENDS and lang[:2] not in CONFIRM_SENDS:
+        log.error("Cannot send confirmation request to user %s %s because "
+                  "no confirmation message defined for lang=%r" %
+                  (email, token, lang))
+        return
+
+    welcome = CONFIRM_SENDS[lang] if lang in CONFIRM_SENDS \
+        else CONFIRM_SENDS[lang[:2]]
+    send_message(welcome, email, token, format)
+
+
+def send_welcomes(user_data, newsletter_slugs, format):
+    """
+    Send welcome messages to the user for the specified newsletters.
+    Don't send any duplicates.
+
+    Also, if the newsletters listed include
+    FIREFOX_OS, then send that welcome but not the firefox & you
+    welcome.
+
+    """
+    if not newsletter_slugs:
+        log.debug("send_welcomes(%r) called with no newsletters, returning"
+                  % user_data)
+        return
+
+    newsletters = Newsletter.objects.filter(
+        slug__in=newsletter_slugs
+    )
+
+    # If newsletters include FIREFOX_OS, then remove FIREFOX & YOU
+    # from the list so we don't send its welcome.
+    if newsletters.filter(vendor_id=FFOS_VENDOR_ID).exists():
+        newsletters = newsletters.exclude(vendor_id=FFAY_VENDOR_ID)
+
+    # We don't want any duplicate welcome messages, so make a set
+    # of the ones to send, then send them
+    welcomes_to_send = set()
+    for nl in newsletters:
+        welcome = nl.welcome or settings.DEFAULT_WELCOME_MESSAGE_ID
+        if format == 'T':
+            welcome += '_T'
+        if ',' in nl.languages:
+            # Newsletter supports multiple languages, so we want to send
+            # the welcome message in the right language for this user
+            lang_code = user_data.get('lang', 'en')[:2]
+            welcome = "%s_%s" % (lang_code.upper(), welcome)
+        welcomes_to_send.add(welcome)
+    # Note: it's okay not to send a welcome if none of the newsletters
+    # have one configured.
+    for welcome in welcomes_to_send:
+        log.info("Sending welcome %s to user %s %s" %
+                 (welcome, user_data['email'], user_data['token']))
+        send_message(welcome, user_data['email'], user_data['token'],
+                     format)
 
 
 @et_task
-def confirm_user(token):
-    ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
-                             settings.EXACTTARGET_PASS)
-    ext.add_record('Confirmation', ['TOKEN'], [token])
+def confirm_user(token, user_data):
+    """
+    Confirm any pending subscriptions for the user with this token.
+
+    If any of the subscribed newsletters have welcome messages,
+    send them.
+
+    :param token: User's token
+    :param user_data: Dictionary with user's data from Exact Target,
+        as returned by get_user_data(), or None if that wasn't available
+        when this was called.
+    """
+    # Get user data if we don't already have it
+    if user_data is None:
+        from .views import get_user_data   # Avoid circular import
+        user_data = get_user_data(token=token)
+    if user_data is None:
+        log.error("in confirm_user, unable to find user for token %s" % token)
+        return
+    if user_data['confirmed']:
+        log.info("In confirm_user, user with token %s "
+                 "is already confirmed" % token)
+        return
+
+    # Add user's token to the confirmation database at ET. A nightly
+    # task will somehow do something about it.
+    apply_updates(settings.EXACTTARGET_CONFIRMATION, {'TOKEN': token})
+
+    # Now, if they're subscribed to any newsletters with confirmation
+    # welcome messages, send those.
+    send_welcomes(user_data, user_data['newsletters'],
+                  user_data.get('format', 'H'))
 
 
 @et_task

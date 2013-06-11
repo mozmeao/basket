@@ -11,16 +11,17 @@ from django.views.decorators.http import require_GET, require_POST
 from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
                                   UnauthorizedException)
 from models import Newsletter, Subscriber
+from news.backends.common import NewsletterNoResultsException
 from tasks import (
+    SET, SUBSCRIBE, UNSUBSCRIBE,
     add_sms_user,
     confirm_user,
     update_custom_unsub,
     update_phonebook,
     update_student_ambassadors,
     update_user,
-    SET, SUBSCRIBE, UNSUBSCRIBE,
 )
-from .newsletters import newsletter_fields, newsletter_name, newsletter_names
+from .newsletters import newsletter_fields, newsletter_names
 
 
 ## Utility functions
@@ -33,24 +34,70 @@ class HttpResponseJSON(HttpResponse):
                                                status=status)
 
 
+def lookup_subscriber(token=None, email=None):
+    """
+    Find or create Subscriber object for given token and/or email.
+
+    If we don't already have a Basket Subscriber record, we check
+    in ET to see if we know about this user there.  If they exist in
+    ET, we create a new Basket Subscriber record with the information
+    from ET. If they don't exist in ET, and we were given an email,
+    we create a new Subscriber record with the given email and make
+    up a new token for them.
+
+    # FIXME: when we create a new token for a new email, maybe we
+    should put that in ET right away. Though we couldn't put that in
+    any of our three existing tables, so we either need a
+    fourth one for users who are neither confirmed nor pending, or
+    to come up with another solution.
+
+    If we are only given a token, and cannot find any user with that
+    token in Basket or ET, then the returned subscriber is None.
+
+    Returns (Subscriber, user_data, created).
+
+    The user_data is only provided if we had to ask ET about this
+    email/token (and found it there); otherwise, it's None.
+    """
+
+    if not (token or email):
+        raise Exception("lookup_subscriber needs token or email")
+    kwargs = {}
+    if token:
+        kwargs['token'] = token
+    if email:
+        kwargs['email'] = email
+    user_data = None
+    try:
+        subscriber = Subscriber.objects.get(**kwargs)
+    except Subscriber.DoesNotExist:
+        created = True
+        # Check with ET to see if our DB is just out of sync
+        user_data = get_user_data(sync_data=True, **kwargs)
+        if user_data:
+            # Found them in ET and updated subscriber db locally
+            subscriber = Subscriber.objects.get(**kwargs)
+        else:
+            # Not in ET. If we have an email, create a new basket
+            # record for them
+            if email:
+                subscriber = Subscriber.objects.create(email=email)
+            else:
+                # No email?  Just token? Token not known in basket or ET?
+                # That's an error.
+                subscriber = None
+    else:
+        created = False
+    return subscriber, user_data, created
+
+
 def logged_in(f):
     """Decorator to check if the user has permission to view these
     pages"""
 
     @wraps(f)
     def wrapper(request, token, *args, **kwargs):
-        subscriber = None
-        subscriber_data = None
-        try:
-            subscriber = Subscriber.objects.get(token=token)
-        except Subscriber.DoesNotExist:
-            # Check with ET to see if our DB is just out of sync
-            subscriber_data = get_user_data(token=token, sync_data=True)
-            if subscriber_data['status'] == 'ok':
-                try:
-                    subscriber = Subscriber.objects.get(token=token)
-                except Subscriber.DoesNotExist:
-                    pass
+        subscriber, subscriber_data, created = lookup_subscriber(token=token)
 
         if not subscriber:
             return HttpResponseJSON({
@@ -81,15 +128,18 @@ def update_user_task(request, type, data=None, optin=True):
                 }, 400)
 
     email = data.get('email')
+    if not (email or sub):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'An email address or token is required.',
+        }, 400)
+
     created = False
     if not sub:
-        if email:
-            sub, created = Subscriber.objects.get_or_create(email=email)
-        else:
-            return HttpResponseJSON({
-                'status': 'error',
-                'desc': 'An email address or token is required.',
-            }, 400)
+        # We need a token for this user. If we don't have a Subscriber
+        # object for them already, we'll need to find or make one,
+        # checking ET first if need be.
+        sub, user_data, created = lookup_subscriber(email=email)
 
     update_user.delay(data, sub.email, sub.token, created, type, optin)
     return HttpResponseJSON({
@@ -99,7 +149,87 @@ def update_user_task(request, type, data=None, optin=True):
     })
 
 
+def look_for_user(database, email, token, fields):
+    """Try to get the user's data from the specified ET database.
+    If found and the database is not the 'Confirmed' database,
+    return it (a dictionary, see get_user_data).
+    If found and it's the 'Confirmed' database, just return True.
+    If not found, return None.
+    Any other exception just propagates and needs to be handled
+    by the caller.
+    """
+    ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
+                             settings.EXACTTARGET_PASS)
+    try:
+        user = ext.get_record(database,
+                              email or token,
+                              fields,
+                              'EMAIL_ADDRESS_' if email else 'TOKEN')
+    except NewsletterNoResultsException:
+        return None
+    if database == settings.EXACTTARGET_CONFIRMATION:
+        return True
+    user_data = {
+        'status': 'ok',
+        'email': user['EMAIL_ADDRESS_'],
+        'format': user['EMAIL_FORMAT_'],
+        'country': user['COUNTRY_'],
+        'lang': user['LANGUAGE_ISO2'],
+        'token': user['TOKEN'],
+        'created-date': user['CREATED_DATE_'],
+        'newsletters': [nl for nl in newsletter_names()
+                        if user.get('%s_FLG' % nl, False) == 'Y'],
+    }
+    return user_data
+
+
 def get_user_data(token=None, email=None, sync_data=False):
+    """Return a dictionary of the user's data from Exact Target.
+    Look them up by their email if given, otherwise by the token.
+
+    If sync_data is set, create or update our local basket record
+    if needed so we have a record of this email and the token that
+    goes with it.
+
+    Look first for the user in the master subscribers database, then in the
+    optin database.
+
+    If they're not in the master subscribers database but are in the
+    optin database, then check the confirmation database too.  If we
+    find them in either the master subscribers or confirmation database,
+    add 'confirmed': True to their data; otherwise, 'confirmed': False.
+    Also, ['pending'] is True if they are in the double-opt-in database
+    and not in the confirmed or master databases.
+
+    If the user was not found, return None instead of a dictionary.
+
+    If there was an error, result['status'] == 'error'
+    and result['desc'] has more info;
+    otherwise, result['status'] == 'ok'
+
+    Review of results:
+
+    None = user completely unknown, no errors talking to ET.
+
+    otherwise, return value is:
+    {
+        'status':  'ok',      # no errors talking to ET
+        'status':  'error',   # errors talking to ET, see next field
+        'desc':  'error message'   # details if status is error
+        'email': 'email@address',
+        'format': 'T'|'H',
+        'country': country code,
+        'lang': language code,
+        'token': UUID,
+        'created-date': date created,
+        'newsletters': list of slugs of newsletters subscribed to,
+        'confirmed': True if user has confirmed subscription (or was excepted),
+        'pending': True if we're waiting for user to confirm subscription
+        'master': True if we found them in the master subscribers table
+    }
+
+
+    """
     newsletters = newsletter_fields()
 
     fields = [
@@ -114,38 +244,55 @@ def get_user_data(token=None, email=None, sync_data=False):
     for nl in newsletters:
         fields.append('%s_FLG' % nl)
 
+    confirmed = True
+    pending = False
+    master = True
     try:
-        ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
-                                 settings.EXACTTARGET_PASS)
-        user = ext.get_record(settings.EXACTTARGET_DATA,
-                              email or token,
-                              fields,
-                              'EMAIL_ADDRESS_' if email else 'TOKEN')
-    except NewsletterException, e:
+        # Look first in the master subscribers database for the user
+        user_data = look_for_user(settings.EXACTTARGET_DATA,
+                                  email, token, fields)
+        # If we get back a user, then they have already confirmed.
+
+        # If not, look for them in the database of unconfirmed users.
+        if user_data is None:
+            master = False
+            confirmed = False
+            user_data = look_for_user(settings.EXACTTARGET_OPTIN_STAGE,
+                                      email, token, fields)
+            if user_data is None:
+                # No such user, as far as we can tell - if they're in
+                # neither the master subscribers nor optin database,
+                # we don't know them.
+                return None
+
+            # We found them in the optin database. But actually, they
+            # might have confirmed but the batch job hasn't
+            # yet run to move their data to the master subscribers
+            # database; catch that case here by looking for them in the
+            # Confirmed database.  Do it simply; the confirmed database
+            # doesn't have most of the user's data, just their token.
+            if look_for_user(settings.EXACTTARGET_CONFIRMATION,
+                             email, token, []):
+                # Ah-ha, they're in the Confirmed DB so they did confirm
+                confirmed = True
+
+        user_data['confirmed'] = confirmed
+        user_data['pending'] = pending
+        user_data['master'] = master
+    except NewsletterException as e:
         return {
             'status': 'error',
             'status_code': 400,
-            'desc': e.message,
+            'desc': str(e),
         }
-    except UnauthorizedException, e:
+    except UnauthorizedException as e:
         return {
             'status': 'error',
             'status_code': 500,
             'desc': 'Email service provider auth failure',
         }
 
-    user_data = {
-        'status': 'ok',
-        'email': user['EMAIL_ADDRESS_'],
-        'format': user['EMAIL_FORMAT_'],
-        'country': user['COUNTRY_'],
-        'lang': user['LANGUAGE_ISO2'],
-        'token': user['TOKEN'],
-        'created-date': user['CREATED_DATE_'],
-        'newsletters': [newsletter_name(nl) for nl in newsletters
-                        if user.get('%s_FLG' % nl, False) == 'Y'],
-    }
-
+    # We did find a user
     if sync_data:
         # if user not in our db create it, if token mismatch fix it.
         Subscriber.objects.get_and_sync(user_data['email'], user_data['token'])
@@ -155,7 +302,7 @@ def get_user_data(token=None, email=None, sync_data=False):
 
 def get_user(token=None, email=None, sync_data=False):
     user_data = get_user_data(token, email, sync_data)
-    status_code = user_data.pop('status_code', 200)
+    status_code = user_data.pop('status_code', 200) if user_data else 400
     return HttpResponseJSON(user_data, status_code)
 
 
@@ -166,7 +313,8 @@ def get_user(token=None, email=None, sync_data=False):
 @logged_in
 @csrf_exempt
 def confirm(request, token):
-    confirm_user.delay(request.subscriber.token)
+    confirm_user.delay(request.subscriber.token,
+                       request.subscriber_data)
     return HttpResponseJSON({'status': 'ok'})
 
 
