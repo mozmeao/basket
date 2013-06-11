@@ -1,6 +1,0 @@
-MAILTO=abuchanan@mozilla.com
-* * * * * apache cd /data/generic/www/django/basket.mozilla.com/basket; /usr/bin/python26 manage.py sendmail --email emails.home.Initial firefox-home-instructions > /dev/null
-* * * * * apache cd /data/generic/www/django/basket.mozilla.com/basket; /usr/bin/python26 manage.py sendmail --email emails.home.Reminder firefox-home-instructions > /dev/null
-*/3 * * * * apache cd /data/generic/www/django/basket.mozilla.com/basket; /usr/bin/python26 manage.py sync_unsubscribe > /dev/null
-*/3 * * * * apache cd /data/generic/www/django/basket.mozilla.com/basket; /usr/bin/python26 manage.py unsubscribe --conditional=ageutils.subscription_older_than_ten_days firefox-home-instructions
-MAILTO=root

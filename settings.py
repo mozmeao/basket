@@ -75,16 +75,8 @@ TEMPLATE_DIRS = (
 )
 
 INSTALLED_APPS = (
-    'basketauth',
-    'emailer',
-    'nagios',
-    'subscriptions',
-    'vars',
     'news',
 
-    'fixture_magic',
-    'piston',
-    'tower',
     'djcelery',
     'django_nose',
     'south',
@@ -137,21 +129,6 @@ LDAP_TIMEOUT = 2
 # There must also exist a text-format message with the same
 # ID with "_T" appended, e.g. "39_T"
 DEFAULT_WELCOME_MESSAGE_ID = '39'
-
-
-def JINJA_CONFIG():
-    import jinja2
-    from django.conf import settings
-    config = {'extensions': ['tower.template.i18n',
-                             'jinja2.ext.with_', 'jinja2.ext.loopcontrols'],
-              'finalize': lambda x: x if x is not None else ''}
-    return config
-
-RESPONSYS_USER = 'MOZILLA_API'
-RESPONSYS_PASS = ''
-RESPONSYS_FOLDER = '!MasterData'
-RESPONSYS_LIST = 'TEST_CONTACTS_LIST'
-
 
 # Name of the database where we put someone's token when they confirm
 EXACTTARGET_CONFIRMATION = 'Confirmation'
