@@ -13,8 +13,13 @@ admin.site.register(Subscriber, SubscriberAdmin)
 
 
 class NewsletterAdmin(admin.ModelAdmin):
-    list_display = ['title', 'show', 'active', 'description', 'welcome',
-                    'languages', 'vendor_id']
+    fields = ('title', 'slug', 'vendor_id', 'welcome', 'description',
+              'languages', 'show', 'active', 'requires_double_optin')
+    list_display = ('title', 'slug', 'vendor_id', 'welcome',
+                    'languages', 'show', 'active', 'requires_double_optin')
+    list_filter = ('show', 'active', 'requires_double_optin')
+    prepopulated_fields = {"slug": ("title",)}
+    search_fields = ('title', 'slug', 'description', 'vendor_id')
 
 
 admin.site.register(Newsletter, NewsletterAdmin)

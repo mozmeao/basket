@@ -34,7 +34,10 @@ class Subscriber(models.Model):
 
 
 class Newsletter(models.Model):
-    slug = models.SlugField(unique=True)
+    slug = models.SlugField(
+        unique=True,
+        help_text="The ID for the newsletter that will be used by clients",
+    )
     title = models.CharField(
         max_length=128,
         help_text="Public name of newsletter in English",
