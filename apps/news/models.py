@@ -80,9 +80,17 @@ class Newsletter(models.Model):
         help_text="True if subscribing to this newsletter requires someone"
                   "to respond to a confirming email.",
     )
+    order = models.IntegerField(
+        default=0,
+        help_text="Order to display the newsletters on the web site. "
+                  "Newsletters with lower order numbers will display first."
+    )
 
     def __unicode__(self):
         return self.title
+
+    class Meta(object):
+        ordering = ['order']
 
     def save(self, *args, **kwargs):
         # Strip whitespace from langs before save
