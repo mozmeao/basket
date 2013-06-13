@@ -502,7 +502,7 @@ class UpdateUserTest(TestCase):
         apply_updates.assert_called()
         # The welcome should have been sent
         send_message.assert_called()
-        send_message.assert_called_with('EN_' + welcome_id, self.sub.email,
+        send_message.assert_called_with('en_' + welcome_id, self.sub.email,
                                         self.sub.token, 'H')
 
     @patch('news.views.get_user_data')
@@ -537,7 +537,7 @@ class UpdateUserTest(TestCase):
                          type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         et.trigger_send.assert_called_with(
-            'EN_' + settings.DEFAULT_WELCOME_MESSAGE_ID,
+            'en_' + settings.DEFAULT_WELCOME_MESSAGE_ID,
             {
                 'EMAIL_FORMAT_': 'H',
                 'EMAIL_ADDRESS_': self.sub.email,
@@ -604,9 +604,9 @@ class UpdateUserTest(TestCase):
         self.assertEqual(UU_EXEMPT_NEW, rc)
         self.assertEqual(2, send_message.call_count)
         calls_args = [x[0] for x in send_message.call_args_list]
-        self.assertIn(('EN_WELCOME1', self.sub.email, self.sub.token, 'H'),
+        self.assertIn(('en_WELCOME1', self.sub.email, self.sub.token, 'H'),
                       calls_args)
-        self.assertIn(('EN_WELCOME2', self.sub.email, self.sub.token, 'H'),
+        self.assertIn(('en_WELCOME2', self.sub.email, self.sub.token, 'H'),
                       calls_args)
 
     @patch('news.tasks.apply_updates')
@@ -681,9 +681,9 @@ class UpdateUserTest(TestCase):
         self.assertEqual(UU_EXEMPT_NEW, rc)
         self.assertEqual(1, send_message.call_count)
         calls_args = [x[0] for x in send_message.call_args_list]
-        self.assertIn(('EN_FFOS_WELCOME', self.sub.email, self.sub.token, 'H'),
+        self.assertIn(('en_FFOS_WELCOME', self.sub.email, self.sub.token, 'H'),
                       calls_args)
-        self.assertNotIn(('EN_FF&Y_WELCOME', self.sub.email,
+        self.assertNotIn(('en_FF&Y_WELCOME', self.sub.email,
                           self.sub.token, 'H'),
                          calls_args)
 
@@ -1085,7 +1085,7 @@ class UpdateUserTest(TestCase):
         # We'll send their welcome in T format because that is the
         # user's preference in ET
         et.trigger_send.assert_called_with(
-            'EN_39_T',
+            'en_39_T',
             {'EMAIL_FORMAT_': 'T',
              'EMAIL_ADDRESS_': 'dude@example.com',
              'TOKEN': ANY}
@@ -1142,7 +1142,7 @@ class UpdateUserTest(TestCase):
         # We'll send their welcome in H format because that is the
         # default when we have no other preference known.
         et.trigger_send.assert_called_with(
-            'EN_39',
+            'en_39',
             {'EMAIL_FORMAT_': 'H',
              'EMAIL_ADDRESS_': 'dude@example.com',
              'TOKEN': ANY}
