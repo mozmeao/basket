@@ -83,8 +83,13 @@ FFAY_VENDOR_ID = 'MOZILLA_AND_YOU'
 
 class RetryTask(Exception):
     """Tasks should raise this to signal the et_task wrapper to retry.
-    Before raising it, tasks should log details of what went wrong."""
-    pass
+    Before raising it, tasks should log details of what went wrong.
+    They should also include a string describing the error, so that
+    if retries are exhausted and this exception gets re-raised, something
+    useful will be logged.
+    """
+    def __init__(self, msg):
+        super(RetryTask, self).__init__(msg)
 
 
 class ETTask(Task):
@@ -284,8 +289,9 @@ def update_user(data, email, token, created, type, optin):
         }
     elif user_data.get('status', 'error') != 'ok':
         # Error talking to ET - raise so we retry later
-        log.error("Some error with Exact Target: %r" % user_data)
-        raise RetryTask()
+        msg = "Some error with Exact Target: %r" % user_data
+        log.error(msg)
+        raise RetryTask(msg)
 
     # We need an HTML/Text format choice for sending welcome messages, and
     # optionally to update their ET record
@@ -488,9 +494,10 @@ def confirm_user(token, user_data):
         log.error("in confirm_user, unable to find user for token %s" % token)
         return
     if user_data['status'] == 'error':
-        log.error("error getting user data for %s: %s" %
-                  (token, user_data['desc']))
-        raise RetryTask()
+        msg = "error getting user data for %s: %s" % \
+              (token, user_data['desc'])
+        log.error(msg)
+        raise RetryTask(msg)
     if user_data['confirmed']:
         log.info("In confirm_user, user with token %s "
                  "is already confirmed" % token)
