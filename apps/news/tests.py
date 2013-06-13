@@ -1,6 +1,5 @@
 import datetime
 import json
-from urllib2 import URLError
 from uuid import uuid4
 
 from django.conf import settings
@@ -8,18 +7,19 @@ from django.core.urlresolvers import reverse
 from django.test import TestCase
 from django.utils.unittest import skip
 
-from mock import ANY, patch
+from mock import ANY, Mock, patch
 from test_utils import RequestFactory
 
 from news import models, tasks, views
 from news.backends.exacttarget import NewsletterException
 from news.newsletters import newsletter_fields, newsletter_languages
-from news.tasks import (FFAY_VENDOR_ID,FFOS_VENDOR_ID,
+from news.tasks import (FFAY_VENDOR_ID, FFOS_VENDOR_ID,
                         SET, SUBSCRIBE, UNSUBSCRIBE,
                         UU_ALREADY_CONFIRMED,
                         UU_EXEMPT_NEW, UU_EXEMPT_PENDING,
                         UU_MUST_CONFIRM_NEW, UU_MUST_CONFIRM_PENDING,
-                        update_user)
+                        RetryTask,
+                        confirm_user, update_user)
 from news.views import get_user_data, language_code_is_valid
 
 
@@ -1019,7 +1019,7 @@ class UpdateUserTest(TestCase):
             'format': 'H',
         }
 
-        with self.assertRaises(URLError):
+        with self.assertRaises(RetryTask):
             update_user(data, self.sub.email, self.sub.token, False,
                         SUBSCRIBE, True)
         # We should have mentioned this newsletter in our call to ET
@@ -1716,3 +1716,64 @@ class TestLanguageCodeIsValid(TestCase):
         """Return False if there's no match any way we try."""
         n_l.return_value = ['az']
         self.assertFalse(language_code_is_valid('by'))
+
+
+@patch('news.tasks.send_welcomes')
+@patch('news.tasks.apply_updates')
+class TestConfirmTask(TestCase):
+    def test_error(self, apply_updates, send_welcomes):
+        """
+        If user_data shows an error talking to ET, the task raises
+        an exception so our task logic will retry
+        """
+        user_data = {
+            'status': 'error',
+            'desc': 'TESTERROR',
+        }
+        token = "TOKEN"
+        with self.assertRaises(RetryTask):
+            confirm_user(token, user_data)
+        self.assertFalse(apply_updates.called)
+        self.assertFalse(send_welcomes.called)
+
+    def test_normal(self, apply_updates, send_welcomes):
+        """If user_data is okay, and not yet confirmed, the task calls
+         the right stuff"""
+        user_data = {
+            'status': 'ok',
+            'confirmed': False,
+            'newsletters': Mock(),
+            'format': 'ZZ',
+        }
+        token = "TOKEN"
+        confirm_user(token, user_data)
+        apply_updates.assert_called_with(settings.EXACTTARGET_CONFIRMATION,
+                                         {'TOKEN': token})
+        send_welcomes.assert_called_with(user_data, user_data['newsletters'],
+                                         user_data['format'])
+
+    def test_already_confirmed(self, apply_updates, send_welcomes):
+        """If user_data already confirmed, task does nothing"""
+        user_data = {
+            'status': 'ok',
+            'confirmed': True,
+            'newsletters': Mock(),
+            'format': 'ZZ',
+        }
+        token = "TOKEN"
+        confirm_user(token, user_data)
+        self.assertFalse(apply_updates.called)
+        self.assertFalse(send_welcomes.called)
+
+    def test_user_not_found(self, apply_updates, send_welcomes):
+        """If we can't find the user, do nothing"""
+        # Can't patch get_user_data because confirm_user imports it
+        # internally. But we can patch look_for_user, which get_user_data
+        # will call
+        with patch('news.views.look_for_user') as look_for_user:
+            look_for_user.return_value = None
+            user_data = None
+            token = "TOKEN"
+            confirm_user(token, user_data)
+        self.assertFalse(apply_updates.called)
+        self.assertFalse(send_welcomes.called)

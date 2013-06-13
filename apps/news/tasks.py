@@ -81,6 +81,12 @@ FFOS_VENDOR_ID = 'FIREFOX_OS'
 FFAY_VENDOR_ID = 'MOZILLA_AND_YOU'
 
 
+class RetryTask(Exception):
+    """Tasks should raise this to signal the et_task wrapper to retry.
+    Before raising it, tasks should log details of what went wrong."""
+    pass
+
+
 class ETTask(Task):
     abstract = True
     default_retry_delay = 60 * 5  # 5 minutes
@@ -104,7 +110,7 @@ def et_task(func):
         statsd.incr(wrapped.name + '.total')
         try:
             return func(*args, **kwargs)
-        except URLError as e:
+        except (URLError, RetryTask) as e:
             # connection issue. try again later.
             # raises retry exception or e after max
             wrapped.retry(exc=e)
@@ -230,7 +236,7 @@ def update_user(data, email, token, created, type, optin):
     :returns: One of the return codes UU_ALREADY_CONFIRMED,
         etc. (see code) to indicate what case we figured out we were
         doing.  (These are primarily for tests to use.)
-    :raises: URLError if there are any errors that would be worth retrying.
+    :raises: RetryTask if there are any errors that would be worth retrying.
         Our task wrapper will retry in that case.
     """
 
@@ -277,9 +283,9 @@ def update_user(data, email, token, created, type, optin):
             'status': 'ok',
         }
     elif user_data.get('status', 'error') != 'ok':
-        # Error talking to ET - raise URLError so we retry later
+        # Error talking to ET - raise so we retry later
         log.error("Some error with Exact Target: %r" % user_data)
-        raise URLError("Some error with Exact Target: %r" % user_data)
+        raise RetryTask()
 
     # We need an HTML/Text format choice for sending welcome messages, and
     # optionally to update their ET record
@@ -481,6 +487,10 @@ def confirm_user(token, user_data):
     if user_data is None:
         log.error("in confirm_user, unable to find user for token %s" % token)
         return
+    if user_data['status'] == 'error':
+        log.error("error getting user data for %s: %s" %
+                  (token, user_data['desc']))
+        raise RetryTask()
     if user_data['confirmed']:
         log.info("In confirm_user, user with token %s "
                  "is already confirmed" % token)
