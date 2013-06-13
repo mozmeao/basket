@@ -305,7 +305,7 @@ def get_user_data(token=None, email=None, sync_data=False):
             # Confirmed database.  Do it simply; the confirmed database
             # doesn't have most of the user's data, just their token.
             if look_for_user(settings.EXACTTARGET_CONFIRMATION,
-                             email, token, []):
+                             email, token, ['Token']):
                 # Ah-ha, they're in the Confirmed DB so they did confirm
                 confirmed = True
 
