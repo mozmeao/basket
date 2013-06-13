@@ -462,7 +462,7 @@ def send_welcomes(user_data, newsletter_slugs, format):
             # Newsletter supports multiple languages, so we want to send
             # the welcome message in the right language for this user
             lang_code = user_data.get('lang', 'en')[:2]
-            welcome = "%s_%s" % (lang_code.upper(), welcome)
+            welcome = "%s_%s" % (lang_code.lower(), welcome)
         welcomes_to_send.add(welcome)
     # Note: it's okay not to send a welcome if none of the newsletters
     # have one configured.
