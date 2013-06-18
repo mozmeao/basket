@@ -22,7 +22,7 @@ from tasks import (
     update_user,
 )
 from .newsletters import (newsletter_fields, newsletter_languages,
-                          newsletter_names)
+                          newsletter_slugs, slug_to_vendor_id)
 
 
 ## Utility functions
@@ -146,7 +146,7 @@ def update_user_task(request, type, data=None, optin=True):
 
     newsletters = data.get('newsletters', None)
     if newsletters:
-        all_newsletters = newsletter_names()
+        all_newsletters = newsletter_slugs()
         for nl in [x.strip() for x in newsletters.split(',')]:
             if nl not in all_newsletters:
                 return HttpResponseJSON({
@@ -202,6 +202,12 @@ def look_for_user(database, email, token, fields):
         return None
     if database == settings.EXACTTARGET_CONFIRMATION:
         return True
+    newsletters = []
+    for slug in newsletter_slugs():
+        vendor_id = slug_to_vendor_id(slug)
+        flag = "%s_FLG" % vendor_id
+        if user.get(flag, 'N') == 'Y':
+            newsletters.append(slug)
     user_data = {
         'status': 'ok',
         'email': user['EMAIL_ADDRESS_'],
@@ -210,8 +216,7 @@ def look_for_user(database, email, token, fields):
         'lang': user['LANGUAGE_ISO2'],
         'token': user['TOKEN'],
         'created-date': user['CREATED_DATE_'],
-        'newsletters': [nl for nl in newsletter_names()
-                        if user.get('%s_FLG' % nl, False) == 'Y'],
+        'newsletters': newsletters,
     }
     return user_data
 
@@ -398,7 +403,7 @@ def unsubscribe(request, token):
     data = request.POST.copy()
 
     if data.get('optout', 'N') == 'Y':
-        data['newsletters'] = ','.join(newsletter_names())
+        data['newsletters'] = ','.join(newsletter_slugs())
 
     return update_user_task(request, UNSUBSCRIBE, data)
 

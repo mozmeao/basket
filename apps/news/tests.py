@@ -12,6 +12,7 @@ from test_utils import RequestFactory
 
 from news import models, tasks, views
 from news.backends.exacttarget import NewsletterException
+from news.models import Newsletter
 from news.newsletters import newsletter_fields, newsletter_languages
 from news.tasks import (FFAY_VENDOR_ID, FFOS_VENDOR_ID,
                         SET, SUBSCRIBE, UNSUBSCRIBE,
@@ -20,7 +21,7 @@ from news.tasks import (FFAY_VENDOR_ID, FFOS_VENDOR_ID,
                         UU_MUST_CONFIRM_NEW, UU_MUST_CONFIRM_PENDING,
                         RetryTask,
                         confirm_user, update_user)
-from news.views import get_user_data, language_code_is_valid
+from news.views import get_user_data, language_code_is_valid, look_for_user
 
 
 class SubscriberTest(TestCase):
@@ -1276,6 +1277,41 @@ class TestNewslettersAPI(TestCase):
         nl1.delete()
         vendor_ids = newsletter_fields()
         self.assertEqual([], vendor_ids)
+
+
+class TestLookForUser(TestCase):
+    def test_subscriptions(self):
+        """
+        look_for_user returns the right list of subscribed newsletters
+        """
+        Newsletter.objects.create(slug='n1', vendor_id='NEWSLETTER1')
+        Newsletter.objects.create(slug='n2', vendor_id='NEWSLETTER2')
+        fields = ['NEWSLETTER1_FLG', 'NEWSLETTER2_FLG']
+        with patch('news.views.ExactTargetDataExt') as et_ext:
+            data_ext = et_ext()
+            data_ext.get_record.return_value = {
+                'EMAIL_ADDRESS_': 'dude@example.com',
+                'EMAIL_FORMAT_': 'HTML',
+                'COUNTRY_': 'us',
+                'LANGUAGE_ISO2': 'en',
+                'TOKEN': 'asdf',
+                'CREATED_DATE_': 'Yesterday',
+                'NEWSLETTER1_FLG': 'Y',
+                'NEWSLETTER2_FLG': 'Y',
+            }
+            result = look_for_user(database='DUMMY', email='EMAIL',
+                                   token='TOKEN', fields=fields)
+        expected_result = {
+            'newsletters': [u'n1', u'n2'],
+            'status': 'ok',
+            'country': 'us',
+            'lang': 'en',
+            'token': 'asdf',
+            'created-date': 'Yesterday',
+            'email': 'dude@example.com',
+            'format': 'HTML',
+        }
+        self.assertEqual(expected_result, result)
 
 
 class TestGetUserData(TestCase):

@@ -13,7 +13,7 @@ from celery.task import Task, task
 
 from .backends.exacttarget import (ExactTarget, ExactTargetDataExt)
 from .models import Newsletter
-from .newsletters import newsletter_field, newsletter_names
+from .newsletters import newsletter_field, newsletter_slugs
 
 
 log = logging.getLogger(__name__)
@@ -176,7 +176,7 @@ def parse_newsletters(record, type, newsletters, cur_newsletters):
                 unsubs = cur_newsletters - set(newsletters)
             else:
                 subs = set(newsletters)
-                all = set(newsletter_names())
+                all = set(newsletter_slugs())
                 unsubs = all - subs
         else:  # type == UNSUBSCRIBE
             # unsubscribe from the specified newsletters

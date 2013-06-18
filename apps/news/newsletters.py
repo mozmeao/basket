@@ -70,9 +70,17 @@ def newsletter_name(field):
         return None
 
 
-def newsletter_names():
-    """Get a list of all the available newsletters"""
+def newsletter_slugs():
+    """
+    Get a list of all the available newsletters.
+    Returns a list of their slugs.
+    """
     return _newsletters()['by_name'].keys()
+
+
+def slug_to_vendor_id(slug):
+    """Given a newsletter's slug, return its vendor_id"""
+    return _newsletters()['by_name'][slug].vendor_id
 
 
 def newsletter_fields():
