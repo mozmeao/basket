@@ -11,6 +11,7 @@ from django_statsd.clients import statsd
 
 from celery.task import Task, task
 
+from .backends.common import NewsletterException
 from .backends.exacttarget import (ExactTarget, ExactTargetDataExt)
 from .models import Newsletter
 from .newsletters import newsletter_field, newsletter_slugs
@@ -81,15 +82,14 @@ FFOS_VENDOR_ID = 'FIREFOX_OS'
 FFAY_VENDOR_ID = 'MOZILLA_AND_YOU'
 
 
-class RetryTask(Exception):
-    """Tasks should raise this to signal the et_task wrapper to retry.
-    Before raising it, tasks should log details of what went wrong.
-    They should also include a string describing the error, so that
-    if retries are exhausted and this exception gets re-raised, something
-    useful will be logged.
+class BasketError(Exception):
+    """Tasks can raise this when an error happens that we should not retry.
+    E.g. if the error indicates we're passing bad parameters.
+    (As opposed to an error connecting to ExactTarget at the moment,
+    where we'd typically raise NewsletterException.)
     """
     def __init__(self, msg):
-        super(RetryTask, self).__init__(msg)
+        super(BasketError, self).__init__(msg)
 
 
 class ETTask(Task):
@@ -115,9 +115,9 @@ def et_task(func):
         statsd.incr(wrapped.name + '.total')
         try:
             return func(*args, **kwargs)
-        except (URLError, RetryTask) as e:
-            # connection issue. try again later.
-            # raises retry exception or e after max
+        except (URLError, NewsletterException) as e:
+            # URLError or NewsletterException could be a connection issue,
+            # so try again later.
             wrapped.retry(exc=e)
 
     return wrapped
@@ -241,8 +241,8 @@ def update_user(data, email, token, created, type, optin):
     :returns: One of the return codes UU_ALREADY_CONFIRMED,
         etc. (see code) to indicate what case we figured out we were
         doing.  (These are primarily for tests to use.)
-    :raises: RetryTask if there are any errors that would be worth retrying.
-        Our task wrapper will retry in that case.
+    :raises: NewsletterException if there are any errors that would be
+        worth retrying. Our task wrapper will retry in that case.
     """
 
     # Parse the parameters
@@ -291,7 +291,7 @@ def update_user(data, email, token, created, type, optin):
         # Error talking to ET - raise so we retry later
         msg = "Some error with Exact Target: %r" % user_data
         log.error(msg)
-        raise RetryTask(msg)
+        raise NewsletterException(msg)
 
     # We need an HTML/Text format choice for sending welcome messages, and
     # optionally to update their ET record
@@ -395,32 +395,58 @@ def send_message(message_id, email, token, format):
     :param str token: token of the email user
     :param str format: 'H' or 'T' - whether to send in HTML or Text
        (message_id should also be for a message in matching format)
+
+    :raises: NewsletterException for retryable errors, BasketError for
+        fatal errors.
     """
     log.info("Sending message %s to %s %s in %s" %
              (message_id, email, token, format))
     et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-    et.trigger_send(
-        message_id,
-        {
-            'EMAIL_ADDRESS_': email,
-            'TOKEN': token,
-            'EMAIL_FORMAT_': format,
-        }
-    )
+    try:
+        et.trigger_send(
+            message_id,
+            {
+                'EMAIL_ADDRESS_': email,
+                'TOKEN': token,
+                'EMAIL_FORMAT_': format,
+            }
+        )
+    except NewsletterException as e:
+        # Better error messages for some cases. Also there's no point in
+        # retrying these
+        if 'Invalid Customer Key' in e.message:
+            msg = "send_message(%r, %r, %r, %r): " \
+                  "No such message ID: %r (%s)" % (
+                      message_id, email, token, format, message_id, e.message
+                  )
+            log.error(msg)
+            raise BasketError(msg)
+        elif 'There are no valid subscribers.' in e.message:
+            msg = "send_message(%r, %r, %r, %r): ET rejected email " \
+                  "address %r (%s)" % (
+                      message_id, email, token, format, email, e.message
+                  )
+            log.error(msg)
+            raise BasketError(msg)
+        # we should retry
+        raise
 
 
 def send_confirm_notice(email, token, lang, format):
     """
     Send email to user with link to confirm their subscriptions.
+
+    :raises: BasketError
     """
     # Confirmation notices are language-dependent. Try first
     # to see if we have their exact language; if not, try the
     # first two chars.
     if lang not in CONFIRM_SENDS and lang[:2] not in CONFIRM_SENDS:
-        log.error("Cannot send confirmation request to user %s %s because "
-                  "no confirmation message defined for lang=%r" %
-                  (email, token, lang))
-        return
+        msg = "Cannot send confirmation request to user %s %s because " \
+              "no confirmation message defined for " \
+              "lang=%r" % (email, token, lang)
+        log.error(msg)
+        raise BasketError(msg)
 
     welcome = CONFIRM_SENDS[lang] if lang in CONFIRM_SENDS \
         else CONFIRM_SENDS[lang[:2]]
@@ -485,23 +511,30 @@ def confirm_user(token, user_data):
     :param user_data: Dictionary with user's data from Exact Target,
         as returned by get_user_data(), or None if that wasn't available
         when this was called.
+    :raises: BasketError for fatal errors, NewsletterException for retryable
+        errors.
     """
     # Get user data if we don't already have it
     if user_data is None:
         from .views import get_user_data   # Avoid circular import
         user_data = get_user_data(token=token)
     if user_data is None:
-        log.error("in confirm_user, unable to find user for token %s" % token)
-        return
+        msg = "in confirm_user, unable to find user for token %s" % token
+        log.error(msg)
+        raise BasketError(msg)
     if user_data['status'] == 'error':
         msg = "error getting user data for %s: %s" % \
               (token, user_data['desc'])
         log.error(msg)
-        raise RetryTask(msg)
+        raise NewsletterException(msg)
     if user_data['confirmed']:
         log.info("In confirm_user, user with token %s "
                  "is already confirmed" % token)
         return
+    if not 'email' in user_data or not user_data['email']:
+        msg = "in confirm_user, token %s has no email addr in ET" % token
+        log.error(msg)
+        raise BasketError(msg)
 
     # Add user's token to the confirmation database at ET. A nightly
     # task will somehow do something about it.
