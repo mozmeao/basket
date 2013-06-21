@@ -253,8 +253,6 @@ def update_user(data, email, token, created, type, optin):
         'EMAIL_PERMISSION_STATUS_': 'I',
         'MODIFIED_DATE_': gmttime(),
     }
-    if created:
-        record['CREATED_DATE_'] = gmttime()
 
     extra_fields = {
         'country': 'COUNTRY_',
@@ -292,6 +290,14 @@ def update_user(data, email, token, created, type, optin):
         msg = "Some error with Exact Target: %r" % user_data
         log.error(msg)
         raise RetryTask(msg)
+
+    if lang:
+        # User asked for a language change. Use the new language from
+        # here on.
+        user_data['lang'] = lang
+    else:
+        # Use `lang` as a shorter reference to user_data['lang']
+        lang = user_data['lang']
 
     # We need an HTML/Text format choice for sending welcome messages, and
     # optionally to update their ET record
