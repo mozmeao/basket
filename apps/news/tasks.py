@@ -458,11 +458,16 @@ def send_welcomes(user_data, newsletter_slugs, format):
         welcome = nl.welcome or settings.DEFAULT_WELCOME_MESSAGE_ID
         if format == 'T':
             welcome += '_T'
-        if ',' in nl.languages:
+        if len(nl.language_list) > 1:
             # Newsletter supports multiple languages, so we want to send
             # the welcome message in the right language for this user
-            lang_code = user_data.get('lang', 'en')[:2]
-            welcome = "%s_%s" % (lang_code.lower(), welcome)
+            languages = [lang[:2].lower() for lang in nl.language_list]
+            lang_code = user_data.get('lang', 'en')[:2].lower()
+            if lang_code not in languages:
+                # Newsletter does not support their preferred language, so
+                # it doesn't have a welcome in that language either.
+                lang_code = 'en'
+            welcome = "%s_%s" % (lang_code, welcome)
         welcomes_to_send.add(welcome)
     # Note: it's okay not to send a welcome if none of the newsletters
     # have one configured.
