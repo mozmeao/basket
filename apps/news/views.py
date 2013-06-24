@@ -211,9 +211,9 @@ def look_for_user(database, email, token, fields):
     user_data = {
         'status': 'ok',
         'email': user['EMAIL_ADDRESS_'],
-        'format': user['EMAIL_FORMAT_'],
-        'country': user['COUNTRY_'],
-        'lang': user['LANGUAGE_ISO2'],
+        'format': user['EMAIL_FORMAT_'] or 'H',
+        'country': user['COUNTRY_'] or '',
+        'lang': user['LANGUAGE_ISO2'] or '',  # Never None
         'token': user['TOKEN'],
         'created-date': user['CREATED_DATE_'],
         'newsletters': newsletters,

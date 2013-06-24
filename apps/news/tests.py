@@ -1313,6 +1313,40 @@ class TestLookForUser(TestCase):
         }
         self.assertEqual(expected_result, result)
 
+    def test_unset_lang(self):
+        """
+        If lang is not set in ET, look_for_user returns '', not None.
+        """
+        # ET returns None if the database has NULL.
+        Newsletter.objects.create(slug='n1', vendor_id='NEWSLETTER1')
+        Newsletter.objects.create(slug='n2', vendor_id='NEWSLETTER2')
+        fields = ['NEWSLETTER1_FLG', 'NEWSLETTER2_FLG']
+        with patch('news.views.ExactTargetDataExt') as et_ext:
+            data_ext = et_ext()
+            data_ext.get_record.return_value = {
+                'EMAIL_ADDRESS_': 'dude@example.com',
+                'EMAIL_FORMAT_': 'HTML',
+                'COUNTRY_': 'us',
+                'LANGUAGE_ISO2': None,
+                'TOKEN': 'asdf',
+                'CREATED_DATE_': 'Yesterday',
+                'NEWSLETTER1_FLG': 'Y',
+                'NEWSLETTER2_FLG': 'Y',
+            }
+            result = look_for_user(database='DUMMY', email='EMAIL',
+                                   token='TOKEN', fields=fields)
+        expected_result = {
+            'newsletters': [u'n1', u'n2'],
+            'status': 'ok',
+            'country': 'us',
+            'lang': '',
+            'token': 'asdf',
+            'created-date': 'Yesterday',
+            'email': 'dude@example.com',
+            'format': 'HTML',
+        }
+        self.assertEqual(expected_result, result)
+
 
 class TestGetUserData(TestCase):
 
