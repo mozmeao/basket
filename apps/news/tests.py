@@ -19,8 +19,7 @@ from news.tasks import (FFAY_VENDOR_ID, FFOS_VENDOR_ID,
                         UU_ALREADY_CONFIRMED,
                         UU_EXEMPT_NEW, UU_EXEMPT_PENDING,
                         UU_MUST_CONFIRM_NEW, UU_MUST_CONFIRM_PENDING,
-                        RetryTask,
-                        confirm_user, update_user)
+                        BasketError, confirm_user, update_user)
 from news.views import get_user_data, language_code_is_valid, look_for_user
 
 
@@ -1020,7 +1019,7 @@ class UpdateUserTest(TestCase):
             'format': 'H',
         }
 
-        with self.assertRaises(RetryTask):
+        with self.assertRaises(NewsletterException):
             update_user(data, self.sub.email, self.sub.token, False,
                         SUBSCRIBE, True)
         # We should have mentioned this newsletter in our call to ET
@@ -1801,7 +1800,7 @@ class TestConfirmTask(TestCase):
             'desc': 'TESTERROR',
         }
         token = "TOKEN"
-        with self.assertRaises(RetryTask):
+        with self.assertRaises(NewsletterException):
             confirm_user(token, user_data)
         self.assertFalse(apply_updates.called)
         self.assertFalse(send_welcomes.called)
@@ -1814,6 +1813,7 @@ class TestConfirmTask(TestCase):
             'confirmed': False,
             'newsletters': Mock(),
             'format': 'ZZ',
+            'email': 'dude@example.com',
         }
         token = "TOKEN"
         confirm_user(token, user_data)
@@ -1836,7 +1836,7 @@ class TestConfirmTask(TestCase):
         self.assertFalse(send_welcomes.called)
 
     def test_user_not_found(self, apply_updates, send_welcomes):
-        """If we can't find the user, do nothing"""
+        """If we can't find the user, raise exception"""
         # Can't patch get_user_data because confirm_user imports it
         # internally. But we can patch look_for_user, which get_user_data
         # will call
@@ -1844,7 +1844,8 @@ class TestConfirmTask(TestCase):
             look_for_user.return_value = None
             user_data = None
             token = "TOKEN"
-            confirm_user(token, user_data)
+            with self.assertRaises(BasketError):
+                confirm_user(token, user_data)
         self.assertFalse(apply_updates.called)
         self.assertFalse(send_welcomes.called)
 

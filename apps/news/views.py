@@ -71,6 +71,10 @@ def lookup_subscriber(token=None, email=None):
     try:
         subscriber = Subscriber.objects.get(**kwargs)
     except Subscriber.DoesNotExist:
+        # Note: If both token and email were passed in, it would be possible
+        # that subscribers exist that match one or the other but not both.
+        # But currently no callers pass both, so luckily we don't have to
+        # figure out what we would do in that case.
         created = True
         # Check with ET to see if our DB is just out of sync
         user_data = get_user_data(sync_data=True, **kwargs)
@@ -81,7 +85,11 @@ def lookup_subscriber(token=None, email=None):
             # Not in ET. If we have an email, create a new basket
             # record for them
             if email:
-                subscriber = Subscriber.objects.create(email=email)
+                # It's barely possible the subscriber has been created
+                # since we checked, so play it safe and get_or_create.
+                # (Yes, this has been seen.)
+                subscriber, created = Subscriber.objects.\
+                    get_or_create(email=email)
             else:
                 # No email?  Just token? Token not known in basket or ET?
                 # That's an error.
