@@ -490,7 +490,6 @@ class UpdateUserTest(TestCase):
             'country': 'US',
             'format': 'H',
             'newsletters': nl.slug,
-            'trigger_welcome': 'Y',
         }
         rc = update_user(data=data,
                          email=self.sub.email,
@@ -505,13 +504,96 @@ class UpdateUserTest(TestCase):
         send_message.assert_called_with('en_' + welcome_id, self.sub.email,
                                         self.sub.token, 'H')
 
+    @patch('news.tasks.apply_updates')
+    @patch('news.tasks.send_message')
+    @patch('news.views.get_user_data')
+    def test_update_send_no_welcome(self, get_user_data, send_message,
+                                    apply_updates):
+        """Caller can block sending welcome using trigger_welcome=N
+        or anything other than 'Y'"""
+
+        # User already exists in ET and is confirmed
+        # User does not subscribe to anything yet
+        self.get_user_data['confirmed'] = True
+        self.get_user_data['newsletters'] = []
+        self.get_user_data['token'] = self.sub.token
+        get_user_data.return_value = self.get_user_data
+
+        # A newsletter with a welcome message
+        welcome_id = "TEST_WELCOME"
+        nl = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en,fr',
+            welcome=welcome_id,
+            vendor_id='VENDOR1',
+        )
+        data = {
+            'country': 'US',
+            'format': 'H',
+            'newsletters': nl.slug,
+            'trigger_welcome': 'Nope',
+        }
+        rc = update_user(data=data,
+                         email=self.sub.email,
+                         token=self.sub.token,
+                         created=True,
+                         type=SUBSCRIBE,
+                         optin=True)
+        self.assertEqual(UU_ALREADY_CONFIRMED, rc)
+        # We do subscribe them
+        apply_updates.assert_called()
+        # The welcome should NOT have been sent
+        self.assertFalse(send_message.called)
+
+    @patch('news.tasks.apply_updates')
+    @patch('news.tasks.send_message')
+    @patch('news.views.get_user_data')
+    def test_update_SET_no_welcome(self, get_user_data, send_message,
+                                   apply_updates):
+        """type=SET sends no welcomes"""
+
+        # User already exists in ET and is confirmed
+        # User does not subscribe to anything yet
+        self.get_user_data['confirmed'] = True
+        self.get_user_data['newsletters'] = []
+        self.get_user_data['token'] = self.sub.token
+        get_user_data.return_value = self.get_user_data
+
+        # A newsletter with a welcome message
+        welcome_id = "TEST_WELCOME"
+        nl = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en,fr',
+            welcome=welcome_id,
+            vendor_id='VENDOR1',
+        )
+        data = {
+            'country': 'US',
+            'format': 'H',
+            'newsletters': nl.slug,
+        }
+        rc = update_user(data=data,
+                         email=self.sub.email,
+                         token=self.sub.token,
+                         created=True,
+                         type=SET,
+                         optin=True)
+        self.assertEqual(UU_ALREADY_CONFIRMED, rc)
+        apply_updates.assert_called()
+        # The welcome should NOT have been sent
+        self.assertFalse(send_message.called)
+
     @patch('news.views.get_user_data')
     @patch('news.views.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
     def test_update_send_welcome(self, et_mock, etde_mock, get_user_data):
         """
-        Update sends default welcome if newsletter has none,
-        or, we can specify a particular welcome
+        Update sends no welcome if newsletter has no welcome set,
+        or it's a space.
         """
         et = et_mock()
         # Newsletter with no defined welcome message
@@ -536,14 +618,17 @@ class UpdateUserTest(TestCase):
                          created=True,
                          type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
-        et.trigger_send.assert_called_with(
-            'en_' + settings.DEFAULT_WELCOME_MESSAGE_ID,
-            {
-                'EMAIL_FORMAT_': 'H',
-                'EMAIL_ADDRESS_': self.sub.email,
-                'TOKEN': self.sub.token,
-            },
-        )
+        self.assertFalse(et.trigger_send.called)
+
+        # welcome of ' ' is same as none
+        nl1.welcome = ' '
+        et.trigger_send.reset_mock()
+        rc = update_user(data=data, email=self.sub.email,
+                         token=self.sub.token,
+                         created=True,
+                         type=SUBSCRIBE, optin=True)
+        self.assertEqual(UU_ALREADY_CONFIRMED, rc)
+        self.assertFalse(et.trigger_send.called)
 
         # FIXME? I think we don't need the ability for the caller
         # to override the welcome message
@@ -593,7 +678,6 @@ class UpdateUserTest(TestCase):
             'lang': 'en',
             'format': 'H',
             'newsletters': "%s,%s" % (nl1.slug, nl2.slug),
-            'trigger_welcome': 'Y',
         }
         rc = update_user(data=data,
                          email=self.sub.email,
@@ -670,7 +754,6 @@ class UpdateUserTest(TestCase):
             'country': 'US',
             'lang': 'en',
             'newsletters': "%s,%s" % (nl1.slug, nl2.slug),
-            'trigger_welcome': 'Y',
         }
         rc = update_user(data=data,
                          email=self.sub.email,
@@ -1054,6 +1137,7 @@ class UpdateUserTest(TestCase):
             active=True,
             languages='en-US,fr',
             vendor_id='TITLE_UNKNOWN',
+            welcome='39',
         )
         get_user_mock.return_value = {
             'status': 'ok',
@@ -1068,7 +1152,6 @@ class UpdateUserTest(TestCase):
             'lang': 'en',
             'country': 'US',
             'newsletters': 'slug',
-            'trigger_welcome': 'Y',
         }
         update_user(data, self.sub.email, self.sub.token, False, SUBSCRIBE,
                     True)
@@ -1112,6 +1195,7 @@ class UpdateUserTest(TestCase):
             active=True,
             languages='en-US,fr',
             vendor_id='TITLE_UNKNOWN',
+            welcome='39',
         )
         get_user_mock.return_value = {
             'status': 'ok',
@@ -1125,7 +1209,6 @@ class UpdateUserTest(TestCase):
             'lang': 'en',
             'country': 'US',
             'newsletters': 'slug',
-            'trigger_welcome': 'Y',
         }
         update_user(data, self.sub.email, self.sub.token, False, SUBSCRIBE,
                     True)
@@ -2006,7 +2089,7 @@ class TestSendWelcomes(TestCase):
     @patch('news.tasks.apply_updates')
     def test_one_lang_welcome(self, apply_updates, send_message):
         """If a newsletter only has one language, the welcome message
-        doesn't get a language prefix"""
+        still gets a language prefix"""
         welcome = u'welcome'
         Newsletter.objects.create(
             slug='slug',
@@ -2028,6 +2111,5 @@ class TestSendWelcomes(TestCase):
             'email': email,
         }
         confirm_user(token, user_data)
-        # No language prefix, and append nothing for HTML.
-        expected_welcome = welcome
+        expected_welcome = 'en_' + welcome
         send_message.assert_called_with(expected_welcome, email, token, format)
