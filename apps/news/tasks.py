@@ -335,6 +335,11 @@ def update_user(data, email, token, created, type, optin):
         or lang.lower().startswith('en') \
         or any_newsletter_doesnt_require_confirmation
 
+    # Send welcomes when type is SUBSCRIBE and trigger_welcome arg
+    # is absent or 'Y'.
+    should_send_welcomes = data.get('trigger_welcome', 'Y') == 'Y'\
+        and type == SUBSCRIBE
+
     MASTER = settings.EXACTTARGET_DATA
     OPT_IN = settings.EXACTTARGET_OPTIN_STAGE
 
@@ -344,7 +349,8 @@ def update_user(data, email, token, created, type, optin):
         # appropriate, and send welcomes.
         target_et = MASTER if user_data['master'] else OPT_IN
         apply_updates(target_et, record)
-        send_welcomes(user_data, to_subscribe, fmt)
+        if should_send_welcomes:
+            send_welcomes(user_data, to_subscribe, fmt)
         return_code = UU_ALREADY_CONFIRMED
     elif exempt_from_confirmation:
         # This user is not confirmed, but they
@@ -361,7 +367,8 @@ def update_user(data, email, token, created, type, optin):
             # and send welcomes.
             record['CREATED_DATE_'] = gmttime()
             apply_updates(MASTER, record)
-            send_welcomes(user_data, to_subscribe, fmt)
+            if should_send_welcomes:
+                send_welcomes(user_data, to_subscribe, fmt)
             return_code = UU_EXEMPT_NEW
     else:
         # This user must confirm
@@ -487,19 +494,19 @@ def send_welcomes(user_data, newsletter_slugs, format):
     # of the ones to send, then send them
     welcomes_to_send = set()
     for nl in newsletters:
-        welcome = nl.welcome or settings.DEFAULT_WELCOME_MESSAGE_ID
+        welcome = nl.welcome.strip()
+        if not welcome:
+            continue
         if format == 'T':
             welcome += '_T'
-        if len(nl.language_list) > 1:
-            # Newsletter supports multiple languages, so we want to send
-            # the welcome message in the right language for this user
-            languages = [lang[:2].lower() for lang in nl.language_list]
-            lang_code = user_data.get('lang', 'en')[:2].lower()
-            if lang_code not in languages:
-                # Newsletter does not support their preferred language, so
-                # it doesn't have a welcome in that language either.
-                lang_code = 'en'
-            welcome = "%s_%s" % (lang_code, welcome)
+        languages = [lang[:2].lower() for lang in nl.language_list]
+        lang_code = user_data.get('lang', 'en')[:2].lower()
+        if lang_code not in languages:
+            # Newsletter does not support their preferred language, so
+            # it doesn't have a welcome in that language either. Settle
+            # for English, same as they'll be getting the newsletter in.
+            lang_code = 'en'
+        welcome = "%s_%s" % (lang_code, welcome)
         welcomes_to_send.add(welcome)
     # Note: it's okay not to send a welcome if none of the newsletters
     # have one configured.
