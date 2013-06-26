@@ -265,7 +265,7 @@ def update_user(data, email, token, created, type, optin):
         if field in data:
             record[extra_fields[field]] = data[field]
 
-    lang = record.get('LANGUAGE_ISO2', None)
+    lang = record.get('LANGUAGE_ISO2', '') or ''
 
     # Can't import this earlier, circular import
     from .views import get_user_data

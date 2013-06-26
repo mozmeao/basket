@@ -590,7 +590,7 @@ class UpdateUserTest(TestCase):
     @patch('news.views.get_user_data')
     @patch('news.views.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
-    def test_update_send_welcome(self, et_mock, etde_mock, get_user_data):
+    def test_update_no_welcome_set(self, et_mock, etde_mock, get_user_data):
         """
         Update sends no welcome if newsletter has no welcome set,
         or it's a space.
@@ -724,6 +724,41 @@ class UpdateUserTest(TestCase):
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         apply_updates.assert_called()
         send_message.assert_called()
+
+    @patch('news.tasks.apply_updates')
+    @patch('news.tasks.send_message')
+    @patch('news.views.get_user_data')
+    def test_update_user_works_with_no_lang(self, get_user_data,
+                                            send_message,
+                                            apply_updates):
+        """update_user was ending up with None lang breaking send_welcomes
+         when new user and POST data had no lang"""
+        nl1 = models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en-US,fr',
+            vendor_id='VENDOR1',
+            welcome='Welcome'
+        )
+        data = {
+            'country': 'US',
+            'format': 'H',
+            'newsletters': nl1.slug,
+            'format': 'T',
+        }
+        # new user, not in ET yet
+        get_user_data.return_value = None
+        rc = update_user(data=data, email=self.sub.email,
+                         token=self.sub.token,
+                         created=True,
+                         type=SUBSCRIBE, optin=True)
+        self.assertEqual(UU_EXEMPT_NEW, rc)
+        apply_updates.assert_called()
+        send_message.assert_called_with(u'en_Welcome_T',
+                                        self.sub.email,
+                                        self.sub.token,
+                                        'T')
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
