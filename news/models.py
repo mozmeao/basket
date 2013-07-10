@@ -64,7 +64,7 @@ class Newsletter(models.Model):
         help_text="The ID of the welcome message sent for this newsletter. "
                   "This is the HTML version of the message; append _T to this "
                   "ID to get the ID of the text-only version.  If blank, "
-                  "default is %s." % settings.DEFAULT_WELCOME_MESSAGE_ID,
+                  "no welcome is sent",
         blank=True,
     )
     vendor_id = models.CharField(
@@ -85,6 +85,14 @@ class Newsletter(models.Model):
         help_text="Order to display the newsletters on the web site. "
                   "Newsletters with lower order numbers will display first."
     )
+    confirm_message = models.CharField(
+        max_length=64,
+        help_text="The ID of the confirm message sent for this newsletter."
+                  "That's the one that says 'please click here to confirm'."
+                  "If blank, a default message based on the user's language "
+                  "is sent.",
+        blank=True,
+    )
 
     def __unicode__(self):
         return self.title
@@ -94,7 +102,10 @@ class Newsletter(models.Model):
 
     def save(self, *args, **kwargs):
         # Strip whitespace from langs before save
+        # Also confirm_message or welcome
         self.languages = self.languages.replace(" ", "")
+        self.welcome = self.welcome.strip()
+        self.confirm_message = self.confirm_message.strip()
         super(Newsletter, self).save(*args, **kwargs)
 
         # Cannot import earlier due to circular import
