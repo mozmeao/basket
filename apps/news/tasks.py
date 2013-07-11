@@ -463,6 +463,8 @@ def send_confirm_notice(email, token, lang, format):
 
     welcome = CONFIRM_SENDS[lang] if lang in CONFIRM_SENDS \
         else CONFIRM_SENDS[lang[:2]]
+    if format == 'T':
+        welcome += '_T'
     send_message(welcome, email, token, format)
 
 
