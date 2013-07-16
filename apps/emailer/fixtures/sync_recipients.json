@@ -1,1 +1,0 @@
-[{"pk": 1, "model": "emailer.recipient", "fields": {"subscriber": 1, "email": 1, "created": "2010-06-17 14:58:40"}}, {"pk": 2, "model": "emailer.recipient", "fields": {"subscriber": 2, "email": 2, "created": "2010-06-17 15:15:59"}}]

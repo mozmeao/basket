@@ -7,10 +7,8 @@ admin.autodiscover()
 
 
 urlpatterns = patterns('',
-    ('^subscriptions/', include('subscriptions.urls')),
     (r'^admin/doc/', include('django.contrib.admindocs.urls')),
     (r'^admin/', include(admin.site.urls)),
-    ('^nagios/', include('nagios.urls')),
     (r'^news/', include('news.urls'))
 )
 
