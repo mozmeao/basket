@@ -22,7 +22,7 @@ wsgi_loaded = datetime.now()
 wsgidir = os.path.dirname(__file__)
 site.addsitedir(os.path.abspath(os.path.join(wsgidir, '../')))
 
-# manage adds /apps, /lib, and /vendor to the Python path.
+# manage adds /lib and /vendor to the Python path.
 import manage
 
 import django.conf

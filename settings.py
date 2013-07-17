@@ -78,8 +78,8 @@ INSTALLED_APPS = (
     'news',
 
     'djcelery',
-    'django_nose',
     'south',
+    'django_nose',  # must follow south
     'raven.contrib.django.raven_compat',
 
     'django.contrib.auth',
@@ -180,3 +180,5 @@ LOGGING = {
         }
     },
 }
+
+TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'

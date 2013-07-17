@@ -1467,7 +1467,7 @@ class TestLookForUser(TestCase):
 
 class TestGetUserData(TestCase):
 
-    def generic_test(self,
+    def validate_get_user_data(self,
                      master,
                      optin,
                      confirm,
@@ -1528,7 +1528,7 @@ class TestGetUserData(TestCase):
 
     def test_not_in_et(self):
         # User not in Exact Target, return None
-        self.generic_test(None, None, None, False, None)
+        self.validate_get_user_data(None, None, None, False, None)
 
     def test_et_error(self):
         # Error calling Exact Target, return error code
@@ -1539,7 +1539,7 @@ class TestGetUserData(TestCase):
             'desc': err_msg,
             'status_code': 400,
         }
-        self.generic_test(ANY, ANY, ANY, error, expected)
+        self.validate_get_user_data(ANY, ANY, ANY, error, expected)
 
     def test_in_master(self):
         """
@@ -1547,7 +1547,7 @@ class TestGetUserData(TestCase):
         look_for_user returns.
         """
         mock_user = {'dummy': 'Just a dummy user'}
-        self.generic_test(mock_user, ANY, ANY, False, mock_user)
+        self.validate_get_user_data(mock_user, ANY, ANY, False, mock_user)
 
     def test_in_opt_in(self):
         """
@@ -1555,11 +1555,11 @@ class TestGetUserData(TestCase):
         look_for_user returns.
         """
         mock_user = {'token': 'Just a dummy user'}
-        self.generic_test(None, mock_user, ANY, False, mock_user)
+        self.validate_get_user_data(None, mock_user, ANY, False, mock_user)
 
 
 class TestConfirmationLogic(TestCase):
-    def generic_test(self, user_in_basket, user_in_master,
+    def validate_logic(self, user_in_basket, user_in_master,
                      user_in_optin, user_in_confirmed,
                      newsletter_with_required_confirmation,
                      newsletter_without_required_confirmation,
@@ -1637,7 +1637,7 @@ class TestConfirmationLogic(TestCase):
     #
 
     def test_new_english_non_required(self):
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=False,
                           user_in_optin=False,
                           user_in_confirmed=False,
@@ -1648,7 +1648,7 @@ class TestConfirmationLogic(TestCase):
                           expected_result=UU_EXEMPT_NEW)
 
     def test_new_non_english_non_required(self):
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=False,
                           user_in_optin=False,
                           user_in_confirmed=False,
@@ -1659,7 +1659,7 @@ class TestConfirmationLogic(TestCase):
                           expected_result=UU_EXEMPT_NEW)
 
     def test_new_english_required_and_not(self):
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=False,
                           user_in_optin=False,
                           user_in_confirmed=False,
@@ -1670,7 +1670,7 @@ class TestConfirmationLogic(TestCase):
                           expected_result=UU_EXEMPT_NEW)
 
     def test_new_non_english_required_and_not(self):
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=False,
                           user_in_optin=False,
                           user_in_confirmed=False,
@@ -1681,7 +1681,7 @@ class TestConfirmationLogic(TestCase):
                           expected_result=UU_EXEMPT_NEW)
 
     def test_new_non_english_required(self):
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=False,
                           user_in_optin=False,
                           user_in_confirmed=False,
@@ -1697,7 +1697,7 @@ class TestConfirmationLogic(TestCase):
 
     def test_pending_english_required(self):
         # Should exempt them and confirm them
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=False,
                           user_in_optin=True,
                           user_in_confirmed=False,
@@ -1709,7 +1709,7 @@ class TestConfirmationLogic(TestCase):
 
     def test_pending_english_not_required(self):
         # Should exempt them and confirm them
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=False,
                           user_in_optin=True,
                           user_in_confirmed=False,
@@ -1721,7 +1721,7 @@ class TestConfirmationLogic(TestCase):
 
     def test_pending_non_english_required(self):
         # Still have to confirm
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=False,
                           user_in_optin=True,
                           user_in_confirmed=False,
@@ -1733,7 +1733,7 @@ class TestConfirmationLogic(TestCase):
 
     def test_pending_non_english_not_required(self):
         # Should exempt them and confirm them
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=False,
                           user_in_optin=True,
                           user_in_confirmed=False,
@@ -1748,7 +1748,7 @@ class TestConfirmationLogic(TestCase):
     #
 
     def test_confirmed_english_required(self):
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=False,
                           user_in_optin=True,
                           user_in_confirmed=True,
@@ -1759,7 +1759,7 @@ class TestConfirmationLogic(TestCase):
                           expected_result=UU_ALREADY_CONFIRMED)
 
     def test_confirmed_non_english_required(self):
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=False,
                           user_in_optin=True,
                           user_in_confirmed=True,
@@ -1770,7 +1770,7 @@ class TestConfirmationLogic(TestCase):
                           expected_result=UU_ALREADY_CONFIRMED)
 
     def test_confirmed_english_not_required(self):
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=False,
                           user_in_optin=True,
                           user_in_confirmed=True,
@@ -1781,7 +1781,7 @@ class TestConfirmationLogic(TestCase):
                           expected_result=UU_ALREADY_CONFIRMED)
 
     def test_confirmed_non_english_not_required(self):
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=False,
                           user_in_optin=True,
                           user_in_confirmed=True,
@@ -1795,7 +1795,7 @@ class TestConfirmationLogic(TestCase):
     #
 
     def test_master_english_required(self):
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=True,
                           user_in_optin=False,
                           user_in_confirmed=True,
@@ -1806,7 +1806,7 @@ class TestConfirmationLogic(TestCase):
                           expected_result=UU_ALREADY_CONFIRMED)
 
     def test_master_non_english_required(self):
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=True,
                           user_in_optin=False,
                           user_in_confirmed=True,
@@ -1817,7 +1817,7 @@ class TestConfirmationLogic(TestCase):
                           expected_result=UU_ALREADY_CONFIRMED)
 
     def test_master_english_not_required(self):
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=True,
                           user_in_optin=False,
                           user_in_confirmed=True,
@@ -1828,7 +1828,7 @@ class TestConfirmationLogic(TestCase):
                           expected_result=UU_ALREADY_CONFIRMED)
 
     def test_master_non_english_not_required(self):
-        self.generic_test(user_in_basket=False,
+        self.validate_logic(user_in_basket=False,
                           user_in_master=True,
                           user_in_optin=False,
                           user_in_confirmed=True,
