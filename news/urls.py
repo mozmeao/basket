@@ -1,7 +1,8 @@
 from django.conf.urls.defaults import patterns, url
-from views import (subscribe, subscribe_sms, unsubscribe, user, confirm,
-                   debug_user, custom_unsub_reason, custom_update_phonebook,
-                   custom_update_student_ambassadors, newsletters)
+
+from .views import (subscribe, subscribe_sms, unsubscribe, user, confirm,
+                    debug_user, custom_unsub_reason, custom_update_phonebook,
+                    custom_update_student_ambassadors, newsletters)
 
 
 urlpatterns = patterns('',
