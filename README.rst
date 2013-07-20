@@ -2,12 +2,12 @@
 Basket
 ======
 
-Stores email list subscriptions, and can send emails to those lists.
+Interact with our email marketing provider via a nice simple HTTP API.
 
 Requirements
 ============
 
-* Python 2.6
+* Python >= 2.6, < 3
 * MySQL
 
 Installation
@@ -18,7 +18,7 @@ Get the code
 
 ::
 
-    git clone git@github.com:abuchanan/basket.git --recursive
+    git clone git@github.com:mozilla/basket.git --recursive
 
 The `--recursive` is important!
 
@@ -65,62 +65,131 @@ Production environments
 Production installs often have a few different requirements:
 
 * point Apache's ``WSGIScriptAlias`` at ``/path/to/basket/wsgi/basket.wsgi``
-* jbalogh has a good example WSGI config for Zamboni: http://jbalogh.github.com/zamboni/topics/production/#setting-up-mod-wsgi
+* jbalogh has a good example `WSGI config for Zamboni <http://jbalogh.github.com/zamboni/topics/production/#setting-up-mod-wsgi>`_.
 * ``DEBUG = False`` in settings
 
-Collecting Emails
-=================
+Newsletters API
+===============
 
-Send a POST request to /subscriptions/subscribe/ with the following fields
+This "news" app provides a service for managing Mozilla newsletters.
 
-* email address
-* campaign ID
-* locale (optional, defaults to en-US)
-* active (optional, defaults to True)
-* source, i.e. source page URL (optional)
+`fixtures/newsletters.json` is a fixture that can be used to load some initial
+data, but is probably out of date by the time you read this.
 
-Sending Emails
-==============
+Currently available newsletters can be found in JSON format via the
+`/news/newsletters/ API endpoint <https://basket.mozilla.org/news/newsletters/>`_.
 
-After collecting emails, you'll also want to send some. To do that, first set
-your outgoing email settings appropriately in ``settings_local.py``.
+If 'auth-required' is specified, a token must be suffixed onto the API
+URL, such as::
 
-Then, create an email. See ./emails/home.py for examples.
+    /news/user/<token>/
 
-To send an email to a campaign, run::
+This is a user-specific token given away by the email backend or
+basket in some manner (i.e. emailed to the user from basket). This
+token allows clients to do more powerful things with the user.
 
-    ./manage.py sendmail --email emails.package.email campaignname [other_campaignnames ...]
+The following URLs are available (assuming "/news" is app url):
 
-For example, to send the Firefox Home instructions email, you'd run::
+/news/subscribe
+---------------
 
-    ./manage.py sendmail --email emails.home.Initial firefox-home-instructions
+    This method subscribes the user to the newsletters defined in the
+    "newsletters" field, which should be a comma-delimited list of
+    newsletters. "email" and "newsletters" are required. "optin" should
+    be Y or N depending if the user should automatically be opted in,
+    default is Y. "trigger_welcome" should be Y to fire off a welcome email::
 
-You can run this as a cron job, as no-one will receive the same email twice,
-unless the ``--force`` option is set.
+        method: POST
+        fields: email, format, country, lang, newsletters, optin, trigger_welcome
+        returns: { status: ok } on success
+                 { status: error, desc: <desc>, fields: [<field>, ...] } on error
 
+    format can be any of the following values: H, html, T, or text
 
-Advanced emailing
+/news/unsubscribe
 -----------------
 
-If you require special logic for sending your email, you can subclass
-``emailer.Emailer`` in a module of your choice (recommended:
-inside ``libs/custom_emailers``). Set the
-``emailer_class`` field accordingly for the applicable email (see emails.home.Reminder for an example).
+    This method unsubscribes the user from the newsletters defined in
+    the "newsletters" field, which should be a comma-delimited list of
+    newsletters. If the "optout" parameter is set to Y, the user will be
+    opted out of all newsletters. "email" and either "newsletters" or
+    "optout" is required::
 
-When you run the ``sendmail`` command above, your Emailer will be used instead
-of the default one.
+        method: POST
+        fields: email, newsletters, optout
+        returns: { status: ok } on success
+                 { status: error, desc: <desc> } on error
+        auth-required
 
-Testing
-=======
+/news/user
+----------
 
-::
+    Returns information about the user including all the newsletters
+    he/she is subscribed to::
 
-    ./manage.py test [appnames]
+        method: GET
+        fields: *none*
+        returns: {
+            status: ok,
+            email: <email>,
+            format: <format>,
+            country: <country>,
+            lang: <lang>,
+            newsletters: [<newsletter>, ...]
+        } on success
+        {
+            status: error,
+            desc: <desc>
+        } on error
+        auth-required
 
-For example::
+    If POSTed, this method updates the user's data with the supplied
+    fields. Note that the user is only subscribed to "newsletters" after
+    this, meaning the user will be unsubscribed to all other
+    newsletters. "optin" should be Y or N and opts in/out the user::
 
-    ./manage.py test emailer news
+        method: POST
+        fields: email, format, country, lang, newsletters, optin
+        returns: { status: ok } on success
+                 { status: error, desc: <desc> } on error
+        auth-required
 
-You can also run particular test classes::
+/news/newsletters
+-----------------
 
-    ./manage.py test news.TestNewsletters
+    Returns information about all of the available newsletters::
+
+        method: GET
+        fiends: *none*
+        returns: {
+            status: ok,
+            newsletters: {
+                newsletter-slug: {
+                    vendor_id: "ID_FROM_EXACTTARGET",
+                    welcome: "WELCOME_MESSAGE_ID",
+                    description: "Short text description",
+                    show: boolean,  // whether to always show this in lists
+                    title: "Short text title",
+                    languages: [
+                        "<2 char lang>",
+                        ...
+                    ],
+                    active: boolean,  // whether to show it at all (optional)
+                    order: 15,  // in what order it should be displayed in lists
+                    requires_double_optin: boolean
+                },
+                ...
+            }
+        }
+
+/news/debug-user
+----------------
+
+    This is the same as a GET request to /user, except that you must
+    pass in the email and a supertoken as GET params. The supertoken is
+    a special token that should never be made public and lets devs debug
+    users to make sure they were entered into the system correctly::
+
+        method: GET
+        fields: email, supertoken
+
