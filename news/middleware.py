@@ -1,5 +1,3 @@
-import inspect
-
 from django_statsd.clients import statsd
 from django_statsd.middleware import GraphiteRequestTimingMiddleware
 
