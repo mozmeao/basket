@@ -1,9 +1,11 @@
-from settings import *
+from settings import *  # noqa
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': 'basket.db',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'basket',
+        'USER': 'travis',
+        'OPTIONS': {'init_command': 'SET storage_engine=InnoDB'},
     }
 }
 

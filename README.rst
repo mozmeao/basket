@@ -4,6 +4,9 @@ Basket
 
 Interact with our email marketing provider via a nice simple HTTP API.
 
+.. image:: https://travis-ci.org/mozilla/basket.png
+    :target: https://travis-ci.org/mozilla/basket
+
 Requirements
 ============
 

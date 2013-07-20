@@ -1,10 +1,18 @@
 language: python
 python:
   - "2.6"
+before_script:
+  - mysql -e 'create database basket;'
+  - python manage.py syncdb --noinput --migrate
 script: python manage.py test news
-before_install: git submodule update --init --recursive
+before_install:
+  - git submodule update --init --recursive
+install:
+  - pip install -r requirements/compiled.txt --use-mirrors
 notifications:
   irc:
-    channels: "irc.mozilla.org#newsletter"
+    channels:
+      - "irc.mozilla.org#newsletter"
     on_success: change
     on_failure: change
+    use_notice: true
