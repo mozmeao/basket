@@ -1,0 +1,10 @@
+language: python
+python:
+  - "2.6"
+script: python manage.py test news
+before_install: git submodule update --init --recursive
+notifications:
+  irc:
+    channels: "irc.mozilla.org#newsletter"
+    on_success: change
+    on_failure: change
