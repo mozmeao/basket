@@ -27,6 +27,7 @@ SET = 3
 
 # Double optin-in languages
 CONFIRM_SENDS = {
+    'en': 'en_confirmation_email',
     'es': 'es_confirmation_email',
     'es-ES': 'es_confirmation_email',
     'de': 'de_confirmation_email',
