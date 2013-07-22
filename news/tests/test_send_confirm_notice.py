@@ -29,8 +29,8 @@ class TestSendConfirmNotice(TestCase):
 
     def test_default_confirm_notice_H(self, send_message):
         """Test newsletter that has no explicit confirm"""
-        send_confirm_notice(self.email, self.token, "es", "H", ['slug2'])
-        expected_message = CONFIRM_SENDS["es"]
+        send_confirm_notice(self.email, self.token, "en", "H", ['slug2'])
+        expected_message = CONFIRM_SENDS["en"]
         send_message.assert_called_with(expected_message,
                                         self.email,
                                         self.token,
