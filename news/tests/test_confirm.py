@@ -151,7 +151,7 @@ class TestConfirmationLogic(TestCase):
     #
 
     def test_pending_english_required(self):
-        # Should exempt them and confirm them
+        # Should NOT exempt them and confirm them
         self.check_confirmation(user_in_basket=False,
                                 user_in_master=False,
                                 user_in_optin=True,
@@ -160,7 +160,7 @@ class TestConfirmationLogic(TestCase):
                                 newsletter_without_required_confirmation=False,
                                 is_english=True,
                                 type=SUBSCRIBE,
-                                expected_result=UU_EXEMPT_PENDING)
+                                expected_result=UU_MUST_CONFIRM_PENDING)
 
     def test_pending_english_not_required(self):
         # Should exempt them and confirm them

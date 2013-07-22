@@ -324,16 +324,12 @@ def update_user(data, email, token, created, type, optin):
                                                      cur_newsletters)
 
     # Are they subscribing to any newsletters that don't require confirmation?
-    newsletter_objects = Newsletter.objects.filter(slug__in=to_subscribe)
-    any_newsletter_doesnt_require_confirmation = newsletter_objects.filter(
-        requires_double_optin=False).exists()
-    # When signing up in English, or including any newsletter that does not
+    # When including any newsletter that does not
     # require confirmation, user gets a pass on confirming and goes straight
     # to confirmed.
-    exempt_from_confirmation = lang is None\
-        or lang == ''\
-        or lang.lower().startswith('en') \
-        or any_newsletter_doesnt_require_confirmation
+    exempt_from_confirmation = Newsletter.objects\
+        .filter(slug__in=to_subscribe, requires_double_optin=False)\
+        .exists()
 
     # Send welcomes when type is SUBSCRIBE and trigger_welcome arg
     # is absent or 'Y'.
@@ -383,7 +379,7 @@ def update_user(data, email, token, created, type, optin):
         # Create or update OPT_IN record and send email telling them (or
         # reminding them) to confirm.
         apply_updates(OPT_IN, record)
-        send_confirm_notice(email, token, lang, fmt)
+        send_confirm_notice(email, token, lang, fmt, to_subscribe)
     return return_code
 
 
@@ -445,26 +441,61 @@ def send_message(message_id, email, token, format):
         raise
 
 
-def send_confirm_notice(email, token, lang, format):
+def mogrify_message_id(message_id, lang, format):
+    """Given a bare message ID, a language code, and a format (T or H),
+    return a message ID modified to specify that language and format.
+
+    E.g. on input ('MESSAGE', 'fr', 'T') it returns 'fr_MESSAGE_T',
+    or on input ('MESSAGE', 'pt', 'H') it returns 'pt_MESSAGE'
+
+    If `lang` is None or empty, it skips prefixing the language.
+    """
+    if lang:
+        result = "%s_%s" % (lang.lower()[:2], message_id)
+    else:
+        result = message_id
+    if format == 'T':
+        result += "_T"
+    return result
+
+
+def send_confirm_notice(email, token, lang, format, newsletter_slugs):
     """
     Send email to user with link to confirm their subscriptions.
 
     :raises: BasketError
     """
-    # Confirmation notices are language-dependent. Try first
-    # to see if we have their exact language; if not, try the
-    # first two chars.
-    if lang not in CONFIRM_SENDS and lang[:2] not in CONFIRM_SENDS:
-        msg = "Cannot send confirmation request to user %s %s because " \
-              "no confirmation message defined for " \
-              "lang=%r" % (email, token, lang)
-        log.error(msg)
-        raise BasketError(msg)
 
-    welcome = CONFIRM_SENDS[lang] if lang in CONFIRM_SENDS \
-        else CONFIRM_SENDS[lang[:2]]
-    if format == 'T':
-        welcome += '_T'
+    # See if any newsletters have a custom confirmation message
+    # We only need to find one
+    newsletters = Newsletter.objects.filter(slug__in=newsletter_slugs)\
+        .exclude(confirm_message='')[:1]
+    if newsletters:
+        newsletter = newsletters[0]
+        newsletter_langs = [x[:2] for x in newsletter.language_list]
+        if lang[:2] not in newsletter_langs:
+            msg = "Cannot send confirmation request to user %s %s because " \
+                  "no confirmation message defined for " \
+                  "lang=%r" % (email, token, lang)
+            log.error(msg)
+            raise BasketError(msg)
+        welcome = newsletter.confirm_message
+        welcome = mogrify_message_id(welcome, lang, format)
+    else:
+        # Default confirmation notices are language-dependent. Try first
+        # to see if we have their exact language; if not, try the
+        # first two chars.
+        if lang not in CONFIRM_SENDS and lang[:2] not in CONFIRM_SENDS:
+            msg = "Cannot send confirmation request to user %s %s because " \
+                  "no confirmation message defined for " \
+                  "lang=%r" % (email, token, lang)
+            log.error(msg)
+            raise BasketError(msg)
+
+        welcome = CONFIRM_SENDS[lang] if lang in CONFIRM_SENDS \
+            else CONFIRM_SENDS[lang[:2]]
+        welcome = mogrify_message_id(welcome, None, format)
+
     send_message(welcome, email, token, format)
 
 
@@ -499,8 +530,6 @@ def send_welcomes(user_data, newsletter_slugs, format):
         welcome = nl.welcome.strip()
         if not welcome:
             continue
-        if format == 'T':
-            welcome += '_T'
         languages = [lang[:2].lower() for lang in nl.language_list]
         lang_code = user_data.get('lang', 'en')[:2].lower()
         if lang_code not in languages:
@@ -508,7 +537,7 @@ def send_welcomes(user_data, newsletter_slugs, format):
             # it doesn't have a welcome in that language either. Settle
             # for English, same as they'll be getting the newsletter in.
             lang_code = 'en'
-        welcome = "%s_%s" % (lang_code, welcome)
+        welcome = mogrify_message_id(welcome, lang_code, format)
         welcomes_to_send.add(welcome)
     # Note: it's okay not to send a welcome if none of the newsletters
     # have one configured.
