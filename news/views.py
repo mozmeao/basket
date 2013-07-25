@@ -10,7 +10,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
                                   UnauthorizedException)
-from models import Newsletter, Subscriber
+from models import APIUser, Newsletter, Subscriber
 from news.backends.common import NewsletterNoResultsException
 from tasks import (
     SET, SUBSCRIBE, UNSUBSCRIBE,
@@ -257,7 +257,8 @@ def get_user_data(token=None, email=None, sync_data=False):
 
     None = user completely unknown, no errors talking to ET.
 
-    otherwise, return value is:
+    otherwise, return value is::
+
     {
         'status':  'ok',      # no errors talking to ET
         'status':  'error',   # errors talking to ET, see next field
@@ -511,3 +512,85 @@ def newsletters(request):
         'status': 'ok',
         'newsletters': result,
     })
+
+
+@never_cache
+def lookup_user(request):
+    """Lookup a user in Exact Target given email or token (not both).
+
+    To look up by email, a valid API key are required.
+
+    If email and token are both provided, an error is returned rather
+    than trying to define all the possible behaviors.
+
+    SSL is always required when using this call. If no SSL, it'll fail
+    with 401 and an appropriate message in the response body.
+
+    Response content is always JSON.
+
+    If user is not found, returns a 404 status and json is::
+
+        {
+            'status': 'error',
+            'desc': 'No such user'
+        }
+
+    (If you need to distinguish user not found from an error calling
+    the API, check the response content.)
+
+    If a required, valid API key is not provided, status is 401 Unauthorized.
+    The API key can be provided either as a GET query parameter ``api-key``
+    or a request header ``X-api-key``. If it's provided as a query parameter,
+    any request header is ignored.
+
+    For other errors, similarly
+    response status is 4xx and the json 'desc' says what's wrong.
+
+    Otherwise, status is 200 and json is the return value from
+    `get_user_data`. See that method for details.
+
+    Note that because this method always calls Exact Target one or
+    more times, it can be slower than some other Basket APIs, and will
+    fail if ET is down.
+    """
+
+    if not request.is_secure():
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'lookup_user always requires SSL',
+        }, 401)
+
+    token = request.GET.get('token', None)
+    email = request.GET.get('email', None)
+
+    # The API key could be the query parameter 'api-key' or the
+    # request header 'X-api-key'.
+    api_key = request.GET.get('api-key', None) or\
+        request.META.get('HTTP_X_API_KEY', None)
+
+    if (not email and not token) or (email and token):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'Using lookup_user, you need to pass either the '
+                    '`email` or `token` GET parameter, but not both.',
+        }, 400)
+
+    if email and not APIUser.is_valid(api_key):
+            return HttpResponseJSON({
+                'status': 'error',
+                'desc': 'Using lookup_user with `email`, you need to pass a '
+                        'valid `api-key` GET parameter or X-api-key header',
+            }, 401)
+
+    status_code = 200
+    user_data = get_user_data(token=token, email=email)
+    if not user_data:
+        user_data = {
+            'status': 'error',
+            'desc': 'No such user'
+        }
+        status_code = 404
+    elif user_data['status'] == 'error':
+        status_code = 400
+
+    return HttpResponseJSON(user_data, status_code)
