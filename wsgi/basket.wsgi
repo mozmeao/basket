@@ -33,6 +33,8 @@ import django.utils
 import djcelery
 djcelery.setup_loader()
 
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+
 # Do validate and activate translations like using `./manage.py runserver`.
 # http://blog.dscpl.com.au/2010/03/improved-wsgi-script-for-use-with.html
 utility = django.core.management.ManagementUtility()

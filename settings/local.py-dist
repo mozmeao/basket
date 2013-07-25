@@ -1,0 +1,20 @@
+# Copy local.py-dist to local.py and edit as needed.
+
+from .base import *
+
+# Override base settings here::
+
+DEBUG = False
+TEMPLATE_DEBUG = False
+
+DEBUG_PROPAGATE_EXCEPTIONS = DEBUG
+CELERY_ALWAYS_EAGER = True
+
+# Credentials for Exact Target account
+EXACTTARGET_USER = ''
+EXACTTARGET_PASS = ''
+# Name of the database of people who have confirmed
+EXACTTARGET_DATA = 'dummy-data'
+# Name of the database of people waiting for confirmation
+EXACTTARGET_OPTIN_STAGE = 'dummy-optin'
+SUPERTOKEN = 'change me to something unique and do not share'
