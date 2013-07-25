@@ -2,6 +2,7 @@ import json
 
 from django.core.urlresolvers import reverse
 from django.test import TestCase
+from django.test.client import RequestFactory
 
 from mock import patch, ANY
 
@@ -9,7 +10,6 @@ from news import models, views
 from news.models import Newsletter
 from news.newsletters import newsletter_languages, newsletter_fields
 from news.views import language_code_is_valid
-from test_utils import RequestFactory
 
 
 class SubscribeTest(TestCase):
