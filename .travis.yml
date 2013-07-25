@@ -9,8 +9,7 @@ script: python manage.py test news
 before_install:
   - git submodule update --init --recursive
 install:
-  - pip install -r requirements/compiled.txt --use-mirrors
-  - pip install flake8 --use-mirrors
+  - pip install -r requirements/compiled.txt -r requirements/dev.txt --use-mirrors
 notifications:
   irc:
     channels:

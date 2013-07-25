@@ -3,6 +3,7 @@ import json
 
 from django.conf import settings
 from django.test import TestCase
+from django.test.client import RequestFactory
 from django.utils.unittest import skip
 
 from mock import patch, ANY
@@ -12,7 +13,6 @@ from news.backends.common import NewsletterException
 from news.tasks import update_user, SUBSCRIBE, UU_EXEMPT_NEW, \
     UU_ALREADY_CONFIRMED, SET, FFOS_VENDOR_ID, \
     FFAY_VENDOR_ID, UNSUBSCRIBE
-from test_utils import RequestFactory
 
 
 class UpdateUserTest(TestCase):
