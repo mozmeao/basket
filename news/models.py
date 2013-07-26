@@ -130,3 +130,23 @@ def post_newsletter_delete(sender, **kwargs):
     # Cannot import earlier due to circular import
     from news.newsletters import clear_newsletter_cache
     clear_newsletter_cache()
+
+
+class APIUser(models.Model):
+    """On some API calls, an API key must be passed that must
+    exist in this table."""
+    name = models.CharField(
+        max_length=256,
+        help_text="Descriptive name of this user"
+    )
+    api_key = models.CharField(max_length=40,
+                               default=lambda: str(uuid4()),
+                               db_index=True)
+    enabled = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "API User"
+
+    @classmethod
+    def is_valid(cls, api_key):
+        return cls.objects.filter(api_key=api_key, enabled=True).exists()

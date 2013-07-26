@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import Newsletter, Subscriber
+from .models import APIUser, Newsletter, Subscriber
+
+
+class APIUserAdmin(admin.ModelAdmin):
+    list_display = ('name', 'enabled')
+
+
+admin.site.register(APIUser, APIUserAdmin)
 
 
 class SubscriberAdmin(admin.ModelAdmin):

@@ -82,7 +82,7 @@ data, but is probably out of date by the time you read this.
 Currently available newsletters can be found in JSON format via the
 `/news/newsletters/ API endpoint <https://basket.mozilla.org/news/newsletters/>`_.
 
-If 'auth-required' is specified, a token must be suffixed onto the API
+If 'token-required' is specified, a token must be suffixed onto the API
 URL, such as::
 
     /news/user/<token>/
@@ -90,6 +90,12 @@ URL, such as::
 This is a user-specific token given away by the email backend or
 basket in some manner (i.e. emailed to the user from basket). This
 token allows clients to do more powerful things with the user.
+
+A client might also have an ``API key`` that it can use with some APIs to
+do privileged things, like looking up a user from their email.
+
+If 'SSL required', the call will fail if not called over a secure
+(SSL) connection.
 
 The following URLs are available (assuming "/news" is app url):
 
@@ -122,7 +128,7 @@ The following URLs are available (assuming "/news" is app url):
         fields: email, newsletters, optout
         returns: { status: ok } on success
                  { status: error, desc: <desc> } on error
-        auth-required
+        token-required
 
 /news/user
 ----------
@@ -144,7 +150,7 @@ The following URLs are available (assuming "/news" is app url):
             status: error,
             desc: <desc>
         } on error
-        auth-required
+        token-required
 
     If POSTed, this method updates the user's data with the supplied
     fields. Note that the user is only subscribed to "newsletters" after
@@ -155,7 +161,7 @@ The following URLs are available (assuming "/news" is app url):
         fields: email, format, country, lang, newsletters, optin
         returns: { status: ok } on success
                  { status: error, desc: <desc> } on error
-        auth-required
+        token-required
 
 /news/newsletters
 -----------------
@@ -196,3 +202,49 @@ The following URLs are available (assuming "/news" is app url):
         method: GET
         fields: email, supertoken
 
+/news/lookup-user
+-----------------
+
+    This allows retrieving user information given either their token or
+    their email (but not both). To retrieve by email, an API key is
+    required::
+
+        method: GET
+        fields: token, or email and api-key
+        returns: { status: ok, user data } on success
+                 { status: error, desc: <desc> } on error
+        SSL required
+        token or API key required
+
+    Examples::
+
+        GET https://basket.example.com/news/lookup-user?token=<TOKEN>
+        GET https://basket.example.com/news/lookup-user?api-key=<KEY>&email=<email@example.com>
+
+    The API key can be provided either as a GET query parameter ``api-key``
+    or as a request header ``X-api-key``. If both are provided, the query
+    parameter is used.
+
+    If user is not found, returns a 404 status and 'desc' is 'No such user'.
+
+    On success, response is a bunch of data about the user::
+
+        {
+            'status':  'ok',      # no errors talking to ET
+            'status':  'error',   # errors talking to ET, see next field
+            'desc':  'error message'   # details if status is error
+            'email': 'email@address',
+            'format': 'T'|'H',
+            'country': country code,
+            'lang': language code,
+            'token': UUID,
+            'created-date': date created,
+            'newsletters': list of slugs of newsletters subscribed to,
+            'confirmed': True if user has confirmed subscription (or was excepted),
+            'pending': True if we're waiting for user to confirm subscription
+            'master': True if we found them in the master subscribers table
+        }
+
+    Note that because this method always calls Exact Target one or
+    more times, it can be slower than some other Basket APIs, and will
+    fail if ET is down.
