@@ -22,27 +22,8 @@ for item in list(sys.path):
 sys.path[:0] = new_sys_path
 
 # No third-party imports until we've added all our sitedirs!
-from django.core.management import execute_manager, setup_environ
-
-if os.getenv('TRAVIS', False):
-    import settings_travis as settings
-else:
-    try:
-        import settings_local as settings
-    except ImportError:
-        try:
-            import settings
-        except ImportError:
-            import sys
-            sys.stderr.write(
-                "Error: Tried importing 'settings_local.py' and 'settings.py' "
-                "but neither could be found (or they're throwing an ImportError)."
-                " Please come back and try again later.")
-            raise
-
-# The first thing execute_manager does is call `setup_environ`.  Logging config
-# needs to access settings, so we'll setup the environ early.
-setup_environ(settings)
+from django.core.management import execute_from_command_line
 
 if __name__ == "__main__":
-    execute_manager(settings)
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings")
+    execute_from_command_line(sys.argv)

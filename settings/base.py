@@ -68,7 +68,7 @@ MIDDLEWARE_CLASSES = (
     'django_statsd.middleware.GraphiteMiddleware',
 )
 
-ROOT_URLCONF = 'basket.urls'
+ROOT_URLCONF = 'urls'
 
 TEMPLATE_DIRS = (
     path('templates'),

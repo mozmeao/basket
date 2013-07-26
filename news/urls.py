@@ -1,4 +1,4 @@
-from django.conf.urls.defaults import patterns, url
+from django.conf.urls import patterns, url
 
 from .views import (confirm, custom_unsub_reason, custom_update_phonebook,
                     custom_update_student_ambassadors, debug_user,
