@@ -1,4 +1,5 @@
 import os
+import sys
 
 # Application version.
 VERSION = (0, 1)
@@ -79,7 +80,6 @@ INSTALLED_APPS = (
 
     'djcelery',
     'south',
-    'django_nose',  # must follow south
     'raven.contrib.django.raven_compat',
 
     'django.contrib.auth',
@@ -90,9 +90,8 @@ INSTALLED_APPS = (
     'django.contrib.admin',
 )
 
-# This is broken for now
-# TODO: Fix this
-#TEST_RUNNER = 'test_utils.runner.RadicalTestSuiteRunner'
+if 'test' in sys.argv:
+    INSTALLED_APPS += ('django_nose',)
 
 LANGUAGES = (
     'af','ak','ast-ES','ar','as','be','bg','bn-BD','bn-IN','br-FR',
