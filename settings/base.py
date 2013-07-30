@@ -5,7 +5,7 @@ import sys
 VERSION = (0, 1)
 
 # Make filepaths relative to settings.
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 path = lambda *a: os.path.join(ROOT, *a)
 
 DEBUG = True
@@ -17,15 +17,14 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
+# Production uses MySQL, but Sqlite should be sufficient for local development.
+# Our CI server tests against MySQL. See travis.py in this directory
+# for an example if you'd like to run MySQL locally, and add that to your
+# local.py.
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',  # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
-        'NAME': '',                      # Or path to database file if using sqlite3.
-        'USER': '',                      # Not used with sqlite3.
-        'PASSWORD': '',                  # Not used with sqlite3.
-        'HOST': '',                      # Set to empty string for localhost. Not used with sqlite3.
-        'PORT': '',                      # Set to empty string for default. Not used with sqlite3.
-        'OPTIONS':  {'init_command': 'SET storage_engine=InnoDB'},
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': 'basket.db',
     }
 }
 
@@ -35,14 +34,12 @@ ALLOWED_HOSTS = [
     'basket.mozilla.org',
 ]
 
-TIME_ZONE = 'America/Chicago'
-LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'America/Los_Angeles'
 SITE_ID = 1
-USE_I18N = True
+USE_I18N = False
 
-MEDIA_ROOT = path('media')
-MEDIA_URL = '/media/'
-ADMIN_MEDIA_PREFIX = '/admin-media/'
+STATIC_ROOT = path('static')
+STATIC_URL = '/static/'
 
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = '0D8AE44F-5714-40EF-9AC8-4AC6EB556161'
@@ -88,41 +85,11 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.admin',
+    'django.contrib.staticfiles',
 )
 
 if 'test' in sys.argv:
     INSTALLED_APPS += ('django_nose',)
-
-LANGUAGES = (
-    'af','ak','ast-ES','ar','as','be','bg','bn-BD','bn-IN','br-FR',
-    'ca','ca-valencia','cs','cy','da','de','de-AT','de-CH','de-DE',
-    'dsb','el','en-AU','en-CA','en-GB','en-NZ','en-US','en-ZA','eo',
-    'es','es-AR','es-CL','es-ES','es-MX','et','eu','fa','fi','fj-FJ',
-    'fr','fur-IT','fy-NL','ga','ga-IE','gl','gu-IN','he','hi','hi-IN',
-    'hr','hsb','hu','hy-AM','id','is','it','ja','ja-jp','ja-JP-mac','ka','kk',
-    'kn','ko','ku','la','lt','lv','mg','mi','mk','ml','mn','mr','nb-NO',
-    'ne-NP','nn-NO','nl','nr','nso','oc','or','pa-IN','pl','pt-BR','pt-PT',
-    'ro','rm','ru','rw','si','sk','sl','sq','sr','sr-Latn','ss','st',
-    'sv-SE','ta','ta-IN','ta-LK','te','th','tn','tr','ts','tt-RU','uk','ur',
-    've','vi','wo','xh','zh-CN','zh-TW','zu',)
-LANGUAGES_LOWERED = [x.lower() for x in LANGUAGES]
-
-DEFAULT_FROM_EMAIL = 'basket@mozilla.com'
-DEFAULT_FROM_NAME = 'Mozilla'
-
-# LDAP
-LDAP = {
-    'host': '',
-    'port': '',
-    'user': '',
-    'password': '',
-    'search_base': 'o=com,dc=mozilla',
-}
-
-EMAIL_BACKEND = 'mysmtp.EmailBackend'
-EMAIL_BACKLOG_TOLERANCE = 200
-SYNC_UNSUBSCRIBE_LIMIT = 1000
-LDAP_TIMEOUT = 2
 
 # Default newsletter welcome message ID for HTML format.
 # There must also exist a text-format message with the same
