@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{% block title %}{% endblock %}</title>
+  {% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE" />{% endblock %}
+</head>
+<body>
+<h1>Mozilla Newsletters</h1>
+  <table border="1">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Slug</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for newsletter in newsletters %}
+        <tr>
+          <td>{{ newsletter.title }}</td>
+          <td>{{ newsletter.slug }}</td>
+          <td>{{ newsletter.description }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
