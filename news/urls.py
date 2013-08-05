@@ -2,8 +2,9 @@ from django.conf.urls import patterns, url
 
 from .views import (confirm, custom_unsub_reason, custom_update_phonebook,
                     custom_update_student_ambassadors, debug_user,
-                    list_newsletters, lookup_user, newsletters, subscribe,
-                    subscribe_sms, unsubscribe, user)
+                    list_newsletters, lookup_user, newsletters,
+                    send_recovery_message, subscribe, subscribe_sms,
+                    unsubscribe, user)
 
 
 urlpatterns = patterns('',
@@ -14,6 +15,7 @@ urlpatterns = patterns('',
     url('^confirm/(.*)/$', confirm),
     url('^debug-user/$', debug_user),
     url('^lookup-user/$', lookup_user, name='lookup_user'),
+    url('^recover/$', send_recovery_message, name='send_recovery_message'),
 
     url('^custom_unsub_reason/$', custom_unsub_reason),
     url('^custom_update_student_ambassadors/(.*)/$',

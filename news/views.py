@@ -9,15 +9,17 @@ from django.views.decorators.cache import cache_control, never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
-from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
-                                  UnauthorizedException)
-from models import APIUser, Newsletter, Subscriber
-from news.backends.common import NewsletterNoResultsException
-from tasks import (
+from .backends.common import NewsletterNoResultsException
+from .backends.exacttarget import (ExactTargetDataExt, NewsletterException,
+                                   UnauthorizedException)
+from .forms import EmailForm
+from .models import APIUser, Newsletter, Subscriber
+from .tasks import (
     MSG_EMAIL_OR_TOKEN_REQUIRED, MSG_TOKEN_REQUIRED, MSG_USER_NOT_FOUND,
     SET, SUBSCRIBE, UNSUBSCRIBE,
     add_sms_user,
     confirm_user,
+    send_recovery_message_task,
     update_custom_unsub,
     update_phonebook,
     update_student_ambassadors,
@@ -430,6 +432,36 @@ def user(request, token):
         return HttpResponseJSON(request.subscriber_data)
 
     return get_user(request.subscriber.token)
+
+
+@require_POST
+@csrf_exempt
+def send_recovery_message(request):
+    """
+    Send a recovery message to an email address.
+
+    required form parameter: email
+
+    If email not provided or not syntactically correct, returns 400.
+    If email not known, returns 404.
+    Otherwise, queues a task to send the message and returns 200.
+    """
+    form = EmailForm(request.POST)
+    if not form.is_valid():
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'Using send_recovery_message, you need to pass a valid '
+                    'email in the `email` POST parameter',
+        }, 400)
+    email = form.cleaned_data['email']
+    user_data = get_user_data(email=email, sync_data=True)
+    if not user_data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'Email address not known'
+        }, 404)  # Note: Bedrock looks for this 404
+    send_recovery_message_task.delay(email)
+    return HttpResponseJSON({'status': 'ok'})
 
 
 @never_cache
