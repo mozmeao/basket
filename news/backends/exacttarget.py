@@ -134,8 +134,11 @@ class ExactTargetObject(object):
         self.user = user
         self.pass_ = pass_
 
-    def create(self, name):
-        return self.client.factory.create(name)
+    def create(self, name, **kwargs):
+        obj = self.client.factory.create(name)
+        for key in kwargs:
+            setattr(obj, key, kwargs[key])
+        return obj
 
 
 class ExactTargetList(ExactTargetObject):
@@ -319,6 +322,41 @@ class ExactTargetDataExt(ExactTargetObject):
 
         return dict((p.Name, p.Value)
                     for p in obj.Results[0].Properties.Property)
+
+    @logged_in
+    def delete_record(self, data_id, token):
+        """
+        Delete record with token ``token`` from data extension ``data_id``
+        """
+
+        # See:
+        #  Delete method: http://help.exacttarget.com/en/technical_library/web_service_guide/methods/delete/
+        #  Data Extension Object: http://help.exacttarget.com/en/technical_library/web_service_guide/objects/dataextensionobject/
+        #  Example: http://help.exacttarget.com/en/technical_library/web_service_guide/technical_articles/deleting_a_row_from_a_data_extension_via_the_web_service_api/
+
+        # We need an array of APIObject objects.
+        # DataExtensionObject is a subclass of APIObject.
+        # CustomerKey is the external Key of the Data Extension from the UI.
+        deo = self.create('DataExtensionObject',
+                          CustomerKey=data_id,
+                          )
+        # Which record is it
+        key = self.create('APIProperty',
+                          Name='TOKEN',
+                          Value=token)
+        # Yes, "Keys" is a scalar with a "Key" that is a sequence of keys.
+        # Only in SOAP.
+        deo.Keys.Key = [key]
+
+        # A DeleteOptions object is required, but need not have anything in it.
+        opts = self.create("DeleteOptions")
+
+        try:
+            obj = self.client.service.Delete(opts, [deo])
+            assert_status(obj)
+            assert_result(obj)
+        except WebFault, e:
+            handle_fault(e)
 
 
 class ExactTarget(ExactTargetObject):

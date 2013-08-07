@@ -2905,6 +2905,14 @@
         <complexContent>
           <extension base="tns:ObjectExtension">
             <sequence>
+              <element name="Name" minOccurs="0" maxOccurs="1" type="xsd:string" />
+              <element name="Keys" minOccurs="0" maxOccurs="1">
+                <complexType>
+                  <sequence>
+                    <element name="Key" minOccurs="0" maxOccurs="unbounded" type="tns:APIProperty" />
+                  </sequence>
+                </complexType>
+              </element>
             </sequence>
           </extension>
         </complexContent>
