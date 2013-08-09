@@ -19,6 +19,8 @@ et.trigger_send('WelcomeEmail', 'jlong@mozilla.com', 'hello', 'H')
 import os
 from functools import wraps
 
+from django.core.cache import cache
+
 from suds import WebFault
 from suds.client import Client
 from suds.wsse import Security, UsernameToken
@@ -34,6 +36,29 @@ from .common import NewsletterException, NewsletterNoResultsException, \
 # faster. I deleted most of the fields in the TriggeredSendDefinition
 # and TriggeredSend objects that we don't use.
 WSDL_URL = 'file://%s/et-wsdl.txt' % os.path.dirname(os.path.abspath(__file__))
+
+
+class SudsDjangoCache(object):
+    """
+    Implement the suds cache interface using Django caching.
+    """
+    def __init__(self, days=None, *args, **kwargs):
+        if days:
+            self.timeout = 24 * 60 * 60 * days
+        else:
+            self.timeout = None
+
+    def _cache_key(self, id):
+        return "suds-%s" % id
+
+    def get(self, id):
+        return cache.get(self._cache_key(id))
+
+    def put(self, id, value):
+        cache.set(self._cache_key(id), value, self.timeout)
+
+    def purge(self, id):
+        cache.delete(self._cache_key(id))
 
 
 def assert_status(obj):
@@ -78,12 +103,26 @@ def logged_in(f):
     @wraps(f)
     def wrapper(inst, *args, **kwargs):
         if not inst.client:
+            # Try to re-use existing client instance.
+            inst.client = getattr(logged_in, 'cached_client', None)
+        if not inst.client:
+            # Monkey-patch suds because it always initializes an ObjectCache
+            # before looking at the cache you told it to use, and that tries
+            # to use the same subdir under /tmp even if it already exists
+            # and is owned by another user.
+            # While we're at it, use Django caching instead of temp files.
+            import suds.client
+            suds.client.ObjectCache = SudsDjangoCache
+
             inst.client = Client(WSDL_URL)
 
             security = Security()
             token = UsernameToken(inst.user, inst.pass_)
             security.tokens.append(token)
             inst.client.set_options(wsse=security)
+
+            # Save client instance and just re-use it next time.
+            setattr(logged_in, 'cached_client', inst.client)
         return f(inst, *args, **kwargs)
     return wrapper
 
