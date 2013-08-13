@@ -4,6 +4,7 @@ import re
 
 from django.conf import settings
 from django.http import HttpResponse
+from django.shortcuts import render
 from django.views.decorators.cache import cache_control, never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
@@ -594,3 +595,13 @@ def lookup_user(request):
         status_code = 400
 
     return HttpResponseJSON(user_data, status_code)
+
+
+def list_newsletters(request):
+    """
+    Public web page listing currently active newsletters.
+    """
+
+    active_newsletters = Newsletter.objects.filter(active=True)
+    return render(request, "news/newsletters.html",
+                  {'newsletters': active_newsletters})

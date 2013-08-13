@@ -2,8 +2,8 @@ from django.conf.urls import patterns, url
 
 from .views import (confirm, custom_unsub_reason, custom_update_phonebook,
                     custom_update_student_ambassadors, debug_user,
-                    lookup_user, newsletters, subscribe, subscribe_sms,
-                    unsubscribe, user)
+                    list_newsletters, lookup_user, newsletters, subscribe,
+                    subscribe_sms, unsubscribe, user)
 
 
 urlpatterns = patterns('',
@@ -21,4 +21,5 @@ urlpatterns = patterns('',
     url('^custom_update_phonebook/(.*)/$', custom_update_phonebook),
 
     url('^newsletters/$', newsletters, name='newsletters_api'),
+    url('^$', list_newsletters),
 )
