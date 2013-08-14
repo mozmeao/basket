@@ -22,6 +22,7 @@ from functools import wraps
 from django.core.cache import cache
 
 from suds import WebFault
+from suds.cache import Cache
 from suds.client import Client
 from suds.wsse import Security, UsernameToken
 
@@ -38,7 +39,7 @@ from .common import NewsletterException, NewsletterNoResultsException, \
 WSDL_URL = 'file://%s/et-wsdl.txt' % os.path.dirname(os.path.abspath(__file__))
 
 
-class SudsDjangoCache(object):
+class SudsDjangoCache(Cache):
     """
     Implement the suds cache interface using Django caching.
     """
