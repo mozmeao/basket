@@ -2,8 +2,26 @@ from django.test import TestCase
 
 from mock import patch
 
+from news.backends.common import NewsletterException
 from news.models import Newsletter
-from news.tasks import mogrify_message_id, confirm_user
+from news.tasks import BasketError, confirm_user, mogrify_message_id, \
+    send_message
+
+
+class TestSendMessage(TestCase):
+    @patch('news.tasks.ExactTarget')
+    def test_caching_bad_message_ids(self, mock_ExactTarget):
+        """Bad message IDs are cached so we don't try to send to them again"""
+        mock_et = mock_ExactTarget()
+        exc = NewsletterException()
+        exc.message = 'Invalid Customer Key'
+        mock_et.trigger_send.side_effect = exc
+
+        message_id = "MESSAGE_ID"
+        # Should only raise BaseketError once
+        with self.assertRaises(BasketError):
+            send_message(message_id, 'email', 'token', 'format')
+        send_message(message_id, 'email', 'token', 'format')
 
 
 class TestSendWelcomes(TestCase):

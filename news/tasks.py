@@ -7,6 +7,7 @@ from time import mktime
 from urllib2 import URLError
 
 from django.conf import settings
+from django.core.cache import get_cache
 from django_statsd.clients import statsd
 
 from celery.task import Task, task
@@ -19,11 +20,15 @@ from .newsletters import newsletter_field, newsletter_slugs
 
 log = logging.getLogger(__name__)
 
+BAD_MESSAGE_ID_CACHE = get_cache('bad_message_ids')
+
+
 # A few constants to indicate the type of action to take
 # on a user with a list of newsletters
-SUBSCRIBE = 1
-UNSUBSCRIBE = 2
-SET = 3
+# (Use strings so when we log function args, they make sense.)
+SUBSCRIBE = 'SUBSCRIBE'
+UNSUBSCRIBE = 'UNSUBSCRIBE'
+SET = 'SET'
 
 # Double optin-in languages
 CONFIRM_SENDS = {
@@ -82,6 +87,11 @@ PHONEBOOK_GROUPS = (
 FFOS_VENDOR_ID = 'FIREFOX_OS'
 FFAY_VENDOR_ID = 'MOZILLA_AND_YOU'
 
+## Error messages
+MSG_TOKEN_REQUIRED = 'Must have valid token for this request'
+MSG_EMAIL_OR_TOKEN_REQUIRED = 'Must have valid token OR email for this request'
+MSG_USER_NOT_FOUND = 'User not found'
+
 
 class BasketError(Exception):
     """Tasks can raise this when an error happens that we should not retry.
@@ -98,14 +108,20 @@ class ETTask(Task):
     default_retry_delay = 60 * 5  # 5 minutes
     max_retries = 6  # ~ 30 min
 
-    def on_success(self, *args, **kwargs):
+    def on_success(self, retval, task_id, args, kwargs):
         statsd.incr(self.name + '.success')
+        log.info("Task succeeded: %s(args=%r, kwargs=%r)"
+                 % (self.name, args, kwargs))
 
-    def on_failure(self, *args, **kwargs):
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
         statsd.incr(self.name + '.failure')
+        log.error("Task failed: %s(args=%r, kwargs=%r, exc=%r)"
+                  % (self.name, args, kwargs, exc))
 
-    def on_retry(self, *args, **kwargs):
+    def on_retry(self, exc, task_id, args, kwargs, einfo):
         statsd.incr(self.name + '.retry')
+        log.warn("Task retrying: %s(args=%r, kwargs=%r, exc=%r)"
+                 % (self.name, args, kwargs, exc))
 
 
 def et_task(func):
@@ -409,8 +425,11 @@ def send_message(message_id, email, token, format):
     :raises: NewsletterException for retryable errors, BasketError for
         fatal errors.
     """
-    log.info("Sending message %s to %s %s in %s" %
-             (message_id, email, token, format))
+
+    if BAD_MESSAGE_ID_CACHE.get(message_id, False):
+        return
+    log.debug("Sending message %s to %s %s in %s" %
+              (message_id, email, token, format))
     et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
     try:
         et.trigger_send(
@@ -425,19 +444,12 @@ def send_message(message_id, email, token, format):
         # Better error messages for some cases. Also there's no point in
         # retrying these
         if 'Invalid Customer Key' in e.message:
-            msg = "send_message(%r, %r, %r, %r): " \
-                  "No such message ID: %r (%s)" % (
-                      message_id, email, token, format, message_id, e.message
-                  )
-            log.error(msg)
-            raise BasketError(msg)
+            # Raise the error so it gets logged once, but remember it's a
+            # bad message ID so we don't try again during this process.
+            BAD_MESSAGE_ID_CACHE.set(message_id, True)
+            raise BasketError("ET says no such message ID: %r" % message_id)
         elif 'There are no valid subscribers.' in e.message:
-            msg = "send_message(%r, %r, %r, %r): ET rejected email " \
-                  "address %r (%s)" % (
-                      message_id, email, token, format, email, e.message
-                  )
-            log.error(msg)
-            raise BasketError(msg)
+            raise BasketError("ET rejected email address: %r" % email)
         # we should retry
         raise
 
@@ -466,6 +478,9 @@ def send_confirm_notice(email, token, lang, format, newsletter_slugs):
 
     :raises: BasketError
     """
+
+    if not lang:
+        lang = 'en'   # If we don't know a language, use English
 
     # See if any newsletters have a custom confirmation message
     # We only need to find one
@@ -569,9 +584,8 @@ def confirm_user(token, user_data):
         from .views import get_user_data   # Avoid circular import
         user_data = get_user_data(token=token)
     if user_data is None:
-        msg = "in confirm_user, unable to find user for token %s" % token
-        log.error(msg)
-        raise BasketError(msg)
+        log.error(MSG_USER_NOT_FOUND)
+        raise BasketError(MSG_USER_NOT_FOUND)
     if user_data['status'] == 'error':
         msg = "error getting user data for %s: %s" % \
               (token, user_data['desc'])

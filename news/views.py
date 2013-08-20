@@ -14,6 +14,7 @@ from backends.exacttarget import (ExactTargetDataExt, NewsletterException,
 from models import APIUser, Newsletter, Subscriber
 from news.backends.common import NewsletterNoResultsException
 from tasks import (
+    MSG_EMAIL_OR_TOKEN_REQUIRED, MSG_TOKEN_REQUIRED, MSG_USER_NOT_FOUND,
     SET, SUBSCRIBE, UNSUBSCRIBE,
     add_sms_user,
     confirm_user,
@@ -62,7 +63,7 @@ def lookup_subscriber(token=None, email=None):
     email/token (and found it there); otherwise, it's None.
     """
     if not (token or email):
-        raise Exception("lookup_subscriber needs token or email")
+        raise Exception(MSG_EMAIL_OR_TOKEN_REQUIRED)
     kwargs = {}
     if token:
         kwargs['token'] = token
@@ -111,7 +112,7 @@ def logged_in(f):
         if not subscriber:
             return HttpResponseJSON({
                 'status': 'error',
-                'desc': 'Must have valid token for this request',
+                'desc': MSG_TOKEN_REQUIRED,
             }, 403)
 
         request.subscriber_data = subscriber_data
@@ -173,7 +174,7 @@ def update_user_task(request, type, data=None, optin=True):
     if not (email or sub):
         return HttpResponseJSON({
             'status': 'error',
-            'desc': 'An email address or token is required.',
+            'desc': MSG_EMAIL_OR_TOKEN_REQUIRED,
         }, 400)
 
     created = False
@@ -572,8 +573,7 @@ def lookup_user(request):
     if (not email and not token) or (email and token):
         return HttpResponseJSON({
             'status': 'error',
-            'desc': 'Using lookup_user, you need to pass either the '
-                    '`email` or `token` GET parameter, but not both.',
+            'desc': MSG_EMAIL_OR_TOKEN_REQUIRED,
         }, 400)
 
     if email and not APIUser.is_valid(api_key):
@@ -588,7 +588,7 @@ def lookup_user(request):
     if not user_data:
         user_data = {
             'status': 'error',
-            'desc': 'No such user'
+            'desc': MSG_USER_NOT_FOUND
         }
         status_code = 404
     elif user_data['status'] == 'error':

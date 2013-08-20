@@ -12,7 +12,7 @@ from news import models, views, tasks
 from news.backends.common import NewsletterException
 from news.tasks import update_user, SUBSCRIBE, UU_EXEMPT_NEW, \
     UU_ALREADY_CONFIRMED, SET, FFOS_VENDOR_ID, \
-    FFAY_VENDOR_ID, UNSUBSCRIBE
+    FFAY_VENDOR_ID, MSG_EMAIL_OR_TOKEN_REQUIRED, UNSUBSCRIBE
 
 
 class UpdateUserTest(TestCase):
@@ -137,7 +137,7 @@ class UpdateUserTest(TestCase):
         self.assertEqual(errors['status'], 'error')
         # and has a useful error description
         self.assertEqual(errors['desc'],
-                         u'An email address or token is required.')
+                         MSG_EMAIL_OR_TOKEN_REQUIRED)
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')

@@ -15,3 +15,9 @@ else:
                 "but neither could be found (or they're throwing an "
                 "ImportError). Please fix and try again.")
             raise
+
+
+CACHES['bad_message_ids'] = {
+    'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    'TIMEOUT': 12 * 60 * 60,  # 12 hours
+}
