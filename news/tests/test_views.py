@@ -315,3 +315,39 @@ class TestLanguageCodeIsValid(TestCase):
         """Return False if there's no match any way we try."""
         n_l.return_value = ['az']
         self.assertFalse(language_code_is_valid('by'))
+
+
+class RecoveryViewTest(TestCase):
+    # See the task tests for more
+    def setUp(self):
+        self.url = reverse('send_recovery_message')
+
+    def test_no_email(self):
+        """email not provided - return 400"""
+        resp = self.client.post(self.url, {})
+        self.assertEqual(400, resp.status_code)
+
+    def test_bad_email(self):
+        """Invalid email should return 400"""
+        resp = self.client.post(self.url, {'email': 'not_an_email'})
+        self.assertEqual(400, resp.status_code)
+
+    @patch('news.views.get_user_data', autospec=True)
+    def test_unknown_email(self, mock_get_user_data):
+        """Unknown email should return 404"""
+        email = 'dude@example.com'
+        mock_get_user_data.return_value = None
+        resp = self.client.post(self.url, {'email': email})
+        self.assertEqual(404, resp.status_code)
+
+    @patch('news.views.get_user_data', autospec=True)
+    @patch('news.views.send_recovery_message_task.delay', autospec=True)
+    def test_known_email(self, mock_send_recovery_message_task,
+                         mock_get_user_data):
+        """email provided - pass to the task, return 200"""
+        email = 'dude@example.com'
+        mock_get_user_data.return_value = {'dummy': 2}
+        # It should pass the email to the task
+        resp = self.client.post(self.url, {'email': email})
+        self.assertEqual(200, resp.status_code)
+        mock_send_recovery_message_task.assert_called_with(email)

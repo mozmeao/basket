@@ -82,6 +82,9 @@ PHONEBOOK_GROUPS = (
     'FUNDRAISING',
 )
 
+# This is prefixed with the 2-letter language code + _ before sending,
+# e.g. 'en_recovery_message', and '_T' if text, e.g. 'en_recovery_message_T'.
+RECOVERY_MESSAGE_ID = 'recovery_message'
 
 # Vendor IDs for Firefox OS and Firefox & You:
 FFOS_VENDOR_ID = 'FIREFOX_OS'
@@ -646,3 +649,25 @@ def attempt_fix(ext_name, record, task, e):
         ext.add_record(ext_name, record.keys(), record.values())
     else:
         raise e
+
+
+@et_task
+def send_recovery_message_task(email):
+    # Have to import here to avoid circular import - that means that for
+    # testing, this can't be mocked. Mock look_for_user instead.
+    from news.views import get_user_data
+
+    # We should check ET so we can get format and lang if they exist.
+    # If they don't exist, then we can create a basket subscriber.
+
+    user_data = get_user_data(email=email, sync_data=True)
+    if not user_data:
+        log.error("In send_recovery_message_task, email not known: %s" % email)
+        return
+
+    # make sure we have a language and format, no matter what ET returned
+    lang = user_data.get('lang', 'en') or 'en'
+    format = user_data.get('format', 'H') or 'H'
+
+    message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
+    send_message(message_id, email, user_data['token'], format)

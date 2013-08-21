@@ -245,6 +245,26 @@ The following URLs are available (assuming "/news" is app url):
             'master': True if we found them in the master subscribers table
         }
 
-    Note that because this method always calls Exact Target one or
-    more times, it can be slower than some other Basket APIs, and will
-    fail if ET is down.
+    Note: Because this method always calls Exact Target one or more times, it
+    can be slower than some other Basket APIs, and will fail if ET is down.
+
+/news/recover/
+--------------
+
+    This sends an email message to a user, containing a link they can use to
+    manage their subscriptions::
+
+        method: POST
+        fields: email
+        returns:  { status: ok } on success
+                  { status: error, desc: <desc> } on error
+
+    The email address is passed as 'email' in the POST data. If it is missing
+    or not syntactically correct, a 400 is returned. Otherwise, a message is
+    sent to the email, containing a link to the existing subscriptions page
+    with their token in it, so they can use it to manage their subscriptions.
+
+    If the user is known in ET, the message will be sent in their preferred
+    language and format.
+
+    If the email provided is not known, a 404 status is returned.
