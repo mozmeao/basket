@@ -14,7 +14,7 @@ from celery.task import Task, task
 
 from .backends.common import NewsletterException
 from .backends.exacttarget import (ExactTarget, ExactTargetDataExt)
-from .models import Newsletter
+from .models import FailedTask, Newsletter
 from .newsletters import newsletter_field, newsletter_slugs
 
 
@@ -120,6 +120,14 @@ class ETTask(Task):
         statsd.incr(self.name + '.failure')
         log.error("Task failed: %s(args=%r, kwargs=%r, exc=%r)"
                   % (self.name, args, kwargs, exc))
+        FailedTask.objects.create(
+            task_id=task_id,
+            name=self.name,
+            args=args,
+            kwargs=kwargs,
+            exc=repr(exc),
+            einfo=repr(einfo),
+        )
 
     def on_retry(self, exc, task_id, args, kwargs, einfo):
         statsd.incr(self.name + '.retry')

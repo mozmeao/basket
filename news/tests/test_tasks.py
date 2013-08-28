@@ -2,9 +2,29 @@ from mock import patch
 
 from django.test import TestCase
 
-from news.models import Subscriber
+from news.models import FailedTask, Subscriber
 from news.tasks import RECOVERY_MESSAGE_ID, mogrify_message_id, \
-    send_recovery_message_task
+    send_recovery_message_task, update_phonebook
+
+
+class FailedTaskTest(TestCase):
+    """Test that failed tasks are logged in our FailedTask table"""
+
+    @patch('news.tasks.ExactTarget', autospec=True)
+    def test_failed_task_logging(self, mock_exact_target):
+        """Failed task is logged in FailedTask table"""
+        mock_exact_target.side_effect = Exception("Test exception")
+        self.assertEqual(0, FailedTask.objects.count())
+        args = [{'arg1': 1, 'arg2': 2}, "foo@example.com"]
+        kwargs = {'token': 3}
+        result = update_phonebook.apply(args=args, kwargs=kwargs)
+        fail = FailedTask.objects.get()
+        self.assertEqual('news.tasks.update_phonebook', fail.name)
+        self.assertEqual(result.task_id, fail.task_id)
+        self.assertEqual(args, fail.args)
+        self.assertEqual(kwargs, fail.kwargs)
+        self.assertEqual(u"Exception('Test exception',)", fail.exc)
+        self.assertEqual(u"<ExceptionInfo: Exception('Test exception',)>", fail.einfo)
 
 
 @patch('news.tasks.send_message', autospec=True)

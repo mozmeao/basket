@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import APIUser, Newsletter, Subscriber
+from .models import APIUser, FailedTask, Newsletter, Subscriber
 
 
 class APIUserAdmin(admin.ModelAdmin):
@@ -34,3 +34,10 @@ class NewsletterAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Newsletter, NewsletterAdmin)
+
+
+class FailedTaskAdmin(admin.ModelAdmin):
+    list_display = ('when', '__unicode__')
+
+
+admin.site.register(FailedTask, FailedTaskAdmin)
