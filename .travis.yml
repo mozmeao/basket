@@ -5,11 +5,15 @@ before_script:
   - flake8 --exclude=migrations --ignore=E121,E123,E124,E125,E126,E127,E128,E501 news
   - mysql -e 'create database basket;'
   - python manage.py syncdb --noinput --migrate
-script: python manage.py test news
+script: coverage run manage.py test news
 before_install:
   - git submodule update --init --recursive
 install:
   - pip install -r requirements/compiled.txt -r requirements/dev.txt --use-mirrors
+after_success:
+  # Report coverage results to coveralls.io
+  - pip install coveralls --use-mirrors
+  - coveralls
 notifications:
   irc:
     channels:
