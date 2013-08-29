@@ -7,7 +7,7 @@ from .views import (confirm, custom_unsub_reason, custom_update_phonebook,
                     unsubscribe, user)
 
 
-urlpatterns = patterns('',
+urlpatterns = patterns('',  # noqa
     url('^subscribe/$', subscribe),
     url('^subscribe_sms/$', subscribe_sms),
     url('^unsubscribe/(.*)/$', unsubscribe),

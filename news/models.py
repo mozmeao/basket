@@ -1,9 +1,12 @@
 from uuid import uuid4
 
+from jsonfield import JSONField
+
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from django.utils.timezone import now
 
 
 class SubscriberManager(models.Manager):
@@ -150,3 +153,25 @@ class APIUser(models.Model):
     @classmethod
     def is_valid(cls, api_key):
         return cls.objects.filter(api_key=api_key, enabled=True).exists()
+
+
+class FailedTask(models.Model):
+    when = models.DateTimeField(editable=False, default=now)
+    task_id = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255)
+    args = JSONField(null=False, default=[])
+    kwargs = JSONField(null=False, default={})
+    exc = models.TextField(null=True, default=None, help_text=u"repr(exception)")
+    einfo = models.TextField(null=True, default=None, help_text=u"repr(einfo)")
+
+    def __unicode__(self):
+        return u"%s --> %r, %r" % (self.formatted_call(), self.exc, self.einfo)
+
+    def formatted_call(self):
+        """Return a string that could be evalled to repeat the original call"""
+        formatted_args = [repr(arg) for arg in self.args]
+        formatted_kwargs = [u"%s=%r" % (key, val) for key, val in self.kwargs.iteritems()]
+        return u"%s(%s)" % (
+            self.name,
+            u", ".join(formatted_args + formatted_kwargs)
+        )

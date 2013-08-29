@@ -35,6 +35,7 @@ ALLOWED_HOSTS = [
 ]
 
 TIME_ZONE = 'America/Los_Angeles'
+USE_TZ = True
 SITE_ID = 1
 USE_I18N = False
 
