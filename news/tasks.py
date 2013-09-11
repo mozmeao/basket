@@ -15,8 +15,7 @@ from celery.task import Task, task
 from .backends.common import NewsletterException
 from .backends.exacttarget import (ExactTarget, ExactTargetDataExt)
 from .models import FailedTask, Newsletter
-from .newsletters import newsletter_field, newsletter_languages, \
-    newsletter_slugs
+from .newsletters import newsletter_field, newsletter_languages, newsletter_slugs
 
 
 log = logging.getLogger(__name__)
@@ -490,8 +489,9 @@ def send_confirm_notice(email, token, lang, format, newsletter_slugs):
         lang = 'en'   # If we don't know a language, use English
 
     # Is the language supported?
-    if lang not in newsletter_languages():
-        if lang[:2] in newsletter_languages():
+    supported_languages = newsletter_languages()
+    if lang not in supported_languages:
+        if lang[:2] in supported_languages:
             lang = lang[:2]
         else:
             msg = "Cannot send confirmation message in language '%s' " \
