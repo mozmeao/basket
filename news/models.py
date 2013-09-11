@@ -1,5 +1,7 @@
 from uuid import uuid4
 
+from celery.task import subtask
+
 from jsonfield import JSONField
 
 from django.conf import settings
@@ -165,7 +167,7 @@ class FailedTask(models.Model):
     einfo = models.TextField(null=True, default=None, help_text=u"repr(einfo)")
 
     def __unicode__(self):
-        return u"%s --> %r, %r" % (self.formatted_call(), self.exc, self.einfo)
+        return self.task_id
 
     def formatted_call(self):
         """Return a string that could be evalled to repeat the original call"""
@@ -175,3 +177,12 @@ class FailedTask(models.Model):
             self.name,
             u", ".join(formatted_args + formatted_kwargs)
         )
+
+    def retry(self):
+        # Meet the new task,
+        # same as the old task.
+        new_task = subtask(self.name, args=self.args, kwargs=self.kwargs)
+        # Queue the new task.
+        new_task.apply_async()
+        # Forget the old task
+        self.delete()

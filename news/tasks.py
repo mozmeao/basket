@@ -1,8 +1,8 @@
 import datetime
-from functools import wraps
 import logging
 from datetime import date
 from email.utils import formatdate
+from functools import wraps
 from time import mktime
 from urllib2 import URLError
 
@@ -103,11 +103,39 @@ class ETTask(Task):
     max_retries = 6  # ~ 30 min
 
     def on_success(self, retval, task_id, args, kwargs):
+        """Success handler.
+
+        Run by the worker if the task executes successfully.
+
+        :param retval: The return value of the task.
+        :param task_id: Unique id of the executed task.
+        :param args: Original arguments for the executed task.
+        :param kwargs: Original keyword arguments for the executed task.
+
+        The return value of this handler is ignored.
+
+        """
         statsd.incr(self.name + '.success')
         log.info("Task succeeded: %s(args=%r, kwargs=%r)"
                  % (self.name, args, kwargs))
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
+        """Error handler.
+
+        This is run by the worker when the task fails.
+
+        :param exc: The exception raised by the task.
+        :param task_id: Unique id of the failed task.
+        :param args: Original arguments for the task that failed.
+        :param kwargs: Original keyword arguments for the task
+                       that failed.
+
+        :keyword einfo: :class:`~celery.datastructures.ExceptionInfo`
+                        instance, containing the traceback.
+
+        The return value of this handler is ignored.
+
+        """
         statsd.incr(self.name + '.failure')
         log.error("Task failed: %s(args=%r, kwargs=%r, exc=%r)"
                   % (self.name, args, kwargs, exc))
@@ -117,10 +145,25 @@ class ETTask(Task):
             args=args,
             kwargs=kwargs,
             exc=repr(exc),
-            einfo=repr(einfo),
+            einfo=str(einfo),  # str() gives more info than repr() on celery.datastructures.ExceptionInfo
         )
 
     def on_retry(self, exc, task_id, args, kwargs, einfo):
+        """Retry handler.
+
+        This is run by the worker when the task is to be retried.
+
+        :param exc: The exception sent to :meth:`retry`.
+        :param task_id: Unique id of the retried task.
+        :param args: Original arguments for the retried task.
+        :param kwargs: Original keyword arguments for the retried task.
+
+        :keyword einfo: :class:`~celery.datastructures.ExceptionInfo`
+                        instance, containing the traceback.
+
+        The return value of this handler is ignored.
+
+        """
         statsd.incr(self.name + '.retry')
         log.warn("Task retrying: %s(args=%r, kwargs=%r, exc=%r)"
                  % (self.name, args, kwargs, exc))

@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 
 from .models import APIUser, FailedTask, Newsletter, Subscriber
 
@@ -37,7 +37,16 @@ admin.site.register(Newsletter, NewsletterAdmin)
 
 
 class FailedTaskAdmin(admin.ModelAdmin):
-    list_display = ('when', '__unicode__')
+    list_display = ('when', 'name', 'formatted_call', 'exc')
+    actions = ['retry_task_action']
 
+    def retry_task_action(self, request, queryset):
+        """Admin action to retry some tasks that have failed previously"""
+        count = 0
+        for old_task in queryset:
+            old_task.retry()
+            count += 1
+        messages.info(request, "Queued %d task%s to try again" % (count, '' if count == 1 else 's'))
+    retry_task_action.short_description = u"Retry task(s)"
 
 admin.site.register(FailedTask, FailedTaskAdmin)
