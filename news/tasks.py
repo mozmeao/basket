@@ -15,7 +15,7 @@ from celery.task import Task, task
 from .backends.common import NewsletterException
 from .backends.exacttarget import (ExactTarget, ExactTargetDataExt)
 from .models import FailedTask, Newsletter
-from .newsletters import newsletter_field, newsletter_slugs
+from .newsletters import newsletter_field, newsletter_languages, newsletter_slugs
 
 
 log = logging.getLogger(__name__)
@@ -30,19 +30,9 @@ SUBSCRIBE = 'SUBSCRIBE'
 UNSUBSCRIBE = 'UNSUBSCRIBE'
 SET = 'SET'
 
-# Double optin-in languages
-CONFIRM_SENDS = {
-    'en': 'en_confirmation_email',
-    'es': 'es_confirmation_email',
-    'es-ES': 'es_confirmation_email',
-    'de': 'de_confirmation_email',
-    'fr': 'fr_confirmation_email',
-    'id': 'id_confirmation_email',
-    'pt': 'pt_br_confirmation_email',
-    'pt-BR': 'pt_br_confirmation_email',
-    'ru': 'ru_confirmation_email_2',
-    'pl': 'pl_confirmation_email',
-}
+# Base message ID for confirmation email
+CONFIRMATION_MESSAGE = "confirmation_email"
+
 SMS_MESSAGES = (
     'SMS_Android',
 )
@@ -487,42 +477,38 @@ def send_confirm_notice(email, token, lang, format, newsletter_slugs):
     """
     Send email to user with link to confirm their subscriptions.
 
+    :param email: email address to send to
+    :param token: user's token
+    :param lang: language code to use
+    :param format: format to use ('T' or 'H')
+    :param newsletter_slugs: slugs of newsletters involved
     :raises: BasketError
     """
 
     if not lang:
         lang = 'en'   # If we don't know a language, use English
 
+    # Is the language supported?
+    supported_languages = newsletter_languages()
+    if lang not in supported_languages:
+        if lang[:2] in supported_languages:
+            lang = lang[:2]
+        else:
+            msg = "Cannot send confirmation message in language '%s' " \
+                  "that is not a supported newsletter language" % lang
+            log.error(msg)
+            raise BasketError(msg)
+
     # See if any newsletters have a custom confirmation message
-    # We only need to find one
+    # We only need to find one; if so, we'll use the first we find.
     newsletters = Newsletter.objects.filter(slug__in=newsletter_slugs)\
         .exclude(confirm_message='')[:1]
     if newsletters:
-        newsletter = newsletters[0]
-        newsletter_langs = [x[:2] for x in newsletter.language_list]
-        if lang[:2] not in newsletter_langs:
-            msg = "Cannot send confirmation request to user %s %s because " \
-                  "no confirmation message defined for " \
-                  "lang=%r" % (email, token, lang)
-            log.error(msg)
-            raise BasketError(msg)
-        welcome = newsletter.confirm_message
-        welcome = mogrify_message_id(welcome, lang, format)
+        welcome = newsletters[0].confirm_message
     else:
-        # Default confirmation notices are language-dependent. Try first
-        # to see if we have their exact language; if not, try the
-        # first two chars.
-        if lang not in CONFIRM_SENDS and lang[:2] not in CONFIRM_SENDS:
-            msg = "Cannot send confirmation request to user %s %s because " \
-                  "no confirmation message defined for " \
-                  "lang=%r" % (email, token, lang)
-            log.error(msg)
-            raise BasketError(msg)
+        welcome = CONFIRMATION_MESSAGE
 
-        welcome = CONFIRM_SENDS[lang] if lang in CONFIRM_SENDS \
-            else CONFIRM_SENDS[lang[:2]]
-        welcome = mogrify_message_id(welcome, None, format)
-
+    welcome = mogrify_message_id(welcome, lang, format)
     send_message(welcome, email, token, format)
 
 

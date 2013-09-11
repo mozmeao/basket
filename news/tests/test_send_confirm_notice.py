@@ -3,7 +3,7 @@ from django.test import TestCase
 from mock import patch
 
 from news.models import Newsletter
-from news.tasks import send_confirm_notice, CONFIRM_SENDS, BasketError
+from news.tasks import CONFIRMATION_MESSAGE, BasketError, mogrify_message_id, send_confirm_notice
 
 
 @patch('news.tasks.send_message', autospec=True)
@@ -17,7 +17,7 @@ class TestSendConfirmNotice(TestCase):
             slug='slug1',
             vendor_id='VENDOR1',
             confirm_message='confirm1',
-            languages='en'
+            languages='en,es'
         )
         self.newsletter2 = Newsletter.objects.create(
             slug='slug2',
@@ -30,7 +30,7 @@ class TestSendConfirmNotice(TestCase):
     def test_default_confirm_notice_H(self, send_message):
         """Test newsletter that has no explicit confirm"""
         send_confirm_notice(self.email, self.token, "en", "H", ['slug2'])
-        expected_message = CONFIRM_SENDS["en"]
+        expected_message = mogrify_message_id(CONFIRMATION_MESSAGE, 'en', 'H')
         send_message.assert_called_with(expected_message,
                                         self.email,
                                         self.token,
@@ -39,7 +39,7 @@ class TestSendConfirmNotice(TestCase):
     def test_default_confirm_notice_T(self, send_message):
         """Test newsletter that has no explicit confirm"""
         send_confirm_notice(self.email, self.token, "es", "T", ['slug2'])
-        expected_message = CONFIRM_SENDS["es"] + "_T"
+        expected_message = mogrify_message_id(CONFIRMATION_MESSAGE, 'es', 'T')
         send_message.assert_called_with(expected_message,
                                         self.email,
                                         self.token,
@@ -50,7 +50,7 @@ class TestSendConfirmNotice(TestCase):
     def test_default_confirm_notice_long_lang_H(self, send_message):
         """Test newsletter that has no explicit confirm with long lang code"""
         send_confirm_notice(self.email, self.token, "es-ES", "H", ['slug2'])
-        expected_message = CONFIRM_SENDS["es"]
+        expected_message = mogrify_message_id(CONFIRMATION_MESSAGE, 'es', 'H')
         send_message.assert_called_with(expected_message,
                                         self.email,
                                         self.token,
@@ -59,7 +59,7 @@ class TestSendConfirmNotice(TestCase):
     def test_default_confirm_notice_long_lang_T(self, send_message):
         """Test newsletter that has no explicit confirm with long lang code"""
         send_confirm_notice(self.email, self.token, "es-ES", "T", ['slug2'])
-        expected_message = CONFIRM_SENDS["es"] + "_T"
+        expected_message = mogrify_message_id(CONFIRMATION_MESSAGE, 'es', 'T')
         send_message.assert_called_with(expected_message,
                                         self.email,
                                         self.token,
@@ -70,14 +70,14 @@ class TestSendConfirmNotice(TestCase):
     def test_default_confirm_notice_bad_lang_H(self, send_message):
         """Test when there's no default confirm notice for a language"""
         with self.assertRaises(BasketError):
-            send_confirm_notice(self.email, self.token, "zz", "H", ['slug2'])
+            send_confirm_notice(self.email, self.token, "fr", "H", ['slug2'])
         with self.assertRaises(BasketError):
             send_confirm_notice(self.email, self.token, "zz-Z", "H", ['slug2'])
 
     def test_default_confirm_notice_bad_lang_T(self, send_message):
         """Test when newsletter uses default notice and the lang is unknown"""
         with self.assertRaises(BasketError):
-            send_confirm_notice(self.email, self.token, "zz", "T", ['slug2'])
+            send_confirm_notice(self.email, self.token, "fr", "T", ['slug2'])
         with self.assertRaises(BasketError):
             send_confirm_notice(self.email, self.token, "zz-Z", "T", ['slug2'])
 
