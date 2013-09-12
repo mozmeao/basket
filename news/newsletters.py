@@ -99,5 +99,13 @@ def newsletter_languages():
     return lang_set
 
 
+def is_supported_newsletter_language(code):
+    """
+    Return True if the given language code is supported by any of the
+    newsletters. (Only compares first two chars; case-insensitive.)
+    """
+    return code[:2].lower() in [lang[:2].lower() for lang in newsletter_languages()]
+
+
 def clear_newsletter_cache():
     cache.delete(CACHE_KEY)
