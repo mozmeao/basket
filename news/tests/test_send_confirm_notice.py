@@ -17,7 +17,7 @@ class TestSendConfirmNotice(TestCase):
             slug='slug1',
             vendor_id='VENDOR1',
             confirm_message='confirm1',
-            languages='en,es'
+            languages='en,es,rr-QQ'   # rr is a made-up language
         )
         self.newsletter2 = Newsletter.objects.create(
             slug='slug2',
@@ -44,6 +44,15 @@ class TestSendConfirmNotice(TestCase):
                                         self.email,
                                         self.token,
                                         'T')
+
+    def test_default_confirm_notice_short_for_long(self, send_message):
+        """Test using short form of lang that's in the newsletter list as a long lang"""
+        send_confirm_notice(self.email, self.token, "rr", "H", ['slug2'])
+        expected_message = mogrify_message_id(CONFIRMATION_MESSAGE, 'rr', 'H')
+        send_message.assert_called_with(expected_message,
+                                        self.email,
+                                        self.token,
+                                        'H')
 
     ### known long lang
 
