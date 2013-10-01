@@ -6,6 +6,8 @@ from django.test import TestCase
 
 from mock import patch, ANY
 
+from basket import errors
+
 from news import models, tasks
 from news.backends.common import NewsletterException
 from news.models import Newsletter, APIUser
@@ -196,6 +198,7 @@ class TestGetUserData(TestCase):
             'status': 'error',
             'desc': err_msg,
             'status_code': 400,
+            'code': errors.BASKET_NETWORK_FAILURE,
         }
         self.check_get_user(ANY, ANY, ANY, error, expected)
 
@@ -280,6 +283,7 @@ class UserTest(TestCase):
         self.assertDictEqual(resp_data, {
             'status': 'error',
             'desc': 'DANGER!',
+            'code': errors.BASKET_NETWORK_FAILURE,
         })
 
 
