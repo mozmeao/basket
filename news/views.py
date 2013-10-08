@@ -9,6 +9,9 @@ from django.views.decorators.cache import cache_control, never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
+# Get error codes from basket-client so users see the same definitions
+from basket import errors
+
 from .backends.common import NewsletterNoResultsException
 from .backends.exacttarget import (ExactTargetDataExt, NewsletterException,
                                    UnauthorizedException)
@@ -115,6 +118,7 @@ def logged_in(f):
             return HttpResponseJSON({
                 'status': 'error',
                 'desc': MSG_TOKEN_REQUIRED,
+                'code': errors.BASKET_USAGE_ERROR,
             }, 403)
 
         request.subscriber_data = subscriber_data
@@ -164,12 +168,14 @@ def update_user_task(request, type, data=None, optin=True):
                 return HttpResponseJSON({
                     'status': 'error',
                     'desc': 'invalid newsletter',
+                    'code': errors.BASKET_INVALID_NEWSLETTER,
                 }, 400)
 
     if 'lang' in data and not language_code_is_valid(data['lang']):
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'invalid language',
+            'code': errors.BASKET_INVALID_LANGUAGE,
         }, 400)
 
     email = data.get('email')
@@ -177,6 +183,7 @@ def update_user_task(request, type, data=None, optin=True):
         return HttpResponseJSON({
             'status': 'error',
             'desc': MSG_EMAIL_OR_TOKEN_REQUIRED,
+            'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
     created = False
@@ -335,12 +342,14 @@ def get_user_data(token=None, email=None, sync_data=False):
             'status': 'error',
             'status_code': 400,
             'desc': str(e),
+            'code': errors.BASKET_NETWORK_FAILURE,
         }
     except UnauthorizedException as e:
         return {
             'status': 'error',
             'status_code': 500,
             'desc': 'Email service provider auth failure',
+            'code': errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
         }
 
     # We did find a user
@@ -377,6 +386,7 @@ def subscribe(request):
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'newsletters is missing',
+            'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
     optin = request.POST.get('optin', 'Y') == 'Y'
@@ -390,6 +400,7 @@ def subscribe_sms(request):
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'mobile_number is missing',
+            'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
     msg_name = request.POST.get('msg_name', 'SMS_Android')
@@ -401,6 +412,7 @@ def subscribe_sms(request):
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'mobile_number must be a US number',
+            'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
     optin = request.POST.get('optin', 'N') == 'Y'
@@ -452,13 +464,15 @@ def send_recovery_message(request):
             'status': 'error',
             'desc': 'Using send_recovery_message, you need to pass a valid '
                     'email in the `email` POST parameter',
+            'code': errors.BASKET_INVALID_EMAIL,
         }, 400)
     email = form.cleaned_data['email']
     user_data = get_user_data(email=email, sync_data=True)
     if not user_data:
         return HttpResponseJSON({
             'status': 'error',
-            'desc': 'Email address not known'
+            'desc': 'Email address not known',
+            'code': errors.BASKET_UNKNOWN_EMAIL,
         }, 404)  # Note: Bedrock looks for this 404
     send_recovery_message_task.delay(email)
     return HttpResponseJSON({'status': 'ok'})
@@ -471,10 +485,13 @@ def debug_user(request):
             'status': 'error',
             'desc': 'Using debug_user, you need to pass the '
                     '`email` and `supertoken` GET parameters',
+            'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
     if request.GET['supertoken'] != settings.SUPERTOKEN:
-        return HttpResponseJSON({'status': 'error', 'desc': 'Bad supertoken'},
+        return HttpResponseJSON({'status': 'error',
+                                 'desc': 'Bad supertoken',
+                                 'code': errors.BASKET_AUTH_ERROR},
                                 401)
 
     email = request.GET['email']
@@ -503,6 +520,7 @@ def custom_unsub_reason(request):
             'status': 'error',
             'desc': 'custom_unsub_reason requires the `token` '
                     'and `reason` POST parameters',
+            'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
     update_custom_unsub.delay(request.POST['token'], request.POST['reason'])
@@ -592,6 +610,7 @@ def lookup_user(request):
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'lookup_user always requires SSL',
+            'code': errors.BASKET_SSL_REQUIRED,
         }, 401)
 
     token = request.GET.get('token', None)
@@ -606,6 +625,7 @@ def lookup_user(request):
         return HttpResponseJSON({
             'status': 'error',
             'desc': MSG_EMAIL_OR_TOKEN_REQUIRED,
+            'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
     if email and not APIUser.is_valid(api_key):
@@ -613,14 +633,17 @@ def lookup_user(request):
                 'status': 'error',
                 'desc': 'Using lookup_user with `email`, you need to pass a '
                         'valid `api-key` GET parameter or X-api-key header',
+                'code': errors.BASKET_AUTH_ERROR,
             }, 401)
 
     status_code = 200
     user_data = get_user_data(token=token, email=email)
     if not user_data:
+        code = errors.BASKET_UNKNOWN_TOKEN if token else errors.BASKET_UNKNOWN_EMAIL
         user_data = {
             'status': 'error',
-            'desc': MSG_USER_NOT_FOUND
+            'desc': MSG_USER_NOT_FOUND,
+            'code': code,
         }
         status_code = 404
     elif user_data['status'] == 'error':

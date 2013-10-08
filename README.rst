@@ -76,7 +76,7 @@ Production installs often have a few different requirements:
 Newsletters API
 ===============
 
-This "news" app provides a service for managing Mozilla newsletters.
+This "news" app provides a service for managing Mozilla newsletters. 
 
 `fixtures/newsletters.json` is a fixture that can be used to load some initial
 data, but is probably out of date by the time you read this.
@@ -98,6 +98,18 @@ do privileged things, like looking up a user from their email.
 
 If 'SSL required', the call will fail if not called over a secure
 (SSL) connection.
+
+Whenever possible (even when the HTTP status is not 200), the response body
+will be a JSON-encoded dictionary with several guaranteed fields, along with
+any data being returned by the particular call:
+
+    'status': 'ok' if the call succeeded, 'error' if there was an error
+
+If there was an error, these fields will also be included:
+
+    'code': an integer error code taken from ``basket.errors`` in
+            `basket-client <https://github.com/mozilla/basket-client/>`_.
+    'desc': brief English description of the error.
 
 The following URLs are available (assuming "/news" is app url):
 
