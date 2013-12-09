@@ -123,11 +123,21 @@ The following URLs are available (assuming "/news" is app url):
     default is Y. "trigger_welcome" should be Y to fire off a welcome email::
 
         method: POST
-        fields: email, format, country, lang, newsletters, optin, trigger_welcome
+        fields: email, format, country, lang, newsletters, optin, trigger_welcome, sync
         returns: { status: ok } on success
                  { status: error, desc: <desc>, fields: [<field>, ...] } on error
+        SSL required if sync=Y
+        token or API key required if sync=Y
 
     format can be any of the following values: H, html, T, or text
+
+    sync is an optional field. If set to Y, basket will ensure the response
+    includes the token for the provided email address, creating one if necessary.
+    If you don't need the token, or don't need it immediately, leave off ``sync``
+    so Basket has the option to optimize by doing the entire subscribe in the
+    background after returning from this call.
+
+    Using sync=Y requires SSL and an API key.
 
 /news/unsubscribe
 -----------------

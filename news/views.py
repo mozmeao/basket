@@ -42,6 +42,15 @@ class HttpResponseJSON(HttpResponse):
                                                status=status)
 
 
+def has_valid_api_key(request):
+    # The API key could be the query parameter 'api-key' or the
+    # request header 'X-api-key'.
+
+    api_key = request.REQUEST.get('api-key', None) or\
+        request.META.get('HTTP_X_API_KEY', None)
+    return APIUser.is_valid(api_key)
+
+
 def lookup_subscriber(token=None, email=None):
     """
     Find or create Subscriber object for given token and/or email.
@@ -154,8 +163,16 @@ def language_code_is_valid(code):
     return False
 
 
-def update_user_task(request, type, data=None, optin=True):
-    """Call the update_user task async with the right parameters"""
+def update_user_task(request, type, data=None, optin=True, sync=False):
+    """Call the update_user task async with the right parameters.
+
+    If sync==True, be sure to do the update synchronously and include the token
+    in the response.  Otherwise, basket has the option to do it all later
+    in the background.
+    """
+    # NOTE: currently this code always generates the token and returns it
+    # in the response. If optimizing that into a background task, be sure
+    # to observe whether sync==True and still return a token in that case.
 
     sub = getattr(request, 'subscriber', None)
     data = data or request.POST.copy()
@@ -390,7 +407,24 @@ def subscribe(request):
         }, 400)
 
     optin = request.POST.get('optin', 'Y') == 'Y'
-    return update_user_task(request, SUBSCRIBE, optin=optin)
+    sync = request.POST.get('sync', 'N') == 'Y'
+
+    if sync:
+        if not request.is_secure():
+            return HttpResponseJSON({
+                'status': 'error',
+                'desc': 'subscribe with sync=Y requires SSL',
+                'code': errors.BASKET_SSL_REQUIRED,
+            }, 401)
+        if not has_valid_api_key(request):
+            return HttpResponseJSON({
+                'status': 'error',
+                'desc': 'Using subscribe with sync=Y, you need to pass a '
+                        'valid `api-key` GET or POST parameter or X-api-key header',
+                'code': errors.BASKET_AUTH_ERROR,
+            }, 401)
+
+    return update_user_task(request, SUBSCRIBE, optin=optin, sync=sync)
 
 
 @require_POST
@@ -616,11 +650,6 @@ def lookup_user(request):
     token = request.GET.get('token', None)
     email = request.GET.get('email', None)
 
-    # The API key could be the query parameter 'api-key' or the
-    # request header 'X-api-key'.
-    api_key = request.GET.get('api-key', None) or\
-        request.META.get('HTTP_X_API_KEY', None)
-
     if (not email and not token) or (email and token):
         return HttpResponseJSON({
             'status': 'error',
@@ -628,13 +657,13 @@ def lookup_user(request):
             'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
-    if email and not APIUser.is_valid(api_key):
-            return HttpResponseJSON({
-                'status': 'error',
-                'desc': 'Using lookup_user with `email`, you need to pass a '
-                        'valid `api-key` GET parameter or X-api-key header',
-                'code': errors.BASKET_AUTH_ERROR,
-            }, 401)
+    if email and not has_valid_api_key(request):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'Using lookup_user with `email`, you need to pass a '
+                    'valid `api-key` GET parameter or X-api-key header',
+            'code': errors.BASKET_AUTH_ERROR,
+        }, 401)
 
     status_code = 200
     user_data = get_user_data(token=token, email=email)
