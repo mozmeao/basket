@@ -4,10 +4,11 @@ from django.core.urlresolvers import reverse
 from django.test import TestCase
 from django.test.client import RequestFactory
 
+from basket import errors
 from mock import patch, ANY
 
 from news import models, views
-from news.models import Newsletter
+from news.models import APIUser, Newsletter
 from news.newsletters import newsletter_languages, newsletter_fields
 from news.views import language_code_is_valid
 
@@ -26,6 +27,12 @@ class SubscribeTest(TestCase):
             "slug": "mozilla-and-you"
         }
         Newsletter.objects.create(**kwargs)
+
+    def ssl_post(self, url, params=None, **extra):
+        """Fake a post that used SSL"""
+        extra['wsgi.url_scheme'] = 'https'
+        params = params or {}
+        return self.client.post(url, data=params, **extra)
 
     def test_no_newsletters_error(self):
         """
@@ -113,6 +120,54 @@ class SubscribeTest(TestCase):
         resp = self.client.post('/news/subscribe/', {
             'email': 'dude@example.com',
             'newsletters': 'mozilla-and-you',
+        })
+        self.assertEqual(resp.status_code, 200, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(data['status'], 'ok')
+        sub = models.Subscriber.objects.get(email='dude@example.com')
+        uu_mock.assert_called_with(ANY, sub.email, sub.token,
+                                   True, views.SUBSCRIBE, True)
+
+    @patch('news.views.get_user_data')
+    def test_sync_requires_ssl(self, get_user_data):
+        """sync=Y requires SSL"""
+        get_user_data.return_value = None  # new user
+        resp = self.client.post('/news/subscribe/', {
+            'email': 'dude@example.com',
+            'newsletters': 'mozilla-and-you',
+            'lang': 'en',
+            'sync': 'Y',
+        })
+        self.assertEqual(resp.status_code, 401, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_SSL_REQUIRED, data['code'])
+
+    @patch('news.views.get_user_data')
+    def test_sync_requires_api_key(self, get_user_data):
+        """sync=Y requires API key"""
+        get_user_data.return_value = None  # new user
+        # Use SSL but no API key
+        resp = self.ssl_post('/news/subscribe/', {
+            'email': 'dude@example.com',
+            'newsletters': 'mozilla-and-you',
+            'lang': 'en',
+            'sync': 'Y',
+        })
+        self.assertEqual(resp.status_code, 401, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_AUTH_ERROR, data['code'])
+
+    @patch('news.views.get_user_data')
+    @patch('news.views.update_user.delay')
+    def test_sync_with_ssl_and_api_key(self, uu_mock, get_user_data):
+        """sync=Y with SSL and api key should work."""
+        get_user_data.return_value = None  # new user
+        auth = APIUser.objects.create(name="test")
+        resp = self.ssl_post('/news/subscribe/', {
+            'email': 'dude@example.com',
+            'newsletters': 'mozilla-and-you',
+            'sync': 'Y',
+            'api-key': auth.api_key,
         })
         self.assertEqual(resp.status_code, 200, resp.content)
         data = json.loads(resp.content)
