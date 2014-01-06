@@ -137,8 +137,7 @@ class ETTask(Task):
 
         """
         statsd.incr(self.name + '.failure')
-        log.error("Task failed: %s(args=%r, kwargs=%r, exc=%r)"
-                  % (self.name, args, kwargs, exc))
+        log.error("Task failed: %s" % self.name, exc_info=einfo.exc_info)
         FailedTask.objects.create(
             task_id=task_id,
             name=self.name,
@@ -165,8 +164,7 @@ class ETTask(Task):
 
         """
         statsd.incr(self.name + '.retry')
-        log.warn("Task retrying: %s(args=%r, kwargs=%r, exc=%r)"
-                 % (self.name, args, kwargs, exc))
+        log.warn("Task retrying: %s" % self.name, exc_info=einfo.exc_info)
 
 
 def et_task(func):
@@ -350,7 +348,6 @@ def update_user(data, email, token, created, type, optin):
     elif user_data.get('status', 'error') != 'ok':
         # Error talking to ET - raise so we retry later
         msg = "Some error with Exact Target: %r" % user_data
-        log.error(msg)
         raise NewsletterException(msg)
 
     if lang:
@@ -494,7 +491,7 @@ def send_message(message_id, email, token, format):
             BAD_MESSAGE_ID_CACHE.set(message_id, True)
             raise BasketError("ET says no such message ID: %r" % message_id)
         elif 'There are no valid subscribers.' in e.message:
-            raise BasketError("ET rejected email address: %r" % email)
+            raise BasketError("ET says: there are no valid subscribers.")
         # we should retry
         raise
 
@@ -534,9 +531,7 @@ def send_confirm_notice(email, token, lang, format, newsletter_slugs):
 
     # Is the language supported?
     if not is_supported_newsletter_language(lang):
-        msg = "Cannot send confirmation message in language '%s' " \
-              "that is not a supported newsletter language" % lang
-        log.error(msg)
+        msg = "Cannot send confirmation in unsupported language '%s'." % lang
         raise BasketError(msg)
 
     # See if any newsletters have a custom confirmation message
@@ -621,21 +616,15 @@ def confirm_user(token, user_data):
         from .views import get_user_data   # Avoid circular import
         user_data = get_user_data(token=token)
     if user_data is None:
-        log.error(MSG_USER_NOT_FOUND)
         raise BasketError(MSG_USER_NOT_FOUND)
     if user_data['status'] == 'error':
-        msg = "error getting user data for %s: %s" % \
-              (token, user_data['desc'])
-        log.error(msg)
-        raise NewsletterException(msg)
+        raise NewsletterException('error getting user data')
     if user_data['confirmed']:
         log.info("In confirm_user, user with token %s "
                  "is already confirmed" % token)
         return
     if not 'email' in user_data or not user_data['email']:
-        msg = "in confirm_user, token %s has no email addr in ET" % token
-        log.error(msg)
-        raise BasketError(msg)
+        raise BasketError('token has no email in ET')
 
     # Add user's token to the confirmation database at ET. A nightly
     # task will somehow do something about it.
@@ -696,7 +685,7 @@ def send_recovery_message_task(email):
 
     user_data = get_user_data(email=email, sync_data=True)
     if not user_data:
-        log.error("In send_recovery_message_task, email not known: %s" % email)
+        log.warn("In send_recovery_message_task, email not known: %s" % email)
         return
 
     # make sure we have a language and format, no matter what ET returned

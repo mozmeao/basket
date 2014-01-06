@@ -147,6 +147,23 @@ LOGGING = {
             'formatter': 'verbose'
         }
     },
+    'loggers': {
+        'django.db.backends': {
+            'level': 'ERROR',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'raven': {
+            'level': 'WARNING',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'sentry.errors': {
+            'level': 'WARNING',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+    },
 }
 
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
