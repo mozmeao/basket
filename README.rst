@@ -125,7 +125,7 @@ The following URLs are available (assuming "/news" is app url):
         method: POST
         fields: email, format, country, lang, newsletters, optin, source_url, trigger_welcome, sync
         returns: { status: ok } on success
-                 { status: error, desc: <desc>, fields: [<field>, ...] } on error
+                 { status: error, desc: <desc>, code: <error_code> } on error
         SSL required if sync=Y
         token or API key required if sync=Y
 
@@ -142,6 +142,16 @@ The following URLs are available (assuming "/news" is app url):
     ``source_url`` is an optional place to add the URL of the site from which
     the request is being made. It's just there to give us a way of discovering
     which pages produce the most subscriptions.
+
+    If the email address is invalid (due to format, or unrecognized domain), the error
+    code will be ``BASKET_INVALID_EMAIL`` from the basket client. If it is likely just
+    a misspelled domain, then basket may suggest a correction. If there is a suggestion,
+    it will be in the error response in the ``suggestion`` parameter.
+
+    If you've validated that the email address is indeed correct and don't want the validation,
+    you may pass ``validated=true`` with your submission and the address will be accepted. It
+    is suggested that you not use this unless you've specifically asked the user if it is really
+    correct.
 
 /news/unsubscribe
 -----------------
