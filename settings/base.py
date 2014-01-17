@@ -60,6 +60,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 
 MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -77,6 +78,7 @@ TEMPLATE_DIRS = (
 INSTALLED_APPS = (
     'news',
 
+    'corsheaders',
     'djcelery',
     'south',
     'raven.contrib.django.raven_compat',
@@ -104,6 +106,9 @@ EXACTTARGET_CONFIRMATION = 'Confirmation'
 # This is a token that bypasses the news app auth in certain ways to
 # make debugging easier
 # SUPERTOKEN = <token>
+
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_URLS_REGEX = r'^/news/.*$'
 
 # Uncomment these to use Celery, use eager for local dev
 CELERY_ALWAYS_EAGER = False
