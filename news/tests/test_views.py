@@ -32,12 +32,10 @@ class FxOSMalformedPOSTTest(TestCase):
                               content_type='text/plain; charset=UTF-8')
         self.assertFalse(bool(req.POST))
         views.subscribe(req)
-        update_user_mock.assert_called_with(req, views.SUBSCRIBE, data=ANY, optin=True, sync=False)
-        data = update_user_mock.call_args[1]['data']
-        self.assertDictEqual(data.dict(), {
+        update_user_mock.assert_called_with(req, views.SUBSCRIBE, data={
             'email': 'dude@example.com',
             'newsletters': 'firefox-os',
-        })
+        }, optin=True, sync=False)
 
 
 class SubscribeTest(TestCase):

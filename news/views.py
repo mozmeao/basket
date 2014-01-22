@@ -3,7 +3,7 @@ import json
 import re
 
 from django.conf import settings
-from django.http import HttpResponse, QueryDict
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.cache import cache_control, never_cache
 from django.views.decorators.csrf import csrf_exempt
@@ -406,7 +406,9 @@ def subscribe(request):
         raw_request = request.read()
         if 'newsletters=' in raw_request:
             # malformed request from FxOS
-            data = QueryDict(raw_request, encoding=request.encoding)
+            # Can't use QueryDict since the string is not url-encoded.
+            # It will convert '+' to ' ' for example.
+            data = dict(pair.split('=') for pair in raw_request.split('&'))
         else:
             return HttpResponseJSON({
                 'status': 'error',
