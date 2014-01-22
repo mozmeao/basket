@@ -13,6 +13,33 @@ from news.newsletters import newsletter_languages, newsletter_fields
 from news.views import language_code_is_valid
 
 
+@patch('news.views.update_user_task')
+class FxOSMalformedPOSTTest(TestCase):
+    """Bug 962225"""
+
+    def setUp(self):
+        self.rf = RequestFactory()
+
+    def test_deals_with_broken_post_data(self, update_user_mock):
+        """Should be able to parse data from the raw request body.
+
+        FxOS sends POST requests with the wrong mime-type, so request.POST is never
+        filled out. We should parse the raw request body to get the data until this
+        is fixed in FxOS in bug 949170.
+        """
+        req = self.rf.generic('POST', '/news/subscribe/',
+                              data='email=dude@example.com&newsletters=firefox-os',
+                              content_type='text/plain; charset=UTF-8')
+        self.assertFalse(bool(req.POST))
+        views.subscribe(req)
+        update_user_mock.assert_called_with(req, views.SUBSCRIBE, data=ANY, optin=True, sync=False)
+        data = update_user_mock.call_args[1]['data']
+        self.assertDictEqual(data.dict(), {
+            'email': 'dude@example.com',
+            'newsletters': 'firefox-os',
+        })
+
+
 class SubscribeTest(TestCase):
     def setUp(self):
         kwargs = {
