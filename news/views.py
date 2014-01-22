@@ -3,7 +3,7 @@ import json
 import re
 
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, QueryDict
 from django.shortcuts import render
 from django.views.decorators.cache import cache_control, never_cache
 from django.views.decorators.csrf import csrf_exempt
@@ -398,16 +398,24 @@ def confirm(request, token):
 @require_POST
 @csrf_exempt
 def subscribe(request):
-    newsletters = request.POST.get('newsletters', None)
+    data = request.POST.copy()
+    newsletters = data.get('newsletters', None)
     if not newsletters:
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': 'newsletters is missing',
-            'code': errors.BASKET_USAGE_ERROR,
-        }, 400)
+        # request.body causes tests to raise exceptions
+        # while request.read() works.
+        raw_request = request.read()
+        if 'newsletters=' in raw_request:
+            # malformed request from FxOS
+            data = QueryDict(raw_request, encoding=request.encoding)
+        else:
+            return HttpResponseJSON({
+                'status': 'error',
+                'desc': 'newsletters is missing',
+                'code': errors.BASKET_USAGE_ERROR,
+            }, 400)
 
-    optin = request.POST.get('optin', 'Y') == 'Y'
-    sync = request.POST.get('sync', 'N') == 'Y'
+    optin = data.get('optin', 'Y') == 'Y'
+    sync = data.get('sync', 'N') == 'Y'
 
     if sync:
         if not request.is_secure():
@@ -424,7 +432,7 @@ def subscribe(request):
                 'code': errors.BASKET_AUTH_ERROR,
             }, 401)
 
-    return update_user_task(request, SUBSCRIBE, optin=optin, sync=sync)
+    return update_user_task(request, SUBSCRIBE, data=data, optin=optin, sync=sync)
 
 
 @require_POST
