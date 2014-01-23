@@ -28,12 +28,12 @@ class FxOSMalformedPOSTTest(TestCase):
         is fixed in FxOS in bug 949170.
         """
         req = self.rf.generic('POST', '/news/subscribe/',
-                              data='email=dude@example.com&newsletters=firefox-os',
+                              data='email=dude+abides@example.com&newsletters=firefox-os',
                               content_type='text/plain; charset=UTF-8')
         self.assertFalse(bool(req.POST))
         views.subscribe(req)
         update_user_mock.assert_called_with(req, views.SUBSCRIBE, data={
-            'email': 'dude@example.com',
+            'email': 'dude+abides@example.com',
             'newsletters': 'firefox-os',
         }, optin=True, sync=False)
 
