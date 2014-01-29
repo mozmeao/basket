@@ -241,7 +241,7 @@ class UserTest(TestCase):
         subscriber.save()
 
         resp = self.client.post('/news/user/asdf/',
-                                {'fake': 'data', 'lang': 'zz'})
+                                {'fake': 'data', 'lang': '55'})
         self.assertEqual(resp.status_code, 400)
         data = json.loads(resp.content)
         self.assertEqual(data['status'], 'error')

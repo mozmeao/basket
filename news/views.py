@@ -28,8 +28,7 @@ from .tasks import (
     update_student_ambassadors,
     update_user,
 )
-from .newsletters import (newsletter_fields, newsletter_languages,
-                          newsletter_slugs, slug_to_vendor_id)
+from .newsletters import newsletter_fields, newsletter_slugs, slug_to_vendor_id
 
 
 ## Utility functions
@@ -136,31 +135,25 @@ def logged_in(f):
     return wrapper
 
 
-def language_code_is_valid(code):
-    """Return True if ``code`` is the empty string, or one of the language
-    codes associated with a newsletter.  Since language codes come in both
-    2-letter and 5-letter varieties ("en" and "en-US"), we consider codes
-    to also match if the 5-letter code starts with the 2-letter code.
+LANG_RE = re.compile(r'^[a-z]{2,3}(?:-[a-z]{2})?$', re.IGNORECASE)
 
-    Not case sensitive.
+
+def language_code_is_valid(code):
+    """Return True if ``code`` looks like a language code.
+
+    So it must be either 2 (or 3) alpha characters, or 2 pairs of 2
+    characters separated by a dash. It will also
+    accept the empty string.
 
     Raises TypeError if anything but a string is passed in.
     """
     if not isinstance(code, basestring):
         raise TypeError("Language code must be a string")
 
-    # Accept empty string, or newsletter languages. Lowercase all the things.
-    langs = [''] + [lang.lower() for lang in newsletter_languages()]
-    code = code.lower()
-
-    if code in langs:
+    if code == '':
         return True
-    elif len(code) in [2, 5]:
-        # If the length is valid, consider 2-letter matches
-        code2 = code[:2]
-        if any(code2 == lang[:2] for lang in langs):
-            return True
-    return False
+    else:
+        return bool(LANG_RE.match(code))
 
 
 def update_user_task(request, type, data=None, optin=True, sync=False):

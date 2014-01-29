@@ -109,7 +109,7 @@ class SubscribeTest(TestCase):
         resp = self.client.post('/news/subscribe/', {
             'email': 'dude@example.com',
             'newsletters': 'mozilla-and-you',
-            'lang': 'zz'
+            'lang': '55'
         })
         self.assertEqual(resp.status_code, 400)
         data = json.loads(resp.content)
@@ -332,69 +332,52 @@ class TestNewslettersAPI(TestCase):
 
 
 class TestLanguageCodeIsValid(TestCase):
-    @patch('news.views.newsletter_languages')
-    def test_empty_string(self, n_l):
+    def test_empty_string(self):
         """Empty string is accepted as a language code"""
         self.assertTrue(language_code_is_valid(''))
 
-    @patch('news.views.newsletter_languages')
-    def test_none(self, n_l):
+    def test_none(self):
         """None is a TypeError"""
         with self.assertRaises(TypeError):
             language_code_is_valid(None)
 
-    @patch('news.views.newsletter_languages')
-    def test_zero(self, n_l):
+    def test_zero(self):
         """0 is a TypeError"""
         with self.assertRaises(TypeError):
             language_code_is_valid(0)
 
-    @patch('news.views.newsletter_languages')
-    def test_exact_2_letter(self, n_l):
+    def test_exact_2_letter(self):
         """2-letter code that's in the list is valid"""
-        n_l.return_value = ['az']
         self.assertTrue(language_code_is_valid('az'))
 
-    @patch('news.views.newsletter_languages')
-    def test_exact_5_letter(self, n_l):
+    def test_exact_3_letter(self):
+        """3-letter code is valid.
+
+        There are a few of these."""
+        self.assertTrue(language_code_is_valid('azq'))
+
+    def test_exact_5_letter(self):
         """5-letter code that's in the list is valid"""
-        n_l.return_value = ['az-BY']
         self.assertTrue(language_code_is_valid('az-BY'))
 
-    @patch('news.views.newsletter_languages')
-    def test_prefix(self, n_l):
-        """2-letter code that's a prefix of something in the list is valid"""
-        n_l.return_value = ['az-BY']
-        self.assertTrue(language_code_is_valid('az'))
-
-    @patch('news.views.newsletter_languages')
-    def test_long_version(self, n_l):
-        """5-letter code is valid if an entry in the list is a prefix of it"""
-        n_l.return_value = ['az']
-        self.assertTrue(language_code_is_valid('az-BY'))
-
-    @patch('news.views.newsletter_languages')
-    def test_case_insensitive(self, n_l):
+    def test_case_insensitive(self):
         """Matching is not case sensitive"""
-        n_l.return_value = ['aZ', 'Qw-wE']
         self.assertTrue(language_code_is_valid('az-BY'))
-        self.assertTrue(language_code_is_valid('az'))
+        self.assertTrue(language_code_is_valid('aZ'))
         self.assertTrue(language_code_is_valid('QW'))
 
-    @patch('news.views.newsletter_languages')
-    def test_wrong_length(self, n_l):
-        """A code that's a prefix of something in the list, but not a valid
-        length, is not valid. Or vice-versa."""
-        n_l.return_value = ['az-BY']
+    def test_wrong_length(self):
+        """A code that's not a valid length is not valid."""
         self.assertFalse(language_code_is_valid('az-'))
         self.assertFalse(language_code_is_valid('a'))
+        self.assertFalse(language_code_is_valid('azqr'))
         self.assertFalse(language_code_is_valid('az-BY2'))
 
-    @patch('news.views.newsletter_languages')
-    def test_no_match(self, n_l):
-        """Return False if there's no match any way we try."""
-        n_l.return_value = ['az']
-        self.assertFalse(language_code_is_valid('by'))
+    def test_wrong_format(self):
+        """A code that's not a valid format is not valid."""
+        self.assertFalse(language_code_is_valid('a2'))
+        self.assertFalse(language_code_is_valid('asdfj'))
+        self.assertFalse(language_code_is_valid('az_BY'))
 
 
 class RecoveryViewTest(TestCase):
