@@ -3,6 +3,7 @@ import json
 import re
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.cache import cache_control, never_cache
@@ -15,7 +16,7 @@ from basket import errors
 from .backends.common import NewsletterNoResultsException
 from .backends.exacttarget import (ExactTargetDataExt, NewsletterException,
                                    UnauthorizedException)
-from .forms import EmailForm
+from .email import get_valid_email
 from .models import APIUser, Newsletter, Subscriber
 from .tasks import (
     MSG_EMAIL_OR_TOKEN_REQUIRED, MSG_TOKEN_REQUIRED, MSG_USER_NOT_FOUND,
@@ -39,6 +40,12 @@ class HttpResponseJSON(HttpResponse):
         super(HttpResponseJSON, self).__init__(content=json.dumps(data),
                                                content_type='application/json',
                                                status=status)
+
+
+class EmailValidationError(ValidationError):
+    def __init__(self, message, suggestion=None):
+        super(EmailValidationError, self).__init__(message)
+        self.suggestion = suggestion
 
 
 def has_valid_api_key(request):
@@ -427,7 +434,44 @@ def subscribe(request):
                 'code': errors.BASKET_AUTH_ERROR,
             }, 401)
 
+    try:
+        validate_email(data)
+    except EmailValidationError as e:
+        return invalid_email_response(e)
+
     return update_user_task(request, SUBSCRIBE, data=data, optin=optin, sync=sync)
+
+
+def invalid_email_response(e):
+    resp_data = {
+        'status': 'error',
+        'code': errors.BASKET_INVALID_EMAIL,
+        'desc': e.messages[0],
+    }
+    if e.suggestion:
+        resp_data['suggestion'] = e.suggestion
+    return HttpResponseJSON(resp_data, 400)
+
+
+def validate_email(data):
+    """Validates that the email in the data arg is valid.
+
+    Alternately checks that the 'validated' arg was passed in.
+    Returns None on success and raises a ValidationError if
+    invalid. The exception will have a 'suggestion' parameter
+    that will contain the suggested email address or None.
+    """
+    # we send suggestions back to users of valid email addresses.
+    # A client could choose to use that suggestion or indicate that
+    # the address is indeed valid. Said client should pass:
+    #     validated=1
+    if data.get('validated', False):
+        return None
+
+    email = data.get('email', None)
+    valid_email, is_suggestion = get_valid_email(email)
+    if not valid_email or is_suggestion:
+        raise EmailValidationError('Invalid email address', valid_email)
 
 
 @require_POST
@@ -495,15 +539,12 @@ def send_recovery_message(request):
     If email not known, returns 404.
     Otherwise, queues a task to send the message and returns 200.
     """
-    form = EmailForm(request.POST)
-    if not form.is_valid():
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': 'Using send_recovery_message, you need to pass a valid '
-                    'email in the `email` POST parameter',
-            'code': errors.BASKET_INVALID_EMAIL,
-        }, 400)
-    email = form.cleaned_data['email']
+    try:
+        validate_email(request.POST)
+    except EmailValidationError as e:
+        return invalid_email_response(e)
+
+    email = request.POST.get('email')
     user_data = get_user_data(email=email, sync_data=True)
     if not user_data:
         return HttpResponseJSON({

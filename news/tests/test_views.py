@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.test.client import RequestFactory
 
 from basket import errors
-from mock import patch, ANY
+from mock import ANY, Mock, patch
 
 from news import models, views
 from news.models import APIUser, Newsletter
@@ -13,6 +13,10 @@ from news.newsletters import newsletter_languages, newsletter_fields
 from news.views import language_code_is_valid
 
 
+none_mock = Mock(return_value=None)
+
+
+@patch('news.views.validate_email', none_mock)
 @patch('news.views.update_user_task')
 class FxOSMalformedPOSTTest(TestCase):
     """Bug 962225"""
@@ -38,6 +42,48 @@ class FxOSMalformedPOSTTest(TestCase):
         }, optin=True, sync=False)
 
 
+class SubscribeEmailValidationTest(TestCase):
+    email = 'dude@example.com'
+    data = {
+        'email': email,
+        'newsletters': 'os',
+    }
+    view = 'subscribe'
+
+    def setUp(self):
+        self.rf = RequestFactory()
+
+    @patch('news.views.validate_email')
+    def test_invalid_email(self, mock_validate):
+        """Should return proper error for invalid email."""
+        mock_validate.side_effect = views.EmailValidationError('Invalid email')
+        view = getattr(views, self.view)
+        resp = view(self.rf.post('/', self.data))
+        resp_data = json.loads(resp.content)
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp_data['status'], 'error')
+        self.assertEqual(resp_data['code'], errors.BASKET_INVALID_EMAIL)
+        self.assertNotIn('suggestion', resp_data)
+
+    @patch('news.views.validate_email')
+    def test_invalid_email_suggestion(self, mock_validate):
+        """Should return proper error for invalid email."""
+        mock_validate.side_effect = views.EmailValidationError('Invalid email',
+                                                               'walter@example.com')
+        view = getattr(views, self.view)
+        resp = view(self.rf.post('/', self.data))
+        resp_data = json.loads(resp.content)
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp_data['status'], 'error')
+        self.assertEqual(resp_data['code'], errors.BASKET_INVALID_EMAIL)
+        self.assertEqual(resp_data['suggestion'], 'walter@example.com')
+
+
+class RecoveryMessageEmailValidationTest(SubscribeEmailValidationTest):
+    view = 'send_recovery_message'
+
+
+@patch('news.views.validate_email', none_mock)
 class SubscribeTest(TestCase):
     def setUp(self):
         kwargs = {
@@ -395,6 +441,7 @@ class RecoveryViewTest(TestCase):
         resp = self.client.post(self.url, {'email': 'not_an_email'})
         self.assertEqual(400, resp.status_code)
 
+    @patch('news.views.validate_email', none_mock)
     @patch('news.views.get_user_data', autospec=True)
     def test_unknown_email(self, mock_get_user_data):
         """Unknown email should return 404"""
@@ -403,6 +450,7 @@ class RecoveryViewTest(TestCase):
         resp = self.client.post(self.url, {'email': email})
         self.assertEqual(404, resp.status_code)
 
+    @patch('news.views.validate_email', none_mock)
     @patch('news.views.get_user_data', autospec=True)
     @patch('news.views.send_recovery_message_task.delay', autospec=True)
     def test_known_email(self, mock_send_recovery_message_task,
@@ -414,3 +462,36 @@ class RecoveryViewTest(TestCase):
         resp = self.client.post(self.url, {'email': email})
         self.assertEqual(200, resp.status_code)
         mock_send_recovery_message_task.assert_called_with(email)
+
+
+@patch('news.views.get_valid_email')
+class TestValidateEmail(TestCase):
+    email = 'dude@example.com'
+    data = {'email': email}
+
+    def test_valid_email(self, mock_valid):
+        """Should return without raising an exception for a valid email."""
+        mock_valid.return_value = (self.email, False)
+        views.validate_email(self.data)
+        mock_valid.assert_called_with(self.email)
+
+    def test_invalid_email(self, mock_valid):
+        """Should raise an exception for an invalid email."""
+        mock_valid.return_value = (None, False)
+        with self.assertRaises(views.EmailValidationError) as cm:
+            views.validate_email(self.data)
+        mock_valid.assert_called_with(self.email)
+        self.assertIsNone(cm.exception.suggestion)
+
+    def test_invalid_email_suggestion(self, mock_valid):
+        """Should raise an exception for a misspelled email and offer a suggestion."""
+        mock_valid.return_value = ('walter@example.com', True)
+        with self.assertRaises(views.EmailValidationError) as cm:
+            views.validate_email(self.data)
+        mock_valid.assert_called_with(self.email)
+        self.assertEqual(cm.exception.suggestion, mock_valid.return_value[0])
+
+    def test_already_validated(self, mock_valid):
+        """Should not call validation stuff if validated parameter set."""
+        views.validate_email({'validated': 'true'})
+        self.assertFalse(mock_valid.called)
