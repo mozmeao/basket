@@ -20,5 +20,10 @@ def get_valid_email(email):
     if email != good_email:
         log.info('Using suggested alternate email')
         suggestion = True
+
+    good_email = address.validate_address(good_email)
+    if isinstance(good_email, address.EmailAddress):
+        good_email = good_email.address
+
     # returns None if the email is invalid, or the email if all's well
-    return address.validate_address(good_email), suggestion
+    return good_email, suggestion

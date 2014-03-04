@@ -1,5 +1,6 @@
 from django.test import TestCase
 
+from flanker.addresslib.address import EmailAddress
 from mock import patch
 from nose.tools import ok_, eq_
 
@@ -30,9 +31,11 @@ class TestGetValidEmail(TestCase):
         """Should correct a misspelled domain and pass it back."""
         email2 = 'dude2@example.com'
         mock_suggest.return_value = email2
-        mock_validate.return_value = email2
+        mock_validate.return_value = EmailAddress('', email2)
         result, is_suggestion = get_valid_email(self.email)
         ok_(is_suggestion)
+        # should return a string, not the EmailAddress instance
+        ok_(isinstance(result, basestring))
         eq_(result, email2)
 
     def test_invalid_email(self, mock_validate, mock_suggest):
