@@ -105,6 +105,13 @@ class SubscribeTest(TestCase):
         params = params or {}
         return self.client.post(url, data=params, **extra)
 
+    def test_cors_header(self):
+        """Should return Access-Control-Allow-Origin header."""
+        resp = self.client.post('/news/subscribe/', {
+            'email': 'dude@example.com',
+        }, HTTP_ORIGIN='http://example.com')
+        self.assertEqual(resp['Access-Control-Allow-Origin'], '*')
+
     def test_no_newsletters_error(self):
         """
         Should return an error and not create a subscriber if
