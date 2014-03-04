@@ -454,12 +454,16 @@ def invalid_email_response(e):
 
 
 def validate_email(data):
-    """Validates that the email in the data arg is valid.
+    """Validates that the email key in the passed dict is valid.
 
     Alternately checks that the 'validated' arg was passed in.
     Returns None on success and raises a ValidationError if
     invalid. The exception will have a 'suggestion' parameter
     that will contain the suggested email address or None.
+
+    @param data: dict. usually the POST data
+    @return: None if email address in the 'email' key is valid
+    @raise: EmailValidationError if 'email' key is invalid
     """
     # we send suggestions back to users of valid email addresses.
     # A client could choose to use that suggestion or indicate that
