@@ -33,6 +33,8 @@ ALLOWED_HOSTS = [
     'basket.mozilla.com',
     'basket.mozilla.org',
 ]
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 TIME_ZONE = 'America/Los_Angeles'
 USE_TZ = True
@@ -59,6 +61,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 )
 
 MIDDLEWARE_CLASSES = (
+    'sslifyadmin.middleware.SSLifyAdminMiddleware',
     'django.middleware.common.CommonMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
