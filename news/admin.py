@@ -36,8 +36,28 @@ class NewsletterAdmin(admin.ModelAdmin):
 admin.site.register(Newsletter, NewsletterAdmin)
 
 
+class TaskNameFilter(admin.SimpleListFilter):
+    """Filter to provide nicer names for task names."""
+    title = 'task name'
+    parameter_name = 'name'
+
+    def lookups(self, request, model_admin):
+        qs = model_admin.queryset(request)
+        names = qs.values_list('name', flat=True).distinct().order_by('name')
+        return [(name, name.rsplit('.', 1)[1].replace('_', ' ')) for name in names]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(name=self.value())
+
+        return queryset
+
+
 class FailedTaskAdmin(admin.ModelAdmin):
     list_display = ('when', 'name', 'formatted_call', 'exc')
+    list_filter = (TaskNameFilter,)
+    search_fields = ('name', 'exc')
+    date_hierarchy = 'when'
     actions = ['retry_task_action']
 
     def retry_task_action(self, request, queryset):
@@ -48,5 +68,6 @@ class FailedTaskAdmin(admin.ModelAdmin):
             count += 1
         messages.info(request, "Queued %d task%s to try again" % (count, '' if count == 1 else 's'))
     retry_task_action.short_description = u"Retry task(s)"
+
 
 admin.site.register(FailedTask, FailedTaskAdmin)
