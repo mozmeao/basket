@@ -1,5 +1,7 @@
 from django.test import TestCase
 
+from mock import patch
+
 from news import models
 
 
@@ -26,3 +28,54 @@ class SubscriberTest(TestCase):
         models.Subscriber.objects.get_and_sync('dude@example.com', 'asdfjkl')
         sub = models.Subscriber.objects.get(email='dude@example.com')
         self.assertEqual(sub.token, 'asdfjkl')
+
+
+class FailedTaskTest(TestCase):
+    good_task_args = [{'case_type': 'ringer', 'email': 'dude@example.com'}, 'walter']
+
+    def test_retry_with_dict(self):
+        """When given args with a simple dict, subtask should get matching arguments."""
+        task_name = 'make_a_caucasian'
+        task = models.FailedTask.objects.create(task_id='el-dudarino',
+                                                name=task_name,
+                                                args=self.good_task_args)
+        with patch.object(models, 'subtask') as sub_mock:
+            task.retry()
+
+        sub_mock.assert_called_with(task_name, args=self.good_task_args, kwargs={})
+
+    def test_retry_with_querydict(self):
+        """When given args with a QueryDict, subtask should get a dict."""
+        task_name = 'make_a_caucasian'
+        task_args = [{'case_type': ['ringer'], 'email': ['dude@example.com']}, 'walter']
+        task = models.FailedTask.objects.create(task_id='el-dudarino',
+                                                name=task_name,
+                                                args=task_args)
+        with patch.object(models, 'subtask') as sub_mock:
+            task.retry()
+
+        sub_mock.assert_called_with(task_name, args=self.good_task_args, kwargs={})
+
+    def test_retry_with_querydict_not_first(self):
+        """When given args with a QueryDict in any position, subtask should get a dict."""
+        task_name = 'make_a_caucasian'
+        task_args = ['donny', {'case_type': ['ringer'], 'email': ['dude@example.com']}, 'walter']
+        task = models.FailedTask.objects.create(task_id='el-dudarino',
+                                                name=task_name,
+                                                args=task_args)
+        with patch.object(models, 'subtask') as sub_mock:
+            task.retry()
+
+        sub_mock.assert_called_with(task_name, args=['donny'] + self.good_task_args, kwargs={})
+
+    def test_retry_with_almost_querydict(self):
+        """When given args with a dict with a list, subtask should get a same args."""
+        task_name = 'make_a_caucasian'
+        task_args = [{'case_type': 'ringer', 'email': ['dude@example.com']}, 'walter']
+        task = models.FailedTask.objects.create(task_id='el-dudarino',
+                                                name=task_name,
+                                                args=task_args)
+        with patch.object(models, 'subtask') as sub_mock:
+            task.retry()
+
+        sub_mock.assert_called_with(task_name, args=task_args, kwargs={})

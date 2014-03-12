@@ -63,7 +63,7 @@ class UpdateUserTest(TestCase):
         })
         # We should have called update_user with the email, token,
         # created=False, type=SUBSCRIBE, optin=True
-        uu_mock.assert_called_with({'stuff': ['whanot']},
+        uu_mock.assert_called_with({'stuff': 'whanot'},
                                    self.sub.email, self.sub.token,
                                    False, tasks.SUBSCRIBE, True)
 
@@ -88,7 +88,7 @@ class UpdateUserTest(TestCase):
         })
         # We should have called update_user with the email, token,
         # created=False, type=SUBSCRIBE, optin=True
-        uu_mock.assert_called_with({'email': [self.sub.email]},
+        uu_mock.assert_called_with({'email': self.sub.email},
                                    self.sub.email, self.sub.token,
                                    False, tasks.SUBSCRIBE, True)
 
@@ -116,7 +116,7 @@ class UpdateUserTest(TestCase):
         })
         # We should have called update_user with the email, token,
         # created=False, type=SUBSCRIBE, optin=True
-        uu_mock.assert_called_with({'email': [sub.email]},
+        uu_mock.assert_called_with({'email': sub.email},
                                    sub.email, sub.token,
                                    True, tasks.SUBSCRIBE, True)
 

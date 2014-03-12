@@ -229,7 +229,7 @@ class UserTest(TestCase):
         subscriber.save()
 
         self.client.post('/news/user/asdf/', {'fake': 'data'})
-        update_user.assert_called_with({'fake': ['data']},
+        update_user.assert_called_with({'fake': 'data'},
                                        'test@example.com',
                                        'asdf', False, tasks.SET, True)
 
