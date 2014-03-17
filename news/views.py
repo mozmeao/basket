@@ -175,7 +175,7 @@ def update_user_task(request, type, data=None, optin=True, sync=False):
     # to observe whether sync==True and still return a token in that case.
 
     sub = getattr(request, 'subscriber', None)
-    data = data or request.POST.copy()
+    data = data or request.POST.dict()
 
     newsletters = data.get('newsletters', None)
     if newsletters:
@@ -398,7 +398,7 @@ def confirm(request, token):
 @require_POST
 @csrf_exempt
 def subscribe(request):
-    data = request.POST.copy()
+    data = request.POST.dict()
     newsletters = data.get('newsletters', None)
     if not newsletters:
         # request.body causes tests to raise exceptions
@@ -510,7 +510,7 @@ def subscribe_sms(request):
 @logged_in
 @csrf_exempt
 def unsubscribe(request, token):
-    data = request.POST.copy()
+    data = request.POST.dict()
 
     if data.get('optout', 'N') == 'Y':
         data['newsletters'] = ','.join(newsletter_slugs())
@@ -614,7 +614,7 @@ def custom_unsub_reason(request):
 @csrf_exempt
 def custom_update_student_ambassadors(request, token):
     sub = request.subscriber
-    update_student_ambassadors.delay(dict(request.POST.items()), sub.email,
+    update_student_ambassadors.delay(request.POST.dict(), sub.email,
                                      sub.token)
     return HttpResponseJSON({'status': 'ok'})
 
@@ -624,7 +624,7 @@ def custom_update_student_ambassadors(request, token):
 @csrf_exempt
 def custom_update_phonebook(request, token):
     sub = request.subscriber
-    update_phonebook.delay(dict(request.POST.items()), sub.email, sub.token)
+    update_phonebook.delay(request.POST.dict(), sub.email, sub.token)
     return HttpResponseJSON({'status': 'ok'})
 
 

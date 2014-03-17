@@ -157,6 +157,14 @@ class APIUser(models.Model):
         return cls.objects.filter(api_key=api_key, enabled=True).exists()
 
 
+def _is_query_dict(arg):
+    """Returns boolean True if arg appears to have been a QueryDict."""
+    if not isinstance(arg, dict):
+        return False
+
+    return all(isinstance(i, list) for i in arg.values())
+
+
 class FailedTask(models.Model):
     when = models.DateTimeField(editable=False, default=now)
     task_id = models.CharField(max_length=255, unique=True)
@@ -178,10 +186,33 @@ class FailedTask(models.Model):
             u", ".join(formatted_args + formatted_kwargs)
         )
 
+    @property
+    def filtered_args(self):
+        """
+        Convert args that came from QueryDict instances to regular dicts.
+
+        This is necessary because some tasks were bing called with QueryDict
+        instances, and whereas the Pickle for the task worked fine, storing
+        the args as JSON resulted in the dicts actually being a dict full
+        of length 1 lists instead of strings. This converts them back when
+        it finds them.
+
+        This only needs to exist while we have old failure instances around.
+
+        @return: list args: serialized QueryDicts converted to plain dicts.
+        """
+        # TODO remove after old failed tasks are deleted
+        args = self.args
+        for i, arg in enumerate(args):
+            if _is_query_dict(arg):
+                args[i] = dict((key, arg[key][0]) for key in arg)
+
+        return args
+
     def retry(self):
         # Meet the new task,
         # same as the old task.
-        new_task = subtask(self.name, args=self.args, kwargs=self.kwargs)
+        new_task = subtask(self.name, args=self.filtered_args, kwargs=self.kwargs)
         # Queue the new task.
         new_task.apply_async()
         # Forget the old task
