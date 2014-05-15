@@ -39,7 +39,7 @@ class FxOSMalformedPOSTTest(TestCase):
         update_user_mock.assert_called_with(req, views.SUBSCRIBE, data={
             'email': 'dude+abides@example.com',
             'newsletters': 'firefox-os',
-        }, optin=True, sync=False)
+        }, optin=False, sync=False)
 
 
 class SubscribeEmailValidationTest(TestCase):
@@ -188,7 +188,7 @@ class SubscribeTest(TestCase):
         self.assertEqual(data['status'], 'ok')
         sub = models.Subscriber.objects.get(email='dude@example.com')
         uu_mock.assert_called_with(ANY, sub.email, sub.token,
-                                   True, views.SUBSCRIBE, True)
+                                   True, views.SUBSCRIBE, False)
 
     @patch('news.views.get_user_data')
     @patch('news.views.update_user.delay')
@@ -204,7 +204,7 @@ class SubscribeTest(TestCase):
         self.assertEqual(data['status'], 'ok')
         sub = models.Subscriber.objects.get(email='dude@example.com')
         uu_mock.assert_called_with(ANY, sub.email, sub.token,
-                                   True, views.SUBSCRIBE, True)
+                                   True, views.SUBSCRIBE, False)
 
     @patch('news.views.get_user_data')
     def test_sync_requires_ssl(self, get_user_data):
@@ -215,6 +215,20 @@ class SubscribeTest(TestCase):
             'newsletters': 'mozilla-and-you',
             'lang': 'en',
             'sync': 'Y',
+        })
+        self.assertEqual(resp.status_code, 401, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_SSL_REQUIRED, data['code'])
+
+    @patch('news.views.get_user_data')
+    def test_sync_case_insensitive(self, get_user_data):
+        """sync=y also works (case-insensitive)"""
+        get_user_data.return_value = None  # new user
+        resp = self.client.post('/news/subscribe/', {
+            'email': 'dude@example.com',
+            'newsletters': 'mozilla-and-you',
+            'lang': 'en',
+            'sync': 'y',
         })
         self.assertEqual(resp.status_code, 401, resp.content)
         data = json.loads(resp.content)
@@ -245,6 +259,80 @@ class SubscribeTest(TestCase):
             'email': 'dude@example.com',
             'newsletters': 'mozilla-and-you',
             'sync': 'Y',
+            'api-key': auth.api_key,
+        })
+        self.assertEqual(resp.status_code, 200, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(data['status'], 'ok')
+        sub = models.Subscriber.objects.get(email='dude@example.com')
+        uu_mock.assert_called_with(ANY, sub.email, sub.token,
+                                   True, views.SUBSCRIBE, False)
+
+    @patch('news.views.get_user_data')
+    @patch('news.views.update_user.delay')
+    def test_optin_requires_ssl(self, uu_mock, get_user_data):
+        """optin=Y requires SSL, optin = False otherwise"""
+        get_user_data.return_value = None  # new user
+        auth = APIUser.objects.create(name="test")
+        resp = self.client.post('/news/subscribe/', {
+            'email': 'dude@example.com',
+            'newsletters': 'mozilla-and-you',
+            'lang': 'en',
+            'optin': 'Y',
+            'api-key': auth.api_key,
+        })
+        sub = models.Subscriber.objects.get(email='dude@example.com')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        uu_mock.assert_called_with(ANY, sub.email, sub.token,
+                                   True, views.SUBSCRIBE, False)
+
+    @patch('news.views.get_user_data')
+    @patch('news.views.update_user.delay')
+    def test_optin_requires_api_key(self, uu_mock, get_user_data):
+        """optin=Y requires API key, optin = False otherwise"""
+        get_user_data.return_value = None  # new user
+        resp = self.ssl_post('/news/subscribe/', {
+            'email': 'dude@example.com',
+            'newsletters': 'mozilla-and-you',
+            'lang': 'en',
+            'optin': 'Y',
+        })
+        sub = models.Subscriber.objects.get(email='dude@example.com')
+        self.assertEqual(resp.status_code, 200, resp.content)
+        uu_mock.assert_called_with(ANY, sub.email, sub.token,
+                                   True, views.SUBSCRIBE, False)
+
+    @patch('news.views.get_user_data')
+    @patch('news.views.update_user.delay')
+    def test_optin_with_api_key_and_ssl(self, uu_mock, get_user_data):
+        """optin=Y requires API key"""
+        get_user_data.return_value = None  # new user
+        auth = APIUser.objects.create(name="test")
+        resp = self.ssl_post('/news/subscribe/', {
+            'email': 'dude@example.com',
+            'newsletters': 'mozilla-and-you',
+            'lang': 'en',
+            'optin': 'Y',
+            'api-key': auth.api_key,
+        })
+        self.assertEqual(resp.status_code, 200, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(data['status'], 'ok')
+        sub = models.Subscriber.objects.get(email='dude@example.com')
+        uu_mock.assert_called_with(ANY, sub.email, sub.token,
+                                   True, views.SUBSCRIBE, True)
+
+    @patch('news.views.get_user_data')
+    @patch('news.views.update_user.delay')
+    def test_optin_case_insensitive(self, uu_mock, get_user_data):
+        """optin=y also works (case-insensitive)"""
+        get_user_data.return_value = None  # new user
+        auth = APIUser.objects.create(name="test")
+        resp = self.ssl_post('/news/subscribe/', {
+            'email': 'dude@example.com',
+            'newsletters': 'mozilla-and-you',
+            'lang': 'en',
+            'optin': 'y',
             'api-key': auth.api_key,
         })
         self.assertEqual(resp.status_code, 200, resp.content)

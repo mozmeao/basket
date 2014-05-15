@@ -10,7 +10,7 @@ from news.models import Newsletter
 
 
 __all__ = ('clear_newsletter_cache', 'newsletter_field', 'newsletter_name',
-           'newsletter_fields', 'newsletter_names')
+           'newsletter_fields')
 
 
 CACHE_KEY = "newsletters_cache_data"

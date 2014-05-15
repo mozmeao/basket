@@ -118,9 +118,7 @@ The following URLs are available (assuming "/news" is app url):
 
     This method subscribes the user to the newsletters defined in the
     "newsletters" field, which should be a comma-delimited list of
-    newsletters. "email" and "newsletters" are required. "optin" should
-    be Y or N depending if the user should automatically be opted in,
-    default is Y. "trigger_welcome" should be Y to fire off a welcome email::
+    newsletters. "email" and "newsletters" are required::
 
         method: POST
         fields: email, format, country, lang, newsletters, optin, source_url, trigger_welcome, sync
@@ -131,11 +129,23 @@ The following URLs are available (assuming "/news" is app url):
 
     ``format`` can be any of the following values: H, html, T, or text
 
+    ``country`` is the 2 letter country code for the subscriber.
+
+    ``lang`` is the language code for the subscriber (e.g. de, pt-BR)
+
+    ``optin`` should be set to "Y" if the user should not go through the
+    double-optin process (email verification). Setting this option requires
+    an API key and the use of SSL. Defaults to "N".
+
+    ``trigger_welcome`` should be set to "N" if you do not want welcome emails
+    to be sent once the user successfully subscribes and verifies their email.
+    Defaults to "Y".
+
     ``sync`` is an optional field. If set to Y, basket will ensure the response
     includes the token for the provided email address, creating one if necessary.
     If you don't need the token, or don't need it immediately, leave off ``sync``
     so Basket has the option to optimize by doing the entire subscribe in the
-    background after returning from this call.
+    background after returning from this call. Defaults to "N".
 
     Using ``sync=Y`` requires SSL and an API key.
 

@@ -296,8 +296,9 @@ def update_user(data, email, token, created, type, optin):
     :param boolean created: Whether a new user was created in Basket
     :param int type: What kind of API call it was. Could be
         SUBSCRIBE, UNSUBSCRIBE, or SET.
-    :param boolean optin: whether the POST had an OPTIN parameter
-        with value "Y".  (Unused)
+    :param boolean optin: Whether the user should go through the
+        double-optin process or not. If ``optin`` is ``True`` then
+        the user should bypass the double-optin process.
 
     :returns: One of the return codes UU_ALREADY_CONFIRMED,
         etc. (see code) to indicate what case we figured out we were
@@ -387,7 +388,7 @@ def update_user(data, email, token, created, type, optin):
     # When including any newsletter that does not
     # require confirmation, user gets a pass on confirming and goes straight
     # to confirmed.
-    exempt_from_confirmation = Newsletter.objects\
+    exempt_from_confirmation = optin or Newsletter.objects\
         .filter(slug__in=to_subscribe, requires_double_optin=False)\
         .exists()
 

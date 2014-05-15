@@ -18,8 +18,7 @@ class TestConfirmationLogic(TestCase):
                            user_in_optin, user_in_confirmed,
                            newsletter_with_required_confirmation,
                            newsletter_without_required_confirmation,
-                           is_english, type,
-                           expected_result):
+                           is_english, type, expected_result, is_optin=False):
         # Generic test routine - given a bunch of initial conditions and
         # an expected result, set up the conditions, make the call,
         # and verify we get the expected result.
@@ -84,7 +83,7 @@ class TestConfirmationLogic(TestCase):
                     with patch('news.tasks.send_confirm_notice'):
                         created = not user_in_basket
                         rc = update_user(data, email, token, created, type,
-                                         True)
+                                         is_optin)
         self.assertEqual(expected_result, rc)
 
     #
@@ -146,6 +145,18 @@ class TestConfirmationLogic(TestCase):
                                 type=SUBSCRIBE,
                                 expected_result=UU_MUST_CONFIRM_NEW)
 
+    def test_new_english_optin(self):
+        self.check_confirmation(user_in_basket=False,
+                                user_in_master=False,
+                                user_in_optin=False,
+                                user_in_confirmed=False,
+                                newsletter_with_required_confirmation=True,
+                                newsletter_without_required_confirmation=False,
+                                is_english=True,
+                                is_optin=True,
+                                type=SUBSCRIBE,
+                                expected_result=UU_EXEMPT_NEW)
+
     #
     # Tests for users already pending confirmation
     #
@@ -195,6 +206,18 @@ class TestConfirmationLogic(TestCase):
                                 newsletter_with_required_confirmation=True,
                                 newsletter_without_required_confirmation=True,
                                 is_english=False,
+                                type=SUBSCRIBE,
+                                expected_result=UU_EXEMPT_PENDING)
+
+    def test_pending_english_optin(self):
+        self.check_confirmation(user_in_basket=False,
+                                user_in_master=False,
+                                user_in_optin=True,
+                                user_in_confirmed=False,
+                                newsletter_with_required_confirmation=True,
+                                newsletter_without_required_confirmation=False,
+                                is_english=True,
+                                is_optin=True,
                                 type=SUBSCRIBE,
                                 expected_result=UU_EXEMPT_PENDING)
 

@@ -416,8 +416,13 @@ def subscribe(request):
                 'code': errors.BASKET_USAGE_ERROR,
             }, 400)
 
-    optin = data.get('optin', 'Y') == 'Y'
-    sync = data.get('sync', 'N') == 'Y'
+    optin = data.get('optin', 'N').upper() == 'Y'
+    sync = data.get('sync', 'N').upper() == 'Y'
+
+    if optin and (not request.is_secure() or not has_valid_api_key(request)):
+        # for backward compat we just ignore the optin if
+        # no valid API key is sent.
+        optin = False
 
     if sync:
         if not request.is_secure():
