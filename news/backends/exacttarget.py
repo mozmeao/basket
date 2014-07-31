@@ -19,11 +19,13 @@ et.trigger_send('WelcomeEmail', 'jlong@mozilla.com', 'hello', 'H')
 import os
 from functools import wraps
 
+from django.conf import settings
 from django.core.cache import cache
 
 from suds import WebFault
 from suds.cache import Cache
 from suds.client import Client
+from suds.transport.https import HttpAuthenticated
 from suds.wsse import Security, UsernameToken
 
 from .common import NewsletterException, NewsletterNoResultsException, \
@@ -37,6 +39,7 @@ from .common import NewsletterException, NewsletterNoResultsException, \
 # faster. I deleted most of the fields in the TriggeredSendDefinition
 # and TriggeredSend objects that we don't use.
 WSDL_URL = 'file://%s/et-wsdl.txt' % os.path.dirname(os.path.abspath(__file__))
+ET_TIMEOUT = getattr(settings, 'EXACTTARGET_TIMEOUT', 3)
 
 
 class SudsDjangoCache(Cache):
@@ -115,12 +118,11 @@ def logged_in(f):
             import suds.client
             suds.client.ObjectCache = SudsDjangoCache
 
-            inst.client = Client(WSDL_URL)
-
             security = Security()
             token = UsernameToken(inst.user, inst.pass_)
             security.tokens.append(token)
-            inst.client.set_options(wsse=security)
+            inst.client = Client(WSDL_URL, wsse=security,
+                                 transport=HttpAuthenticated(timeout=ET_TIMEOUT))
 
             # Save client instance and just re-use it next time.
             setattr(logged_in, 'cached_client', inst.client)
