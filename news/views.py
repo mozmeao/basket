@@ -25,6 +25,7 @@ from .tasks import (
     confirm_user,
     send_recovery_message_task,
     update_custom_unsub,
+    update_fxa_info,
     update_phonebook,
     update_student_ambassadors,
     update_user,
@@ -392,6 +393,39 @@ def get_user(token=None, email=None, sync_data=False):
 def confirm(request, token):
     confirm_user.delay(request.subscriber.token,
                        request.subscriber_data)
+    return HttpResponseJSON({'status': 'ok'})
+
+
+@require_POST
+@csrf_exempt
+def fxa_register(request):
+    if not request.is_secure():
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'fxa-register requires SSL',
+            'code': errors.BASKET_SSL_REQUIRED,
+        }, 401)
+    if not has_valid_api_key(request):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'fxa-register requires a valid API-key',
+            'code': errors.BASKET_AUTH_ERROR,
+        }, 401)
+
+    data = request.POST.dict()
+    if 'email' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'fxa-register requires an email address',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+    if 'fxa_id' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'fxa-register requires a Firefox Account ID',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+    update_fxa_info.delay(data['email'], data['fxa_id'])
     return HttpResponseJSON({'status': 'ok'})
 
 

@@ -34,6 +34,8 @@ class Subscriber(models.Model):
     email = models.EmailField(primary_key=True)
     token = models.CharField(max_length=40, default=lambda: str(uuid4()),
                              db_index=True)
+    fxa_id = models.CharField(max_length=100, null=True, blank=True,
+                              db_index=True)
 
     objects = SubscriberManager()
 

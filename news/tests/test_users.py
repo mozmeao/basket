@@ -14,6 +14,60 @@ from news.models import Newsletter, APIUser
 from news.views import look_for_user, get_user_data
 
 
+@patch.object(tasks, 'apply_updates')
+@patch.object(tasks, 'get_external_user_data')
+class UpdateFxAInfoTest(TestCase):
+    def test_new_user(self, get_mock, apply_mock):
+        """Adding a new user to the DB should add fxa_id."""
+        get_mock.return_value = None
+        email = 'dude@example.com'
+        fxa_id = 'the fxa abides'
+        tasks.update_fxa_info(email, fxa_id)
+        sub = models.Subscriber.objects.get(email=email)
+        self.assertEqual(sub.fxa_id, fxa_id)
+        call_data = apply_mock.call_args[0][1]
+        self.assertEqual(call_data['EMAIL_ADDRESS_'], email)
+        self.assertEqual(call_data['TOKEN'], sub.token)
+        self.assertEqual(call_data['FXA_ID'], fxa_id)
+        self.assertEqual(call_data['SOURCE_URL'], 'https://accounts.firefox.com')
+        get_mock.assert_called_with(email=email)
+
+    def test_existing_user_not_in_basket(self, get_mock, apply_mock):
+        """Adding a user in ET but not basket should preserve token."""
+        email = 'dude@example.com'
+        fxa_id = 'the fxa abides'
+        token = 'hehe... you said **token**.'
+        get_mock.return_value = {
+            'EMAIL_ADDRESS_': email,
+            'TOKEN': token,
+        }
+        tasks.update_fxa_info(email, fxa_id)
+        sub = models.Subscriber.objects.get(email=email)
+        self.assertEqual(sub.fxa_id, fxa_id)
+        self.assertEqual(sub.token, token)
+        call_data = apply_mock.call_args[0][1]
+        self.assertEqual(call_data['EMAIL_ADDRESS_'], email)
+        self.assertEqual(call_data['TOKEN'], token)
+        self.assertEqual(call_data['FXA_ID'], fxa_id)
+        self.assertNotIn('SOURCE_URL', call_data)
+        get_mock.assert_called_with(email=email)
+
+    def test_existing_user(self, get_mock, apply_mock):
+        """Adding a fxa_id to an existing user shouldn't modify other things."""
+        email = 'dude@example.com'
+        fxa_id = 'the fxa abides'
+        old_sub = models.Subscriber.objects.create(email=email)
+        tasks.update_fxa_info(email, fxa_id)
+        sub = models.Subscriber.objects.get(email=email)
+        self.assertEqual(sub.fxa_id, fxa_id)
+        call_data = apply_mock.call_args[0][1]
+        self.assertEqual(call_data['EMAIL_ADDRESS_'], email)
+        self.assertEqual(call_data['TOKEN'], old_sub.token)
+        self.assertEqual(call_data['FXA_ID'], fxa_id)
+        self.assertNotIn('SOURCE_URL', call_data)
+        self.assertFalse(get_mock.called)
+
+
 class DebugUserTest(TestCase):
     def setUp(self):
         self.sub = models.Subscriber.objects.create(email='dude@example.com')

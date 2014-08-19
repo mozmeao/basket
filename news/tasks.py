@@ -13,9 +13,9 @@ from django_statsd.clients import statsd
 
 from celery.task import Task, task
 
-from .backends.common import NewsletterException
+from .backends.common import NewsletterException, NewsletterNoResultsException
 from .backends.exacttarget import (ExactTarget, ExactTargetDataExt)
-from .models import FailedTask, Newsletter
+from .models import FailedTask, Newsletter, Subscriber
 from .newsletters import (is_supported_newsletter_language, newsletter_field,
                           newsletter_slugs)
 
@@ -251,6 +251,56 @@ def parse_newsletters(record, type, newsletters, cur_newsletters):
                 record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
                 to_unsubscribe.append(nl)
     return to_subscribe, to_unsubscribe
+
+
+def get_external_user_data(email=None, token=None, fields=None, database=None):
+    database = database or settings.EXACTTARGET_DATA
+    fields = fields or [
+        'EMAIL_ADDRESS_',
+        'EMAIL_FORMAT_',
+        'COUNTRY_',
+        'LANGUAGE_ISO2',
+        'TOKEN',
+    ]
+    ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
+                             settings.EXACTTARGET_PASS)
+    try:
+        user = ext.get_record(database, token or email, fields,
+                              'TOKEN' if token else 'EMAIL_ADDRESS_')
+    except NewsletterNoResultsException:
+        return None
+
+    return user
+
+
+@et_task
+def update_fxa_info(email, fxa_id):
+    created = False
+    try:
+        sub = Subscriber.objects.get(email=email)
+    except Subscriber.DoesNotExist:
+        kwargs = {'email': email, 'fxa_id': fxa_id}
+        user = get_external_user_data(email=email)
+        if user is not None and 'TOKEN' in user:
+            kwargs['token'] = user['TOKEN']
+        else:
+            created = True
+
+        sub = Subscriber.objects.create(**kwargs)
+    else:
+        sub.fxa_id = fxa_id
+        sub.save()
+
+    record = {
+        'EMAIL_ADDRESS_': email,
+        'TOKEN': sub.token,
+        'FXA_ID': fxa_id,
+        'MODIFIED_DATE_': gmttime(),
+    }
+    if created:
+        record['SOURCE_URL'] = 'https://accounts.firefox.com'
+
+    apply_updates(settings.EXACTTARGET_DATA, record)
 
 
 @et_task

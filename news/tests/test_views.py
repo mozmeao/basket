@@ -16,6 +16,76 @@ from news.views import language_code_is_valid
 none_mock = Mock(return_value=None)
 
 
+@patch('news.views.update_fxa_info')
+class FxAccountsTest(TestCase):
+    def ssl_post(self, url, params=None, **extra):
+        """Fake a post that used SSL"""
+        extra['wsgi.url_scheme'] = 'https'
+        params = params or {}
+        return self.client.post(url, data=params, **extra)
+
+    def test_requires_ssl(self, fxa_mock):
+        """fxa-register requires SSL"""
+        resp = self.client.post('/news/fxa-register/', {
+            'email': 'dude@example.com',
+            'fxa_id': 'the dude has a Fx account.'
+        })
+        self.assertEqual(resp.status_code, 401, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_SSL_REQUIRED, data['code'])
+        self.assertFalse(fxa_mock.delay.called)
+
+    def test_requires_api_key(self, fxa_mock):
+        """fxa-register requires API key"""
+        # Use SSL but no API key
+        resp = self.ssl_post('/news/fxa-register/', {
+            'email': 'dude@example.com',
+            'fxa_id': 'the dude has a Fx account.'
+        })
+        self.assertEqual(resp.status_code, 401, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_AUTH_ERROR, data['code'])
+        self.assertFalse(fxa_mock.delay.called)
+
+    def test_requires_fxa_id(self, fxa_mock):
+        """fxa-register requires Firefox Account ID"""
+        auth = APIUser.objects.create(name="test")
+        resp = self.ssl_post('/news/fxa-register/', {
+            'email': 'dude@example.com',
+            'api-key': auth.api_key,
+        })
+        self.assertEqual(resp.status_code, 401, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
+        self.assertFalse(fxa_mock.delay.called)
+
+    def test_requires_email(self, fxa_mock):
+        """fxa-register requires email address"""
+        auth = APIUser.objects.create(name="test")
+        resp = self.ssl_post('/news/fxa-register/', {
+            'fxa_id': 'the dude has a Fx account.',
+            'api-key': auth.api_key,
+        })
+        self.assertEqual(resp.status_code, 401, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
+        self.assertFalse(fxa_mock.delay.called)
+
+    def test_with_ssl_and_api_key(self, fxa_mock):
+        """fxa-register should succeed with SSL, API Key, and data."""
+        auth = APIUser.objects.create(name="test")
+        request_data = {
+            'email': 'dude@example.com',
+            'fxa_id': 'the dude has a Fx account.',
+            'api-key': auth.api_key,
+        }
+        resp = self.ssl_post('/news/fxa-register/', request_data)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual('ok', data['status'])
+        fxa_mock.delay.assert_called_once_with(request_data['email'], request_data['fxa_id'])
+
+
 @patch('news.views.validate_email', none_mock)
 @patch('news.views.update_user_task')
 class FxOSMalformedPOSTTest(TestCase):
