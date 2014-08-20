@@ -28,7 +28,8 @@ class FxAccountsTest(TestCase):
         """fxa-register requires SSL"""
         resp = self.client.post('/news/fxa-register/', {
             'email': 'dude@example.com',
-            'fxa_id': 'the dude has a Fx account.'
+            'fxa_id': 'the dude has a Fx account.',
+            'lang': 'de',
         })
         self.assertEqual(resp.status_code, 401, resp.content)
         data = json.loads(resp.content)
@@ -52,6 +53,7 @@ class FxAccountsTest(TestCase):
         auth = APIUser.objects.create(name="test")
         resp = self.ssl_post('/news/fxa-register/', {
             'email': 'dude@example.com',
+            'lang': 'de',
             'api-key': auth.api_key,
         })
         self.assertEqual(resp.status_code, 401, resp.content)
@@ -64,11 +66,39 @@ class FxAccountsTest(TestCase):
         auth = APIUser.objects.create(name="test")
         resp = self.ssl_post('/news/fxa-register/', {
             'fxa_id': 'the dude has a Fx account.',
+            'lang': 'de',
             'api-key': auth.api_key,
         })
         self.assertEqual(resp.status_code, 401, resp.content)
         data = json.loads(resp.content)
         self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
+        self.assertFalse(fxa_mock.delay.called)
+
+    def test_requires_lang(self, fxa_mock):
+        """fxa-register requires language"""
+        auth = APIUser.objects.create(name="test")
+        resp = self.ssl_post('/news/fxa-register/', {
+            'email': 'dude@example.com',
+            'fxa_id': 'the dude has a Fx account.',
+            'api-key': auth.api_key,
+        })
+        self.assertEqual(resp.status_code, 401, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
+        self.assertFalse(fxa_mock.delay.called)
+
+    def test_requires_valid_lang(self, fxa_mock):
+        """fxa-register requires language"""
+        auth = APIUser.objects.create(name="test")
+        resp = self.ssl_post('/news/fxa-register/', {
+            'email': 'dude@example.com',
+            'fxa_id': 'the dude has a Fx account.',
+            'lang': 'Phones ringing Dude.',
+            'api-key': auth.api_key,
+        })
+        self.assertEqual(resp.status_code, 400, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_INVALID_LANGUAGE, data['code'])
         self.assertFalse(fxa_mock.delay.called)
 
     def test_with_ssl_and_api_key(self, fxa_mock):
@@ -78,12 +108,14 @@ class FxAccountsTest(TestCase):
             'email': 'dude@example.com',
             'fxa_id': 'the dude has a Fx account.',
             'api-key': auth.api_key,
+            'lang': 'de',
         }
         resp = self.ssl_post('/news/fxa-register/', request_data)
         self.assertEqual(resp.status_code, 200, resp.content)
         data = json.loads(resp.content)
         self.assertEqual('ok', data['status'])
-        fxa_mock.delay.assert_called_once_with(request_data['email'], request_data['fxa_id'])
+        fxa_mock.delay.assert_called_once_with(request_data['email'], 'de',
+                                               request_data['fxa_id'])
 
 
 @patch('news.views.validate_email', none_mock)

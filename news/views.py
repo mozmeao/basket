@@ -425,7 +425,22 @@ def fxa_register(request):
             'desc': 'fxa-register requires a Firefox Account ID',
             'code': errors.BASKET_USAGE_ERROR,
         }, 401)
-    update_fxa_info.delay(data['email'], data['fxa_id'])
+    if 'lang' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'fxa-register requires a language',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+    if not language_code_is_valid(data['lang']):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'invalid language',
+            'code': errors.BASKET_INVALID_LANGUAGE,
+        }, 400)
+    args = [data['email'], data['lang'], data['fxa_id']]
+    if 'source_url' in data:
+        args.append(data['source_url'])
+    update_fxa_info.delay(*args)
     return HttpResponseJSON({'status': 'ok'})
 
 

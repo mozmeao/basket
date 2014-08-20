@@ -12,17 +12,20 @@ from django.utils.timezone import now
 
 
 class SubscriberManager(models.Manager):
-    def get_and_sync(self, email, token):
+    def get_and_sync(self, email, token, fxa_id=None):
         """
         Get the subscriber for the email and token and ensure that such a
         subscriber exists.
         """
-        sub, created = self.get_or_create(
-            email=email,
-            defaults={'token': token},
-        )
-        if not created and sub.token != token:
+        defaults = {'token': token}
+        if fxa_id:
+            defaults['fxa_id'] = fxa_id
+
+        sub, created = self.get_or_create(email=email, defaults=defaults)
+        if not created:
             sub.token = token
+            if fxa_id:
+                sub.fxa_id = fxa_id
             sub.save()
             # FIXME: this could mean there's another record in Exact Target
             # with the other token
