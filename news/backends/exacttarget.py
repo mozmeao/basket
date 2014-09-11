@@ -32,13 +32,6 @@ from .common import NewsletterException, NewsletterNoResultsException, \
     UnauthorizedException
 
 
-# This is just a cached version. The real URL is:
-# https://webservice.s4.exacttarget.com/etframework.wsdl
-#
-# The cached version has been stripped down to make suds run 1000x
-# faster. I deleted most of the fields in the TriggeredSendDefinition
-# and TriggeredSend objects that we don't use.
-WSDL_URL = 'file://%s/et-wsdl.txt' % os.path.dirname(os.path.abspath(__file__))
 ET_TIMEOUT = getattr(settings, 'EXACTTARGET_TIMEOUT', 3)
 
 
@@ -118,10 +111,22 @@ def logged_in(f):
             import suds.client
             suds.client.ObjectCache = SudsDjangoCache
 
+            wsdl_file_name = ('et-sandbox-wsdl.txt' if settings.EXACTTARGET_USE_SANDBOX
+                              else 'et-wsdl.txt')
+
+            # This is just a cached version. The real URL is:
+            # https://webservice.s4.exacttarget.com/etframework.wsdl
+            #
+            # The cached version has been stripped down to make suds run 1000x
+            # faster. I deleted most of the fields in the TriggeredSendDefinition
+            # and TriggeredSend objects that we don't use.
+            wsdl_url = 'file://{0}/{1}'.format(os.path.dirname(os.path.abspath(__file__)),
+                                               wsdl_file_name)
+
             security = Security()
             token = UsernameToken(inst.user, inst.pass_)
             security.tokens.append(token)
-            inst.client = Client(WSDL_URL, wsse=security,
+            inst.client = Client(wsdl_url, wsse=security,
                                  transport=HttpAuthenticated(timeout=ET_TIMEOUT))
 
             # Save client instance and just re-use it next time.

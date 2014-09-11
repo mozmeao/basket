@@ -105,6 +105,7 @@ DEFAULT_WELCOME_MESSAGE_ID = '39'
 
 # Name of the database where we put someone's token when they confirm
 EXACTTARGET_CONFIRMATION = 'Confirmation'
+EXACTTARGET_USE_SANDBOX = False
 
 # This is a token that bypasses the news app auth in certain ways to
 # make debugging easier
