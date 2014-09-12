@@ -14,6 +14,163 @@ from news.models import Newsletter, APIUser
 from news.views import look_for_user, get_user_data
 
 
+class UpdateFxAInfoTest(TestCase):
+    def setUp(self):
+        patcher = patch.object(tasks, 'send_message')
+        self.addCleanup(patcher.stop)
+        self.send_message = patcher.start()
+
+        patcher = patch.object(tasks, 'apply_updates')
+        self.addCleanup(patcher.stop)
+        self.apply_updates = patcher.start()
+
+        patcher = patch.object(tasks, 'get_external_user_data')
+        self.addCleanup(patcher.stop)
+        self.get_external_user_data = patcher.start()
+
+    def test_new_user(self):
+        """Adding a new user to the DB should add fxa_id."""
+        self.get_external_user_data.return_value = None
+        email = 'dude@example.com'
+        fxa_id = 'the fxa abides'
+
+        tasks.update_fxa_info(email, 'de', fxa_id)
+        sub = models.Subscriber.objects.get(email=email)
+        self.assertEqual(sub.fxa_id, fxa_id)
+
+        self.apply_updates.assert_called_once_with(settings.EXACTTARGET_DATA, {
+            'EMAIL_ADDRESS_': email,
+            'TOKEN': sub.token,
+            'FXA_ID': fxa_id,
+            'LANGUAGE_ISO2': 'de',
+            'SOURCE_URL': 'https://accounts.firefox.com',
+            'MODIFIED_DATE_': ANY,
+        })
+        self.get_external_user_data.assert_called_with(email=email)
+        self.send_message.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
+                                             email, sub.token, 'H')
+
+    def test_user_in_et_not_basket(self):
+        """A user could exist in basket but not ET, should still work."""
+        self.get_external_user_data.return_value = None
+        email = 'dude@example.com'
+        fxa_id = 'the fxa abides'
+
+        models.Subscriber.objects.create(email=email)
+        tasks.update_fxa_info(email, 'de', fxa_id)
+        sub = models.Subscriber.objects.get(email=email)
+        self.assertEqual(sub.fxa_id, fxa_id)
+
+        self.apply_updates.assert_called_once_with(settings.EXACTTARGET_DATA, {
+            'EMAIL_ADDRESS_': email,
+            'TOKEN': sub.token,
+            'FXA_ID': fxa_id,
+            'LANGUAGE_ISO2': 'de',
+            'SOURCE_URL': 'https://accounts.firefox.com',
+            'MODIFIED_DATE_': ANY,
+        })
+        self.get_external_user_data.assert_called_with(email=email)
+        self.send_message.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
+                                             email, sub.token, 'H')
+
+    def test_existing_user_not_in_basket(self):
+        """Adding a user already in ET but not basket should preserve token."""
+        email = 'dude@example.com'
+        fxa_id = 'the fxa abides'
+        token = 'hehe... you said **token**.'
+        self.get_external_user_data.return_value = {
+            'email': email,
+            'token': token,
+            'lang': 'de',
+            'format': '',
+        }
+        tasks.update_fxa_info(email, 'de', fxa_id)
+        sub = models.Subscriber.objects.get(email=email)
+        self.assertEqual(sub.fxa_id, fxa_id)
+        self.assertEqual(sub.token, token)
+
+        self.apply_updates.assert_called_once_with(settings.EXACTTARGET_DATA, {
+            'EMAIL_ADDRESS_': email,
+            'TOKEN': token,
+            'FXA_ID': fxa_id,
+            'MODIFIED_DATE_': ANY,
+        })
+        self.get_external_user_data.assert_called_with(email=email)
+        self.send_message.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
+                                             email, sub.token, '')
+
+    def test_existing_user(self):
+        """Adding a fxa_id to an existing user shouldn't modify other things."""
+        email = 'dude@example.com'
+        fxa_id = 'the fxa abides'
+        old_sub = models.Subscriber.objects.create(email=email)
+        self.get_external_user_data.return_value = {
+            'email': email,
+            'token': old_sub.token,
+            'lang': 'de',
+            'format': 'T',
+        }
+        tasks.update_fxa_info(email, 'de', fxa_id)
+        sub = models.Subscriber.objects.get(email=email)
+        self.assertEqual(sub.fxa_id, fxa_id)
+
+        self.apply_updates.assert_called_once_with(settings.EXACTTARGET_DATA, {
+            'EMAIL_ADDRESS_': email,
+            'TOKEN': old_sub.token,
+            'FXA_ID': fxa_id,
+            'MODIFIED_DATE_': ANY,
+        })
+        self.send_message.assert_called_with('de_{0}_T'.format(tasks.FXACCOUNT_WELCOME),
+                                             email, sub.token, 'T')
+
+    def test_existing_user_no_lang(self):
+        """Adding a fxa_id to an existing user should update lang only if not set."""
+        email = 'dude@example.com'
+        fxa_id = 'the fxa abides'
+        old_sub = models.Subscriber.objects.create(email=email)
+        self.get_external_user_data.return_value = {
+            'email': email,
+            'token': old_sub.token,
+            'lang': '',
+            'format': '',
+        }
+        tasks.update_fxa_info(email, 'de', fxa_id)
+        sub = models.Subscriber.objects.get(email=email)
+        self.assertEqual(sub.fxa_id, fxa_id)
+
+        self.apply_updates.assert_called_once_with(settings.EXACTTARGET_DATA, {
+            'EMAIL_ADDRESS_': email,
+            'TOKEN': old_sub.token,
+            'FXA_ID': fxa_id,
+            'LANGUAGE_ISO2': 'de',
+            'MODIFIED_DATE_': ANY,
+        })
+        self.send_message.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
+                                             email, sub.token, '')
+
+        self.apply_updates.reset_mock()
+        self.send_message.reset_mock()
+        self.get_external_user_data.reset_mock()
+        self.get_external_user_data.return_value = {
+            'email': email,
+            'token': old_sub.token,
+            'lang': 'es',
+            'format': '',
+        }
+        tasks.update_fxa_info(email, 'de', fxa_id)
+        sub = models.Subscriber.objects.get(email=email)
+        self.assertEqual(sub.fxa_id, fxa_id)
+
+        self.apply_updates.assert_called_once_with(settings.EXACTTARGET_DATA, {
+            'EMAIL_ADDRESS_': email,
+            'TOKEN': old_sub.token,
+            'FXA_ID': fxa_id,
+            'MODIFIED_DATE_': ANY,
+        })
+        self.send_message.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
+                                             email, sub.token, '')
+
+
 class DebugUserTest(TestCase):
     def setUp(self):
         self.sub = models.Subscriber.objects.create(email='dude@example.com')

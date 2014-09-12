@@ -13,9 +13,9 @@ from django_statsd.clients import statsd
 
 from celery.task import Task, task
 
-from .backends.common import NewsletterException
+from .backends.common import NewsletterException, NewsletterNoResultsException
 from .backends.exacttarget import (ExactTarget, ExactTargetDataExt)
-from .models import FailedTask, Newsletter
+from .models import FailedTask, Newsletter, Subscriber
 from .newsletters import (is_supported_newsletter_language, newsletter_field,
                           newsletter_slugs)
 
@@ -77,6 +77,7 @@ PHONEBOOK_GROUPS = (
 # This is prefixed with the 2-letter language code + _ before sending,
 # e.g. 'en_recovery_message', and '_T' if text, e.g. 'en_recovery_message_T'.
 RECOVERY_MESSAGE_ID = 'recovery_message'
+FXACCOUNT_WELCOME = 'FxAccounts_Welcome'
 
 # Vendor IDs for Firefox OS and Firefox & You:
 FFOS_VENDOR_ID = 'FIREFOX_OS'
@@ -251,6 +252,64 @@ def parse_newsletters(record, type, newsletters, cur_newsletters):
                 record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
                 to_unsubscribe.append(nl)
     return to_subscribe, to_unsubscribe
+
+
+def get_external_user_data(email=None, token=None, fields=None, database=None):
+    database = database or settings.EXACTTARGET_DATA
+    fields = fields or [
+        'EMAIL_ADDRESS_',
+        'EMAIL_FORMAT_',
+        'COUNTRY_',
+        'LANGUAGE_ISO2',
+        'TOKEN',
+    ]
+    ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
+                             settings.EXACTTARGET_PASS)
+    try:
+        user = ext.get_record(database, token or email, fields,
+                              'TOKEN' if token else 'EMAIL_ADDRESS_')
+    except NewsletterNoResultsException:
+        return None
+
+    user_data = {
+        'email': user['EMAIL_ADDRESS_'],
+        'format': user['EMAIL_FORMAT_'] or 'H',
+        'country': user['COUNTRY_'] or '',
+        'lang': user['LANGUAGE_ISO2'] or '',  # Never None
+        'token': user['TOKEN'],
+    }
+    return user_data
+
+
+@et_task
+def update_fxa_info(email, lang, fxa_id, source_url=None):
+    user = get_external_user_data(email=email)
+    record = {
+        'EMAIL_ADDRESS_': email,
+        'FXA_ID': fxa_id,
+        'MODIFIED_DATE_': gmttime(),
+    }
+    if user:
+        format = user['format']
+        token = user['token']
+        Subscriber.objects.get_and_sync(email, token, fxa_id)
+        record['TOKEN'] = token
+        if not user['lang']:
+            record['LANGUAGE_ISO2'] = lang
+    else:
+        sub, created = Subscriber.objects.get_or_create(email=email, defaults={'fxa_id': fxa_id})
+        if not created:
+            sub.fxa_id = fxa_id
+            sub.save()
+        format = 'H'
+        token = sub.token
+        record['TOKEN'] = token
+        record['LANGUAGE_ISO2'] = lang
+        record['SOURCE_URL'] = source_url or 'https://accounts.firefox.com'
+
+    welcome = mogrify_message_id(FXACCOUNT_WELCOME, lang, format)
+    send_message(welcome, email, token, format)
+    apply_updates(settings.EXACTTARGET_DATA, record)
 
 
 @et_task
