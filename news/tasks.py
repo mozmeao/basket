@@ -288,27 +288,26 @@ def update_fxa_info(email, lang, fxa_id, source_url=None):
         'EMAIL_ADDRESS_': email,
         'FXA_ID': fxa_id,
         'MODIFIED_DATE_': gmttime(),
+        'FXA_LANGUAGE_ISO2': lang,
     }
     if user:
-        format = user['format']
+        welcome_format = user['format']
         token = user['token']
         Subscriber.objects.get_and_sync(email, token, fxa_id)
-        record['TOKEN'] = token
-        if not user['lang']:
-            record['LANGUAGE_ISO2'] = lang
     else:
         sub, created = Subscriber.objects.get_or_create(email=email, defaults={'fxa_id': fxa_id})
         if not created:
             sub.fxa_id = fxa_id
             sub.save()
-        format = 'H'
+        welcome_format = 'H'
         token = sub.token
-        record['TOKEN'] = token
-        record['LANGUAGE_ISO2'] = lang
+        # only want source url for first contact
         record['SOURCE_URL'] = source_url or 'https://accounts.firefox.com'
 
-    welcome = mogrify_message_id(FXACCOUNT_WELCOME, lang, format)
-    send_message(welcome, email, token, format)
+    record['TOKEN'] = token
+
+    welcome = mogrify_message_id(FXACCOUNT_WELCOME, lang, welcome_format)
+    send_message(welcome, email, token, welcome_format)
     apply_updates(settings.EXACTTARGET_DATA, record)
 
 
