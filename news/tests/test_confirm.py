@@ -370,7 +370,7 @@ class TestConfirmTask(TestCase):
         # Can't patch get_user_data because confirm_user imports it
         # internally. But we can patch look_for_user, which get_user_data
         # will call
-        with patch('news.views.look_for_user') as look_for_user:
+        with patch('news.utils.look_for_user') as look_for_user:
             look_for_user.return_value = None
             user_data = None
             token = "TOKEN"

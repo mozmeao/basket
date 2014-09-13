@@ -7,7 +7,7 @@ from django.test.client import RequestFactory
 from basket import errors
 from mock import ANY, Mock, patch
 
-from news import models, views
+from news import models, views, utils
 from news.models import APIUser, Newsletter
 from news.newsletters import newsletter_languages, newsletter_fields
 from news.views import language_code_is_valid, get_accept_languages, get_best_language
@@ -321,7 +321,7 @@ class SubscribeEmailValidationTest(TestCase):
     @patch('news.views.validate_email')
     def test_invalid_email(self, mock_validate):
         """Should return proper error for invalid email."""
-        mock_validate.side_effect = views.EmailValidationError('Invalid email')
+        mock_validate.side_effect = utils.EmailValidationError('Invalid email')
         view = getattr(views, self.view)
         resp = view(self.rf.post('/', self.data))
         resp_data = json.loads(resp.content)
@@ -333,7 +333,7 @@ class SubscribeEmailValidationTest(TestCase):
     @patch('news.views.validate_email')
     def test_invalid_email_suggestion(self, mock_validate):
         """Should return proper error for invalid email."""
-        mock_validate.side_effect = views.EmailValidationError('Invalid email',
+        mock_validate.side_effect = utils.EmailValidationError('Invalid email',
                                                                'walter@example.com')
         view = getattr(views, self.view)
         resp = view(self.rf.post('/', self.data))
@@ -437,7 +437,7 @@ class SubscribeTest(TestCase):
             models.Subscriber.objects.get(email='dude@example.com')
 
     @patch('news.views.get_user_data')
-    @patch('news.views.update_user.delay')
+    @patch('news.utils.update_user.delay')
     def test_blank_language_okay(self, uu_mock, get_user_data):
         """
         Should work if language is left blank.
@@ -455,8 +455,8 @@ class SubscribeTest(TestCase):
         uu_mock.assert_called_with(ANY, sub.email, sub.token,
                                    True, views.SUBSCRIBE, False)
 
-    @patch('news.views.get_user_data')
-    @patch('news.views.update_user.delay')
+    @patch('news.utils.get_user_data')
+    @patch('news.utils.update_user.delay')
     def test_subscribe_success(self, uu_mock, get_user_data):
         """Subscription should work."""
         get_user_data.return_value = None  # new user
@@ -514,8 +514,8 @@ class SubscribeTest(TestCase):
         data = json.loads(resp.content)
         self.assertEqual(errors.BASKET_AUTH_ERROR, data['code'])
 
-    @patch('news.views.get_user_data')
-    @patch('news.views.update_user.delay')
+    @patch('news.utils.get_user_data')
+    @patch('news.utils.update_user.delay')
     def test_sync_with_ssl_and_api_key(self, uu_mock, get_user_data):
         """sync=Y with SSL and api key should work."""
         get_user_data.return_value = None  # new user
@@ -533,8 +533,8 @@ class SubscribeTest(TestCase):
         uu_mock.assert_called_with(ANY, sub.email, sub.token,
                                    True, views.SUBSCRIBE, False)
 
-    @patch('news.views.get_user_data')
-    @patch('news.views.update_user.delay')
+    @patch('news.utils.get_user_data')
+    @patch('news.utils.update_user.delay')
     def test_optin_requires_ssl(self, uu_mock, get_user_data):
         """optin=Y requires SSL, optin = False otherwise"""
         get_user_data.return_value = None  # new user
@@ -551,8 +551,8 @@ class SubscribeTest(TestCase):
         uu_mock.assert_called_with(ANY, sub.email, sub.token,
                                    True, views.SUBSCRIBE, False)
 
-    @patch('news.views.get_user_data')
-    @patch('news.views.update_user.delay')
+    @patch('news.utils.get_user_data')
+    @patch('news.utils.update_user.delay')
     def test_optin_requires_api_key(self, uu_mock, get_user_data):
         """optin=Y requires API key, optin = False otherwise"""
         get_user_data.return_value = None  # new user
@@ -567,8 +567,8 @@ class SubscribeTest(TestCase):
         uu_mock.assert_called_with(ANY, sub.email, sub.token,
                                    True, views.SUBSCRIBE, False)
 
-    @patch('news.views.get_user_data')
-    @patch('news.views.update_user.delay')
+    @patch('news.utils.get_user_data')
+    @patch('news.utils.update_user.delay')
     def test_optin_with_api_key_and_ssl(self, uu_mock, get_user_data):
         """optin=Y requires API key"""
         get_user_data.return_value = None  # new user
@@ -587,8 +587,8 @@ class SubscribeTest(TestCase):
         uu_mock.assert_called_with(ANY, sub.email, sub.token,
                                    True, views.SUBSCRIBE, True)
 
-    @patch('news.views.get_user_data')
-    @patch('news.views.update_user.delay')
+    @patch('news.utils.get_user_data')
+    @patch('news.utils.update_user.delay')
     def test_optin_case_insensitive(self, uu_mock, get_user_data):
         """optin=y also works (case-insensitive)"""
         get_user_data.return_value = None  # new user
@@ -824,7 +824,7 @@ class RecoveryViewTest(TestCase):
         mock_send_recovery_message_task.assert_called_with(email)
 
 
-@patch('news.views.get_valid_email')
+@patch('news.utils.get_valid_email')
 class TestValidateEmail(TestCase):
     email = 'dude@example.com'
     data = {'email': email}
@@ -838,7 +838,7 @@ class TestValidateEmail(TestCase):
     def test_invalid_email(self, mock_valid):
         """Should raise an exception for an invalid email."""
         mock_valid.return_value = (None, False)
-        with self.assertRaises(views.EmailValidationError) as cm:
+        with self.assertRaises(utils.EmailValidationError) as cm:
             views.validate_email(self.data)
         mock_valid.assert_called_with(self.email)
         self.assertIsNone(cm.exception.suggestion)
@@ -846,7 +846,7 @@ class TestValidateEmail(TestCase):
     def test_invalid_email_suggestion(self, mock_valid):
         """Should raise an exception for a misspelled email and offer a suggestion."""
         mock_valid.return_value = ('walter@example.com', True)
-        with self.assertRaises(views.EmailValidationError) as cm:
+        with self.assertRaises(utils.EmailValidationError) as cm:
             views.validate_email(self.data)
         mock_valid.assert_called_with(self.email)
         self.assertEqual(cm.exception.suggestion, mock_valid.return_value[0])

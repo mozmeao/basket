@@ -55,7 +55,7 @@ class RetryTaskTest(TestCase):
 
 
 @patch('news.tasks.send_message', autospec=True)
-@patch('news.views.look_for_user', autospec=True)
+@patch('news.utils.look_for_user', autospec=True)
 class RecoveryMessageTask(TestCase):
     def setUp(self):
         self.email = "dude@example.com"

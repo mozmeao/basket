@@ -42,7 +42,7 @@ class UpdateUserTest(TestCase):
             'status': 'ok',
         }
 
-    @patch('news.views.update_user.delay')
+    @patch('news.utils.update_user.delay')
     def test_update_user_task_helper(self, uu_mock):
         """
         `update_user` should always get an email and token.
@@ -67,7 +67,7 @@ class UpdateUserTest(TestCase):
                                    self.sub.email, self.sub.token,
                                    False, tasks.SUBSCRIBE, True)
 
-    @patch('news.views.update_user.delay')
+    @patch('news.utils.update_user.delay')
     def test_update_user_task_helper_no_sub(self, uu_mock):
         """
         Should find sub from submitted email when not provided.
@@ -92,8 +92,8 @@ class UpdateUserTest(TestCase):
                                    self.sub.email, self.sub.token,
                                    False, tasks.SUBSCRIBE, True)
 
-    @patch('news.views.look_for_user')
-    @patch('news.views.update_user.delay')
+    @patch('news.utils.look_for_user')
+    @patch('news.utils.update_user.delay')
     def test_update_user_task_helper_create(self, uu_mock, look_for_user):
         """
         Should create a user and tell the task about it if email not known.
@@ -120,7 +120,7 @@ class UpdateUserTest(TestCase):
                                    sub.email, sub.token,
                                    True, tasks.SUBSCRIBE, True)
 
-    @patch('news.views.update_user.delay')
+    @patch('news.utils.update_user.delay')
     def test_update_user_task_helper_error(self, uu_mock):
         """
         Should not call the task if no email or token provided.
@@ -266,7 +266,7 @@ class UpdateUserTest(TestCase):
         self.assertFalse(send_message.called)
 
     @patch('news.views.get_user_data')
-    @patch('news.views.ExactTargetDataExt')
+    @patch('news.utils.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
     def test_update_no_welcome_set(self, et_mock, etde_mock, get_user_data):
         """
@@ -486,7 +486,7 @@ class UpdateUserTest(TestCase):
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
     @patch('news.views.get_user_data')
-    @patch('news.views.newsletter_fields')
+    @patch('news.utils.newsletter_fields')
     @patch('news.tasks.ExactTarget')
     def test_update_user_set_works_if_no_newsletters(self, et_mock,
                                                      newsletter_fields,
@@ -544,8 +544,8 @@ class UpdateUserTest(TestCase):
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
     @patch('news.views.get_user_data')
-    @patch('news.views.newsletter_fields')
-    @patch('news.views.ExactTargetDataExt')
+    @patch('news.utils.newsletter_fields')
+    @patch('news.utils.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
     def test_resubscribe_doesnt_update_newsletter(self, et_mock, etde_mock,
                                                   newsletter_fields,
@@ -598,7 +598,7 @@ class UpdateUserTest(TestCase):
                                           })
 
     @patch('news.views.get_user_data')
-    @patch('news.views.newsletter_fields')
+    @patch('news.utils.newsletter_fields')
     @patch('news.tasks.ExactTarget')
     def test_set_doesnt_update_newsletter(self, et_mock,
                                           newsletter_fields,
@@ -731,8 +731,8 @@ class UpdateUserTest(TestCase):
         )
 
     @patch('news.views.get_user_data')
-    @patch('news.views.newsletter_fields')
-    @patch('news.views.ExactTargetDataExt')
+    @patch('news.utils.newsletter_fields')
+    @patch('news.utils.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
     def test_unsub_is_careful(self, et_mock, etde_mock, newsletter_fields,
                               get_user_data):

@@ -12,7 +12,7 @@ from basket import errors
 from news import models, tasks
 from news.backends.common import NewsletterException
 from news.models import Newsletter, APIUser
-from news.views import look_for_user, get_user_data
+from news.utils import look_for_user, get_user_data
 
 
 class UpdateFxAInfoTest(TestCase):
@@ -289,7 +289,7 @@ class TestLookForUser(TestCase):
         Newsletter.objects.create(slug='n1', vendor_id='NEWSLETTER1')
         Newsletter.objects.create(slug='n2', vendor_id='NEWSLETTER2')
         fields = ['NEWSLETTER1_FLG', 'NEWSLETTER2_FLG']
-        with patch('news.views.ExactTargetDataExt') as et_ext:
+        with patch('news.utils.ExactTargetDataExt') as et_ext:
             data_ext = et_ext()
             data_ext.get_record.return_value = {
                 'EMAIL_ADDRESS_': 'dude@example.com',
@@ -323,7 +323,7 @@ class TestLookForUser(TestCase):
         Newsletter.objects.create(slug='n1', vendor_id='NEWSLETTER1')
         Newsletter.objects.create(slug='n2', vendor_id='NEWSLETTER2')
         fields = ['NEWSLETTER1_FLG', 'NEWSLETTER2_FLG']
-        with patch('news.views.ExactTargetDataExt') as et_ext:
+        with patch('news.utils.ExactTargetDataExt') as et_ext:
             data_ext = et_ext()
             data_ext.get_record.return_value = {
                 'EMAIL_ADDRESS_': 'dude@example.com',
@@ -386,7 +386,7 @@ class TestGetUserData(TestCase):
                 raise Exception("INVALID INPUT TO mock_look_for_user - "
                                 "database %r unknown" % database)
 
-        with patch('news.views.look_for_user') as look_for_user:
+        with patch('news.utils.look_for_user') as look_for_user:
             look_for_user.side_effect = mock_look_for_user
             result = get_user_data()
 
@@ -445,7 +445,7 @@ class TestGetUserData(TestCase):
 
 
 class UserTest(TestCase):
-    @patch('news.views.update_user.delay')
+    @patch('news.utils.update_user.delay')
     def test_user_set(self, update_user):
         """If the user view is sent a POST request, it should attempt to update
         the user's info.
@@ -472,7 +472,7 @@ class UserTest(TestCase):
         self.assertEqual(data['status'], 'error')
         self.assertEqual(data['desc'], 'invalid language')
 
-    @patch('news.views.ExactTargetDataExt')
+    @patch('news.utils.ExactTargetDataExt')
     def test_missing_user_created(self, et_ext):
         """
         If a user is in ET but not Basket, it should be created.
@@ -495,7 +495,7 @@ class UserTest(TestCase):
         sub = models.Subscriber.objects.get(email='dude@example.com')
         self.assertEqual(sub.token, 'asdf')
 
-    @patch('news.views.ExactTargetDataExt')
+    @patch('news.utils.ExactTargetDataExt')
     def test_user_not_in_et(self, et_ext):
         """A user not found in ET should produce an error response."""
         data_ext = et_ext()
