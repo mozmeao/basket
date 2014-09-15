@@ -11,9 +11,9 @@ admin.site.register(APIUser, APIUserAdmin)
 
 
 class SubscriberAdmin(admin.ModelAdmin):
-    fields = ('email', 'token')
-    list_display = ('email', 'token')
-    search_fields = ('email', 'token')
+    fields = ('email', 'token', 'fxa_id')
+    list_display = ('email', 'token', 'fxa_id')
+    search_fields = ('email', 'token', 'fxa_id')
 
 
 admin.site.register(Subscriber, SubscriberAdmin)
