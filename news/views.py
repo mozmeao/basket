@@ -1,6 +1,7 @@
 from functools import wraps
 import json
 import re
+from django.utils.translation.trans_real import parse_accept_lang_header
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -30,7 +31,8 @@ from .tasks import (
     update_student_ambassadors,
     update_user,
 )
-from .newsletters import newsletter_fields, newsletter_slugs, slug_to_vendor_id
+from .newsletters import newsletter_fields, newsletter_slugs, slug_to_vendor_id, \
+    newsletter_languages
 
 
 ## Utility functions
@@ -384,6 +386,56 @@ def get_user(token=None, email=None, sync_data=False):
     return HttpResponseJSON(user_data, status_code)
 
 
+def get_accept_languages(header_value):
+    """
+    Parse the user's Accept-Language HTTP header and return a list of languages
+    """
+    # adapted from bedrock: http://j.mp/1o3pWo5
+    languages = []
+    pattern = re.compile(r'^([A-Za-z]{2,3})(?:-([A-Za-z]{2})(?:-[A-Za-z0-9]+)?)?$')
+
+    try:
+        parsed = parse_accept_lang_header(header_value)
+    except ValueError:  # see https://code.djangoproject.com/ticket/21078
+        return languages
+
+    for lang, priority in parsed:
+        m = pattern.match(lang)
+
+        if not m:
+            continue
+
+        lang = m.group(1).lower()
+
+        # Check if the shorter code is supported. This covers obsolete long
+        # codes like fr-FR (should match fr) or ja-JP (should match ja)
+        if m.group(2) and lang not in newsletter_languages():
+            lang += '-' + m.group(2).upper()
+
+        if lang not in languages:
+            languages.append(lang)
+
+    return languages
+
+
+def get_best_language(languages):
+    """
+    Return the best language for use with our newsletters. If none match, return first in list.
+
+    @param languages: list of language codes.
+    @return: a single language code
+    """
+    if not languages:
+        return None
+
+    supported_langs = newsletter_languages()
+    for lang in languages:
+        if lang in supported_langs:
+            return lang
+
+    return languages[0]
+
+
 ## Views
 
 
@@ -425,19 +477,21 @@ def fxa_register(request):
             'desc': 'fxa-register requires a Firefox Account ID',
             'code': errors.BASKET_USAGE_ERROR,
         }, 401)
-    if 'lang' not in data:
+    if 'accept_lang' not in data:
         return HttpResponseJSON({
             'status': 'error',
-            'desc': 'fxa-register requires a language',
+            'desc': 'fxa-register requires accept_lang',
             'code': errors.BASKET_USAGE_ERROR,
         }, 401)
-    if not language_code_is_valid(data['lang']):
+
+    lang = get_best_language(get_accept_languages(data['accept_lang']))
+    if lang is None:
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'invalid language',
             'code': errors.BASKET_INVALID_LANGUAGE,
         }, 400)
-    args = [data['email'], data['lang'], data['fxa_id']]
+    args = [data['email'], lang, data['fxa_id']]
     if 'source_url' in data:
         args.append(data['source_url'])
     update_fxa_info.delay(*args)

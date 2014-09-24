@@ -10,7 +10,7 @@ from mock import ANY, Mock, patch
 from news import models, views
 from news.models import APIUser, Newsletter
 from news.newsletters import newsletter_languages, newsletter_fields
-from news.views import language_code_is_valid
+from news.views import language_code_is_valid, get_accept_languages, get_best_language
 
 
 none_mock = Mock(return_value=None)
@@ -29,7 +29,7 @@ class FxAccountsTest(TestCase):
         resp = self.client.post('/news/fxa-register/', {
             'email': 'dude@example.com',
             'fxa_id': 'the dude has a Fx account.',
-            'lang': 'de',
+            'accept_lang': 'de',
         })
         self.assertEqual(resp.status_code, 401, resp.content)
         data = json.loads(resp.content)
@@ -53,7 +53,7 @@ class FxAccountsTest(TestCase):
         auth = APIUser.objects.create(name="test")
         resp = self.ssl_post('/news/fxa-register/', {
             'email': 'dude@example.com',
-            'lang': 'de',
+            'accept_lang': 'de',
             'api-key': auth.api_key,
         })
         self.assertEqual(resp.status_code, 401, resp.content)
@@ -66,7 +66,7 @@ class FxAccountsTest(TestCase):
         auth = APIUser.objects.create(name="test")
         resp = self.ssl_post('/news/fxa-register/', {
             'fxa_id': 'the dude has a Fx account.',
-            'lang': 'de',
+            'accept_lang': 'de',
             'api-key': auth.api_key,
         })
         self.assertEqual(resp.status_code, 401, resp.content)
@@ -93,7 +93,7 @@ class FxAccountsTest(TestCase):
         resp = self.ssl_post('/news/fxa-register/', {
             'email': 'dude@example.com',
             'fxa_id': 'the dude has a Fx account.',
-            'lang': 'Phones ringing Dude.',
+            'accept_lang': 'Phones ringing Dude.',
             'api-key': auth.api_key,
         })
         self.assertEqual(resp.status_code, 400, resp.content)
@@ -108,7 +108,7 @@ class FxAccountsTest(TestCase):
             'email': 'dude@example.com',
             'fxa_id': 'the dude has a Fx account.',
             'api-key': auth.api_key,
-            'lang': 'de',
+            'accept_lang': 'de',
         }
         resp = self.ssl_post('/news/fxa-register/', request_data)
         self.assertEqual(resp.status_code, 200, resp.content)
@@ -116,6 +116,62 @@ class FxAccountsTest(TestCase):
         self.assertEqual('ok', data['status'])
         fxa_mock.delay.assert_called_once_with(request_data['email'], 'de',
                                                request_data['fxa_id'])
+
+
+class TestGetAcceptLanguages(TestCase):
+    # mostly stolen from bedrock
+
+    def setUp(self):
+        patcher = patch('news.views.newsletter_languages', return_value=[
+            'de', 'en', 'es', 'fr', 'id', 'pt-BR', 'ru', 'pl', 'hu'])
+        self.addCleanup(patcher.stop)
+        patcher.start()
+
+    def _test(self, accept_lang, good_list):
+        self.assertListEqual(get_accept_languages(accept_lang), good_list)
+
+    def test_valid_lang_codes(self):
+        """
+        Should return a list of valid lang codes
+        """
+        self._test('fr-FR', ['fr'])
+        self._test('en-us,en;q=0.5', ['en'])
+        self._test('pt-pt,fr;q=0.8,it-it;q=0.5,de;q=0.3',
+                   ['pt-PT', 'fr', 'it-IT', 'de'])
+        self._test('ja-JP-mac,ja-JP;q=0.7,ja;q=0.3', ['ja-JP', 'ja'])
+        self._test('foo,bar;q=0.5', ['foo', 'bar'])
+
+    def test_invalid_lang_codes(self):
+        """
+        Should return a list of valid lang codes or an empty list
+        """
+        self._test('', [])
+        self._test('en_us,en*;q=0.5', [])
+        self._test('Chinese,zh-cn;q=0.5', ['zh-CN'])
+
+
+class GetBestLanguageTests(TestCase):
+    def setUp(self):
+        patcher = patch('news.views.newsletter_languages', return_value=[
+            'de', 'en', 'es', 'fr', 'id', 'pt-BR', 'ru', 'pl', 'hu'])
+        self.addCleanup(patcher.stop)
+        patcher.start()
+
+    def _test(self, langs_list, expected_lang):
+        self.assertEqual(get_best_language(langs_list), expected_lang)
+
+    def test_returns_first_good_lang(self):
+        """Should return first language in the list that a newsletter supports."""
+        self._test(['zh-TW', 'es', 'de', 'en'], 'es')
+        self._test(['pt-PT', 'zh-TW', 'pt-BR', 'en'], 'pt-BR')
+
+    def test_returns_first_lang_no_good(self):
+        """Should return the first in the list if no supported are found."""
+        self._test(['pt-PT', 'zh-TW', 'zh-CN', 'ar'], 'pt-PT')
+
+    def test_no_langs(self):
+        """Should return none if no langs given."""
+        self._test([], None)
 
 
 @patch('news.views.validate_email', none_mock)
