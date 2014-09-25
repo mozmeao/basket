@@ -13,7 +13,9 @@ from django_statsd.clients import statsd
 from news.models import Newsletter, Subscriber, Interest
 from news.newsletters import newsletter_slugs
 from news.tasks import (
-    MSG_EMAIL_OR_TOKEN_REQUIRED, MSG_USER_NOT_FOUND, SET, SUBSCRIBE, UNSUBSCRIBE,
+    SET,
+    SUBSCRIBE,
+    UNSUBSCRIBE,
     add_sms_user,
     confirm_user,
     send_recovery_message_task,
@@ -24,6 +26,8 @@ from news.tasks import (
     update_student_ambassadors,
 )
 from news.utils import (
+    MSG_EMAIL_OR_TOKEN_REQUIRED,
+    MSG_USER_NOT_FOUND,
     EmailValidationError,
     get_accept_languages,
     get_best_language,

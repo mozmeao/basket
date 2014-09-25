@@ -15,9 +15,14 @@ from news.backends.exacttarget import (ExactTargetDataExt, NewsletterException,
                                    UnauthorizedException)
 from news.email import get_valid_email
 from news.models import APIUser, Subscriber
-from news.tasks import MSG_EMAIL_OR_TOKEN_REQUIRED, MSG_TOKEN_REQUIRED, update_user
 from news.newsletters import (newsletter_fields, newsletter_languages, newsletter_slugs,
                               slug_to_vendor_id)
+
+
+## Error messages
+MSG_TOKEN_REQUIRED = 'Must have valid token for this request'
+MSG_EMAIL_OR_TOKEN_REQUIRED = 'Must have valid token OR email for this request'
+MSG_USER_NOT_FOUND = 'User not found'
 
 
 class HttpResponseJSON(HttpResponse):
@@ -148,16 +153,14 @@ def language_code_is_valid(code):
         return bool(LANG_RE.match(code))
 
 
-def update_user_task(request, type, data=None, optin=True, sync=False):
+def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
     """Call the update_user task async with the right parameters.
 
     If sync==True, be sure to do the update synchronously and include the token
     in the response.  Otherwise, basket has the option to do it all later
     in the background.
     """
-    # NOTE: currently this code always generates the token and returns it
-    # in the response. If optimizing that into a background task, be sure
-    # to observe whether sync==True and still return a token in that case.
+    from news.tasks import update_user
 
     sub = getattr(request, 'subscriber', None)
     data = data or request.POST.dict()
@@ -180,27 +183,34 @@ def update_user_task(request, type, data=None, optin=True, sync=False):
             'code': errors.BASKET_INVALID_LANGUAGE,
         }, 400)
 
-    email = data.get('email')
-    if not (email or sub):
+    email = data.get('email', sub.email if sub else None)
+    if not email:
         return HttpResponseJSON({
             'status': 'error',
             'desc': MSG_EMAIL_OR_TOKEN_REQUIRED,
             'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
-    created = False
-    if not sub:
-        # We need a token for this user. If we don't have a Subscriber
-        # object for them already, we'll need to find or make one,
-        # checking ET first if need be.
-        sub, user_data, created = lookup_subscriber(email=email)
+    if sync:
+        if sub:
+            created = False
+        else:
+            # We need a token for this user. If we don't have a Subscriber
+            # object for them already, we'll need to find or make one,
+            # checking ET first if need be.
+            sub, user_data, created = lookup_subscriber(email=email)
 
-    update_user.delay(data, sub.email, sub.token, created, type, optin)
-    return HttpResponseJSON({
-        'status': 'ok',
-        'token': sub.token,
-        'created': created,
-    })
+        update_user.delay(data, sub.email, sub.token, api_call_type, optin)
+        return HttpResponseJSON({
+            'status': 'ok',
+            'token': sub.token,
+            'created': created,
+        })
+    else:
+        update_user.delay(data, email, None, api_call_type, optin)
+        return HttpResponseJSON({
+            'status': 'ok',
+        })
 
 
 def look_for_user(database, email, token, fields):

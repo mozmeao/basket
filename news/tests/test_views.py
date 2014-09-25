@@ -5,12 +5,12 @@ from django.test import TestCase
 from django.test.client import RequestFactory
 
 from basket import errors
-from mock import ANY, Mock, patch
+from mock import Mock, patch
 
 from news import models, views, utils
-from news.models import APIUser, Newsletter
+from news.models import APIUser
 from news.newsletters import newsletter_languages, newsletter_fields
-from news.views import language_code_is_valid, get_accept_languages, get_best_language
+from news.tasks import SUBSCRIBE
 
 
 none_mock = Mock(return_value=None)
@@ -225,62 +225,6 @@ class FxAccountsTest(TestCase):
                                                request_data['fxa_id'])
 
 
-class TestGetAcceptLanguages(TestCase):
-    # mostly stolen from bedrock
-
-    def setUp(self):
-        patcher = patch('news.views.newsletter_languages', return_value=[
-            'de', 'en', 'es', 'fr', 'id', 'pt-BR', 'ru', 'pl', 'hu'])
-        self.addCleanup(patcher.stop)
-        patcher.start()
-
-    def _test(self, accept_lang, good_list):
-        self.assertListEqual(get_accept_languages(accept_lang), good_list)
-
-    def test_valid_lang_codes(self):
-        """
-        Should return a list of valid lang codes
-        """
-        self._test('fr-FR', ['fr'])
-        self._test('en-us,en;q=0.5', ['en'])
-        self._test('pt-pt,fr;q=0.8,it-it;q=0.5,de;q=0.3',
-                   ['pt-PT', 'fr', 'it-IT', 'de'])
-        self._test('ja-JP-mac,ja-JP;q=0.7,ja;q=0.3', ['ja-JP', 'ja'])
-        self._test('foo,bar;q=0.5', ['foo', 'bar'])
-
-    def test_invalid_lang_codes(self):
-        """
-        Should return a list of valid lang codes or an empty list
-        """
-        self._test('', [])
-        self._test('en_us,en*;q=0.5', [])
-        self._test('Chinese,zh-cn;q=0.5', ['zh-CN'])
-
-
-class GetBestLanguageTests(TestCase):
-    def setUp(self):
-        patcher = patch('news.views.newsletter_languages', return_value=[
-            'de', 'en', 'es', 'fr', 'id', 'pt-BR', 'ru', 'pl', 'hu'])
-        self.addCleanup(patcher.stop)
-        patcher.start()
-
-    def _test(self, langs_list, expected_lang):
-        self.assertEqual(get_best_language(langs_list), expected_lang)
-
-    def test_returns_first_good_lang(self):
-        """Should return first language in the list that a newsletter supports."""
-        self._test(['zh-TW', 'es', 'de', 'en'], 'es')
-        self._test(['pt-PT', 'zh-TW', 'pt-BR', 'en'], 'pt-BR')
-
-    def test_returns_first_lang_no_good(self):
-        """Should return the first in the list if no supported are found."""
-        self._test(['pt-PT', 'zh-TW', 'zh-CN', 'ar'], 'pt-PT')
-
-    def test_no_langs(self):
-        """Should return none if no langs given."""
-        self._test([], None)
-
-
 @patch('news.views.validate_email', none_mock)
 @patch('news.views.update_user_task')
 class FxOSMalformedPOSTTest(TestCase):
@@ -348,264 +292,139 @@ class RecoveryMessageEmailValidationTest(SubscribeEmailValidationTest):
     view = 'send_recovery_message'
 
 
-@patch('news.views.validate_email', none_mock)
-class SubscribeTest(TestCase):
+class SubscribeTests(TestCase):
+    def _patch_views(self, name):
+        patcher = patch('news.views.' + name)
+        setattr(self, name, patcher.start())
+        self.addCleanup(patcher.stop)
+
     def setUp(self):
-        kwargs = {
-            "vendor_id": "MOZILLA_AND_YOU",
-            "description": "A monthly newsletter packed with tips to "
-                           "improve your browsing experience.",
-            "show": True,
-            "welcome": "",
-            "languages": "de,en,es,fr,id,pt-BR,ru",
-            "active": True,
-            "title": "Firefox & You",
-            "slug": "mozilla-and-you"
-        }
-        Newsletter.objects.create(**kwargs)
+        self.factory = RequestFactory()
 
-    def ssl_post(self, url, params=None, **extra):
-        """Fake a post that used SSL"""
-        extra['wsgi.url_scheme'] = 'https'
-        params = params or {}
-        return self.client.post(url, data=params, **extra)
+        self._patch_views('update_user_task')
+        self._patch_views('validate_email')
+        self._patch_views('has_valid_api_key')
+        self._patch_views('update_user_task')
 
-    def test_cors_header(self):
-        """Should return Access-Control-Allow-Origin header."""
-        resp = self.client.post('/news/subscribe/', {
-            'email': 'dude@example.com',
-        }, HTTP_ORIGIN='http://example.com')
-        self.assertEqual(resp['Access-Control-Allow-Origin'], '*')
+    def assert_response_error(self, response, status_code, basket_code):
+        self.assertEqual(response.status_code, status_code)
+        response_data = json.loads(response.content)
+        self.assertEqual(response_data['code'], basket_code)
 
-    def test_no_newsletters_error(self):
+    def test_newsletters_missing(self):
+        """If the newsletters param is missing, return a 400."""
+        request = self.factory.post('/')
+        response = views.subscribe(request)
+        self.assert_response_error(response, 400, errors.BASKET_USAGE_ERROR)
+
+    def test_optin_ssl_required(self):
         """
-        Should return an error and not create a subscriber if
-        no newsletters were specified.
+        If optin is 'Y' but the request isn't HTTPS, disable optin.
         """
-        resp = self.client.post('/news/subscribe/', {
-            'email': 'dude@example.com',
-        })
-        self.assertEqual(resp.status_code, 400)
-        data = json.loads(resp.content)
-        self.assertEqual(data['status'], 'error')
-        self.assertEqual(data['desc'], 'newsletters is missing')
-        with self.assertRaises(models.Subscriber.DoesNotExist):
-            models.Subscriber.objects.get(email='dude@example.com')
+        request_data = {'newsletters': 'asdf', 'optin': 'Y'}
+        request = self.factory.post('/', request_data)
+        request.is_secure = lambda: False
+        self.has_valid_api_key.return_value = True
 
-        resp = self.client.post('/news/subscribe/', {
-            'email': 'dude@example.com',
-            'newsletters': '',
-        })
-        self.assertEqual(resp.status_code, 400)
-        data = json.loads(resp.content)
-        self.assertEqual(data['status'], 'error')
-        self.assertEqual(data['desc'], 'newsletters is missing')
-        with self.assertRaises(models.Subscriber.DoesNotExist):
-            models.Subscriber.objects.get(email='dude@example.com')
+        response = views.subscribe(request)
+        self.assertEqual(response, self.update_user_task.return_value)
+        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
+                                                 optin=False, sync=False)
 
-    def test_invalid_newsletters_error(self):
+    def test_optin_valid_api_key_required(self):
         """
-        Should return an error and not create a subscriber if
-        newsletters are invalid.
+        If optin is 'Y' but the API key isn't valid, disable optin.
         """
-        resp = self.client.post('/news/subscribe/', {
-            'email': 'dude@example.com',
-            'newsletters': 'mozilla-and-you,does-not-exist',
-        })
-        self.assertEqual(resp.status_code, 400)
-        data = json.loads(resp.content)
-        self.assertEqual(data['status'], 'error')
-        self.assertEqual(data['desc'], 'invalid newsletter')
-        with self.assertRaises(models.Subscriber.DoesNotExist):
-            models.Subscriber.objects.get(email='dude@example.com')
+        request_data = {'newsletters': 'asdf', 'optin': 'Y'}
+        request = self.factory.post('/', request_data)
+        request.is_secure = lambda: True
+        self.has_valid_api_key.return_value = False
 
-    def test_invalid_language_error(self):
+        response = views.subscribe(request)
+        self.assertEqual(response, self.update_user_task.return_value)
+        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
+                                                 optin=False, sync=False)
+
+    def test_sync_ssl_required(self):
         """
-        Should return an error and not create a subscriber if
-        language invalid.
+        If sync set to 'Y' and the request isn't HTTPS, return a 401.
         """
-        resp = self.client.post('/news/subscribe/', {
-            'email': 'dude@example.com',
-            'newsletters': 'mozilla-and-you',
-            'lang': '55'
-        })
-        self.assertEqual(resp.status_code, 400)
-        data = json.loads(resp.content)
-        self.assertEqual(data['status'], 'error')
-        self.assertEqual(data['desc'], 'invalid language')
-        with self.assertRaises(models.Subscriber.DoesNotExist):
-            models.Subscriber.objects.get(email='dude@example.com')
+        request = self.factory.post('/', {'newsletters': 'asdf', 'sync': 'Y'})
+        request.is_secure = lambda: False
+        response = views.subscribe(request)
+        self.assert_response_error(response, 401, errors.BASKET_SSL_REQUIRED)
 
-    @patch('news.views.get_user_data')
-    @patch('news.utils.update_user.delay')
-    def test_blank_language_okay(self, uu_mock, get_user_data):
+    def test_sync_invalid_api_key(self):
         """
-        Should work if language is left blank.
+        If sync is set to 'Y' and the request has an invalid API key,
+        return a 401.
         """
-        get_user_data.return_value = None  # new user
-        resp = self.client.post('/news/subscribe/', {
-            'email': 'dude@example.com',
-            'newsletters': 'mozilla-and-you',
-            'lang': ''
-        })
-        self.assertEqual(resp.status_code, 200, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(data['status'], 'ok')
-        sub = models.Subscriber.objects.get(email='dude@example.com')
-        uu_mock.assert_called_with(ANY, sub.email, sub.token,
-                                   True, views.SUBSCRIBE, False)
+        request = self.factory.post('/', {'newsletters': 'asdf', 'sync': 'Y'})
+        request.is_secure = lambda: True
+        self.has_valid_api_key.return_value = False
 
-    @patch('news.utils.get_user_data')
-    @patch('news.utils.update_user.delay')
-    def test_subscribe_success(self, uu_mock, get_user_data):
-        """Subscription should work."""
-        get_user_data.return_value = None  # new user
-        resp = self.client.post('/news/subscribe/', {
-            'email': 'dude@example.com',
-            'newsletters': 'mozilla-and-you',
-        })
-        self.assertEqual(resp.status_code, 200, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(data['status'], 'ok')
-        sub = models.Subscriber.objects.get(email='dude@example.com')
-        uu_mock.assert_called_with(ANY, sub.email, sub.token,
-                                   True, views.SUBSCRIBE, False)
+        response = views.subscribe(request)
+        self.assert_response_error(response, 401, errors.BASKET_AUTH_ERROR)
+        self.has_valid_api_key.assert_called_with(request)
 
-    @patch('news.views.get_user_data')
-    def test_sync_requires_ssl(self, get_user_data):
-        """sync=Y requires SSL"""
-        get_user_data.return_value = None  # new user
-        resp = self.client.post('/news/subscribe/', {
-            'email': 'dude@example.com',
-            'newsletters': 'mozilla-and-you',
-            'lang': 'en',
-            'sync': 'Y',
-        })
-        self.assertEqual(resp.status_code, 401, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(errors.BASKET_SSL_REQUIRED, data['code'])
+    def test_email_validation_error(self):
+        """
+        If validate_email raises an EmailValidationError, return an
+        invalid email response.
+        """
+        request_data = {'newsletters': 'asdf'}
+        request = self.factory.post('/', request_data)
+        error = utils.EmailValidationError('blah')
+        self.validate_email.side_effect = error
 
-    @patch('news.views.get_user_data')
-    def test_sync_case_insensitive(self, get_user_data):
-        """sync=y also works (case-insensitive)"""
-        get_user_data.return_value = None  # new user
-        resp = self.client.post('/news/subscribe/', {
-            'email': 'dude@example.com',
-            'newsletters': 'mozilla-and-you',
-            'lang': 'en',
-            'sync': 'y',
-        })
-        self.assertEqual(resp.status_code, 401, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(errors.BASKET_SSL_REQUIRED, data['code'])
+        with patch('news.views.invalid_email_response') as invalid_email_response:
+            response = views.subscribe(request)
+            self.assertEqual(response, invalid_email_response.return_value)
+            self.validate_email.assert_called_with(request_data)
+            invalid_email_response.assert_called_with(error)
 
-    @patch('news.views.get_user_data')
-    def test_sync_requires_api_key(self, get_user_data):
-        """sync=Y requires API key"""
-        get_user_data.return_value = None  # new user
-        # Use SSL but no API key
-        resp = self.ssl_post('/news/subscribe/', {
-            'email': 'dude@example.com',
-            'newsletters': 'mozilla-and-you',
-            'lang': 'en',
-            'sync': 'Y',
-        })
-        self.assertEqual(resp.status_code, 401, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(errors.BASKET_AUTH_ERROR, data['code'])
+    def test_success(self):
+        """Test basic success case with no optin or sync."""
+        request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N'}
+        request = self.factory.post('/', request_data)
 
-    @patch('news.utils.get_user_data')
-    @patch('news.utils.update_user.delay')
-    def test_sync_with_ssl_and_api_key(self, uu_mock, get_user_data):
-        """sync=Y with SSL and api key should work."""
-        get_user_data.return_value = None  # new user
-        auth = APIUser.objects.create(name="test")
-        resp = self.ssl_post('/news/subscribe/', {
-            'email': 'dude@example.com',
-            'newsletters': 'mozilla-and-you',
-            'sync': 'Y',
-            'api-key': auth.api_key,
-        })
-        self.assertEqual(resp.status_code, 200, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(data['status'], 'ok')
-        sub = models.Subscriber.objects.get(email='dude@example.com')
-        uu_mock.assert_called_with(ANY, sub.email, sub.token,
-                                   True, views.SUBSCRIBE, False)
+        response = views.subscribe(request)
 
-    @patch('news.utils.get_user_data')
-    @patch('news.utils.update_user.delay')
-    def test_optin_requires_ssl(self, uu_mock, get_user_data):
-        """optin=Y requires SSL, optin = False otherwise"""
-        get_user_data.return_value = None  # new user
-        auth = APIUser.objects.create(name="test")
-        resp = self.client.post('/news/subscribe/', {
-            'email': 'dude@example.com',
-            'newsletters': 'mozilla-and-you',
-            'lang': 'en',
-            'optin': 'Y',
-            'api-key': auth.api_key,
-        })
-        sub = models.Subscriber.objects.get(email='dude@example.com')
-        self.assertEqual(resp.status_code, 200, resp.content)
-        uu_mock.assert_called_with(ANY, sub.email, sub.token,
-                                   True, views.SUBSCRIBE, False)
+        self.assertEqual(response, self.update_user_task.return_value)
+        self.validate_email.assert_called_with(request_data)
+        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
+                                                 optin=False, sync=False)
 
-    @patch('news.utils.get_user_data')
-    @patch('news.utils.update_user.delay')
-    def test_optin_requires_api_key(self, uu_mock, get_user_data):
-        """optin=Y requires API key, optin = False otherwise"""
-        get_user_data.return_value = None  # new user
-        resp = self.ssl_post('/news/subscribe/', {
-            'email': 'dude@example.com',
-            'newsletters': 'mozilla-and-you',
-            'lang': 'en',
-            'optin': 'Y',
-        })
-        sub = models.Subscriber.objects.get(email='dude@example.com')
-        self.assertEqual(resp.status_code, 200, resp.content)
-        uu_mock.assert_called_with(ANY, sub.email, sub.token,
-                                   True, views.SUBSCRIBE, False)
+    def test_success_sync_optin(self):
+        """Test success case with optin and sync."""
+        request_data = {'newsletters': 'news,lets', 'optin': 'Y', 'sync': 'Y'}
+        request = self.factory.post('/', request_data)
+        request.is_secure = lambda: True
+        self.has_valid_api_key.return_value = True
 
-    @patch('news.utils.get_user_data')
-    @patch('news.utils.update_user.delay')
-    def test_optin_with_api_key_and_ssl(self, uu_mock, get_user_data):
-        """optin=Y requires API key"""
-        get_user_data.return_value = None  # new user
-        auth = APIUser.objects.create(name="test")
-        resp = self.ssl_post('/news/subscribe/', {
-            'email': 'dude@example.com',
-            'newsletters': 'mozilla-and-you',
-            'lang': 'en',
-            'optin': 'Y',
-            'api-key': auth.api_key,
-        })
-        self.assertEqual(resp.status_code, 200, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(data['status'], 'ok')
-        sub = models.Subscriber.objects.get(email='dude@example.com')
-        uu_mock.assert_called_with(ANY, sub.email, sub.token,
-                                   True, views.SUBSCRIBE, True)
+        response = views.subscribe(request)
 
-    @patch('news.utils.get_user_data')
-    @patch('news.utils.update_user.delay')
-    def test_optin_case_insensitive(self, uu_mock, get_user_data):
-        """optin=y also works (case-insensitive)"""
-        get_user_data.return_value = None  # new user
-        auth = APIUser.objects.create(name="test")
-        resp = self.ssl_post('/news/subscribe/', {
-            'email': 'dude@example.com',
-            'newsletters': 'mozilla-and-you',
-            'lang': 'en',
-            'optin': 'y',
-            'api-key': auth.api_key,
-        })
-        self.assertEqual(resp.status_code, 200, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(data['status'], 'ok')
-        sub = models.Subscriber.objects.get(email='dude@example.com')
-        uu_mock.assert_called_with(ANY, sub.email, sub.token,
-                                   True, views.SUBSCRIBE, True)
+        self.has_valid_api_key.assert_called_with(request)
+        self.assertEqual(response, self.update_user_task.return_value)
+        self.validate_email.assert_called_with(request_data)
+        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
+                                                     optin=True, sync=True)
+
+    def test_success_sync_optin_lowercase(self):
+        """Test success case with optin and sync, using lowercase y."""
+        request_data = {'newsletters': 'news,lets', 'optin': 'y', 'sync': 'y'}
+        request = self.factory.post('/', request_data)
+        request.is_secure = lambda: True
+
+        with patch('news.views.has_valid_api_key') as has_valid_api_key:
+            has_valid_api_key.return_value = True
+            response = views.subscribe(request)
+            has_valid_api_key.assert_called_with(request)
+
+            self.assertEqual(response, self.update_user_task.return_value)
+            self.validate_email.assert_called_with(request_data)
+            self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
+                                                     optin=True, sync=True)
 
 
 class TestNewslettersAPI(TestCase):
@@ -735,55 +554,6 @@ class TestNewslettersAPI(TestCase):
         nl1.delete()
         vendor_ids = newsletter_fields()
         self.assertEqual([], vendor_ids)
-
-
-class TestLanguageCodeIsValid(TestCase):
-    def test_empty_string(self):
-        """Empty string is accepted as a language code"""
-        self.assertTrue(language_code_is_valid(''))
-
-    def test_none(self):
-        """None is a TypeError"""
-        with self.assertRaises(TypeError):
-            language_code_is_valid(None)
-
-    def test_zero(self):
-        """0 is a TypeError"""
-        with self.assertRaises(TypeError):
-            language_code_is_valid(0)
-
-    def test_exact_2_letter(self):
-        """2-letter code that's in the list is valid"""
-        self.assertTrue(language_code_is_valid('az'))
-
-    def test_exact_3_letter(self):
-        """3-letter code is valid.
-
-        There are a few of these."""
-        self.assertTrue(language_code_is_valid('azq'))
-
-    def test_exact_5_letter(self):
-        """5-letter code that's in the list is valid"""
-        self.assertTrue(language_code_is_valid('az-BY'))
-
-    def test_case_insensitive(self):
-        """Matching is not case sensitive"""
-        self.assertTrue(language_code_is_valid('az-BY'))
-        self.assertTrue(language_code_is_valid('aZ'))
-        self.assertTrue(language_code_is_valid('QW'))
-
-    def test_wrong_length(self):
-        """A code that's not a valid length is not valid."""
-        self.assertFalse(language_code_is_valid('az-'))
-        self.assertFalse(language_code_is_valid('a'))
-        self.assertFalse(language_code_is_valid('azqr'))
-        self.assertFalse(language_code_is_valid('az-BY2'))
-
-    def test_wrong_format(self):
-        """A code that's not a valid format is not valid."""
-        self.assertFalse(language_code_is_valid('a2'))
-        self.assertFalse(language_code_is_valid('asdfj'))
-        self.assertFalse(language_code_is_valid('az_BY'))
 
 
 class RecoveryViewTest(TestCase):

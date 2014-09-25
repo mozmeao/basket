@@ -74,16 +74,14 @@ class TestConfirmationLogic(TestCase):
         data['newsletters'] = ','.join(newsletters)
 
         # Mock data from ET
-        with patch('news.views.get_user_data') as get_user_data:
+        with patch('news.tasks.get_user_data') as get_user_data:
             get_user_data.return_value = user
 
             # Don't actually call ET
             with patch('news.tasks.apply_updates'):
                 with patch('news.tasks.send_welcomes'):
                     with patch('news.tasks.send_confirm_notice'):
-                        created = not user_in_basket
-                        rc = update_user(data, email, token, created, type,
-                                         is_optin)
+                        rc = update_user(data, email, token, type, is_optin)
         self.assertEqual(expected_result, rc)
 
     #
