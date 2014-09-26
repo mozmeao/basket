@@ -15,7 +15,7 @@ from celery.task import Task, task
 
 from .backends.common import NewsletterException, NewsletterNoResultsException
 from .backends.exacttarget import (ExactTarget, ExactTargetDataExt)
-from .models import FailedTask, Newsletter, Subscriber
+from .models import FailedTask, Newsletter, Subscriber, Interest
 from .newsletters import (is_supported_newsletter_language, newsletter_field,
                           newsletter_slugs)
 
@@ -309,6 +309,76 @@ def update_fxa_info(email, lang, fxa_id, source_url=None):
     apply_updates(settings.EXACTTARGET_DATA, record)
     welcome = mogrify_message_id(FXACCOUNT_WELCOME, lang, welcome_format)
     send_message(welcome, email, token, welcome_format)
+
+
+@et_task
+def update_get_involved(interest_id, lang, name, email, country, subscribe,
+                        message, source_url):
+    """Record a users interest and details for contribution."""
+    try:
+        interest = Interest.objects.get(interest_id=interest_id)
+    except Interest.DoesNotExist:
+        # invalid request; no need to raise exception and retry
+        return
+
+    # Can't import this earlier, circular import
+    from .views import get_user_data
+
+    # Get the user's current settings from ET, if any
+    user = get_user_data(email=email)
+
+    record = {
+        'EMAIL_ADDRESS_': email,
+        'MODIFIED_DATE_': gmttime(),
+        'LANGUAGE_ISO2': lang,
+        'COUNTRY_': country,
+    }
+    if user:
+        welcome_format = user['format']
+        token = user['token']
+        Subscriber.objects.get_and_sync(email, token)
+    else:
+        sub, created = Subscriber.objects.get_or_create(email=email)
+        welcome_format = 'H'
+        token = sub.token
+        # only want source url for first contact
+        if source_url:
+            record['SOURCE_URL'] = source_url
+
+    record['TOKEN'] = token
+    if subscribe:
+        # TODO: 'get-involved' not added to ET yet, so can't use it yet.
+        # will go in this list when ready.
+        newsletters = ['about-mozilla']
+        if user:
+            cur_newsletters = user.get('newsletters', None)
+            if cur_newsletters is not None:
+                cur_newsletters = set(cur_newsletters)
+        else:
+            cur_newsletters = None
+
+        # Set the newsletter flags in the record by comparing to their
+        # current subscriptions.
+        to_subscribe, _ = parse_newsletters(record, SUBSCRIBE, newsletters, cur_newsletters)
+    else:
+        to_subscribe = None
+
+    apply_updates(settings.EXACTTARGET_DATA, record)
+    apply_updates(settings.EXACTTARGET_INTERESTS, {
+        'TOKEN': token,
+        'INTEREST': interest_id,
+    })
+    welcome_id = mogrify_message_id(interest.welcome_id, lang, welcome_format)
+    send_message(welcome_id, email, token, welcome_format)
+
+    if to_subscribe:
+        if not user:
+            user = {
+                'email': email,
+                'token': token,
+                'lang': lang,
+            }
+        send_welcomes(user, to_subscribe, welcome_format)
 
 
 @et_task

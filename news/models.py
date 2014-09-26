@@ -222,3 +222,29 @@ class FailedTask(models.Model):
         new_task.apply_async()
         # Forget the old task
         self.delete()
+
+
+class Interest(models.Model):
+    title = models.CharField(
+        max_length=128,
+        help_text='Public name of interest in English',
+    )
+    interest_id = models.SlugField(
+        unique=True, db_index=True,
+        help_text='The ID for the interest that will be used by clients',
+    )
+    # Note: use .welcome_id property to get this field or the default
+    _welcome_id = models.CharField(
+        max_length=64,
+        help_text='The ID of the welcome message sent for this interest. '
+                  'This is the HTML version of the message; append _T to this '
+                  'ID to get the ID of the text-only version.  If blank, '
+                  'welcome message ID will be assumed to be the same as '
+                  'the interest_id',
+        blank=True,
+        verbose_name='Welcome ID',
+    )
+
+    @property
+    def welcome_id(self):
+        return self._welcome_id or self.interest_id

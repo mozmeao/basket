@@ -1,10 +1,11 @@
 import json
+from django.test.utils import override_settings
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 
-from mock import patch, ANY
+from mock import ANY, call, patch
 
 from basket import errors
 
@@ -124,6 +125,118 @@ class UpdateFxAInfoTest(TestCase):
         })
         self.send_message.assert_called_with('de_{0}_T'.format(tasks.FXACCOUNT_WELCOME),
                                              email, sub.token, 'T')
+
+
+class UpdateGetInvolvedTests(TestCase):
+    def setUp(self):
+        patcher = patch.object(tasks, 'send_message')
+        self.addCleanup(patcher.stop)
+        self.send_message = patcher.start()
+
+        patcher = patch.object(tasks, 'send_welcomes')
+        self.addCleanup(patcher.stop)
+        self.send_welcomes = patcher.start()
+
+        patcher = patch.object(tasks, 'apply_updates')
+        self.addCleanup(patcher.stop)
+        self.apply_updates = patcher.start()
+
+        patcher = patch('news.views.get_user_data')
+        self.addCleanup(patcher.stop)
+        self.get_user_data = patcher.start()
+
+        self.interest = models.Interest.objects.create(title='Bowling',
+                                                       interest_id='bowling',
+                                                       _welcome_id='welcome_bowling')
+        Newsletter.objects.create(slug='about-mozilla', vendor_id='ABOUT_MOZILLA')
+        Newsletter.objects.create(slug='get-involved', vendor_id='GET_INVOLVED')
+
+    @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
+                       EXACTTARGET_INTERESTS='DUDE_IS_INTERESTED')
+    def test_new_user_interested(self):
+        """Successful submission of the form for new user."""
+        email = 'walter@example.com'
+        self.get_user_data.return_value = None
+        tasks.update_get_involved('bowling', 'en', 'Walter', email,
+                                  'US', 'Y', 'It really tied the room together.', None)
+        token = models.Subscriber.objects.get(email=email).token
+        self.apply_updates.assert_has_calls([
+            call(settings.EXACTTARGET_DATA, {
+                'EMAIL_ADDRESS_': email,
+                'MODIFIED_DATE_': ANY,
+                'LANGUAGE_ISO2': 'en',
+                'COUNTRY_': 'US',
+                'TOKEN': token,
+                'ABOUT_MOZILLA_FLG': 'Y',
+                'ABOUT_MOZILLA_DATE': ANY,
+            }),
+            call(settings.EXACTTARGET_INTERESTS, {
+                'TOKEN': token,
+                'INTEREST': 'bowling',
+            }),
+        ])
+        self.send_message.assert_called_with('en_welcome_bowling', email, token, 'H')
+        self.send_welcomes.assert_called_once_with({
+            'email': email,
+            'token': token,
+            'lang': 'en',
+        }, ['about-mozilla'], 'H')
+
+    @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
+                       EXACTTARGET_INTERESTS='DUDE_IS_INTERESTED')
+    def test_existing_user_interested(self):
+        """Successful submission of the form for existing newsletter user."""
+        email = 'walter@example.com'
+        sub = models.Subscriber.objects.create(email=email)
+        token = sub.token
+        self.get_user_data.return_value = {
+            'format': 'T',
+            'token': token,
+            'newsletters': ['about-mozilla', 'mozilla-and-you'],
+        }
+        tasks.update_get_involved('bowling', 'en', 'Walter', email,
+                                  'US', 'Y', 'It really tied the room together.', None)
+        self.apply_updates.assert_has_calls([
+            call(settings.EXACTTARGET_DATA, {
+                'EMAIL_ADDRESS_': 'walter@example.com',
+                'MODIFIED_DATE_': ANY,
+                'LANGUAGE_ISO2': 'en',
+                'COUNTRY_': 'US',
+                'TOKEN': token,
+            }),
+            call(settings.EXACTTARGET_INTERESTS, {
+                'TOKEN': token,
+                'INTEREST': 'bowling',
+            }),
+        ])
+        self.send_message.assert_called_with('en_welcome_bowling_T', email, token, 'T')
+        # not called because 'about-mozilla' already in newsletters
+        self.assertFalse(self.send_welcomes.called)
+
+    @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
+                       EXACTTARGET_INTERESTS='DUDE_IS_INTERESTED')
+    def test_new_user_interested_no_sub(self):
+        """Successful submission of the form for new user without newsletter subscription."""
+        email = 'walter@example.com'
+        self.get_user_data.return_value = None
+        tasks.update_get_involved('bowling', 'en', 'Walter', email,
+                                  'US', False, 'It really tied the room together.', None)
+        token = models.Subscriber.objects.get(email=email).token
+        self.apply_updates.assert_has_calls([
+            call(settings.EXACTTARGET_DATA, {
+                'EMAIL_ADDRESS_': email,
+                'MODIFIED_DATE_': ANY,
+                'LANGUAGE_ISO2': 'en',
+                'COUNTRY_': 'US',
+                'TOKEN': token,
+            }),
+            call(settings.EXACTTARGET_INTERESTS, {
+                'TOKEN': token,
+                'INTEREST': 'bowling',
+            }),
+        ])
+        self.send_message.assert_called_with('en_welcome_bowling', email, token, 'H')
+        self.assertFalse(self.send_welcomes.called)
 
 
 class DebugUserTest(TestCase):
