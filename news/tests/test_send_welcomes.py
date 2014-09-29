@@ -4,8 +4,7 @@ from mock import patch
 
 from news.backends.common import NewsletterException
 from news.models import Newsletter
-from news.tasks import BasketError, confirm_user, mogrify_message_id, \
-    send_message
+from news.tasks import confirm_user, mogrify_message_id, send_message
 
 
 class TestSendMessage(TestCase):
@@ -18,10 +17,14 @@ class TestSendMessage(TestCase):
         mock_et.trigger_send.side_effect = exc
 
         message_id = "MESSAGE_ID"
-        # Should only raise BaseketError once
-        with self.assertRaises(BasketError):
+        for i in range(10):
             send_message(message_id, 'email', 'token', 'format')
-        send_message(message_id, 'email', 'token', 'format')
+
+        mock_et.trigger_send.assert_called_once_with('MESSAGE_ID', {
+            'EMAIL_ADDRESS_': 'email',
+            'TOKEN': 'token',
+            'EMAIL_FORMAT_': 'format',
+        })
 
 
 class TestSendWelcomes(TestCase):
