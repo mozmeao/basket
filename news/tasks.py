@@ -306,9 +306,9 @@ def update_fxa_info(email, lang, fxa_id, source_url=None):
 
     record['TOKEN'] = token
 
+    apply_updates(settings.EXACTTARGET_DATA, record)
     welcome = mogrify_message_id(FXACCOUNT_WELCOME, lang, welcome_format)
     send_message(welcome, email, token, welcome_format)
-    apply_updates(settings.EXACTTARGET_DATA, record)
 
 
 @et_task
@@ -546,10 +546,9 @@ def send_message(message_id, email, token, format):
         # Better error messages for some cases. Also there's no point in
         # retrying these
         if 'Invalid Customer Key' in e.message:
-            # Raise the error so it gets logged once, but remember it's a
-            # bad message ID so we don't try again during this process.
+            # remember it's a bad message ID so we don't try again during this process.
             BAD_MESSAGE_ID_CACHE.set(message_id, True)
-            raise BasketError("ET says no such message ID: %r" % message_id)
+            return
         elif 'There are no valid subscribers.' in e.message:
             raise BasketError("ET says: there are no valid subscribers.")
         # we should retry
