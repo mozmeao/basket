@@ -1,0 +1,4 @@
+Email: {{ contributor_email }}
+Area of Interest: {{ interest }}
+Language: {{ lang }}
+Comment: {{ message }}

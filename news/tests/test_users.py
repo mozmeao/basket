@@ -147,6 +147,10 @@ class UpdateGetInvolvedTests(TestCase):
         self.addCleanup(patcher.stop)
         self.get_user_data = patcher.start()
 
+        patcher = patch.object(models.Interest, 'notify_stewards')
+        self.addCleanup(patcher.stop)
+        self.notify_stewards = patcher.start()
+
         self.interest = models.Interest.objects.create(title='Bowling',
                                                        interest_id='bowling',
                                                        _welcome_id='welcome_bowling')
@@ -183,6 +187,8 @@ class UpdateGetInvolvedTests(TestCase):
             'token': token,
             'lang': 'en',
         }, ['about-mozilla'], 'H')
+        self.interest.notify_stewards.assert_called_with(email, 'en',
+                                                         'It really tied the room together.')
 
     @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
                        EXACTTARGET_INTERESTS='DUDE_IS_INTERESTED')
@@ -214,6 +220,8 @@ class UpdateGetInvolvedTests(TestCase):
         self.send_message.assert_called_with('en_welcome_bowling_T', email, token, 'T')
         # not called because 'about-mozilla' already in newsletters
         self.assertFalse(self.send_welcomes.called)
+        self.interest.notify_stewards.assert_called_with(email, 'en',
+                                                         'It really tied the room together.')
 
     @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
                        EXACTTARGET_INTERESTS='DUDE_IS_INTERESTED')
@@ -239,6 +247,8 @@ class UpdateGetInvolvedTests(TestCase):
         ])
         self.send_message.assert_called_with('en_welcome_bowling', email, token, 'H')
         self.assertFalse(self.send_welcomes.called)
+        self.interest.notify_stewards.assert_called_with(email, 'en',
+                                                         'It really tied the room together.')
 
 
 class DebugUserTest(TestCase):
