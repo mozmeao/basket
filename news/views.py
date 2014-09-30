@@ -13,6 +13,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 # Get error codes from basket-client so users see the same definitions
 from basket import errors
+from django_statsd.clients import statsd
 
 from .backends.common import NewsletterNoResultsException
 from .backends.exacttarget import (ExactTargetDataExt, NewsletterException,
@@ -512,6 +513,7 @@ def subscribe(request):
             # Can't use QueryDict since the string is not url-encoded.
             # It will convert '+' to ' ' for example.
             data = dict(pair.split('=') for pair in raw_request.split('&'))
+            statsd.incr('subscribe-fxos-workaround')
         else:
             return HttpResponseJSON({
                 'status': 'error',
