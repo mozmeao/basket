@@ -1,3 +1,5 @@
+from urllib2 import URLError
+
 from django.test import TestCase
 from django.test.utils import override_settings
 
@@ -6,8 +8,16 @@ from mock import Mock, patch
 
 from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
 from news.models import FailedTask, Subscriber
-from news.tasks import (add_sms_user, RECOVERY_MESSAGE_ID, mogrify_message_id,
-                        send_recovery_message_task, SUBSCRIBE, update_phonebook, update_user)
+from news.tasks import (
+    add_sms_user,
+    et_task,
+    mogrify_message_id,
+    RECOVERY_MESSAGE_ID,
+    send_recovery_message_task,
+    SUBSCRIBE,
+    update_phonebook,
+    update_user,
+)
 
 
 class FailedTaskTest(TestCase):
@@ -191,3 +201,22 @@ class AddSMSUserTests(TestCase):
             self.assertEqual(call_args[0][0], 'Mobile_Subscribers')
             self.assertEqual(set(['Phone', 'SubscriberKey']), set(call_args[0][1]))
             self.assertEqual(['8675309', '8675309'], call_args[0][2])
+
+
+class ETTaskTests(TestCase):
+    def test_retry_increase(self):
+        """
+        The delay for retrying a task should increase geometrically by a
+        power of 2. I really hope I said that correctly.
+        """
+        error = URLError(reason=Exception('foo bar!'))
+
+        @et_task
+        def myfunc():
+            raise error
+
+        myfunc.request.retries = 4
+        myfunc.retry = Mock()
+        myfunc()
+
+        myfunc.retry.assert_called_with(exc=error, countdown=16 * 60)

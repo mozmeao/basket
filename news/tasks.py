@@ -98,7 +98,7 @@ class BasketError(Exception):
 class ETTask(Task):
     abstract = True
     default_retry_delay = 60 * 5  # 5 minutes
-    max_retries = 6  # ~ 30 min
+    max_retries = 8  # ~ 30 min
 
     def on_success(self, retval, task_id, args, kwargs):
         """Success handler.
@@ -176,7 +176,7 @@ def et_task(func):
         except (URLError, NewsletterException) as e:
             # URLError or NewsletterException could be a connection issue,
             # so try again later.
-            wrapped.retry(exc=e)
+            wrapped.retry(exc=e, countdown=(2 ** wrapped.request.retries) * 60)
 
     return wrapped
 
