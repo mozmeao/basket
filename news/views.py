@@ -19,7 +19,7 @@ from .backends.common import NewsletterNoResultsException
 from .backends.exacttarget import (ExactTargetDataExt, NewsletterException,
                                    UnauthorizedException)
 from .email import get_valid_email
-from .models import APIUser, Newsletter, Subscriber
+from .models import APIUser, Newsletter, Subscriber, Interest
 from .tasks import (
     MSG_EMAIL_OR_TOKEN_REQUIRED, MSG_TOKEN_REQUIRED, MSG_USER_NOT_FOUND,
     SET, SUBSCRIBE, UNSUBSCRIBE,
@@ -28,6 +28,7 @@ from .tasks import (
     send_recovery_message_task,
     update_custom_unsub,
     update_fxa_info,
+    update_get_involved,
     update_phonebook,
     update_student_ambassadors,
     update_user,
@@ -496,6 +497,74 @@ def fxa_register(request):
     if 'source_url' in data:
         args.append(data['source_url'])
     update_fxa_info.delay(*args)
+    return HttpResponseJSON({'status': 'ok'})
+
+
+@require_POST
+@csrf_exempt
+def get_involved(request):
+    data = request.POST.dict()
+    if 'email' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'email is required',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+    if 'interest_id' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'interest_id is required',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+    try:
+        Interest.objects.get(interest_id=data['interest_id'])
+    except Interest.DoesNotExist:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'invalid interest_id',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+
+    if 'lang' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'lang is required',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+    if not language_code_is_valid(data['lang']):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'invalid language',
+            'code': errors.BASKET_INVALID_LANGUAGE,
+        }, 400)
+    if 'name' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'name is required',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+    if 'country' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'country is required',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+
+    try:
+        validate_email(data)
+    except EmailValidationError as e:
+        return invalid_email_response(e)
+
+    update_get_involved.delay(
+        data['interest_id'],
+        data['lang'],
+        data['name'],
+        data['email'],
+        data['country'],
+        data.get('subscribe', False),
+        data.get('message', None),
+        data.get('source_url', None),
+    )
     return HttpResponseJSON({'status': 'ok'})
 
 

@@ -1,6 +1,16 @@
 from django.contrib import admin, messages
 
-from .models import APIUser, FailedTask, Newsletter, Subscriber
+from .models import APIUser, FailedTask, Interest, Newsletter, Subscriber
+
+
+class InterestAdmin(admin.ModelAdmin):
+    fields = ('title', 'interest_id', '_welcome_id')
+    list_display = ('title', 'interest_id', '_welcome_id')
+    list_editable = ('title', 'interest_id', '_welcome_id')
+    prepopulated_fields = {'interest_id': ('title',)}
+
+
+admin.site.register(Interest, InterestAdmin)
 
 
 class APIUserAdmin(admin.ModelAdmin):

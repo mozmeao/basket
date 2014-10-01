@@ -16,6 +16,113 @@ from news.views import language_code_is_valid, get_accept_languages, get_best_la
 none_mock = Mock(return_value=None)
 
 
+class GetInvolvedTests(TestCase):
+    def setUp(self):
+        self.interest = models.Interest.objects.create(title='Bowling',
+                                                       interest_id='bowling')
+        self.rf = RequestFactory()
+        self.base_data = {
+            'email': 'dude@example.com',
+            'lang': 'en',
+            'country': 'us',
+            'name': 'The Dude',
+            'interest_id': 'bowling',
+        }
+
+        patcher = patch('news.views.validate_email')
+        self.addCleanup(patcher.stop)
+        self.validate_email = patcher.start()
+
+        patcher = patch('news.views.update_get_involved')
+        self.addCleanup(patcher.stop)
+        self.update_get_involved = patcher.start()
+
+    def _request(self, data):
+        req = self.rf.post('/', data)
+        resp = views.get_involved(req)
+        return json.loads(resp.content)
+
+    def test_successful_submission(self):
+        resp = self._request(self.base_data)
+        self.assertEqual(resp['status'], 'ok', resp)
+        self.update_get_involved.delay.assert_called_with('bowling', 'en', 'The Dude',
+                                                          'dude@example.com', 'us',
+                                                          False, None, None)
+
+    def test_requires_valid_interest(self):
+        """Should only submit successfully with a valid interest_id."""
+        self.base_data['interest_id'] = 'takin-it-easy'
+        resp = self._request(self.base_data)
+        self.assertEqual(resp['status'], 'error', resp)
+        self.assertEqual(resp['desc'], 'invalid interest_id', resp)
+        self.assertFalse(self.update_get_involved.called)
+
+        del self.base_data['interest_id']
+        resp = self._request(self.base_data)
+        self.assertEqual(resp['status'], 'error', resp)
+        self.assertEqual(resp['desc'], 'interest_id is required', resp)
+        self.assertFalse(self.update_get_involved.called)
+
+    def test_requires_valid_email(self):
+        """Should only submit successfully with a valid email."""
+        self.validate_email.side_effect = views.EmailValidationError('invalid email')
+        resp = self._request(self.base_data)
+        self.assertEqual(resp['status'], 'error', resp)
+        self.assertEqual(resp['code'], errors.BASKET_INVALID_EMAIL, resp)
+        self.assertFalse(self.update_get_involved.called)
+
+        del self.base_data['email']
+        resp = self._request(self.base_data)
+        self.assertEqual(resp['status'], 'error', resp)
+        self.assertEqual(resp['desc'], 'email is required', resp)
+        self.assertFalse(self.update_get_involved.called)
+
+    def test_requires_valid_lang(self):
+        """Should only submit successfully with a valid lang."""
+        self.base_data['lang'] = 'this is not a lang'
+        resp = self._request(self.base_data)
+        self.assertEqual(resp['status'], 'error', resp)
+        self.assertEqual(resp['desc'], 'invalid language', resp)
+        self.assertFalse(self.update_get_involved.called)
+
+        del self.base_data['lang']
+        resp = self._request(self.base_data)
+        self.assertEqual(resp['status'], 'error', resp)
+        self.assertEqual(resp['desc'], 'lang is required', resp)
+        self.assertFalse(self.update_get_involved.called)
+
+    def test_requires_name(self):
+        """Should only submit successfully with a name provided."""
+        del self.base_data['name']
+        resp = self._request(self.base_data)
+        self.assertEqual(resp['status'], 'error', resp)
+        self.assertEqual(resp['desc'], 'name is required', resp)
+        self.assertFalse(self.update_get_involved.called)
+
+    def test_requires_country(self):
+        """Should only submit successfully with a country provided."""
+        del self.base_data['country']
+        resp = self._request(self.base_data)
+        self.assertEqual(resp['status'], 'error', resp)
+        self.assertEqual(resp['desc'], 'country is required', resp)
+        self.assertFalse(self.update_get_involved.called)
+
+    def test_optional_parameters(self):
+        """Should pass through optional parameters."""
+        self.base_data.update({
+            'subscribe': 'ok',
+            'message': 'I like bowling',
+            'source_url': 'https://arewebowlingyet.com/',
+        })
+
+        resp = self._request(self.base_data)
+        self.assertEqual(resp['status'], 'ok', resp)
+        self.update_get_involved.delay.assert_called_with('bowling', 'en', 'The Dude',
+                                                          'dude@example.com', 'us',
+                                                          'ok', 'I like bowling',
+                                                          'https://arewebowlingyet.com/')
+
+
 @patch('news.views.update_fxa_info')
 class FxAccountsTest(TestCase):
     def ssl_post(self, url, params=None, **extra):
