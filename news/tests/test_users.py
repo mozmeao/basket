@@ -154,6 +154,7 @@ class UpdateGetInvolvedTests(TestCase):
         self.interest = models.Interest.objects.create(title='Bowling',
                                                        interest_id='bowling',
                                                        _welcome_id='welcome_bowling')
+        Newsletter.objects.create(slug='mozilla-and-you', vendor_id='MOZILLA_AND_YOU')
         Newsletter.objects.create(slug='about-mozilla', vendor_id='ABOUT_MOZILLA')
         Newsletter.objects.create(slug='get-involved', vendor_id='GET_INVOLVED')
 
@@ -175,6 +176,8 @@ class UpdateGetInvolvedTests(TestCase):
                 'TOKEN': token,
                 'ABOUT_MOZILLA_FLG': 'Y',
                 'ABOUT_MOZILLA_DATE': ANY,
+                'GET_INVOLVED_FLG': 'Y',
+                'GET_INVOLVED_DATE': ANY,
             }),
             call(settings.EXACTTARGET_INTERESTS, {
                 'TOKEN': token,
@@ -200,7 +203,7 @@ class UpdateGetInvolvedTests(TestCase):
         self.get_user_data.return_value = {
             'format': 'T',
             'token': token,
-            'newsletters': ['about-mozilla', 'mozilla-and-you'],
+            'newsletters': ['about-mozilla', 'mozilla-and-you', 'get-involved'],
         }
         tasks.update_get_involved('bowling', 'en', 'Walter', email,
                                   'US', 'Y', 'It really tied the room together.', None)
@@ -211,6 +214,7 @@ class UpdateGetInvolvedTests(TestCase):
                 'LANGUAGE_ISO2': 'en',
                 'COUNTRY_': 'US',
                 'TOKEN': token,
+                'GET_INVOLVED_FLG': 'Y',
             }),
             call(settings.EXACTTARGET_INTERESTS, {
                 'TOKEN': token,
@@ -220,6 +224,46 @@ class UpdateGetInvolvedTests(TestCase):
         self.send_message.assert_called_with('en_welcome_bowling_T', email, token, 'T')
         # not called because 'about-mozilla' already in newsletters
         self.assertFalse(self.send_welcomes.called)
+        self.interest.notify_stewards.assert_called_with(email, 'en',
+                                                         'It really tied the room together.')
+
+    @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
+                       EXACTTARGET_INTERESTS='DUDE_IS_INTERESTED')
+    def test_existing_user_interested_no_newsletter(self):
+        """
+        Successful submission of the form for existing newsletter user not
+        subscribed to get-involved.
+        """
+        email = 'walter@example.com'
+        sub = models.Subscriber.objects.create(email=email)
+        token = sub.token
+        self.get_user_data.return_value = {
+            'format': 'T',
+            'token': token,
+            'newsletters': ['mozilla-and-you'],
+        }
+        tasks.update_get_involved('bowling', 'en', 'Walter', email,
+                                  'US', 'Y', 'It really tied the room together.', None)
+        self.apply_updates.assert_has_calls([
+            call(settings.EXACTTARGET_DATA, {
+                'EMAIL_ADDRESS_': 'walter@example.com',
+                'MODIFIED_DATE_': ANY,
+                'LANGUAGE_ISO2': 'en',
+                'COUNTRY_': 'US',
+                'TOKEN': token,
+                'ABOUT_MOZILLA_FLG': 'Y',
+                'ABOUT_MOZILLA_DATE': ANY,
+                'GET_INVOLVED_FLG': 'Y',
+                'GET_INVOLVED_DATE': ANY,
+            }),
+            call(settings.EXACTTARGET_INTERESTS, {
+                'TOKEN': token,
+                'INTEREST': 'bowling',
+            }),
+        ])
+        self.send_message.assert_called_with('en_welcome_bowling_T', email, token, 'T')
+        self.send_welcomes.assert_called_once_with(self.get_user_data.return_value,
+                                                   ['about-mozilla'], 'T')
         self.interest.notify_stewards.assert_called_with(email, 'en',
                                                          'It really tied the room together.')
 
@@ -239,6 +283,8 @@ class UpdateGetInvolvedTests(TestCase):
                 'LANGUAGE_ISO2': 'en',
                 'COUNTRY_': 'US',
                 'TOKEN': token,
+                'GET_INVOLVED_FLG': 'Y',
+                'GET_INVOLVED_DATE': ANY,
             }),
             call(settings.EXACTTARGET_INTERESTS, {
                 'TOKEN': token,
