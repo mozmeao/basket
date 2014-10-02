@@ -324,15 +324,19 @@ def update_get_involved(interest_id, lang, name, email, country, subscribe,
         'MODIFIED_DATE_': gmttime(),
         'LANGUAGE_ISO2': lang,
         'COUNTRY_': country,
+        'GET_INVOLVED_FLG': 'Y',
     }
     if user:
         welcome_format = user['format']
         token = user['token']
         Subscriber.objects.get_and_sync(email, token)
+        if 'get-involved' not in user.get('newsletters', []):
+            record['GET_INVOLVED_DATE'] = gmttime()
     else:
         sub, created = Subscriber.objects.get_or_create(email=email)
         welcome_format = 'H'
         token = sub.token
+        record['GET_INVOLVED_DATE'] = gmttime()
         # only want source url for first contact
         if source_url:
             record['SOURCE_URL'] = source_url
