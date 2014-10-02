@@ -1,11 +1,11 @@
+from django.test import TestCase
+
 import celery
 from mock import Mock, patch
 
-from django.test import TestCase
-
 from news.models import FailedTask, Subscriber
 from news.tasks import (RECOVERY_MESSAGE_ID, mogrify_message_id,
-    send_recovery_message_task, update_phonebook)
+    send_recovery_message_task, SUBSCRIBE, update_phonebook, update_user)
 
 
 class FailedTaskTest(TestCase):
@@ -55,7 +55,7 @@ class RetryTaskTest(TestCase):
 
 
 @patch('news.tasks.send_message', autospec=True)
-@patch('news.views.look_for_user', autospec=True)
+@patch('news.utils.look_for_user', autospec=True)
 class RecoveryMessageTask(TestCase):
     def setUp(self):
         self.email = "dude@example.com"
@@ -116,3 +116,31 @@ class RecoveryMessageTask(TestCase):
         message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
         mock_send.assert_called_with(message_id, self.email,
                                      subscriber.token, format)
+
+
+class UpdateUserTests(TestCase):
+    def _patch_tasks(self, attr, **kwargs):
+        patcher = patch('news.tasks.' + attr, **kwargs)
+        setattr(self, attr, patcher.start())
+        self.addCleanup(patcher.stop)
+
+    def setUp(self):
+        self._patch_tasks('lookup_subscriber')
+        self._patch_tasks('get_user_data')
+        self._patch_tasks('parse_newsletters', return_value=([], []))
+        self._patch_tasks('apply_updates')
+        self._patch_tasks('confirm_user')
+        self._patch_tasks('send_welcomes')
+        self._patch_tasks('send_confirm_notice')
+
+    def self_test_success_no_token_create_user(self):
+        """
+        If no token is provided, use lookup_subscriber to find (and
+        possibly create) a user with a matching email.
+        """
+        subscriber = Mock(email='a@example.com', token='mytoken')
+        self.lookup_subscriber.return_value = subscriber, None, False
+        self.get_user_data.return_value = None
+
+        update_user({}, 'a@example.com', None, SUBSCRIBE, True)
+        self.get_user_data.assert_called_with(token='mytoken')

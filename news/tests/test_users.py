@@ -3,16 +3,18 @@ from django.test.utils import override_settings
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from django.http import HttpResponse
 from django.test import TestCase
+from django.test.client import RequestFactory
 
 from mock import ANY, call, patch
 
 from basket import errors
 
-from news import models, tasks
+from news import models, tasks, views
 from news.backends.common import NewsletterException
 from news.models import Newsletter, APIUser
-from news.views import look_for_user, get_user_data
+from news.utils import look_for_user, get_user_data
 
 
 class UpdateFxAInfoTest(TestCase):
@@ -141,7 +143,7 @@ class UpdateGetInvolvedTests(TestCase):
         self.addCleanup(patcher.stop)
         self.apply_updates = patcher.start()
 
-        patcher = patch('news.views.get_user_data')
+        patcher = patch('news.tasks.get_user_data')
         self.addCleanup(patcher.stop)
         self.get_user_data = patcher.start()
 
@@ -289,7 +291,7 @@ class TestLookForUser(TestCase):
         Newsletter.objects.create(slug='n1', vendor_id='NEWSLETTER1')
         Newsletter.objects.create(slug='n2', vendor_id='NEWSLETTER2')
         fields = ['NEWSLETTER1_FLG', 'NEWSLETTER2_FLG']
-        with patch('news.views.ExactTargetDataExt') as et_ext:
+        with patch('news.utils.ExactTargetDataExt') as et_ext:
             data_ext = et_ext()
             data_ext.get_record.return_value = {
                 'EMAIL_ADDRESS_': 'dude@example.com',
@@ -323,7 +325,7 @@ class TestLookForUser(TestCase):
         Newsletter.objects.create(slug='n1', vendor_id='NEWSLETTER1')
         Newsletter.objects.create(slug='n2', vendor_id='NEWSLETTER2')
         fields = ['NEWSLETTER1_FLG', 'NEWSLETTER2_FLG']
-        with patch('news.views.ExactTargetDataExt') as et_ext:
+        with patch('news.utils.ExactTargetDataExt') as et_ext:
             data_ext = et_ext()
             data_ext.get_record.return_value = {
                 'EMAIL_ADDRESS_': 'dude@example.com',
@@ -386,7 +388,7 @@ class TestGetUserData(TestCase):
                 raise Exception("INVALID INPUT TO mock_look_for_user - "
                                 "database %r unknown" % database)
 
-        with patch('news.views.look_for_user') as look_for_user:
+        with patch('news.utils.look_for_user') as look_for_user:
             look_for_user.side_effect = mock_look_for_user
             result = get_user_data()
 
@@ -445,18 +447,21 @@ class TestGetUserData(TestCase):
 
 
 class UserTest(TestCase):
-    @patch('news.views.update_user.delay')
-    def test_user_set(self, update_user):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def test_user_set(self):
         """If the user view is sent a POST request, it should attempt to update
         the user's info.
         """
         subscriber = models.Subscriber(email='test@example.com', token='asdf')
         subscriber.save()
 
-        self.client.post('/news/user/asdf/', {'fake': 'data'})
-        update_user.assert_called_with({'fake': 'data'},
-                                       'test@example.com',
-                                       'asdf', False, tasks.SET, True)
+        request = self.factory.post('/news/user/asdf/', {'fake': 'data'})
+        with patch.object(views, 'update_user_task') as update_user_task:
+            update_user_task.return_value = HttpResponse()
+            views.user(request, 'asdf')
+            update_user_task.assert_called_with(request, tasks.SET)
 
     def test_user_set_bad_language(self):
         """If the user view is sent a POST request with an invalid
@@ -472,7 +477,7 @@ class UserTest(TestCase):
         self.assertEqual(data['status'], 'error')
         self.assertEqual(data['desc'], 'invalid language')
 
-    @patch('news.views.ExactTargetDataExt')
+    @patch('news.utils.ExactTargetDataExt')
     def test_missing_user_created(self, et_ext):
         """
         If a user is in ET but not Basket, it should be created.
@@ -495,7 +500,7 @@ class UserTest(TestCase):
         sub = models.Subscriber.objects.get(email='dude@example.com')
         self.assertEqual(sub.token, 'asdf')
 
-    @patch('news.views.ExactTargetDataExt')
+    @patch('news.utils.ExactTargetDataExt')
     def test_user_not_in_et(self, et_ext):
         """A user not found in ET should produce an error response."""
         data_ext = et_ext()

@@ -13,11 +13,11 @@ from django_statsd.clients import statsd
 
 from celery.task import Task, task
 
-from .backends.common import NewsletterException, NewsletterNoResultsException
-from .backends.exacttarget import (ExactTarget, ExactTargetDataExt)
-from .models import FailedTask, Newsletter, Subscriber, Interest
-from .newsletters import (is_supported_newsletter_language, newsletter_field,
-                          newsletter_slugs)
+from news.backends.common import NewsletterException, NewsletterNoResultsException
+from news.backends.exacttarget import ExactTarget, ExactTargetDataExt
+from news.models import FailedTask, Newsletter, Subscriber, Interest
+from news.newsletters import is_supported_newsletter_language, newsletter_field, newsletter_slugs
+from news.utils import get_user_data, lookup_subscriber, MSG_USER_NOT_FOUND
 
 
 log = logging.getLogger(__name__)
@@ -82,11 +82,6 @@ FXACCOUNT_WELCOME = 'FxAccounts_Welcome'
 # Vendor IDs for Firefox OS and Firefox & You:
 FFOS_VENDOR_ID = 'FIREFOX_OS'
 FFAY_VENDOR_ID = 'MOZILLA_AND_YOU'
-
-## Error messages
-MSG_TOKEN_REQUIRED = 'Must have valid token for this request'
-MSG_EMAIL_OR_TOKEN_REQUIRED = 'Must have valid token OR email for this request'
-MSG_USER_NOT_FOUND = 'User not found'
 
 
 class BasketError(Exception):
@@ -321,9 +316,6 @@ def update_get_involved(interest_id, lang, name, email, country, subscribe,
         # invalid request; no need to raise exception and retry
         return
 
-    # Can't import this earlier, circular import
-    from .views import get_user_data
-
     # Get the user's current settings from ET, if any
     user = get_user_data(email=email)
 
@@ -415,14 +407,15 @@ UU_MUST_CONFIRM_NEW = 5
 
 
 @et_task
-def update_user(data, email, token, created, type, optin):
+def update_user(data, email, token, api_call_type, optin):
     """Task for updating user's preferences and newsletters.
 
     :param dict data: POST data from the form submission
     :param string email: User's email address
-    :param string token: User's token
-    :param boolean created: Whether a new user was created in Basket
-    :param int type: What kind of API call it was. Could be
+    :param string token: User's token. If None, the token will be
+        looked up, and if no token is found, one will be created for the
+        given email.
+    :param int api_call_type: What kind of API call it was. Could be
         SUBSCRIBE, UNSUBSCRIBE, or SET.
     :param boolean optin: Whether the user should go through the
         double-optin process or not. If ``optin`` is ``True`` then
@@ -434,6 +427,10 @@ def update_user(data, email, token, created, type, optin):
     :raises: NewsletterException if there are any errors that would be
         worth retrying. Our task wrapper will retry in that case.
     """
+    # If token is missing, find it or generate it.
+    if not token:
+        sub, user_data, created = lookup_subscriber(email=email)
+        token = sub.token
 
     # Parse the parameters
     # `record` will contain the data we send to ET in the format they want.
@@ -456,9 +453,6 @@ def update_user(data, email, token, created, type, optin):
             record[extra_fields[field]] = data[field]
 
     lang = record.get('LANGUAGE_ISO2', '') or ''
-
-    # Can't import this earlier, circular import
-    from .views import get_user_data
 
     # Get the user's current settings from ET, if any
     user_data = get_user_data(token=token)
@@ -508,7 +502,7 @@ def update_user(data, email, token, created, type, optin):
 
     # Set the newsletter flags in the record by comparing to their
     # current subscriptions.
-    to_subscribe, to_unsubscribe = parse_newsletters(record, type,
+    to_subscribe, to_unsubscribe = parse_newsletters(record, api_call_type,
                                                      newsletters,
                                                      cur_newsletters)
 
@@ -520,10 +514,9 @@ def update_user(data, email, token, created, type, optin):
         .filter(slug__in=to_subscribe, requires_double_optin=False)\
         .exists()
 
-    # Send welcomes when type is SUBSCRIBE and trigger_welcome arg
-    # is absent or 'Y'.
-    should_send_welcomes = data.get('trigger_welcome', 'Y') == 'Y'\
-        and type == SUBSCRIBE
+    # Send welcomes when api_call_type is SUBSCRIBE and trigger_welcome
+    # arg is absent or 'Y'.
+    should_send_welcomes = data.get('trigger_welcome', 'Y') == 'Y' and api_call_type == SUBSCRIBE
 
     MASTER = settings.EXACTTARGET_DATA
     OPT_IN = settings.EXACTTARGET_OPTIN_STAGE
@@ -742,7 +735,7 @@ def confirm_user(token, user_data):
     """
     # Get user data if we don't already have it
     if user_data is None:
-        from .views import get_user_data   # Avoid circular import
+        from .utils import get_user_data   # Avoid circular import
         user_data = get_user_data(token=token)
     if user_data is None:
         raise BasketError(MSG_USER_NOT_FOUND)

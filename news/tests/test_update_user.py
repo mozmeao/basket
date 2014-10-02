@@ -1,5 +1,4 @@
 import datetime
-import json
 
 from django.conf import settings
 from django.test import TestCase
@@ -8,11 +7,10 @@ from django.utils.unittest import skip
 
 from mock import patch, ANY
 
-from news import models, views, tasks
+from news import models
 from news.backends.common import NewsletterException
-from news.tasks import update_user, SUBSCRIBE, UU_EXEMPT_NEW, \
-    UU_ALREADY_CONFIRMED, SET, FFOS_VENDOR_ID, \
-    FFAY_VENDOR_ID, MSG_EMAIL_OR_TOKEN_REQUIRED, UNSUBSCRIBE
+from news.tasks import (update_user, SUBSCRIBE, UU_EXEMPT_NEW, UU_ALREADY_CONFIRMED, SET,
+                        FFOS_VENDOR_ID, FFAY_VENDOR_ID, UNSUBSCRIBE)
 
 
 class UpdateUserTest(TestCase):
@@ -42,106 +40,9 @@ class UpdateUserTest(TestCase):
             'status': 'ok',
         }
 
-    @patch('news.views.update_user.delay')
-    def test_update_user_task_helper(self, uu_mock):
-        """
-        `update_user` should always get an email and token.
-        """
-        # Fake an incoming request which we've already looked up and
-        # found a corresponding subscriber for
-        req = self.rf.post('/testing/', {'stuff': 'whanot'})
-        req.subscriber = self.sub
-        # Call update_user to subscribe
-        resp = views.update_user_task(req, tasks.SUBSCRIBE)
-        resp_data = json.loads(resp.content)
-        # We should get back 'ok' status and the token from that
-        # subscriber.
-        self.assertDictEqual(resp_data, {
-            'status': 'ok',
-            'token': self.sub.token,
-            'created': False,
-        })
-        # We should have called update_user with the email, token,
-        # created=False, type=SUBSCRIBE, optin=True
-        uu_mock.assert_called_with({'stuff': 'whanot'},
-                                   self.sub.email, self.sub.token,
-                                   False, tasks.SUBSCRIBE, True)
-
-    @patch('news.views.update_user.delay')
-    def test_update_user_task_helper_no_sub(self, uu_mock):
-        """
-        Should find sub from submitted email when not provided.
-        """
-        # Request, pretend we were untable to find a subscriber
-        # so we don't set req.subscriber
-        req = self.rf.post('/testing/', {'email': self.sub.email})
-        # See what update_user does
-        resp = views.update_user_task(req, tasks.SUBSCRIBE)
-        # Should be okay
-        self.assertEqual(200, resp.status_code)
-        resp_data = json.loads(resp.content)
-        # Should have found the token for the given email
-        self.assertDictEqual(resp_data, {
-            'status': 'ok',
-            'token': self.sub.token,
-            'created': False,
-        })
-        # We should have called update_user with the email, token,
-        # created=False, type=SUBSCRIBE, optin=True
-        uu_mock.assert_called_with({'email': self.sub.email},
-                                   self.sub.email, self.sub.token,
-                                   False, tasks.SUBSCRIBE, True)
-
-    @patch('news.views.look_for_user')
-    @patch('news.views.update_user.delay')
-    def test_update_user_task_helper_create(self, uu_mock, look_for_user):
-        """
-        Should create a user and tell the task about it if email not known.
-        """
-        # Pretend we are unable to find the user in ET
-        look_for_user.return_value = None
-        # Pass in a new email
-        req = self.rf.post('/testing/', {'email': 'donnie@example.com'})
-        resp = views.update_user_task(req, tasks.SUBSCRIBE)
-        # Should work
-        self.assertEqual(200, resp.status_code)
-        # There should be a new subscriber for this email
-        sub = models.Subscriber.objects.get(email='donnie@example.com')
-        resp_data = json.loads(resp.content)
-        # The call should have returned the subscriber's new token
-        self.assertDictEqual(resp_data, {
-            'status': 'ok',
-            'token': sub.token,
-            'created': True,
-        })
-        # We should have called update_user with the email, token,
-        # created=False, type=SUBSCRIBE, optin=True
-        uu_mock.assert_called_with({'email': sub.email},
-                                   sub.email, sub.token,
-                                   True, tasks.SUBSCRIBE, True)
-
-    @patch('news.views.update_user.delay')
-    def test_update_user_task_helper_error(self, uu_mock):
-        """
-        Should not call the task if no email or token provided.
-        """
-        # Pretend there was no email given - bad request
-        req = self.rf.post('/testing/', {'stuff': 'whanot'})
-        resp = views.update_user_task(req, tasks.SUBSCRIBE)
-        # We don't try to call update_user
-        self.assertFalse(uu_mock.called)
-        # We respond with a 400
-        self.assertEqual(resp.status_code, 400)
-        errors = json.loads(resp.content)
-        # The response also says there was an error
-        self.assertEqual(errors['status'], 'error')
-        # and has a useful error description
-        self.assertEqual(errors['desc'],
-                         MSG_EMAIL_OR_TOKEN_REQUIRED)
-
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
-    @patch('news.views.get_user_data')
+    @patch('news.tasks.get_user_data')
     def test_update_send_newsletter_welcome(self, get_user_data, send_message,
                                             apply_updates):
         # When we subscribe to one newsletter, and no confirmation is
@@ -172,8 +73,7 @@ class UpdateUserTest(TestCase):
         rc = update_user(data=data,
                          email=self.sub.email,
                          token=self.sub.token,
-                         created=True,
-                         type=SUBSCRIBE,
+                         api_call_type=SUBSCRIBE,
                          optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         apply_updates.assert_called()
@@ -184,7 +84,7 @@ class UpdateUserTest(TestCase):
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
-    @patch('news.views.get_user_data')
+    @patch('news.tasks.get_user_data')
     def test_update_send_no_welcome(self, get_user_data, send_message,
                                     apply_updates):
         """Caller can block sending welcome using trigger_welcome=N
@@ -216,8 +116,7 @@ class UpdateUserTest(TestCase):
         rc = update_user(data=data,
                          email=self.sub.email,
                          token=self.sub.token,
-                         created=True,
-                         type=SUBSCRIBE,
+                         api_call_type=SUBSCRIBE,
                          optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         # We do subscribe them
@@ -227,10 +126,10 @@ class UpdateUserTest(TestCase):
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
-    @patch('news.views.get_user_data')
+    @patch('news.tasks.get_user_data')
     def test_update_SET_no_welcome(self, get_user_data, send_message,
                                    apply_updates):
-        """type=SET sends no welcomes"""
+        """api_call_type=SET sends no welcomes"""
 
         # User already exists in ET and is confirmed
         # User does not subscribe to anything yet
@@ -257,16 +156,15 @@ class UpdateUserTest(TestCase):
         rc = update_user(data=data,
                          email=self.sub.email,
                          token=self.sub.token,
-                         created=True,
-                         type=SET,
+                         api_call_type=SET,
                          optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         apply_updates.assert_called()
         # The welcome should NOT have been sent
         self.assertFalse(send_message.called)
 
-    @patch('news.views.get_user_data')
-    @patch('news.views.ExactTargetDataExt')
+    @patch('news.tasks.get_user_data')
+    @patch('news.utils.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
     def test_update_no_welcome_set(self, et_mock, etde_mock, get_user_data):
         """
@@ -293,8 +191,7 @@ class UpdateUserTest(TestCase):
 
         rc = update_user(data=data, email=self.sub.email,
                          token=self.sub.token,
-                         created=True,
-                         type=SUBSCRIBE, optin=True)
+                         api_call_type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         self.assertFalse(et.trigger_send.called)
 
@@ -303,8 +200,7 @@ class UpdateUserTest(TestCase):
         et.trigger_send.reset_mock()
         rc = update_user(data=data, email=self.sub.email,
                          token=self.sub.token,
-                         created=True,
-                         type=SUBSCRIBE, optin=True)
+                         api_call_type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         self.assertFalse(et.trigger_send.called)
 
@@ -315,8 +211,7 @@ class UpdateUserTest(TestCase):
         # data['welcome_message'] = welcome
         # update_user(data=data, email=self.sub.email,
         #             token=self.sub.token,
-        #             created=True,
-        #             type=SUBSCRIBE, optin=True)
+        #             api_call_type=SUBSCRIBE, optin=True)
         # et.trigger_send.assert_called_with(
         #     welcome,
         #     {
@@ -328,7 +223,7 @@ class UpdateUserTest(TestCase):
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
-    @patch('news.views.get_user_data')
+    @patch('news.tasks.get_user_data')
     def test_update_send_newsletters_welcome(self, get_user_data,
                                              send_message,
                                              apply_updates):
@@ -360,8 +255,7 @@ class UpdateUserTest(TestCase):
         rc = update_user(data=data,
                          email=self.sub.email,
                          token=self.sub.token,
-                         created=True,
-                         type=SUBSCRIBE,
+                         api_call_type=SUBSCRIBE,
                          optin=True)
         self.assertEqual(UU_EXEMPT_NEW, rc)
         self.assertEqual(2, send_message.call_count)
@@ -373,7 +267,7 @@ class UpdateUserTest(TestCase):
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
-    @patch('news.views.get_user_data')
+    @patch('news.tasks.get_user_data')
     def test_update_user_works_with_no_welcome(self, get_user_data,
                                                send_message,
                                                apply_updates):
@@ -397,15 +291,14 @@ class UpdateUserTest(TestCase):
         get_user_data.return_value = self.get_user_data
         rc = update_user(data=data, email=self.sub.email,
                          token=self.sub.token,
-                         created=True,
-                         type=SUBSCRIBE, optin=True)
+                         api_call_type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         apply_updates.assert_called()
         send_message.assert_called()
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
-    @patch('news.views.get_user_data')
+    @patch('news.tasks.get_user_data')
     def test_update_user_works_with_no_lang(self, get_user_data,
                                             send_message,
                                             apply_updates):
@@ -429,8 +322,7 @@ class UpdateUserTest(TestCase):
         get_user_data.return_value = None
         rc = update_user(data=data, email=self.sub.email,
                          token=self.sub.token,
-                         created=True,
-                         type=SUBSCRIBE, optin=True)
+                         api_call_type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_EXEMPT_NEW, rc)
         apply_updates.assert_called()
         send_message.assert_called_with(u'en_Welcome_T',
@@ -440,7 +332,7 @@ class UpdateUserTest(TestCase):
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
-    @patch('news.views.get_user_data')
+    @patch('news.tasks.get_user_data')
     def test_ffos_welcome(self, get_user_data, send_message, apply_updates):
         """If the user has subscribed to Firefox OS,
         then we send the welcome for Firefox OS but not for Firefox & You.
@@ -471,8 +363,7 @@ class UpdateUserTest(TestCase):
         rc = update_user(data=data,
                          email=self.sub.email,
                          token=self.sub.token,
-                         created=True,
-                         type=SUBSCRIBE,
+                         api_call_type=SUBSCRIBE,
                          optin=True)
         self.assertEqual(UU_EXEMPT_NEW, rc)
         self.assertEqual(1, send_message.call_count)
@@ -485,8 +376,8 @@ class UpdateUserTest(TestCase):
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
-    @patch('news.views.get_user_data')
-    @patch('news.views.newsletter_fields')
+    @patch('news.tasks.get_user_data')
+    @patch('news.utils.newsletter_fields')
     @patch('news.tasks.ExactTarget')
     def test_update_user_set_works_if_no_newsletters(self, et_mock,
                                                      newsletter_fields,
@@ -521,7 +412,7 @@ class UpdateUserTest(TestCase):
         get_user_data.return_value = self.get_user_data
 
         rc = update_user(data, self.sub.email, self.sub.token,
-                         False, SET, True)
+                         SET, True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         # no welcome should be triggered for SET
         self.assertFalse(et.trigger_send.called)
@@ -543,9 +434,9 @@ class UpdateUserTest(TestCase):
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
-    @patch('news.views.get_user_data')
-    @patch('news.views.newsletter_fields')
-    @patch('news.views.ExactTargetDataExt')
+    @patch('news.tasks.get_user_data')
+    @patch('news.utils.newsletter_fields')
+    @patch('news.utils.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
     def test_resubscribe_doesnt_update_newsletter(self, et_mock, etde_mock,
                                                   newsletter_fields,
@@ -582,7 +473,7 @@ class UpdateUserTest(TestCase):
         etde.get_record.return_value = self.user_data
 
         rc = update_user(data, self.sub.email, self.sub.token,
-                         False, SUBSCRIBE, True)
+                         SUBSCRIBE, True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         # We should have looked up the user's data
         get_user_data.assert_called()
@@ -597,8 +488,8 @@ class UpdateUserTest(TestCase):
                                           'COUNTRY_': 'US',
                                           })
 
-    @patch('news.views.get_user_data')
-    @patch('news.views.newsletter_fields')
+    @patch('news.tasks.get_user_data')
+    @patch('news.utils.newsletter_fields')
     @patch('news.tasks.ExactTarget')
     def test_set_doesnt_update_newsletter(self, et_mock,
                                           newsletter_fields,
@@ -630,7 +521,7 @@ class UpdateUserTest(TestCase):
         get_user_data.return_value = self.get_user_data
         #etde.get_record.return_value = self.user_data
 
-        update_user(data, self.sub.email, self.sub.token, False, SET, True)
+        update_user(data, self.sub.email, self.sub.token, SET, True)
         # We should have looked up the user's data
         self.assertTrue(get_user_data.called)
         # We should not have mentioned this newsletter in our call to ET
@@ -646,7 +537,7 @@ class UpdateUserTest(TestCase):
 
     @skip("FIXME: What should we do if we can't talk to ET")  # FIXME
     @patch('news.tasks.ExactTarget')
-    @patch('news.views.get_user_data')
+    @patch('news.tasks.get_user_data')
     def test_set_does_update_newsletter_on_error(self, get_user_mock, et_mock):
         """
         When setting the newsletters it should ensure that they're set right
@@ -671,7 +562,7 @@ class UpdateUserTest(TestCase):
             'format': 'H',
         }
 
-        update_user(data, self.sub.email, self.sub.token, False, SET, True)
+        update_user(data, self.sub.email, self.sub.token, SET, True)
         # We should have mentioned this newsletter in our call to ET
         et.data_ext.return_value.add_record.assert_called_with(
             ANY,
@@ -685,7 +576,7 @@ class UpdateUserTest(TestCase):
 
     @skip("FIXME: What should we do if we can't talk to ET")  # FIXME
     @patch('news.tasks.ExactTarget')
-    @patch('news.views.get_user_data')
+    @patch('news.tasks.get_user_data')
     def test_unsub_is_not_careful_on_error(self, get_user_mock, et_mock):
         """
         When unsubscribing, we unsubscribe from the requested lists if we can't
@@ -717,7 +608,7 @@ class UpdateUserTest(TestCase):
             'format': 'H',
         }
 
-        update_user(data, self.sub.email, self.sub.token, False, UNSUBSCRIBE,
+        update_user(data, self.sub.email, self.sub.token, UNSUBSCRIBE,
                     True)
         # We should mention both TITLE_UNKNOWN, and TITLE2_UNKNOWN
         et.data_ext.return_value.add_record.assert_called_with(
@@ -730,9 +621,9 @@ class UpdateUserTest(TestCase):
              ANY, 'US'],
         )
 
-    @patch('news.views.get_user_data')
-    @patch('news.views.newsletter_fields')
-    @patch('news.views.ExactTargetDataExt')
+    @patch('news.tasks.get_user_data')
+    @patch('news.utils.newsletter_fields')
+    @patch('news.utils.ExactTargetDataExt')
     @patch('news.tasks.ExactTarget')
     def test_unsub_is_careful(self, et_mock, etde_mock, newsletter_fields,
                               get_user_data):
@@ -770,8 +661,7 @@ class UpdateUserTest(TestCase):
         # We're only subscribed to TITLE_UNKNOWN though, not the other one
         etde.get_record.return_value = self.user_data
 
-        rc = update_user(data, self.sub.email, self.sub.token, False,
-                         UNSUBSCRIBE, True)
+        rc = update_user(data, self.sub.email, self.sub.token, UNSUBSCRIBE, True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         # We should have looked up the user's data
         self.assertTrue(get_user_data.called)
@@ -788,7 +678,7 @@ class UpdateUserTest(TestCase):
 
     @skip('Do not know what to do in this case')  # FIXME
     @patch('news.tasks.ExactTarget')
-    @patch('news.views.get_user_data')
+    @patch('news.tasks.get_user_data')
     def test_user_data_error(self, get_user_mock, et_mock):
         """
         Bug 871764: error from user data causing subscription to fail
@@ -816,8 +706,7 @@ class UpdateUserTest(TestCase):
         }
 
         with self.assertRaises(NewsletterException):
-            update_user(data, self.sub.email, self.sub.token, False,
-                        SUBSCRIBE, True)
+            update_user(data, self.sub.email, self.sub.token, SUBSCRIBE, True)
         # We should have mentioned this newsletter in our call to ET
         et.data_ext.return_value.add_record.assert_called_with(
             ANY,
@@ -830,7 +719,7 @@ class UpdateUserTest(TestCase):
         )
 
     @patch('news.tasks.ExactTarget')
-    @patch('news.views.get_user_data')
+    @patch('news.tasks.get_user_data')
     def test_update_user_without_format_doesnt_send_format(self,
                                                            get_user_mock,
                                                            et_mock):
@@ -866,8 +755,7 @@ class UpdateUserTest(TestCase):
             'country': 'US',
             'newsletters': 'slug',
         }
-        update_user(data, self.sub.email, self.sub.token, False, SUBSCRIBE,
-                    True)
+        update_user(data, self.sub.email, self.sub.token, SUBSCRIBE, True)
         # We'll pass no format to ET
         et.data_ext.return_value.add_record.assert_called_with(
             ANY,
@@ -888,7 +776,7 @@ class UpdateUserTest(TestCase):
         )
 
     @patch('news.tasks.ExactTarget')
-    @patch('news.views.get_user_data')
+    @patch('news.tasks.get_user_data')
     def test_update_user_wo_format_or_pref(self,
                                            get_user_mock,
                                            et_mock):
@@ -923,8 +811,7 @@ class UpdateUserTest(TestCase):
             'country': 'US',
             'newsletters': 'slug',
         }
-        update_user(data, self.sub.email, self.sub.token, False, SUBSCRIBE,
-                    True)
+        update_user(data, self.sub.email, self.sub.token, SUBSCRIBE, True)
         # We'll pass no format to ET
         et.data_ext.return_value.add_record.assert_called_with(
             ANY,

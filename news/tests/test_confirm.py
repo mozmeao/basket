@@ -74,16 +74,14 @@ class TestConfirmationLogic(TestCase):
         data['newsletters'] = ','.join(newsletters)
 
         # Mock data from ET
-        with patch('news.views.get_user_data') as get_user_data:
+        with patch('news.tasks.get_user_data') as get_user_data:
             get_user_data.return_value = user
 
             # Don't actually call ET
             with patch('news.tasks.apply_updates'):
                 with patch('news.tasks.send_welcomes'):
                     with patch('news.tasks.send_confirm_notice'):
-                        created = not user_in_basket
-                        rc = update_user(data, email, token, created, type,
-                                         is_optin)
+                        rc = update_user(data, email, token, type, is_optin)
         self.assertEqual(expected_result, rc)
 
     #
@@ -370,7 +368,7 @@ class TestConfirmTask(TestCase):
         # Can't patch get_user_data because confirm_user imports it
         # internally. But we can patch look_for_user, which get_user_data
         # will call
-        with patch('news.views.look_for_user') as look_for_user:
+        with patch('news.utils.look_for_user') as look_for_user:
             look_for_user.return_value = None
             user_data = None
             token = "TOKEN"
