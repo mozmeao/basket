@@ -362,6 +362,7 @@ def update_get_involved(interest_id, lang, name, email, country, subscribe,
     })
     welcome_id = mogrify_message_id(interest.welcome_id, lang, welcome_format)
     send_message(welcome_id, email, token, welcome_format)
+    interest.notify_stewards(email, lang, message)
 
     if to_subscribe:
         if not user:

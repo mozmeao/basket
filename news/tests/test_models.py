@@ -1,3 +1,4 @@
+from django.core import mail
 from django.test import TestCase
 
 from mock import patch
@@ -79,3 +80,15 @@ class FailedTaskTest(TestCase):
             task.retry()
 
         sub_mock.assert_called_with(task_name, args=task_args, kwargs={})
+
+
+class InterestTests(TestCase):
+    def test_notify_stewards(self):
+        interest = models.Interest(title='mytest',
+                                   steward_emails=['bob@example.com', 'bill@example.com'])
+        interest.notify_stewards('interested@example.com', 'en-US', 'BYE')
+
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertTrue('mytest' in email.subject)
+        self.assertEqual(email.to, ['bob@example.com', 'bill@example.com'])

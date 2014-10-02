@@ -4,9 +4,9 @@ from .models import APIUser, FailedTask, Interest, Newsletter, Subscriber
 
 
 class InterestAdmin(admin.ModelAdmin):
-    fields = ('title', 'interest_id', '_welcome_id')
-    list_display = ('title', 'interest_id', '_welcome_id')
-    list_editable = ('title', 'interest_id', '_welcome_id')
+    fields = ('title', 'interest_id', '_welcome_id', 'steward_emails')
+    list_display = ('title', 'interest_id', '_welcome_id', 'steward_emails')
+    list_editable = ('interest_id', '_welcome_id', 'steward_emails')
     prepopulated_fields = {'interest_id': ('title',)}
 
 

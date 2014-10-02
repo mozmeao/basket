@@ -1,14 +1,17 @@
 from uuid import uuid4
 
-from celery.task import subtask
-
-from jsonfield import JSONField
-
 from django.conf import settings
+from django.core.mail import send_mail
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from django.template.loader import render_to_string
 from django.utils.timezone import now
+
+from celery.task import subtask
+from jsonfield import JSONField
+
+from news.fields import CommaSeparatedEmailField
 
 
 class SubscriberManager(models.Manager):
@@ -244,7 +247,28 @@ class Interest(models.Model):
         blank=True,
         verbose_name='Welcome ID',
     )
+    steward_emails = CommaSeparatedEmailField(
+        blank=True,
+        help_text='Comma-separated list of the stewards\' email addresses.'
+    )
 
     @property
     def welcome_id(self):
         return self._welcome_id or self.interest_id
+
+    def notify_stewards(self, email, lang, message):
+        """
+        Send an email to the stewards about a new interested
+        subscriber.
+        """
+        email_body = render_to_string('news/get_involved/steward_email.txt', {
+            'contributor_email': email,
+            'interest': self,
+            'lang': lang,
+            'message': message,
+        })
+        send_mail('Inquiry about {0}'.format(self.title), email_body, 'basket@basket.mozilla.org',
+                  self.steward_emails)
+
+    def __unicode__(self):
+        return self.title
