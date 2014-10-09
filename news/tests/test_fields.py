@@ -1,24 +1,52 @@
 from django.test import TestCase
 
+from mock import call, Mock, patch
+
 from news.fields import CommaSeparatedEmailField
 
 
 class CommaSeparatedEmailFieldTests(TestCase):
     def setUp(self):
-        self.field = CommaSeparatedEmailField()
+        self.field = CommaSeparatedEmailField(blank=True)
 
-    def test_to_python(self):
-        # List
-        self.assertEqual(self.field.to_python(['a@example.com', 'b@example.com']),
-                         ['a@example.com', 'b@example.com'])
+    def test_validate(self):
+        """
+        Validate should run the email validator on all non-empty emails
+        in the list.
+        """
+        with patch('news.fields.validate_email') as validate_email:
+            self.field.validate('  foo@example.com   ,bar@example.com   ', None)
+            validate_email.assert_has_calls([
+                call('foo@example.com'),
+                call('bar@example.com'),
+            ])
 
-        # None
-        self.assertEqual(self.field.to_python(None), [])
+            validate_email.reset_mock()
+            self.field.validate('foo@example.com', None)
+            validate_email.assert_has_calls([
+                call('foo@example.com'),
+            ])
 
-        # String
-        self.assertEqual(self.field.to_python('bob@example.com,phil@example.com'),
-                         ['bob@example.com', 'phil@example.com'])
+            validate_email.reset_mock()
+            self.field.validate('', None)
+            self.assertFalse(validate_email.called)
 
-        # String with whitespace
-        self.assertEqual(self.field.to_python('  a@example.com, b@example.com   '),
-                         ['a@example.com', 'b@example.com'])
+    def test_pre_save(self):
+        """pre_save should remove unnecessary whitespace and commas."""
+        instance = Mock()
+        self.field.attname = 'blah'
+
+        # Basic
+        instance.blah = 'bob@example.com,larry@example.com'
+        self.assertEqual(self.field.pre_save(instance, False),
+                         'bob@example.com,larry@example.com')
+
+        # Excess whitespace
+        instance.blah = '   bob@example.com ,larry@example.com    '
+        self.assertEqual(self.field.pre_save(instance, False),
+                         'bob@example.com,larry@example.com')
+
+        # Extra commas
+        instance.blah = 'bob@example.com  ,,,, larry@example.com '
+        self.assertEqual(self.field.pre_save(instance, False),
+                         'bob@example.com,larry@example.com')
