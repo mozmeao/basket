@@ -1,6 +1,8 @@
 from django.core.validators import validate_email
 from django.db import models
+from django.forms import TextInput
 
+import product_details
 from south.modelsinspector import add_introspection_rules
 
 
@@ -10,19 +12,41 @@ class CommaSeparatedEmailField(models.TextField):
 
     def validate(self, value, model_instance):
         super(CommaSeparatedEmailField, self).validate(value, model_instance)
-        for email in value:
-            validate_email(email)
 
-    def to_python(self, value):
-        if isinstance(value, list):
-            return value
-        elif value is None:
-            return []
-        else:
-            return [email.strip() for email in value.split(',')]
+        # Validate that all non-empty emails are valid.
+        for email in value.split(','):
+            if email:
+                validate_email(email.strip())
 
-    def get_prep_value(self, value):
-        return ','.join(value)
+    def pre_save(self, model_instance, add):
+        """Remove whitespace and excess commas."""
+        emails = getattr(model_instance, self.attname).split(',')
+        return ','.join(email.strip() for email in emails if email)
+
+    def formfield(self, **kwargs):
+        kwargs['widget'] = TextInput(attrs={'style': 'width: 400px'})
+        return super(CommaSeparatedEmailField, self).formfield(**kwargs)
+
+
+ENGLISH_LANGUAGE_CHOICES = sorted(
+    [(key, u'{0} ({1})'.format(key, value['English']))
+     for key, value in product_details.languages.items()]
+)
+
+
+class LocaleField(models.CharField):
+    description = 'CharField for storing a locale code.'
+
+    def __init__(self, *args, **kwargs):
+        defaults = {
+            'max_length': 32,
+            'choices': ENGLISH_LANGUAGE_CHOICES,
+        }
+        for key, value in defaults.items():
+            kwargs.setdefault(key, value)
+
+        return super(LocaleField, self).__init__(*args, **kwargs)
 
 
 add_introspection_rules([], ['^news\.fields\.CommaSeparatedEmailField'])
+add_introspection_rules([], ['^news\.fields\.LocaleField'])

@@ -85,6 +85,7 @@ INSTALLED_APPS = (
     'djcelery',
     'south',
     'raven.contrib.django.raven_compat',
+    'product_details',
 
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -177,3 +178,7 @@ LOGGING = {
 }
 
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
+
+# Tells the product_details module where to find our local JSON files.
+# This ultimately controls how LANGUAGES are constructed.
+PROD_DETAILS_DIR = path('libs/product_details_json')

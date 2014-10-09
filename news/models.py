@@ -8,10 +8,11 @@ from django.dispatch import receiver
 from django.template.loader import render_to_string
 from django.utils.timezone import now
 
+import product_details
 from celery.task import subtask
 from jsonfield import JSONField
 
-from news.fields import CommaSeparatedEmailField
+from news.fields import CommaSeparatedEmailField, LocaleField
 
 
 class SubscriberManager(models.Manager):
@@ -247,9 +248,10 @@ class Interest(models.Model):
         blank=True,
         verbose_name='Welcome ID',
     )
-    steward_emails = CommaSeparatedEmailField(
+    default_steward_emails = CommaSeparatedEmailField(
         blank=True,
-        help_text='Comma-separated list of the stewards\' email addresses.'
+        help_text='Comma-separated list of the default / en-US stewards\' email addresses.',
+        verbose_name='Default / en-US Steward Emails',
     )
 
     @property
@@ -267,8 +269,40 @@ class Interest(models.Model):
             'lang': lang,
             'message': message,
         })
+
+        # Find the right stewards for the given language.
+        try:
+            stewards = self.localestewards_set.get(locale=lang)
+            emails = stewards.emails
+        except LocaleStewards.DoesNotExist:
+            emails = self.default_steward_emails
+        emails = emails.split(',')
+
         send_mail('Inquiry about {0}'.format(self.title), email_body, 'basket@basket.mozilla.org',
-                  self.steward_emails)
+                  emails)
 
     def __unicode__(self):
         return self.title
+
+
+class LocaleStewards(models.Model):
+    """
+    List of steward emails for a specific interest-locale combination.
+    """
+    interest = models.ForeignKey(Interest)
+    locale = LocaleField()
+    emails = CommaSeparatedEmailField(
+        blank=False,
+        help_text='Comma-separated list of the stewards\' email addresses.',
+    )
+
+    class Meta:
+        unique_together = ('interest', 'locale')
+        verbose_name = 'Locale Steward'
+        verbose_name_plural = 'Locale Stewards'
+
+    def __unicode__(self):
+        return u'Stewards for {lang_code} ({lang_name})'.format(
+            lang_code=self.locale,
+            lang_name=product_details.languages[self.locale]['English'],
+        )

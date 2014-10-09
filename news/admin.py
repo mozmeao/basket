@@ -1,13 +1,19 @@
 from django.contrib import admin, messages
 
-from .models import APIUser, FailedTask, Interest, Newsletter, Subscriber
+from news.models import APIUser, FailedTask, Interest, LocaleStewards, Newsletter, Subscriber
+
+
+class LocaleStewardsInline(admin.TabularInline):
+    model = LocaleStewards
+    fields = ('locale', 'emails')
 
 
 class InterestAdmin(admin.ModelAdmin):
-    fields = ('title', 'interest_id', '_welcome_id', 'steward_emails')
-    list_display = ('title', 'interest_id', '_welcome_id', 'steward_emails')
-    list_editable = ('interest_id', '_welcome_id', 'steward_emails')
+    fields = ('title', 'interest_id', '_welcome_id', 'default_steward_emails')
+    list_display = ('title', 'interest_id', '_welcome_id', 'default_steward_emails')
+    list_editable = ('interest_id', '_welcome_id', 'default_steward_emails')
     prepopulated_fields = {'interest_id': ('title',)}
+    inlines = [LocaleStewardsInline]
 
 
 admin.site.register(Interest, InterestAdmin)
