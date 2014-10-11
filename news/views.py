@@ -162,6 +162,7 @@ def get_involved(request):
         data['name'],
         data['email'],
         data['country'],
+        data.get('format', 'H'),
         data.get('subscribe', False),
         data.get('message', None),
         data.get('source_url', None),

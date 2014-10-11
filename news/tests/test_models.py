@@ -90,7 +90,7 @@ class InterestTests(TestCase):
         """
         interest = models.Interest(title='mytest',
                                    default_steward_emails='bob@example.com,bill@example.com')
-        interest.notify_stewards('interested@example.com', 'en-US', 'BYE')
+        interest.notify_stewards('Steve', 'interested@example.com', 'en-US', 'BYE')
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]
@@ -109,7 +109,7 @@ class InterestTests(TestCase):
             interest=interest,
             locale='ach',
             emails='ach@example.com')
-        interest.notify_stewards('interested@example.com', 'ach', 'BYE')
+        interest.notify_stewards('Steve', 'interested@example.com', 'ach', 'BYE')
 
         self.assertEqual(len(mail.outbox), 1)
         email = mail.outbox[0]

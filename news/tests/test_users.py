@@ -165,7 +165,7 @@ class UpdateGetInvolvedTests(TestCase):
         email = 'walter@example.com'
         self.get_user_data.return_value = None
         tasks.update_get_involved('bowling', 'en', 'Walter', email,
-                                  'US', 'Y', 'It really tied the room together.', None)
+                                  'US', 'T', 'Y', 'It really tied the room together.', None)
         token = models.Subscriber.objects.get(email=email).token
         self.apply_updates.assert_has_calls([
             call(settings.EXACTTARGET_DATA, {
@@ -174,6 +174,7 @@ class UpdateGetInvolvedTests(TestCase):
                 'LANGUAGE_ISO2': 'en',
                 'COUNTRY_': 'US',
                 'TOKEN': token,
+                'EMAIL_FORMAT_': 'T',
                 'ABOUT_MOZILLA_FLG': 'Y',
                 'ABOUT_MOZILLA_DATE': ANY,
                 'GET_INVOLVED_FLG': 'Y',
@@ -184,13 +185,13 @@ class UpdateGetInvolvedTests(TestCase):
                 'INTEREST': 'bowling',
             }),
         ])
-        self.send_message.assert_called_with('en_welcome_bowling', email, token, 'H')
+        self.send_message.assert_called_with('en_welcome_bowling_T', email, token, 'T')
         self.send_welcomes.assert_called_once_with({
             'email': email,
             'token': token,
             'lang': 'en',
-        }, ['about-mozilla'], 'H')
-        self.interest.notify_stewards.assert_called_with(email, 'en',
+        }, ['about-mozilla'], 'T')
+        self.interest.notify_stewards.assert_called_with('Walter', email, 'en',
                                                          'It really tied the room together.')
 
     @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
@@ -206,7 +207,7 @@ class UpdateGetInvolvedTests(TestCase):
             'newsletters': ['about-mozilla', 'mozilla-and-you', 'get-involved'],
         }
         tasks.update_get_involved('bowling', 'en', 'Walter', email,
-                                  'US', 'Y', 'It really tied the room together.', None)
+                                  'US', 'T', 'Y', 'It really tied the room together.', None)
         self.apply_updates.assert_has_calls([
             call(settings.EXACTTARGET_DATA, {
                 'EMAIL_ADDRESS_': 'walter@example.com',
@@ -224,7 +225,7 @@ class UpdateGetInvolvedTests(TestCase):
         self.send_message.assert_called_with('en_welcome_bowling_T', email, token, 'T')
         # not called because 'about-mozilla' already in newsletters
         self.assertFalse(self.send_welcomes.called)
-        self.interest.notify_stewards.assert_called_with(email, 'en',
+        self.interest.notify_stewards.assert_called_with('Walter', email, 'en',
                                                          'It really tied the room together.')
 
     @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
@@ -243,7 +244,7 @@ class UpdateGetInvolvedTests(TestCase):
             'newsletters': ['mozilla-and-you'],
         }
         tasks.update_get_involved('bowling', 'en', 'Walter', email,
-                                  'US', 'Y', 'It really tied the room together.', None)
+                                  'US', 'T', 'Y', 'It really tied the room together.', None)
         self.apply_updates.assert_has_calls([
             call(settings.EXACTTARGET_DATA, {
                 'EMAIL_ADDRESS_': 'walter@example.com',
@@ -264,7 +265,7 @@ class UpdateGetInvolvedTests(TestCase):
         self.send_message.assert_called_with('en_welcome_bowling_T', email, token, 'T')
         self.send_welcomes.assert_called_once_with(self.get_user_data.return_value,
                                                    ['about-mozilla'], 'T')
-        self.interest.notify_stewards.assert_called_with(email, 'en',
+        self.interest.notify_stewards.assert_called_with('Walter', email, 'en',
                                                          'It really tied the room together.')
 
     @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
@@ -274,7 +275,7 @@ class UpdateGetInvolvedTests(TestCase):
         email = 'walter@example.com'
         self.get_user_data.return_value = None
         tasks.update_get_involved('bowling', 'en', 'Walter', email,
-                                  'US', False, 'It really tied the room together.', None)
+                                  'US', 'H', False, 'It really tied the room together.', None)
         token = models.Subscriber.objects.get(email=email).token
         self.apply_updates.assert_has_calls([
             call(settings.EXACTTARGET_DATA, {
@@ -283,6 +284,7 @@ class UpdateGetInvolvedTests(TestCase):
                 'LANGUAGE_ISO2': 'en',
                 'COUNTRY_': 'US',
                 'TOKEN': token,
+                'EMAIL_FORMAT_': 'H',
                 'GET_INVOLVED_FLG': 'Y',
                 'GET_INVOLVED_DATE': ANY,
             }),
@@ -293,7 +295,7 @@ class UpdateGetInvolvedTests(TestCase):
         ])
         self.send_message.assert_called_with('en_welcome_bowling', email, token, 'H')
         self.assertFalse(self.send_welcomes.called)
-        self.interest.notify_stewards.assert_called_with(email, 'en',
+        self.interest.notify_stewards.assert_called_with('Walter', email, 'en',
                                                          'It really tied the room together.')
 
 

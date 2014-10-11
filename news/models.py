@@ -258,12 +258,13 @@ class Interest(models.Model):
     def welcome_id(self):
         return self._welcome_id or self.interest_id
 
-    def notify_stewards(self, email, lang, message):
+    def notify_stewards(self, name, email, lang, message):
         """
         Send an email to the stewards about a new interested
         subscriber.
         """
         email_body = render_to_string('news/get_involved/steward_email.txt', {
+            'contributor_name': name,
             'contributor_email': email,
             'interest': self,
             'lang': lang,

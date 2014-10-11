@@ -307,14 +307,16 @@ def update_fxa_info(email, lang, fxa_id, source_url=None):
 
 
 @et_task
-def update_get_involved(interest_id, lang, name, email, country, subscribe,
-                        message, source_url):
+def update_get_involved(interest_id, lang, name, email, country, email_format,
+                        subscribe, message, source_url):
     """Record a users interest and details for contribution."""
     try:
         interest = Interest.objects.get(interest_id=interest_id)
     except Interest.DoesNotExist:
         # invalid request; no need to raise exception and retry
         return
+
+    email_format = 'T' if email_format.upper().startswith('T') else 'H'
 
     # Get the user's current settings from ET, if any
     user = get_user_data(email=email)
@@ -327,15 +329,14 @@ def update_get_involved(interest_id, lang, name, email, country, subscribe,
         'GET_INVOLVED_FLG': 'Y',
     }
     if user:
-        welcome_format = user['format']
         token = user['token']
         Subscriber.objects.get_and_sync(email, token)
         if 'get-involved' not in user.get('newsletters', []):
             record['GET_INVOLVED_DATE'] = gmttime()
     else:
         sub, created = Subscriber.objects.get_or_create(email=email)
-        welcome_format = 'H'
         token = sub.token
+        record['EMAIL_FORMAT_'] = email_format
         record['GET_INVOLVED_DATE'] = gmttime()
         # only want source url for first contact
         if source_url:
@@ -364,9 +365,9 @@ def update_get_involved(interest_id, lang, name, email, country, subscribe,
         'TOKEN': token,
         'INTEREST': interest_id,
     })
-    welcome_id = mogrify_message_id(interest.welcome_id, lang, welcome_format)
-    send_message(welcome_id, email, token, welcome_format)
-    interest.notify_stewards(email, lang, message)
+    welcome_id = mogrify_message_id(interest.welcome_id, lang, email_format)
+    send_message(welcome_id, email, token, email_format)
+    interest.notify_stewards(name, email, lang, message)
 
     if to_subscribe:
         if not user:
@@ -375,7 +376,7 @@ def update_get_involved(interest_id, lang, name, email, country, subscribe,
                 'token': token,
                 'lang': lang,
             }
-        send_welcomes(user, to_subscribe, welcome_format)
+        send_welcomes(user, to_subscribe, email_format)
 
 
 @et_task

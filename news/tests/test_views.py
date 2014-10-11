@@ -27,6 +27,7 @@ class GetInvolvedTests(TestCase):
             'country': 'us',
             'name': 'The Dude',
             'interest_id': 'bowling',
+            'format': 'T',
         }
 
         patcher = patch('news.views.validate_email')
@@ -46,7 +47,7 @@ class GetInvolvedTests(TestCase):
         resp = self._request(self.base_data)
         self.assertEqual(resp['status'], 'ok', resp)
         self.update_get_involved.delay.assert_called_with('bowling', 'en', 'The Dude',
-                                                          'dude@example.com', 'us',
+                                                          'dude@example.com', 'us', 'T',
                                                           False, None, None)
 
     def test_requires_valid_interest(self):
@@ -118,7 +119,7 @@ class GetInvolvedTests(TestCase):
         resp = self._request(self.base_data)
         self.assertEqual(resp['status'], 'ok', resp)
         self.update_get_involved.delay.assert_called_with('bowling', 'en', 'The Dude',
-                                                          'dude@example.com', 'us',
+                                                          'dude@example.com', 'us', 'T',
                                                           'ok', 'I like bowling',
                                                           'https://arewebowlingyet.com/')
 
