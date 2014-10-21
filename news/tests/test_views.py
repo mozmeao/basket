@@ -1,4 +1,5 @@
 import json
+from django.core.exceptions import ValidationError
 
 from django.core.urlresolvers import reverse
 from django.test import TestCase
@@ -595,34 +596,17 @@ class RecoveryViewTest(TestCase):
         mock_send_recovery_message_task.assert_called_with(email)
 
 
-@patch('news.utils.get_valid_email')
 class TestValidateEmail(TestCase):
     email = 'dude@example.com'
     data = {'email': email}
 
-    def test_valid_email(self, mock_valid):
+    def test_valid_email(self):
         """Should return without raising an exception for a valid email."""
-        mock_valid.return_value = (self.email, False)
-        views.validate_email(self.data)
-        mock_valid.assert_called_with(self.email)
+        self.assertIsNone(utils.validate_email(self.data))
 
-    def test_invalid_email(self, mock_valid):
+    @patch('news.utils.dj_validate_email')
+    def test_invalid_email(self, dj_validate_email):
         """Should raise an exception for an invalid email."""
-        mock_valid.return_value = (None, False)
-        with self.assertRaises(utils.EmailValidationError) as cm:
-            views.validate_email(self.data)
-        mock_valid.assert_called_with(self.email)
-        self.assertIsNone(cm.exception.suggestion)
-
-    def test_invalid_email_suggestion(self, mock_valid):
-        """Should raise an exception for a misspelled email and offer a suggestion."""
-        mock_valid.return_value = ('walter@example.com', True)
-        with self.assertRaises(utils.EmailValidationError) as cm:
-            views.validate_email(self.data)
-        mock_valid.assert_called_with(self.email)
-        self.assertEqual(cm.exception.suggestion, mock_valid.return_value[0])
-
-    def test_already_validated(self, mock_valid):
-        """Should not call validation stuff if validated parameter set."""
-        views.validate_email({'validated': 'true'})
-        self.assertFalse(mock_valid.called)
+        dj_validate_email.side_effect = ValidationError('Invalid email')
+        with self.assertRaises(utils.EmailValidationError):
+            utils.validate_email(self.data)
