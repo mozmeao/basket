@@ -4,6 +4,7 @@ import re
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import validate_email as dj_validate_email
 from django.http import HttpResponse
 from django.utils.translation.trans_real import parse_accept_lang_header
 
@@ -12,8 +13,7 @@ from basket import errors
 
 from news.backends.common import NewsletterNoResultsException
 from news.backends.exacttarget import (ExactTargetDataExt, NewsletterException,
-                                   UnauthorizedException)
-from news.email import get_valid_email
+                                       UnauthorizedException)
 from news.models import APIUser, Subscriber
 from news.newsletters import (newsletter_fields, newsletter_languages, newsletter_slugs,
                               slug_to_vendor_id)
@@ -440,14 +440,13 @@ def validate_email(data):
     @return: None if email address in the 'email' key is valid
     @raise: EmailValidationError if 'email' key is invalid
     """
-    # we send suggestions back to users of valid email addresses.
-    # A client could choose to use that suggestion or indicate that
-    # the address is indeed valid. Said client should pass:
-    #     validated=1
-    if data.get('validated', False):
-        return None
+    # disabling this for now and falling back to dumb regex validation.
+    # Bug 1066762.
+    # TODO: Find a more robust solution
+    #       Possibly ET's email validation API.
+    try:
+        dj_validate_email(data.get('email', None))
+    except ValidationError:
+        raise EmailValidationError('Invalid email address')
 
-    email = data.get('email', None)
-    valid_email, is_suggestion = get_valid_email(email)
-    if not valid_email or is_suggestion:
-        raise EmailValidationError('Invalid email address', valid_email)
+    return None
