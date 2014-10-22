@@ -90,7 +90,7 @@ class ExactTargetRest(object):
             'mobileNumbers': phone_numbers,
             'Subscribe': True,
             'Resubscribe': True,
-            'keyword': 'FFDROIDS',  # TODO: Set keyword in arguments.
+            'keyword': 'FFDROID',  # TODO: Set keyword in arguments.
         }
         response = self._request('sms_send', data, url_params={'msg_id': message_id})
         if response.status_code == 400:
