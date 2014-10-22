@@ -777,9 +777,14 @@ def add_sms_user(send_name, mobile_number, optin):
         return add_sms_user.retry(exc=error)
 
     if optin:
-        record = {'Phone': mobile_number, 'SubscriberKey': mobile_number}
-        data_ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-        data_ext.add_record('Mobile_Subscribers', record.keys(), record.values())
+        add_sms_user_optin.delay(mobile_number)
+
+
+@et_task
+def add_sms_user_optin(mobile_number):
+    record = {'Phone': mobile_number, 'SubscriberKey': mobile_number}
+    data_ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+    data_ext.add_record('Mobile_Subscribers', record.keys(), record.values())
 
 
 @et_task
