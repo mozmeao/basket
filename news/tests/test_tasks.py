@@ -1,11 +1,13 @@
 from django.test import TestCase
+from django.test.utils import override_settings
 
 import celery
 from mock import Mock, patch
 
+from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
 from news.models import FailedTask, Subscriber
-from news.tasks import (RECOVERY_MESSAGE_ID, mogrify_message_id,
-    send_recovery_message_task, SUBSCRIBE, update_phonebook, update_user)
+from news.tasks import (add_sms_user, RECOVERY_MESSAGE_ID, mogrify_message_id,
+                        send_recovery_message_task, SUBSCRIBE, update_phonebook, update_user)
 
 
 class FailedTaskTest(TestCase):
@@ -144,3 +146,48 @@ class UpdateUserTests(TestCase):
 
         update_user({}, 'a@example.com', None, SUBSCRIBE, True)
         self.get_user_data.assert_called_with(token='mytoken')
+
+
+@override_settings(ET_CLIENT_ID='client_id', ET_CLIENT_SECRET='client_secret')
+@patch('news.tasks.SMS_MESSAGES', {'foo': 'bar'})
+class AddSMSUserTests(TestCase):
+    def setUp(self):
+        patcher = patch.object(ExactTargetRest, 'send_sms')
+        self.send_sms = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_send_name_invalid(self):
+        """If the send_name is invalid, return immediately."""
+        add_sms_user('baffle', '8675309', False)
+        self.assertFalse(self.send_sms.called)
+
+    def test_retry_on_error(self):
+        """If an ETRestError is raised while sending an SMS, retry."""
+        error = ETRestError()
+        self.send_sms.side_effect = error
+
+        with patch.object(add_sms_user, 'retry') as retry:
+            add_sms_user('foo', '8675309', False)
+            self.send_sms.assert_called_with(['8675309'], 'bar')
+            retry.assert_called_with(exc=error)
+
+    def test_success(self):
+        add_sms_user('foo', '8675309', False)
+        self.send_sms.assert_called_with(['8675309'], 'bar')
+
+    def test_success_with_optin(self):
+        """
+        If optin is True, add a Mobile_Subscribers record for the
+        number.
+        """
+        with patch('news.tasks.ExactTargetDataExt') as ExactTargetDataExt:
+            with self.settings(EXACTTARGET_USER='user', EXACTTARGET_PASS='asdf'):
+                add_sms_user('foo', '8675309', True)
+
+            ExactTargetDataExt.assert_called_with('user', 'asdf')
+            data_ext = ExactTargetDataExt.return_value
+            call_args = data_ext.add_record.call_args
+
+            self.assertEqual(call_args[0][0], 'Mobile_Subscribers')
+            self.assertEqual(set(['Phone', 'SubscriberKey']), set(call_args[0][1]))
+            self.assertEqual(['8675309', '8675309'], call_args[0][2])

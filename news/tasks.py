@@ -15,6 +15,7 @@ from celery.task import Task, task
 
 from news.backends.common import NewsletterException, NewsletterNoResultsException
 from news.backends.exacttarget import ExactTarget, ExactTargetDataExt
+from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
 from news.models import FailedTask, Newsletter, Subscriber, Interest
 from news.newsletters import is_supported_newsletter_language, newsletter_field, newsletter_slugs
 from news.utils import get_user_data, lookup_subscriber, MSG_USER_NOT_FOUND
@@ -35,9 +36,9 @@ SET = 'SET'
 # Base message ID for confirmation email
 CONFIRMATION_MESSAGE = "confirmation_email"
 
-SMS_MESSAGES = (
-    'SMS_Android',
-)
+SMS_MESSAGES = {
+    'SMS_Android': 'MTo3ODow'
+}
 PHONEBOOK_GROUPS = (
     'SYSTEMS_ADMINISTRATION',
     'BOOT2GECKO',
@@ -768,13 +769,17 @@ def confirm_user(token, user_data):
 def add_sms_user(send_name, mobile_number, optin):
     if send_name not in SMS_MESSAGES:
         return
-    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-    et.trigger_send_sms(send_name, mobile_number)
+    et = ExactTargetRest()
+
+    try:
+        et.send_sms([mobile_number], SMS_MESSAGES[send_name])
+    except ETRestError as error:
+        return add_sms_user.retry(exc=error)
+
     if optin:
         record = {'Phone': mobile_number, 'SubscriberKey': mobile_number}
-        et.data_ext().add_record('Mobile_Subscribers',
-                                 record.keys(),
-                                 record.values())
+        data_ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
+        data_ext.add_record('Mobile_Subscribers', record.keys(), record.values())
 
 
 @et_task

@@ -24,7 +24,7 @@ from news.tasks import (
     update_get_involved,
     update_phonebook,
     update_student_ambassadors,
-)
+    SMS_MESSAGES)
 from news.utils import (
     MSG_EMAIL_OR_TOKEN_REQUIRED,
     MSG_USER_NOT_FOUND,
@@ -245,6 +245,13 @@ def subscribe_sms(request):
         }, 400)
 
     msg_name = request.POST.get('msg_name', 'SMS_Android')
+    if msg_name not in SMS_MESSAGES:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'Invalid msg_name',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 400)
+
     mobile = request.POST['mobile_number']
     mobile = re.sub(r'\D+', '', mobile)
     if len(mobile) == 10:

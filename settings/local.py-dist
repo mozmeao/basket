@@ -18,3 +18,7 @@ EXACTTARGET_DATA = 'dummy-data'
 # Name of the database of people waiting for confirmation
 EXACTTARGET_OPTIN_STAGE = 'dummy-optin'
 SUPERTOKEN = 'change me to something unique and do not share'
+
+# Credentials for the MobileConnect app for sending SMSes.
+ET_CLIENT_ID = ''
+ET_CLIENT_SECRET = ''

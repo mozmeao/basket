@@ -227,6 +227,45 @@ class FxAccountsTest(TestCase):
                                                request_data['fxa_id'])
 
 
+@patch.dict(views.SMS_MESSAGES, {'SMS_Android': 'My_Sherona'})
+class SubscribeSMSTests(TestCase):
+    def setUp(self):
+        patcher = patch.object(views, 'add_sms_user')
+        self.add_sms_user = patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def _request(self, **data):
+        return views.subscribe_sms(RequestFactory().post('/', data))
+
+    def test_valid_subscribe(self):
+        self._request(mobile_number='9198675309')
+        self.add_sms_user.delay.assert_called_with('SMS_Android', '19198675309', False)
+
+    def test_invalid_number(self):
+        resp = self._request(mobile_number='9198675309999')
+        self.assertFalse(self.add_sms_user.delay.called)
+        self.assertEqual(resp.status_code, 400, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
+        self.assertIn('mobile_number', data['desc'])
+
+    def test_missing_number(self):
+        resp = self._request()
+        self.assertFalse(self.add_sms_user.delay.called)
+        self.assertEqual(resp.status_code, 400, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
+        self.assertIn('mobile_number', data['desc'])
+
+    def test_invalid_message_name(self):
+        resp = self._request(mobile_number='9198675309', msg_name='The_DUDE')
+        self.assertFalse(self.add_sms_user.delay.called)
+        self.assertEqual(resp.status_code, 400, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
+        self.assertIn('msg_name', data['desc'])
+
+
 @patch('news.views.validate_email', none_mock)
 @patch('news.views.update_user_task')
 class FxOSMalformedPOSTTest(TestCase):
