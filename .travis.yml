@@ -17,7 +17,7 @@ after_success:
 notifications:
   irc:
     channels:
-      - "irc.mozilla.org#newsletter"
+      - "irc.mozilla.org#basket"
     on_success: change
     on_failure: always
     use_notice: true
