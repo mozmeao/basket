@@ -129,6 +129,8 @@ class UpdateFxAInfoTest(TestCase):
                                              email, sub.token, 'T')
 
 
+@override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
+                   EXACTTARGET_INTERESTS='DUDE_IS_INTERESTED')
 class UpdateGetInvolvedTests(TestCase):
     def setUp(self):
         patcher = patch.object(tasks, 'send_message')
@@ -158,8 +160,6 @@ class UpdateGetInvolvedTests(TestCase):
         Newsletter.objects.create(slug='about-mozilla', vendor_id='ABOUT_MOZILLA')
         Newsletter.objects.create(slug='get-involved', vendor_id='GET_INVOLVED')
 
-    @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
-                       EXACTTARGET_INTERESTS='DUDE_IS_INTERESTED')
     def test_new_user_interested(self):
         """Successful submission of the form for new user."""
         email = 'walter@example.com'
@@ -194,14 +194,24 @@ class UpdateGetInvolvedTests(TestCase):
         self.interest.notify_stewards.assert_called_with('Walter', email, 'en',
                                                          'It really tied the room together.')
 
-    @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
-                       EXACTTARGET_INTERESTS='DUDE_IS_INTERESTED')
+    def test_exact_target_error(self):
+        """Successful submission of the form for new user, but ET has a problem."""
+        self.get_user_data.side_effect = NewsletterException('Stuffs broke yo.')
+        with self.assertRaises(NewsletterException):
+            tasks.update_get_involved('bowling', 'en', 'Walter', 'walter@example.com',
+                                      'US', 'T', 'Y', 'It really tied the room together.', None)
+
+        self.assertFalse(self.send_message.called)
+        self.assertFalse(self.send_welcomes.called)
+        self.assertFalse(self.interest.notify_stewards.called)
+
     def test_existing_user_interested(self):
         """Successful submission of the form for existing newsletter user."""
         email = 'walter@example.com'
         sub = models.Subscriber.objects.create(email=email)
         token = sub.token
         self.get_user_data.return_value = {
+            'status': 'ok',
             'format': 'T',
             'token': token,
             'newsletters': ['about-mozilla', 'mozilla-and-you', 'get-involved'],
@@ -228,8 +238,6 @@ class UpdateGetInvolvedTests(TestCase):
         self.interest.notify_stewards.assert_called_with('Walter', email, 'en',
                                                          'It really tied the room together.')
 
-    @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
-                       EXACTTARGET_INTERESTS='DUDE_IS_INTERESTED')
     def test_existing_user_interested_no_newsletter(self):
         """
         Successful submission of the form for existing newsletter user not
@@ -239,6 +247,7 @@ class UpdateGetInvolvedTests(TestCase):
         sub = models.Subscriber.objects.create(email=email)
         token = sub.token
         self.get_user_data.return_value = {
+            'status': 'ok',
             'format': 'T',
             'token': token,
             'newsletters': ['mozilla-and-you'],
@@ -268,8 +277,6 @@ class UpdateGetInvolvedTests(TestCase):
         self.interest.notify_stewards.assert_called_with('Walter', email, 'en',
                                                          'It really tied the room together.')
 
-    @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
-                       EXACTTARGET_INTERESTS='DUDE_IS_INTERESTED')
     def test_new_user_interested_no_sub(self):
         """Successful submission of the form for new user without newsletter subscription."""
         email = 'walter@example.com'
@@ -412,12 +419,7 @@ class TestLookForUser(TestCase):
 
 class TestGetUserData(TestCase):
 
-    def check_get_user(self,
-                       master,
-                       optin,
-                       confirm,
-                       error,
-                       expected_result):
+    def check_get_user(self, master, optin, confirm, error, expected_result):
         """
         Call get_user_data with the given conditions and verify
         that the return value matches the expected result.
@@ -446,8 +448,8 @@ class TestGetUserData(TestCase):
                 raise Exception("INVALID INPUT TO mock_look_for_user - "
                                 "database %r unknown" % database)
 
-        with patch('news.utils.look_for_user') as look_for_user:
-            look_for_user.side_effect = mock_look_for_user
+        with patch('news.utils.look_for_user') as look_for_user_mock:
+            look_for_user_mock.side_effect = mock_look_for_user
             result = get_user_data()
 
         self.assertEqual(expected_result, result)
@@ -475,17 +477,18 @@ class TestGetUserData(TestCase):
         # User not in Exact Target, return None
         self.check_get_user(None, None, None, False, None)
 
-    def test_et_error(self):
+    @patch('news.utils.look_for_user')
+    def test_et_error(self, look_for_user_mock):
         # Error calling Exact Target, return error code
-        err_msg = "Mock error for testing"
-        error = NewsletterException(err_msg)
-        expected = {
-            'status': 'error',
-            'desc': err_msg,
-            'status_code': 400,
-            'code': errors.BASKET_NETWORK_FAILURE,
-        }
-        self.check_get_user(ANY, ANY, ANY, error, expected)
+        err_msg = 'Stuffs broke yo.'
+        look_for_user_mock.side_effect = NewsletterException(err_msg)
+        with self.assertRaises(NewsletterException) as exc_manager:
+            get_user_data()
+
+        exc = exc_manager.exception
+        self.assertEqual(str(exc), err_msg)
+        self.assertEqual(exc.error_code, errors.BASKET_NETWORK_FAILURE)
+        self.assertEqual(exc.status_code, 400)
 
     def test_in_master(self):
         """

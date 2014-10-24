@@ -476,10 +476,6 @@ def update_user(data, email, token, api_call_type, optin):
             'lang': lang,
             'status': 'ok',
         }
-    elif user_data.get('status', 'error') != 'ok':
-        # Error talking to ET - raise so we retry later
-        msg = "Some error with Exact Target: %r" % user_data
-        raise NewsletterException(msg)
 
     if lang:
         # User asked for a language change. Use the new language from
@@ -744,14 +740,15 @@ def confirm_user(token, user_data):
     if user_data is None:
         from .utils import get_user_data   # Avoid circular import
         user_data = get_user_data(token=token)
+
     if user_data is None:
         raise BasketError(MSG_USER_NOT_FOUND)
-    if user_data['status'] == 'error':
-        raise NewsletterException('error getting user data')
+
     if user_data['confirmed']:
-        log.info("In confirm_user, user with token %s "
-                 "is already confirmed" % token)
+        log.info('In confirm_user, user with token %s '
+                 'is already confirmed' % token)
         return
+
     if not 'email' in user_data or not user_data['email']:
         raise BasketError('token has no email in ET')
 

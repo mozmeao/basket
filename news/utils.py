@@ -111,13 +111,25 @@ def lookup_subscriber(token=None, email=None):
     return subscriber, user_data, created
 
 
+def newsletter_exception_response(exc):
+    """Convert a NewsletterException into a JSON HTTP response."""
+    return HttpResponseJSON({
+        'status': 'error',
+        'code': exc.error_code or errors.BASKET_UNKNOWN_ERROR,
+        'desc': str(exc),
+    }, exc.status_code or 400)
+
+
 def logged_in(f):
     """Decorator to check if the user has permission to view these
     pages"""
 
     @wraps(f)
     def wrapper(request, token, *args, **kwargs):
-        subscriber, subscriber_data, created = lookup_subscriber(token=token)
+        try:
+            subscriber, subscriber_data, created = lookup_subscriber(token=token)
+        except NewsletterException as e:
+            return newsletter_exception_response(e)
 
         if not subscriber:
             return HttpResponseJSON({
@@ -350,19 +362,13 @@ def get_user_data(token=None, email=None, sync_data=False):
         user_data['pending'] = pending
         user_data['master'] = master
     except NewsletterException as e:
-        return {
-            'status': 'error',
-            'status_code': 400,
-            'desc': str(e),
-            'code': errors.BASKET_NETWORK_FAILURE,
-        }
-    except UnauthorizedException as e:
-        return {
-            'status': 'error',
-            'status_code': 500,
-            'desc': 'Email service provider auth failure',
-            'code': errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
-        }
+        raise NewsletterException(str(e),
+                                  error_code=errors.BASKET_NETWORK_FAILURE,
+                                  status_code=400)
+    except UnauthorizedException:
+        raise NewsletterException('Email service provider auth failure',
+                                  error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
+                                  status_code=500)
 
     # We did find a user
     if sync_data:
@@ -373,8 +379,19 @@ def get_user_data(token=None, email=None, sync_data=False):
 
 
 def get_user(token=None, email=None, sync_data=False):
-    user_data = get_user_data(token, email, sync_data)
-    status_code = user_data.pop('status_code', 200) if user_data else 400
+    try:
+        user_data = get_user_data(token, email, sync_data)
+        status_code = 200
+    except NewsletterException as e:
+        return newsletter_exception_response(e)
+
+    if user_data is None:
+        user_data = {
+            'status': 'error',
+            'code': errors.BASKET_UNKNOWN_EMAIL if email else errors.BASKET_UNKNOWN_TOKEN,
+            'desc': 'Unable to find user.'
+        }
+        status_code = 400
     return HttpResponseJSON(user_data, status_code)
 
 

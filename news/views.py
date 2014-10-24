@@ -37,9 +37,10 @@ from news.utils import (
     HttpResponseJSON,
     language_code_is_valid,
     logged_in,
+    NewsletterException,
     update_user_task,
     validate_email,
-)
+    newsletter_exception_response)
 
 
 @require_POST
@@ -312,13 +313,18 @@ def send_recovery_message(request):
         return invalid_email_response(e)
 
     email = request.POST.get('email')
-    user_data = get_user_data(email=email, sync_data=True)
+    try:
+        user_data = get_user_data(email=email, sync_data=True)
+    except NewsletterException as e:
+        return newsletter_exception_response(e)
+
     if not user_data:
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'Email address not known',
             'code': errors.BASKET_UNKNOWN_EMAIL,
         }, 404)  # Note: Bedrock looks for this 404
+
     send_recovery_message_task.delay(email)
     return HttpResponseJSON({'status': 'ok'})
 
@@ -340,8 +346,11 @@ def debug_user(request):
                                 401)
 
     email = request.GET['email']
-    user_data = get_user_data(email=email)
-    status_code = user_data.pop('status_code', 200)
+    try:
+        user_data = get_user_data(email=email)
+    except NewsletterException as e:
+        return newsletter_exception_response(e)
+
     try:
         user = Subscriber.objects.get(email=email)
         user_data['in_basket'] = True
@@ -350,7 +359,7 @@ def debug_user(request):
         user_data['in_basket'] = False
         user_data['basket_token'] = ''
 
-    return HttpResponseJSON(user_data, status_code)
+    return HttpResponseJSON(user_data, 200)
 
 
 # Custom update methods
@@ -476,8 +485,12 @@ def lookup_user(request):
             'code': errors.BASKET_AUTH_ERROR,
         }, 401)
 
+    try:
+        user_data = get_user_data(token=token, email=email)
+    except NewsletterException as e:
+        return newsletter_exception_response(e)
+
     status_code = 200
-    user_data = get_user_data(token=token, email=email)
     if not user_data:
         code = errors.BASKET_UNKNOWN_TOKEN if token else errors.BASKET_UNKNOWN_EMAIL
         user_data = {
@@ -486,8 +499,6 @@ def lookup_user(request):
             'code': code,
         }
         status_code = 404
-    elif user_data['status'] == 'error':
-        status_code = 400
 
     return HttpResponseJSON(user_data, status_code)
 
@@ -498,5 +509,5 @@ def list_newsletters(request):
     """
 
     active_newsletters = Newsletter.objects.filter(active=True)
-    return render(request, "news/newsletters.html",
+    return render(request, 'news/newsletters.html',
                   {'newsletters': active_newsletters})
