@@ -318,18 +318,15 @@ class TestConfirmationLogic(TestCase):
 @patch('news.tasks.send_welcomes')
 @patch('news.tasks.apply_updates')
 class TestConfirmTask(TestCase):
-    def test_error(self, apply_updates, send_welcomes):
+    @patch('news.utils.lookup_subscriber')
+    def test_error(self, lookup_subscriber, apply_updates, send_welcomes):
         """
         If user_data shows an error talking to ET, the task raises
         an exception so our task logic will retry
         """
-        user_data = {
-            'status': 'error',
-            'desc': 'TESTERROR',
-        }
-        token = "TOKEN"
+        lookup_subscriber.side_effect = NewsletterException('Stuffs broke yo.')
         with self.assertRaises(NewsletterException):
-            confirm_user(token, user_data)
+            confirm_user('token', None)
         self.assertFalse(apply_updates.called)
         self.assertFalse(send_welcomes.called)
 

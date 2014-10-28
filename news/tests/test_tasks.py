@@ -12,6 +12,7 @@ from news.tasks import (
     add_sms_user,
     et_task,
     mogrify_message_id,
+    NewsletterException,
     RECOVERY_MESSAGE_ID,
     send_recovery_message_task,
     SUBSCRIBE,
@@ -77,6 +78,15 @@ class RecoveryMessageTask(TestCase):
         # Should log error and return
         mock_look_for_user.return_value = None
         send_recovery_message_task(self.email)
+        self.assertFalse(mock_send.called)
+
+    def test_et_error(self, mock_look_for_user, mock_send):
+        """Error talking to Basket. I'm shocked, SHOCKED!"""
+        mock_look_for_user.side_effect = NewsletterException('ET has failed to achieve.')
+
+        with self.assertRaises(NewsletterException):
+            send_recovery_message_task(self.email)
+
         self.assertFalse(mock_send.called)
 
     def test_email_only_in_et(self, mock_look_for_user, mock_send):

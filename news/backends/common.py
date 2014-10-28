@@ -6,7 +6,11 @@ class UnauthorizedException(Exception):
 
 class NewsletterException(Exception):
     """Error when trying to talk to the the email server."""
-    pass
+
+    def __init__(self, msg=None, error_code=None, status_code=None):
+        self.error_code = error_code
+        self.status_code = status_code
+        super(NewsletterException, self).__init__(msg)
 
 
 class NewsletterNoResultsException(NewsletterException):
