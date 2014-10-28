@@ -31,28 +31,28 @@ class TestSendConfirmNotice(TestCase):
         """Test newsletter that has no explicit confirm"""
         send_confirm_notice(self.email, self.token, "en", "H", ['slug2'])
         expected_message = mogrify_message_id(CONFIRMATION_MESSAGE, 'en', 'H')
-        send_message.assert_called_with(expected_message,
-                                        self.email,
-                                        self.token,
-                                        'H')
+        send_message.delay.assert_called_with(expected_message,
+                                              self.email,
+                                              self.token,
+                                              'H')
 
     def test_default_confirm_notice_T(self, send_message):
         """Test newsletter that has no explicit confirm"""
         send_confirm_notice(self.email, self.token, "es", "T", ['slug2'])
         expected_message = mogrify_message_id(CONFIRMATION_MESSAGE, 'es', 'T')
-        send_message.assert_called_with(expected_message,
-                                        self.email,
-                                        self.token,
-                                        'T')
+        send_message.delay.assert_called_with(expected_message,
+                                              self.email,
+                                              self.token,
+                                              'T')
 
     def test_default_confirm_notice_short_for_long(self, send_message):
         """Test using short form of lang that's in the newsletter list as a long lang"""
         send_confirm_notice(self.email, self.token, "rr", "H", ['slug2'])
         expected_message = mogrify_message_id(CONFIRMATION_MESSAGE, 'rr', 'H')
-        send_message.assert_called_with(expected_message,
-                                        self.email,
-                                        self.token,
-                                        'H')
+        send_message.delay.assert_called_with(expected_message,
+                                              self.email,
+                                              self.token,
+                                              'H')
 
     ### known long lang
 
@@ -60,19 +60,19 @@ class TestSendConfirmNotice(TestCase):
         """Test newsletter that has no explicit confirm with long lang code"""
         send_confirm_notice(self.email, self.token, "es-ES", "H", ['slug2'])
         expected_message = mogrify_message_id(CONFIRMATION_MESSAGE, 'es', 'H')
-        send_message.assert_called_with(expected_message,
-                                        self.email,
-                                        self.token,
-                                        'H')
+        send_message.delay.assert_called_with(expected_message,
+                                              self.email,
+                                              self.token,
+                                              'H')
 
     def test_default_confirm_notice_long_lang_T(self, send_message):
         """Test newsletter that has no explicit confirm with long lang code"""
         send_confirm_notice(self.email, self.token, "es-ES", "T", ['slug2'])
         expected_message = mogrify_message_id(CONFIRMATION_MESSAGE, 'es', 'T')
-        send_message.assert_called_with(expected_message,
-                                        self.email,
-                                        self.token,
-                                        'T')
+        send_message.delay.assert_called_with(expected_message,
+                                              self.email,
+                                              self.token,
+                                              'T')
 
     ### bad lang
 
@@ -97,19 +97,19 @@ class TestSendConfirmNotice(TestCase):
         """Test newsletter that has explicit confirm message"""
         send_confirm_notice(self.email, self.token, "en", "H", ['slug1'])
         expected_message = 'en_confirm1'
-        send_message.assert_called_with(expected_message,
-                                        self.email,
-                                        self.token,
-                                        'H')
+        send_message.delay.assert_called_with(expected_message,
+                                              self.email,
+                                              self.token,
+                                              'H')
 
     def test_explicit_confirm_notice_T(self, send_message):
         """Test newsletter that has explicit confirm message"""
         send_confirm_notice(self.email, self.token, "en", "T", ['slug1'])
         expected_message = 'en_confirm1_T'
-        send_message.assert_called_with(expected_message,
-                                        self.email,
-                                        self.token,
-                                        'T')
+        send_message.delay.assert_called_with(expected_message,
+                                              self.email,
+                                              self.token,
+                                              'T')
 
     ### known long lang
 
@@ -117,19 +117,19 @@ class TestSendConfirmNotice(TestCase):
         """Test newsletter that has explicit confirm message with long lang"""
         send_confirm_notice(self.email, self.token, "en-US", "H", ['slug1'])
         expected_message = 'en_confirm1'
-        send_message.assert_called_with(expected_message,
-                                        self.email,
-                                        self.token,
-                                        'H')
+        send_message.delay.assert_called_with(expected_message,
+                                              self.email,
+                                              self.token,
+                                              'H')
 
     def test_explicit_confirm_notice_long_lang_T(self, send_message):
         """Test newsletter that has explicit confirm message with long lang"""
         send_confirm_notice(self.email, self.token, "en-US", "T", ['slug1'])
         expected_message = 'en_confirm1_T'
-        send_message.assert_called_with(expected_message,
-                                        self.email,
-                                        self.token,
-                                        'T')
+        send_message.delay.assert_called_with(expected_message,
+                                              self.email,
+                                              self.token,
+                                              'T')
 
     ### bad lang
 

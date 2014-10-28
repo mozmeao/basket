@@ -50,8 +50,8 @@ class UpdateFxAInfoTest(TestCase):
             'MODIFIED_DATE_': ANY,
         })
         self.get_external_user_data.assert_called_with(email=email)
-        self.send_message.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
-                                             email, sub.token, 'H')
+        self.send_message.delay.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
+                                                   email, sub.token, 'H')
 
     def test_user_in_et_not_basket(self):
         """A user could exist in basket but not ET, should still work."""
@@ -73,8 +73,8 @@ class UpdateFxAInfoTest(TestCase):
             'MODIFIED_DATE_': ANY,
         })
         self.get_external_user_data.assert_called_with(email=email)
-        self.send_message.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
-                                             email, sub.token, 'H')
+        self.send_message.delay.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
+                                                   email, sub.token, 'H')
 
     def test_existing_user_not_in_basket(self):
         """Adding a user already in ET but not basket should preserve token."""
@@ -100,8 +100,8 @@ class UpdateFxAInfoTest(TestCase):
             'FXA_LANGUAGE_ISO2': 'de',
         })
         self.get_external_user_data.assert_called_with(email=email)
-        self.send_message.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
-                                             email, sub.token, '')
+        self.send_message.delay.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
+                                                   email, sub.token, '')
 
     def test_existing_user(self):
         """Adding a fxa_id to an existing user shouldn't modify other things."""
@@ -125,8 +125,8 @@ class UpdateFxAInfoTest(TestCase):
             'MODIFIED_DATE_': ANY,
             'FXA_LANGUAGE_ISO2': 'de',
         })
-        self.send_message.assert_called_with('de_{0}_T'.format(tasks.FXACCOUNT_WELCOME),
-                                             email, sub.token, 'T')
+        self.send_message.delay.assert_called_with('de_{0}_T'.format(tasks.FXACCOUNT_WELCOME),
+                                                   email, sub.token, 'T')
 
 
 @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
@@ -185,7 +185,7 @@ class UpdateGetInvolvedTests(TestCase):
                 'INTEREST': 'bowling',
             }),
         ])
-        self.send_message.assert_called_with('en_welcome_bowling_T', email, token, 'T')
+        self.send_message.delay.assert_called_with('en_welcome_bowling_T', email, token, 'T')
         self.send_welcomes.assert_called_once_with({
             'email': email,
             'token': token,
@@ -232,7 +232,7 @@ class UpdateGetInvolvedTests(TestCase):
                 'INTEREST': 'bowling',
             }),
         ])
-        self.send_message.assert_called_with('en_welcome_bowling_T', email, token, 'T')
+        self.send_message.delay.assert_called_with('en_welcome_bowling_T', email, token, 'T')
         # not called because 'about-mozilla' already in newsletters
         self.assertFalse(self.send_welcomes.called)
         self.interest.notify_stewards.assert_called_with('Walter', email, 'en',
@@ -271,7 +271,7 @@ class UpdateGetInvolvedTests(TestCase):
                 'INTEREST': 'bowling',
             }),
         ])
-        self.send_message.assert_called_with('en_welcome_bowling_T', email, token, 'T')
+        self.send_message.delay.assert_called_with('en_welcome_bowling_T', email, token, 'T')
         self.send_welcomes.assert_called_once_with(self.get_user_data.return_value,
                                                    ['about-mozilla'], 'T')
         self.interest.notify_stewards.assert_called_with('Walter', email, 'en',
@@ -300,7 +300,7 @@ class UpdateGetInvolvedTests(TestCase):
                 'INTEREST': 'bowling',
             }),
         ])
-        self.send_message.assert_called_with('en_welcome_bowling', email, token, 'H')
+        self.send_message.delay.assert_called_with('en_welcome_bowling', email, token, 'H')
         self.assertFalse(self.send_welcomes.called)
         self.interest.notify_stewards.assert_called_with('Walter', email, 'en',
                                                          'It really tied the room together.')

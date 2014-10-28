@@ -304,7 +304,7 @@ def update_fxa_info(email, lang, fxa_id, source_url=None):
 
     apply_updates(settings.EXACTTARGET_DATA, record)
     welcome = mogrify_message_id(FXACCOUNT_WELCOME, lang, welcome_format)
-    send_message(welcome, email, token, welcome_format)
+    send_message.delay(welcome, email, token, welcome_format)
 
 
 @et_task
@@ -367,7 +367,7 @@ def update_get_involved(interest_id, lang, name, email, country, email_format,
         'INTEREST': interest_id,
     })
     welcome_id = mogrify_message_id(interest.welcome_id, lang, email_format)
-    send_message(welcome_id, email, token, email_format)
+    send_message.delay(welcome_id, email, token, email_format)
     interest.notify_stewards(name, email, lang, message)
 
     if to_subscribe:
@@ -580,6 +580,7 @@ def apply_updates(target_et, record):
     et.data_ext().add_record(target_et, record.keys(), record.values())
 
 
+@et_task
 def send_message(message_id, email, token, format):
     """
     Ask ET to send a message.
@@ -615,8 +616,6 @@ def send_message(message_id, email, token, format):
             # remember it's a bad message ID so we don't try again during this process.
             BAD_MESSAGE_ID_CACHE.set(message_id, True)
             return
-        elif 'There are no valid subscribers.' in e.message:
-            raise BasketError("ET says: there are no valid subscribers.")
         # we should retry
         raise
 
@@ -669,7 +668,7 @@ def send_confirm_notice(email, token, lang, format, newsletter_slugs):
         welcome = CONFIRMATION_MESSAGE
 
     welcome = mogrify_message_id(welcome, lang, format)
-    send_message(welcome, email, token, format)
+    send_message.delay(welcome, email, token, format)
 
 
 def send_welcomes(user_data, newsletter_slugs, format):
@@ -717,8 +716,8 @@ def send_welcomes(user_data, newsletter_slugs, format):
     for welcome in welcomes_to_send:
         log.info("Sending welcome %s to user %s %s" %
                  (welcome, user_data['email'], user_data['token']))
-        send_message(welcome, user_data['email'], user_data['token'],
-                     format)
+        send_message.delay(welcome, user_data['email'], user_data['token'],
+                           format)
 
 
 @et_task
@@ -828,4 +827,4 @@ def send_recovery_message_task(email):
     format = user_data.get('format', 'H') or 'H'
 
     message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
-    send_message(message_id, email, user_data['token'], format)
+    send_message.delay(message_id, email, user_data['token'], format)
