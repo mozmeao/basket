@@ -86,7 +86,7 @@ class TestSendWelcomes(TestCase):
         }
         confirm_user(token, user_data)
         expected_welcome = "%s_%s_%s" % (lang, welcome, format)
-        send_message.assert_called_with(expected_welcome, email, token, format)
+        send_message.delay.assert_called_with(expected_welcome, email, token, format)
 
     @patch('news.tasks.send_message')
     @patch('news.tasks.apply_updates')
@@ -116,7 +116,7 @@ class TestSendWelcomes(TestCase):
         confirm_user(token, user_data)
         # Lang code is lowercased. And we don't append anything for HTML.
         expected_welcome = "%s_%s" % (lang.lower(), welcome)
-        send_message.assert_called_with(expected_welcome, email, token, format)
+        send_message.delay.assert_called_with(expected_welcome, email, token, format)
 
     @patch('news.tasks.send_message')
     @patch('news.tasks.apply_updates')
@@ -147,7 +147,7 @@ class TestSendWelcomes(TestCase):
         confirm_user(token, user_data)
         # They're getting English. And we don't append anything for HTML.
         expected_welcome = "en_%s" % welcome
-        send_message.assert_called_with(expected_welcome, email, token, format)
+        send_message.delay.assert_called_with(expected_welcome, email, token, format)
 
     @patch('news.tasks.send_message')
     @patch('news.tasks.apply_updates')
@@ -177,7 +177,7 @@ class TestSendWelcomes(TestCase):
         confirm_user(token, user_data)
         # They're getting pt. And we don't append anything for HTML.
         expected_welcome = "pt_%s" % welcome
-        send_message.assert_called_with(expected_welcome, email, token, format)
+        send_message.delay.assert_called_with(expected_welcome, email, token, format)
 
     @patch('news.tasks.send_message')
     @patch('news.tasks.apply_updates')
@@ -207,7 +207,7 @@ class TestSendWelcomes(TestCase):
         confirm_user(token, user_data)
         # They're getting pt. And we don't append anything for HTML.
         expected_welcome = "pt_%s" % welcome
-        send_message.assert_called_with(expected_welcome, email, token, format)
+        send_message.delay.assert_called_with(expected_welcome, email, token, format)
 
     @patch('news.tasks.send_message')
     @patch('news.tasks.apply_updates')
@@ -236,4 +236,4 @@ class TestSendWelcomes(TestCase):
         }
         confirm_user(token, user_data)
         expected_welcome = 'en_' + welcome
-        send_message.assert_called_with(expected_welcome, email, token, format)
+        send_message.delay.assert_called_with(expected_welcome, email, token, format)

@@ -108,8 +108,8 @@ class RecoveryMessageTask(TestCase):
         subscriber = Subscriber.objects.get(email=self.email)
         self.assertEqual('USERTOKEN', subscriber.token)
         message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
-        mock_send.assert_called_with(message_id, self.email,
-                                     subscriber.token, format)
+        mock_send.delay.assert_called_with(message_id, self.email,
+                                           subscriber.token, format)
 
     def test_email_only_in_basket(self, mock_look_for_user, mock_send):
         """Email known in basket, not in ET"""
@@ -136,8 +136,8 @@ class RecoveryMessageTask(TestCase):
         }
         send_recovery_message_task(self.email)
         message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
-        mock_send.assert_called_with(message_id, self.email,
-                                     subscriber.token, format)
+        mock_send.delay.assert_called_with(message_id, self.email,
+                                           subscriber.token, format)
 
 
 class UpdateUserTests(TestCase):

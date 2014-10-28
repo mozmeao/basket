@@ -78,9 +78,9 @@ class UpdateUserTest(TestCase):
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         apply_updates.assert_called()
         # The welcome should have been sent
-        send_message.assert_called()
-        send_message.assert_called_with('en_' + welcome_id, self.sub.email,
-                                        self.sub.token, 'H')
+        send_message.delay.assert_called()
+        send_message.delay.assert_called_with('en_' + welcome_id, self.sub.email,
+                                              self.sub.token, 'H')
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
@@ -258,8 +258,8 @@ class UpdateUserTest(TestCase):
                          api_call_type=SUBSCRIBE,
                          optin=True)
         self.assertEqual(UU_EXEMPT_NEW, rc)
-        self.assertEqual(2, send_message.call_count)
-        calls_args = [x[0] for x in send_message.call_args_list]
+        self.assertEqual(2, send_message.delay.call_count)
+        calls_args = [x[0] for x in send_message.delay.call_args_list]
         self.assertIn(('en_WELCOME1', self.sub.email, self.sub.token, 'H'),
                       calls_args)
         self.assertIn(('en_WELCOME2', self.sub.email, self.sub.token, 'H'),
@@ -294,7 +294,7 @@ class UpdateUserTest(TestCase):
                          api_call_type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         apply_updates.assert_called()
-        send_message.assert_called()
+        send_message.delay.assert_called()
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
@@ -325,10 +325,10 @@ class UpdateUserTest(TestCase):
                          api_call_type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_EXEMPT_NEW, rc)
         apply_updates.assert_called()
-        send_message.assert_called_with(u'en_Welcome_T',
-                                        self.sub.email,
-                                        self.sub.token,
-                                        'T')
+        send_message.delay.assert_called_with(u'en_Welcome_T',
+                                              self.sub.email,
+                                              self.sub.token,
+                                              'T')
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
@@ -366,8 +366,8 @@ class UpdateUserTest(TestCase):
                          api_call_type=SUBSCRIBE,
                          optin=True)
         self.assertEqual(UU_EXEMPT_NEW, rc)
-        self.assertEqual(1, send_message.call_count)
-        calls_args = [x[0] for x in send_message.call_args_list]
+        self.assertEqual(1, send_message.delay.call_count)
+        calls_args = [x[0] for x in send_message.delay.call_args_list]
         self.assertIn(('en_FFOS_WELCOME', self.sub.email, self.sub.token, 'H'),
                       calls_args)
         self.assertNotIn(('en_FF&Y_WELCOME', self.sub.email,
