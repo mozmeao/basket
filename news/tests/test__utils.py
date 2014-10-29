@@ -1,3 +1,5 @@
+# -*- coding: utf8 -*-
+
 import json
 
 from django.test import TestCase
@@ -9,10 +11,12 @@ from mock import Mock, patch
 from news import tasks
 from news.tasks import SUBSCRIBE
 from news.utils import (
+    EmailValidationError,
     get_accept_languages,
     get_best_language,
     language_code_is_valid,
-    update_user_task
+    update_user_task,
+    validate_email,
 )
 
 
@@ -264,3 +268,27 @@ class TestLanguageCodeIsValid(TestCase):
         self.assertFalse(language_code_is_valid('a2'))
         self.assertFalse(language_code_is_valid('asdfj'))
         self.assertFalse(language_code_is_valid('az_BY'))
+
+
+class TestValidateEmail(TestCase):
+    def test_non_ascii_email_domain(self):
+        """Should not raise exception, and should validate for non-ascii domains."""
+        self.assertIsNone(validate_email(u'dude@黒川.日本'))
+        self.assertIsNone(validate_email('dude@黒川.日本'))
+
+    def test_valid_email(self):
+        """Should return None for valid email."""
+        self.assertIsNone(validate_email('dude@example.com'))
+        self.assertIsNone(validate_email('dude@example.coop'))
+        self.assertIsNone(validate_email('dude@example.biz'))
+
+    def test_invalid_email(self):
+        """Should raise exception for invalid email."""
+        with self.assertRaises(EmailValidationError):
+            validate_email('dude@home@example.com')
+
+        with self.assertRaises(EmailValidationError):
+            validate_email('')
+
+        with self.assertRaises(EmailValidationError):
+            validate_email(None)

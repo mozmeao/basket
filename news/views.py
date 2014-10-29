@@ -2,6 +2,7 @@ import re
 
 from django.conf import settings
 from django.shortcuts import render
+from django.utils.encoding import force_unicode
 from django.views.decorators.cache import cache_control, never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
@@ -185,6 +186,9 @@ def subscribe(request):
             # Can't use QueryDict since the string is not url-encoded.
             # It will convert '+' to ' ' for example.
             data = dict(pair.split('=') for pair in raw_request.split('&'))
+            email = data.get('email')
+            if email:
+                data['email'] = force_unicode(email)
             statsd.incr('subscribe-fxos-workaround')
         else:
             return HttpResponseJSON({
@@ -217,7 +221,7 @@ def subscribe(request):
             }, 401)
 
     try:
-        validate_email(data)
+        validate_email(data.get('email'))
     except EmailValidationError as e:
         return invalid_email_response(e)
 

@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email as dj_validate_email
 from django.http import HttpResponse
+from django.utils.encoding import force_unicode
 from django.utils.translation.trans_real import parse_accept_lang_header
 
 # Get error codes from basket-client so users see the same definitions
@@ -445,15 +446,14 @@ def get_best_language(languages):
     return languages[0]
 
 
-def validate_email(data):
-    """Validates that the email key in the passed dict is valid.
+def validate_email(email):
+    """Validates that the email is valid.
 
-    Alternately checks that the 'validated' arg was passed in.
     Returns None on success and raises a ValidationError if
     invalid. The exception will have a 'suggestion' parameter
     that will contain the suggested email address or None.
 
-    @param data: dict. usually the POST data
+    @param email: unicode string, email address hopefully
     @return: None if email address in the 'email' key is valid
     @raise: EmailValidationError if 'email' key is invalid
     """
@@ -462,7 +462,7 @@ def validate_email(data):
     # TODO: Find a more robust solution
     #       Possibly ET's email validation API.
     try:
-        dj_validate_email(data.get('email', None))
+        dj_validate_email(force_unicode(email))
     except ValidationError:
         raise EmailValidationError('Invalid email address')
 
