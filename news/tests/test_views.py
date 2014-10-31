@@ -1,3 +1,5 @@
+# -*- coding: utf8 -*-
+
 import json
 from django.core.exceptions import ValidationError
 
@@ -328,6 +330,48 @@ class SubscribeEmailValidationTest(TestCase):
         self.assertEqual(resp_data['code'], errors.BASKET_INVALID_EMAIL)
         self.assertEqual(resp_data['suggestion'], 'walter@example.com')
 
+    @patch('news.views.update_user_task')
+    def test_non_ascii_email_fxos_malformed_post(self, update_user_mock):
+        """Should be able to parse data from the raw request body including non-ascii chars."""
+        req = self.rf.generic('POST', '/news/subscribe/',
+                              data='email=dude@黒川.日本&newsletters=firefox-os',
+                              content_type='text/plain; charset=UTF-8')
+        views.subscribe(req)
+        update_user_mock.assert_called_with(req, views.SUBSCRIBE, data={
+            'email': u'dude@黒川.日本',
+            'newsletters': 'firefox-os',
+        }, optin=False, sync=False)
+
+    @patch('news.views.update_user_task')
+    def test_non_ascii_email(self, update_user_mock):
+        """Should be able to accept valid email including non-ascii chars."""
+        req = self.rf.post('/news/subscribe/', data={'email': 'dude@黒川.日本',
+                                                     'newsletters': 'firefox-os'})
+        views.subscribe(req)
+        update_user_mock.assert_called_with(req, views.SUBSCRIBE, data={
+            'email': u'dude@黒川.日本',
+            'newsletters': 'firefox-os',
+        }, optin=False, sync=False)
+
+    @patch('news.views.update_user_task')
+    def test_empty_email_invalid(self, update_user_mock):
+        """Should report invalid email for missing or empty value."""
+        req = self.rf.post('/news/subscribe/', data={'email': '',
+                                                     'newsletters': 'firefox-os'})
+        resp = views.subscribe(req)
+        resp_data = json.loads(resp.content)
+        self.assertEqual(resp_data['status'], 'error')
+        self.assertEqual(resp_data['code'], errors.BASKET_INVALID_EMAIL)
+        self.assertFalse(update_user_mock.called)
+
+        # no email at all
+        req = self.rf.post('/news/subscribe/', data={'newsletters': 'firefox-os'})
+        resp = views.subscribe(req)
+        resp_data = json.loads(resp.content)
+        self.assertEqual(resp_data['status'], 'error')
+        self.assertEqual(resp_data['code'], errors.BASKET_INVALID_EMAIL)
+        self.assertFalse(update_user_mock.called)
+
 
 class RecoveryMessageEmailValidationTest(SubscribeEmailValidationTest):
     view = 'send_recovery_message'
@@ -413,7 +457,7 @@ class SubscribeTests(TestCase):
         If validate_email raises an EmailValidationError, return an
         invalid email response.
         """
-        request_data = {'newsletters': 'asdf'}
+        request_data = {'newsletters': 'asdf', 'email': 'dude@example.com'}
         request = self.factory.post('/', request_data)
         error = utils.EmailValidationError('blah')
         self.validate_email.side_effect = error
@@ -421,18 +465,19 @@ class SubscribeTests(TestCase):
         with patch('news.views.invalid_email_response') as invalid_email_response:
             response = views.subscribe(request)
             self.assertEqual(response, invalid_email_response.return_value)
-            self.validate_email.assert_called_with(request_data)
+            self.validate_email.assert_called_with(request_data['email'])
             invalid_email_response.assert_called_with(error)
 
     def test_success(self):
         """Test basic success case with no optin or sync."""
-        request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N'}
+        request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
+                        'email': 'dude@example.com'}
         request = self.factory.post('/', request_data)
 
         response = views.subscribe(request)
 
         self.assertEqual(response, self.update_user_task.return_value)
-        self.validate_email.assert_called_with(request_data)
+        self.validate_email.assert_called_with(request_data['email'])
         self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
                                                  optin=False, sync=False)
 
@@ -447,7 +492,7 @@ class SubscribeTests(TestCase):
 
         self.has_valid_api_key.assert_called_with(request)
         self.assertEqual(response, self.update_user_task.return_value)
-        self.validate_email.assert_called_with(request_data)
+        self.validate_email.assert_called_with(None)
         self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
                                                      optin=True, sync=True)
 
@@ -463,7 +508,7 @@ class SubscribeTests(TestCase):
             has_valid_api_key.assert_called_with(request)
 
             self.assertEqual(response, self.update_user_task.return_value)
-            self.validate_email.assert_called_with(request_data)
+            self.validate_email.assert_called_with(None)
             self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
                                                      optin=True, sync=True)
 
@@ -637,15 +682,14 @@ class RecoveryViewTest(TestCase):
 
 class TestValidateEmail(TestCase):
     email = 'dude@example.com'
-    data = {'email': email}
 
     def test_valid_email(self):
         """Should return without raising an exception for a valid email."""
-        self.assertIsNone(utils.validate_email(self.data))
+        self.assertIsNone(utils.validate_email(self.email))
 
     @patch('news.utils.dj_validate_email')
     def test_invalid_email(self, dj_validate_email):
         """Should raise an exception for an invalid email."""
         dj_validate_email.side_effect = ValidationError('Invalid email')
         with self.assertRaises(utils.EmailValidationError):
-            utils.validate_email(self.data)
+            utils.validate_email(self.email)
