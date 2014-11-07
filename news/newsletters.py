@@ -6,7 +6,7 @@ generic one passed by the user. This decouples the API from any
 specific email provider."""
 from django.core.cache import cache
 
-from news.models import Newsletter
+from news.models import Newsletter, NewsletterGroup
 
 
 __all__ = ('clear_newsletter_cache', 'newsletter_field', 'newsletter_name',
@@ -31,15 +31,25 @@ def _newsletters():
             'by_vendor_id': {
                 'NEWSLETTER_ID_1': a Newsletter object,
                 'NEWSLETTER_ID_2': another Newsletter object,
+            },
+            'groups': {
+                'group_slug': a NewsletterGroup object,
+                ...
             }
         }
     """
     data = cache.get(CACHE_KEY)
     if data is None:
         data = _get_newsletters_data()
+        data['groups'] = _get_newsletter_groups_data()
         cache.set(CACHE_KEY, data)
 
     return data
+
+
+def _get_newsletter_groups_data():
+    groups = NewsletterGroup.objects.all().prefetch_related('newsletters')
+    return dict((nlg.slug, nlg.newsletter_slugs()) for nlg in groups)
 
 
 def _get_newsletters_data():
@@ -70,12 +80,34 @@ def newsletter_name(field):
         return None
 
 
+def newsletter_group_newsletter_slugs(name):
+    """Return the newsletter slugs associated with a group."""
+    try:
+        return _newsletters()['groups'][name]
+    except KeyError:
+        return None
+
+
 def newsletter_slugs():
     """
     Get a list of all the available newsletters.
     Returns a list of their slugs.
     """
     return _newsletters()['by_name'].keys()
+
+
+def newsletter_group_slugs():
+    """
+    Get a list of all the available newsletter groups.
+    Returns a list of their slugs.
+    """
+    # using get() in case old format cached
+    return _newsletters().get('groups', {}).keys()
+
+
+def newsletter_and_group_slugs():
+    """Return a list of all newsletter and group slugs."""
+    return list(set(newsletter_slugs()) | set(newsletter_group_slugs()))
 
 
 def slug_to_vendor_id(slug):
