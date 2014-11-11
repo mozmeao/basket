@@ -13,8 +13,9 @@ class Migration(SchemaMigration):
             (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('slug', self.gf('django.db.models.fields.SlugField')(unique=True, max_length=50)),
             ('title', self.gf('django.db.models.fields.CharField')(max_length=128)),
-            ('description', self.gf('django.db.models.fields.CharField')(max_length=2000, blank=True)),
+            ('description', self.gf('django.db.models.fields.CharField')(max_length=256, blank=True)),
             ('show', self.gf('django.db.models.fields.BooleanField')(default=False)),
+            ('active', self.gf('django.db.models.fields.BooleanField')(default=False)),
         ))
         db.send_create_signal(u'news', ['NewsletterGroup'])
 
@@ -38,7 +39,7 @@ class Migration(SchemaMigration):
     models = {
         u'news.apiuser': {
             'Meta': {'object_name': 'APIUser'},
-            'api_key': ('django.db.models.fields.CharField', [], {'default': "'aa21895f-65f5-4ce0-adfc-cd81c941c599'", 'max_length': '40', 'db_index': 'True'}),
+            'api_key': ('django.db.models.fields.CharField', [], {'default': "'1c024aeb-915d-4865-a957-acbac4574c81'", 'max_length': '40', 'db_index': 'True'}),
             'enabled': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '256'})
@@ -86,7 +87,8 @@ class Migration(SchemaMigration):
         },
         u'news.newslettergroup': {
             'Meta': {'object_name': 'NewsletterGroup'},
-            'description': ('django.db.models.fields.CharField', [], {'max_length': '2000', 'blank': 'True'}),
+            'active': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'description': ('django.db.models.fields.CharField', [], {'max_length': '256', 'blank': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'newsletters': ('django.db.models.fields.related.ManyToManyField', [], {'related_name': "'newsletter_groups'", 'symmetrical': 'False', 'to': u"orm['news.Newsletter']"}),
             'show': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
@@ -97,7 +99,7 @@ class Migration(SchemaMigration):
             'Meta': {'object_name': 'Subscriber'},
             'email': ('django.db.models.fields.EmailField', [], {'max_length': '75', 'primary_key': 'True'}),
             'fxa_id': ('django.db.models.fields.CharField', [], {'db_index': 'True', 'max_length': '100', 'null': 'True', 'blank': 'True'}),
-            'token': ('django.db.models.fields.CharField', [], {'default': "'91675b68-54e0-40f4-9c27-509e71bbc312'", 'max_length': '40', 'db_index': 'True'})
+            'token': ('django.db.models.fields.CharField', [], {'default': "'bf8a509f-c81b-40ba-9280-125dad181a17'", 'max_length': '40', 'db_index': 'True'})
         }
     }
 

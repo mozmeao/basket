@@ -28,10 +28,16 @@ class TestNewsletterUtils(TestCase):
         self.groupies = [
             NewsletterGroup.objects.create(
                 slug='bowling',
-                title='Bowling in Groups'),
+                title='Bowling in Groups',
+                active=True),
             NewsletterGroup.objects.create(
                 slug='abiding',
-                title='Be like The Dude'),
+                title='Be like The Dude',
+                active=True),
+            NewsletterGroup.objects.create(
+                slug='failing',
+                title='The Bums Lost!',
+                active=False),
         ]
         self.groupies[0].newsletters.add(self.newsies[1], self.newsies[2])
 
@@ -55,7 +61,7 @@ class TestNewsletterUtils(TestCase):
         """If newsletter slug is a group for SUBSCRIBE, expand to group's newsletters."""
         record = {}
         to_sub, to_unsub = utils.parse_newsletters(record, utils.SUBSCRIBE, ['bowling'], set())
-        self.assertEqual(to_sub, ['surfing', 'extorting'])
+        self.assertEqual(set(to_sub), set(['surfing', 'extorting']))
         self.assertEqual(record['SURFING_FLG'], 'Y')
         self.assertEqual(record['EXTORTING_FLG'], 'Y')
 

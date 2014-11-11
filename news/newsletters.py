@@ -48,7 +48,7 @@ def _newsletters():
 
 
 def _get_newsletter_groups_data():
-    groups = NewsletterGroup.objects.all().prefetch_related('newsletters')
+    groups = NewsletterGroup.objects.filter(active=True)
     return dict((nlg.slug, nlg.newsletter_slugs()) for nlg in groups)
 
 

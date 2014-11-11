@@ -5,8 +5,9 @@ from news.models import (APIUser, FailedTask, Interest, LocaleStewards, Newslett
 
 
 class NewsletterGroupAdmin(admin.ModelAdmin):
-    fields = ('title', 'slug', 'description', 'show', 'newsletters')
-    list_display = ('title', 'slug', 'show')
+    fields = ('title', 'slug', 'description', 'show', 'active', 'newsletters')
+    list_display = ('title', 'slug', 'show', 'active')
+    list_display_links = ('title', 'slug')
     prepopulated_fields = {"slug": ("title",)}
 
 

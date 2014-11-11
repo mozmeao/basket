@@ -135,21 +135,26 @@ class Newsletter(models.Model):
 class NewsletterGroup(models.Model):
     slug = models.SlugField(
         unique=True,
-        help_text="The ID for the group that will be used by clients",
+        help_text='The ID for the group that will be used by clients',
     )
     title = models.CharField(
         max_length=128,
-        help_text="Public name of group in English",
+        help_text='Public name of group in English',
     )
     description = models.CharField(
-        max_length=2000,
-        help_text="One-line description of group in English",
+        max_length=256,
+        help_text='One-line description of group in English',
         blank=True,
     )
     show = models.BooleanField(
         default=False,
-        help_text="Whether to show this group in lists of newsletters and groups, "
-                  "even to non-subscribers",
+        help_text='Whether to show this group in lists of newsletters and groups, '
+                  'even to non-subscribers',
+    )
+    active = models.BooleanField(
+        default=False,
+        help_text='Whether this group should be considered when subscription '
+                  'requests are received.',
     )
     newsletters = models.ManyToManyField(Newsletter, related_name='newsletter_groups')
 
