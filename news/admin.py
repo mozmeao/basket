@@ -1,6 +1,14 @@
 from django.contrib import admin, messages
 
-from news.models import APIUser, FailedTask, Interest, LocaleStewards, Newsletter, Subscriber
+from news.models import (APIUser, FailedTask, Interest, LocaleStewards, Newsletter,
+                         NewsletterGroup, Subscriber)
+
+
+class NewsletterGroupAdmin(admin.ModelAdmin):
+    fields = ('title', 'slug', 'description', 'show', 'active', 'newsletters')
+    list_display = ('title', 'slug', 'show', 'active')
+    list_display_links = ('title', 'slug')
+    prepopulated_fields = {"slug": ("title",)}
 
 
 class LocaleStewardsInline(admin.TabularInline):
@@ -16,23 +24,14 @@ class InterestAdmin(admin.ModelAdmin):
     inlines = [LocaleStewardsInline]
 
 
-admin.site.register(Interest, InterestAdmin)
-
-
 class APIUserAdmin(admin.ModelAdmin):
     list_display = ('name', 'enabled')
-
-
-admin.site.register(APIUser, APIUserAdmin)
 
 
 class SubscriberAdmin(admin.ModelAdmin):
     fields = ('email', 'token', 'fxa_id')
     list_display = ('email', 'token', 'fxa_id')
     search_fields = ('email', 'token', 'fxa_id')
-
-
-admin.site.register(Subscriber, SubscriberAdmin)
 
 
 class NewsletterAdmin(admin.ModelAdmin):
@@ -47,9 +46,6 @@ class NewsletterAdmin(admin.ModelAdmin):
     list_filter = ('show', 'active', 'requires_double_optin')
     prepopulated_fields = {"slug": ("title",)}
     search_fields = ('title', 'slug', 'description', 'vendor_id')
-
-
-admin.site.register(Newsletter, NewsletterAdmin)
 
 
 class TaskNameFilter(admin.SimpleListFilter):
@@ -86,4 +82,9 @@ class FailedTaskAdmin(admin.ModelAdmin):
     retry_task_action.short_description = u"Retry task(s)"
 
 
+admin.site.register(APIUser, APIUserAdmin)
 admin.site.register(FailedTask, FailedTaskAdmin)
+admin.site.register(Interest, InterestAdmin)
+admin.site.register(Newsletter, NewsletterAdmin)
+admin.site.register(NewsletterGroup, NewsletterGroupAdmin)
+admin.site.register(Subscriber, SubscriberAdmin)

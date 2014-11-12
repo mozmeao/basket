@@ -3,8 +3,7 @@ from uuid import uuid4
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import models
-from django.db.models.signals import post_delete
-from django.dispatch import receiver
+from django.db.models.signals import post_delete, post_save
 from django.template.loader import render_to_string
 from django.utils.timezone import now
 
@@ -122,12 +121,6 @@ class Newsletter(models.Model):
         self.confirm_message = self.confirm_message.strip()
         super(Newsletter, self).save(*args, **kwargs)
 
-        # Cannot import earlier due to circular import
-        from news.newsletters import clear_newsletter_cache
-
-        # Newsletter data might have changed, forget our cached version of it
-        clear_newsletter_cache()
-
     @property
     def welcome_id(self):
         """Return newsletter's welcome message ID, or the default one"""
@@ -139,11 +132,46 @@ class Newsletter(models.Model):
         return [x.strip() for x in self.languages.split(",")]
 
 
-@receiver(post_delete, sender=Newsletter)
-def post_newsletter_delete(sender, **kwargs):
+class NewsletterGroup(models.Model):
+    slug = models.SlugField(
+        unique=True,
+        help_text='The ID for the group that will be used by clients',
+    )
+    title = models.CharField(
+        max_length=128,
+        help_text='Public name of group in English',
+    )
+    description = models.CharField(
+        max_length=256,
+        help_text='One-line description of group in English',
+        blank=True,
+    )
+    show = models.BooleanField(
+        default=False,
+        help_text='Whether to show this group in lists of newsletters and groups, '
+                  'even to non-subscribers',
+    )
+    active = models.BooleanField(
+        default=False,
+        help_text='Whether this group should be considered when subscription '
+                  'requests are received.',
+    )
+    newsletters = models.ManyToManyField(Newsletter, related_name='newsletter_groups')
+
+    def newsletter_slugs(self):
+        return [nl.slug for nl in self.newsletters.all()]
+
+
+def post_newsletter_change(*args, **kwargs):
     # Cannot import earlier due to circular import
     from news.newsletters import clear_newsletter_cache
     clear_newsletter_cache()
+
+
+post_save.connect(post_newsletter_change, sender=Newsletter)
+post_delete.connect(post_newsletter_change, sender=Newsletter)
+post_save.connect(post_newsletter_change, sender=NewsletterGroup)
+post_delete.connect(post_newsletter_change, sender=NewsletterGroup)
 
 
 class APIUser(models.Model):

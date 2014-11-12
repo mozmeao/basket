@@ -14,9 +14,6 @@ from django_statsd.clients import statsd
 from news.models import Newsletter, Subscriber, Interest
 from news.newsletters import newsletter_slugs
 from news.tasks import (
-    SET,
-    SUBSCRIBE,
-    UNSUBSCRIBE,
     add_sms_user,
     confirm_user,
     send_recovery_message_task,
@@ -27,6 +24,9 @@ from news.tasks import (
     update_student_ambassadors,
     SMS_MESSAGES)
 from news.utils import (
+    SET,
+    SUBSCRIBE,
+    UNSUBSCRIBE,
     MSG_EMAIL_OR_TOKEN_REQUIRED,
     MSG_USER_NOT_FOUND,
     EmailValidationError,

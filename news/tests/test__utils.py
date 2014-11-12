@@ -96,7 +96,7 @@ class UpdateUserTaskTests(TestCase):
         request = self.factory.post('/')
         data = {'email': 'a@example.com', 'newsletters': 'foo,bar'}
 
-        with patch('news.utils.newsletter_slugs') as newsletter_slugs:
+        with patch('news.utils.newsletter_and_group_slugs') as newsletter_slugs:
             newsletter_slugs.return_value = ['foo', 'bar']
             response = update_user_task(request, SUBSCRIBE, data, sync=False)
             self.assert_response_ok(response)

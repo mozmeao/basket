@@ -14,7 +14,7 @@ from basket import errors
 from news import models, tasks, views
 from news.backends.common import NewsletterException
 from news.models import Newsletter, APIUser
-from news.utils import look_for_user, get_user_data
+from news.utils import look_for_user, get_user_data, SET
 
 
 class UpdateFxAInfoTest(TestCase):
@@ -522,7 +522,7 @@ class UserTest(TestCase):
         with patch.object(views, 'update_user_task') as update_user_task:
             update_user_task.return_value = HttpResponse()
             views.user(request, 'asdf')
-            update_user_task.assert_called_with(request, tasks.SET)
+            update_user_task.assert_called_with(request, SET)
 
     def test_user_set_bad_language(self):
         """If the user view is sent a POST request with an invalid

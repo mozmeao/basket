@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 import datetime
 import logging
-from datetime import date
 from email.utils import formatdate
 from functools import wraps
 from time import mktime
@@ -17,21 +16,14 @@ from news.backends.common import NewsletterException, NewsletterNoResultsExcepti
 from news.backends.exacttarget import ExactTarget, ExactTargetDataExt
 from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
 from news.models import FailedTask, Newsletter, Subscriber, Interest
-from news.newsletters import is_supported_newsletter_language, newsletter_field, newsletter_slugs
-from news.utils import get_user_data, lookup_subscriber, MSG_USER_NOT_FOUND
+from news.newsletters import is_supported_newsletter_language
+from news.utils import (get_user_data, lookup_subscriber, MSG_USER_NOT_FOUND,
+                        SUBSCRIBE, parse_newsletters)
 
 
 log = logging.getLogger(__name__)
 
 BAD_MESSAGE_ID_CACHE = get_cache('bad_message_ids')
-
-
-# A few constants to indicate the type of action to take
-# on a user with a list of newsletters
-# (Use strings so when we log function args, they make sense.)
-SUBSCRIBE = 'SUBSCRIBE'
-UNSUBSCRIBE = 'UNSUBSCRIBE'
-SET = 'SET'
 
 # Base message ID for confirmation email
 CONFIRMATION_MESSAGE = "confirmation_email"
@@ -185,69 +177,6 @@ def gmttime():
     d = datetime.datetime.now() + datetime.timedelta(minutes=10)
     stamp = mktime(d.timetuple())
     return formatdate(timeval=stamp, localtime=False, usegmt=True)
-
-
-def parse_newsletters(record, type, newsletters, cur_newsletters):
-    """Utility function to take a list of newsletters and according
-    the type of action (subscribe, unsubscribe, and set) set the
-    appropriate flags in `record` which is a dict of parameters that
-    will be sent to the email provider.
-
-    Parameters are only set for the newsletters whose subscription
-    status needs to change, so that we don't unnecessarily update the
-    last modification timestamp of newsletters.
-
-    :param dict record: Parameters that will be sent to ET
-    :param integer type: SUBSCRIBE means add these newsletters to the
-        user's subscriptions if not already there, UNSUBSCRIBE means remove
-        these newsletters from the user's subscriptions if there, and SET
-        means change the user's subscriptions to exactly this set of
-        newsletters.
-    :param list newsletters: List of the slugs of the newsletters to be
-        subscribed, unsubscribed, or set.
-    :param set cur_newsletters: Set of the slugs of the newsletters that
-        the user is currently subscribed to. None if there was an error.
-    :returns: (to_subscribe, to_unsubscribe) - lists of slugs of the
-        newsletters that we will request new subscriptions to, or request
-        unsubscription from, respectively.
-    """
-
-    to_subscribe = []
-    to_unsubscribe = []
-    if type == SUBSCRIBE or type == SET:
-        # Subscribe the user to these newsletters if not already
-        for nl in newsletters:
-            name = newsletter_field(nl)
-            if name and (cur_newsletters is None or
-                         nl not in cur_newsletters):
-                record['%s_FLG' % name] = 'Y'
-                record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
-                to_subscribe.append(nl)
-
-    if type == UNSUBSCRIBE or type == SET:
-        # Unsubscribe the user to these newsletters
-
-        if type == SET:
-            # Unsubscribe from the newsletters currently subscribed to
-            # but not in the new list
-            if cur_newsletters is not None:
-                unsubs = cur_newsletters - set(newsletters)
-            else:
-                subs = set(newsletters)
-                all = set(newsletter_slugs())
-                unsubs = all - subs
-        else:  # type == UNSUBSCRIBE
-            # unsubscribe from the specified newsletters
-            unsubs = newsletters
-
-        for nl in unsubs:
-            # Unsubscribe from any unsubs that the user is currently subbed to
-            name = newsletter_field(nl)
-            if name and (cur_newsletters is None or nl in cur_newsletters):
-                record['%s_FLG' % name] = 'N'
-                record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
-                to_unsubscribe.append(nl)
-    return to_subscribe, to_unsubscribe
 
 
 def get_external_user_data(email=None, token=None, fields=None, database=None):

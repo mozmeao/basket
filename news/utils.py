@@ -1,6 +1,7 @@
 from functools import wraps
 import json
 import re
+from datetime import date
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -16,14 +17,28 @@ from news.backends.common import NewsletterNoResultsException
 from news.backends.exacttarget import (ExactTargetDataExt, NewsletterException,
                                        UnauthorizedException)
 from news.models import APIUser, Subscriber
-from news.newsletters import (newsletter_fields, newsletter_languages, newsletter_slugs,
-                              slug_to_vendor_id)
+from news.newsletters import (
+    newsletter_and_group_slugs,
+    newsletter_field,
+    newsletter_fields,
+    newsletter_group_newsletter_slugs,
+    newsletter_languages,
+    newsletter_slugs,
+    slug_to_vendor_id,
+)
 
 
 ## Error messages
 MSG_TOKEN_REQUIRED = 'Must have valid token for this request'
 MSG_EMAIL_OR_TOKEN_REQUIRED = 'Must have valid token OR email for this request'
 MSG_USER_NOT_FOUND = 'User not found'
+
+# A few constants to indicate the type of action to take
+# on a user with a list of newsletters
+# (Use strings so when we log function args, they make sense.)
+SUBSCRIBE = 'SUBSCRIBE'
+UNSUBSCRIBE = 'UNSUBSCRIBE'
+SET = 'SET'
 
 
 class HttpResponseJSON(HttpResponse):
@@ -180,7 +195,10 @@ def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
 
     newsletters = data.get('newsletters', None)
     if newsletters:
-        all_newsletters = newsletter_slugs()
+        if api_call_type == SUBSCRIBE:
+            all_newsletters = newsletter_and_group_slugs()
+        else:
+            all_newsletters = newsletter_slugs()
         for nl in [x.strip() for x in newsletters.split(',')]:
             if nl not in all_newsletters:
                 return HttpResponseJSON({
@@ -467,3 +485,78 @@ def validate_email(email):
         raise EmailValidationError('Invalid email address')
 
     return None
+
+
+def parse_newsletters(record, api_call_type, newsletters, cur_newsletters):
+    """Utility function to take a list of newsletters and according
+    the type of action (subscribe, unsubscribe, and set) set the
+    appropriate flags in `record` which is a dict of parameters that
+    will be sent to the email provider.
+
+    Parameters are only set for the newsletters whose subscription
+    status needs to change, so that we don't unnecessarily update the
+    last modification timestamp of newsletters.
+
+    :param dict record: Parameters that will be sent to ET
+    :param integer api_call_type: SUBSCRIBE means add these newsletters to the
+        user's subscriptions if not already there, UNSUBSCRIBE means remove
+        these newsletters from the user's subscriptions if there, and SET
+        means change the user's subscriptions to exactly this set of
+        newsletters.
+    :param list newsletters: List of the slugs of the newsletters to be
+        subscribed, unsubscribed, or set.
+    :param set cur_newsletters: Set of the slugs of the newsletters that
+        the user is currently subscribed to. None if there was an error.
+    :returns: (to_subscribe, to_unsubscribe) - lists of slugs of the
+        newsletters that we will request new subscriptions to, or request
+        unsubscription from, respectively.
+    """
+
+    to_subscribe = []
+    to_unsubscribe = []
+
+    if api_call_type == SUBSCRIBE:
+        grouped_newsletters = set()
+        for nl in newsletters:
+            group_nl = newsletter_group_newsletter_slugs(nl)
+            if group_nl:
+                grouped_newsletters.update(group_nl)
+            else:
+                grouped_newsletters.add(nl)
+
+        newsletters = list(grouped_newsletters)
+
+    if api_call_type == SUBSCRIBE or api_call_type == SET:
+        # Subscribe the user to these newsletters if not already
+        for nl in newsletters:
+            name = newsletter_field(nl)
+            if name and (cur_newsletters is None or
+                                 nl not in cur_newsletters):
+                record['%s_FLG' % name] = 'Y'
+                record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
+                to_subscribe.append(nl)
+
+    if api_call_type == UNSUBSCRIBE or api_call_type == SET:
+        # Unsubscribe the user to these newsletters
+
+        if api_call_type == SET:
+            # Unsubscribe from the newsletters currently subscribed to
+            # but not in the new list
+            if cur_newsletters is not None:
+                unsubs = cur_newsletters - set(newsletters)
+            else:
+                subs = set(newsletters)
+                all = set(newsletter_slugs())
+                unsubs = all - subs
+        else:  # type == UNSUBSCRIBE
+            # unsubscribe from the specified newsletters
+            unsubs = newsletters
+
+        for nl in unsubs:
+            # Unsubscribe from any unsubs that the user is currently subbed to
+            name = newsletter_field(nl)
+            if name and (cur_newsletters is None or nl in cur_newsletters):
+                record['%s_FLG' % name] = 'N'
+                record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
+                to_unsubscribe.append(nl)
+    return to_subscribe, to_unsubscribe

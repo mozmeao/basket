@@ -9,8 +9,9 @@ from mock import patch, ANY
 
 from news import models
 from news.backends.common import NewsletterException
-from news.tasks import (update_user, SUBSCRIBE, UU_EXEMPT_NEW, UU_ALREADY_CONFIRMED, SET,
-                        FFOS_VENDOR_ID, FFAY_VENDOR_ID, UNSUBSCRIBE)
+from news.tasks import (update_user, UU_EXEMPT_NEW, UU_ALREADY_CONFIRMED,
+                        FFOS_VENDOR_ID, FFAY_VENDOR_ID)
+from news.utils import SET, SUBSCRIBE, UNSUBSCRIBE
 
 
 class UpdateUserTest(TestCase):
