@@ -154,7 +154,7 @@ def get_involved(request):
         }, 401)
 
     try:
-        validate_email(data)
+        validate_email(data.get('email'))
     except EmailValidationError as e:
         return invalid_email_response(e)
 
@@ -312,7 +312,7 @@ def send_recovery_message(request):
     Otherwise, queues a task to send the message and returns 200.
     """
     try:
-        validate_email(request.POST)
+        validate_email(request.POST.get('email'))
     except EmailValidationError as e:
         return invalid_email_response(e)
 
