@@ -48,6 +48,7 @@ class GetInvolvedTests(TestCase):
 
     def test_successful_submission(self):
         resp = self._request(self.base_data)
+        self.validate_email.assert_called_with(self.base_data['email'])
         self.assertEqual(resp['status'], 'ok', resp)
         self.update_get_involved.delay.assert_called_with('bowling', 'en', 'The Dude',
                                                           'dude@example.com', 'us', 'T',
@@ -73,6 +74,7 @@ class GetInvolvedTests(TestCase):
         resp = self._request(self.base_data)
         self.assertEqual(resp['status'], 'error', resp)
         self.assertEqual(resp['code'], errors.BASKET_INVALID_EMAIL, resp)
+        self.validate_email.assert_called_with(self.base_data['email'])
         self.assertFalse(self.update_get_involved.called)
 
         del self.base_data['email']
@@ -312,6 +314,7 @@ class SubscribeEmailValidationTest(TestCase):
         view = getattr(views, self.view)
         resp = view(self.rf.post('/', self.data))
         resp_data = json.loads(resp.content)
+        mock_validate.assert_called_with(self.email)
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(resp_data['status'], 'error')
         self.assertEqual(resp_data['code'], errors.BASKET_INVALID_EMAIL)
@@ -325,6 +328,7 @@ class SubscribeEmailValidationTest(TestCase):
         view = getattr(views, self.view)
         resp = view(self.rf.post('/', self.data))
         resp_data = json.loads(resp.content)
+        mock_validate.assert_called_with(self.email)
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(resp_data['status'], 'error')
         self.assertEqual(resp_data['code'], errors.BASKET_INVALID_EMAIL)
