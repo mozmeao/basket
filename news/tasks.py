@@ -207,7 +207,7 @@ def get_external_user_data(email=None, token=None, fields=None, database=None):
 
 
 @et_task
-def update_fxa_info(email, lang, fxa_id, source_url=None):
+def update_fxa_info(email, lang, fxa_id, source_url=None, skip_welcome=False):
     user = get_external_user_data(email=email)
     record = {
         'EMAIL_ADDRESS_': email,
@@ -232,8 +232,10 @@ def update_fxa_info(email, lang, fxa_id, source_url=None):
     record['TOKEN'] = token
 
     apply_updates(settings.EXACTTARGET_DATA, record)
-    welcome = mogrify_message_id(FXACCOUNT_WELCOME, lang, welcome_format)
-    send_message.delay(welcome, email, token, welcome_format)
+
+    if not skip_welcome:
+        welcome = mogrify_message_id(FXACCOUNT_WELCOME, lang, welcome_format)
+        send_message.delay(welcome, email, token, welcome_format)
 
 
 @et_task

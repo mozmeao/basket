@@ -53,6 +53,27 @@ class UpdateFxAInfoTest(TestCase):
         self.send_message.delay.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
                                                    email, sub.token, 'H')
 
+    def test_skip_welcome(self):
+        """Passing skip_welcome should add user but not send welcome."""
+        self.get_external_user_data.return_value = None
+        email = 'dude@example.com'
+        fxa_id = 'the fxa abides'
+
+        tasks.update_fxa_info(email, 'de', fxa_id, skip_welcome=True)
+        sub = models.Subscriber.objects.get(email=email)
+        self.assertEqual(sub.fxa_id, fxa_id)
+
+        self.apply_updates.assert_called_once_with(settings.EXACTTARGET_DATA, {
+            'EMAIL_ADDRESS_': email,
+            'TOKEN': sub.token,
+            'FXA_ID': fxa_id,
+            'FXA_LANGUAGE_ISO2': 'de',
+            'SOURCE_URL': 'https://accounts.firefox.com',
+            'MODIFIED_DATE_': ANY,
+        })
+        self.get_external_user_data.assert_called_with(email=email)
+        self.assertFalse(self.send_message.delay.called)
+
     def test_user_in_et_not_basket(self):
         """A user could exist in basket but not ET, should still work."""
         self.get_external_user_data.return_value = None
