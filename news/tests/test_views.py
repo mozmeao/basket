@@ -222,13 +222,32 @@ class FxAccountsTest(TestCase):
             'fxa_id': 'the dude has a Fx account.',
             'api-key': auth.api_key,
             'accept_lang': 'de',
+            'source_url': 'https://el-dudarino.org',
         }
         resp = self.ssl_post('/news/fxa-register/', request_data)
         self.assertEqual(resp.status_code, 200, resp.content)
         data = json.loads(resp.content)
         self.assertEqual('ok', data['status'])
         fxa_mock.delay.assert_called_once_with(request_data['email'], 'de',
-                                               request_data['fxa_id'])
+                                               request_data['fxa_id'],
+                                               source_url='https://el-dudarino.org')
+
+    def test_skip_welcome(self, fxa_mock):
+        """Should pass skip_welcome to the task."""
+        auth = APIUser.objects.create(name="test")
+        request_data = {
+            'email': 'dude@example.com',
+            'fxa_id': 'the dude has a Fx account.',
+            'api-key': auth.api_key,
+            'accept_lang': 'de',
+            'skip_welcome': 'y',
+        }
+        resp = self.ssl_post('/news/fxa-register/', request_data)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual('ok', data['status'])
+        fxa_mock.delay.assert_called_once_with(request_data['email'], 'de',
+                                               request_data['fxa_id'], skip_welcome=True)
 
 
 @patch.dict(views.SMS_MESSAGES, {'SMS_Android': 'My_Sherona'})

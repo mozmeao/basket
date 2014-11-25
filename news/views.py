@@ -96,10 +96,16 @@ def fxa_register(request):
             'desc': 'invalid language',
             'code': errors.BASKET_INVALID_LANGUAGE,
         }, 400)
+
     args = [data['email'], lang, data['fxa_id']]
+    kwargs = {}
     if 'source_url' in data:
-        args.append(data['source_url'])
-    update_fxa_info.delay(*args)
+        kwargs['source_url'] = data['source_url']
+
+    if data.get('skip_welcome', False):
+        kwargs['skip_welcome'] = True
+
+    update_fxa_info.delay(*args, **kwargs)
     return HttpResponseJSON({'status': 'ok'})
 
 
