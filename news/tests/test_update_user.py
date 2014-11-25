@@ -9,8 +9,7 @@ from mock import patch, ANY
 
 from news import models
 from news.backends.common import NewsletterException
-from news.tasks import (update_user, UU_EXEMPT_NEW, UU_ALREADY_CONFIRMED,
-                        FFOS_VENDOR_ID, FFAY_VENDOR_ID)
+from news.tasks import update_user, UU_EXEMPT_NEW, UU_ALREADY_CONFIRMED
 from news.utils import SET, SUBSCRIBE, UNSUBSCRIBE
 
 
@@ -330,50 +329,6 @@ class UpdateUserTest(TestCase):
                                               self.sub.email,
                                               self.sub.token,
                                               'T')
-
-    @patch('news.tasks.apply_updates')
-    @patch('news.tasks.send_message')
-    @patch('news.tasks.get_user_data')
-    def test_ffos_welcome(self, get_user_data, send_message, apply_updates):
-        """If the user has subscribed to Firefox OS,
-        then we send the welcome for Firefox OS but not for Firefox & You.
-        (identified by their vendor IDs).
-        """
-        get_user_data.return_value = None  # User does not exist yet
-        nl1 = models.Newsletter.objects.create(
-            slug='slug',
-            title='title',
-            active=True,
-            languages='en,fr',
-            welcome="FFOS_WELCOME",
-            vendor_id=FFOS_VENDOR_ID,
-        )
-        nl2 = models.Newsletter.objects.create(
-            slug='slug2',
-            title='title',
-            active=True,
-            languages='en,fr',
-            welcome="FF&Y_WELCOME",
-            vendor_id=FFAY_VENDOR_ID,
-        )
-        data = {
-            'country': 'US',
-            'lang': 'en',
-            'newsletters': "%s,%s" % (nl1.slug, nl2.slug),
-        }
-        rc = update_user(data=data,
-                         email=self.sub.email,
-                         token=self.sub.token,
-                         api_call_type=SUBSCRIBE,
-                         optin=True)
-        self.assertEqual(UU_EXEMPT_NEW, rc)
-        self.assertEqual(1, send_message.delay.call_count)
-        calls_args = [x[0] for x in send_message.delay.call_args_list]
-        self.assertIn(('en_FFOS_WELCOME', self.sub.email, self.sub.token, 'H'),
-                      calls_args)
-        self.assertNotIn(('en_FF&Y_WELCOME', self.sub.email,
-                          self.sub.token, 'H'),
-                         calls_args)
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')

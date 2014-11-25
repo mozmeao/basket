@@ -72,10 +72,6 @@ PHONEBOOK_GROUPS = (
 RECOVERY_MESSAGE_ID = 'recovery_message'
 FXACCOUNT_WELCOME = 'FxAccounts_Welcome'
 
-# Vendor IDs for Firefox OS and Firefox & You:
-FFOS_VENDOR_ID = 'FIREFOX_OS'
-FFAY_VENDOR_ID = 'MOZILLA_AND_YOU'
-
 
 class BasketError(Exception):
     """Tasks can raise this when an error happens that we should not retry.
@@ -620,11 +616,6 @@ def send_welcomes(user_data, newsletter_slugs, format):
     newsletters = Newsletter.objects.filter(
         slug__in=newsletter_slugs
     )
-
-    # If newsletters include FIREFOX_OS, then remove FIREFOX & YOU
-    # from the list so we don't send its welcome.
-    if newsletters.filter(vendor_id=FFOS_VENDOR_ID).exists():
-        newsletters = newsletters.exclude(vendor_id=FFAY_VENDOR_ID)
 
     # We don't want any duplicate welcome messages, so make a set
     # of the ones to send, then send them
