@@ -90,6 +90,7 @@ class Newsletter(models.Model):
                   "newsletter supports",
     )
     requires_double_optin = models.BooleanField(
+        default=False,
         help_text="True if subscribing to this newsletter requires someone"
                   "to respond to a confirming email.",
     )
