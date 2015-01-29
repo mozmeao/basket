@@ -422,6 +422,9 @@ def get_accept_languages(header_value):
     languages = []
     pattern = re.compile(r'^([A-Za-z]{2,3})(?:-([A-Za-z]{2})(?:-[A-Za-z0-9]+)?)?$')
 
+    # bug 1102652
+    header_value = header_value.replace('_', '-')
+
     try:
         parsed = parse_accept_lang_header(header_value)
     except ValueError:  # see https://code.djangoproject.com/ticket/21078

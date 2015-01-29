@@ -188,12 +188,21 @@ class TestGetAcceptLanguages(TestCase):
         self._test('ja-JP-mac,ja-JP;q=0.7,ja;q=0.3', ['ja-JP', 'ja'])
         self._test('foo,bar;q=0.5', ['foo', 'bar'])
 
+    def test_invalid_lang_codes_underscores(self):
+        """
+        Even though 'en_US' is invalid according to the spec, we get what it means.
+        Let's accept it. Bug 1102652.
+        """
+        self._test('en_US', ['en'])
+        self._test('pt_pt,fr;q=0.8,it_it;q=0.5,de;q=0.3',
+                   ['pt-PT', 'fr', 'it-IT', 'de'])
+
     def test_invalid_lang_codes(self):
         """
         Should return a list of valid lang codes or an empty list
         """
         self._test('', [])
-        self._test('en_us,en*;q=0.5', [])
+        self._test('en/us,en*;q=0.5', [])
         self._test('Chinese,zh-cn;q=0.5', ['zh-CN'])
 
 
