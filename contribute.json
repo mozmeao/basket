@@ -1,0 +1,29 @@
+{
+    "name": "Basket",
+    "description": "A mailing list subscription service that abstracts away the list provider.",
+    "repository": {
+        "url": "https://github.com/mozilla/basket",
+        "license": "MPL2",
+        "tests": "https://travis-ci.org/mozilla/basket/"
+    },
+    "participate": {
+        "home": "https://github.com/mozilla/basket",
+        "docs": "http://basket.readthedocs.org/en/latest/",
+        "irc": "irc://irc.mozilla.org/#basket",
+        "irc-contacts": ["pmac"]
+    },
+    "bugs": {
+        "list": "https://bugzilla.mozilla.org/buglist.cgi?product=Websites&component=Basket&resolution=---",
+        "report": "https://bugzilla.mozilla.org/enter_bug.cgi?product=Websites&component=Basket"
+    },
+    "urls": {
+        "prod": "https://basket.mozilla.org/",
+        "stage": "https://basket.allizom.org/",
+        "dev": "https://basket-dev.allizom.org/"
+    },
+    "keywords": [
+        "django",
+        "mysql",
+        "python"
+    ]
+}
