@@ -13,10 +13,11 @@ Interact with our email marketing provider via a nice simple HTTP API.
 Docs
 ----
 
-Documentation can be found at http://basket.rtfd.org/ .
+Documentation can be found at http://basket.readthedocs.org/ .
 
 
 License
 -------
-This software is licensed under the MPL http://www.mozilla.org/MPL/. For more
+
+This software is licensed under the `Mozilla Public License Version 2.0 <https://www.mozilla.org/MPL/2.0/>`_. For more
 information, read the file ``LICENSE``.
