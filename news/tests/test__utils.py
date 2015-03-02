@@ -9,15 +9,42 @@ from basket import errors
 from mock import Mock, patch
 
 from news import tasks
+from news.models import BlockedEmail
 from news.tasks import SUBSCRIBE
 from news.utils import (
+    email_block_list_cache,
+    email_is_blocked,
     EmailValidationError,
     get_accept_languages,
     get_best_language,
+    get_email_block_list,
     language_code_is_valid,
     update_user_task,
     validate_email,
 )
+
+
+class EmailIsBlockedTests(TestCase):
+    def tearDown(self):
+        email_block_list_cache.clear()
+
+    def test_email_block_list(self):
+        """Should return a list from the database."""
+        BlockedEmail.objects.create(email_domain='stuff.web')
+        BlockedEmail.objects.create(email_domain='whatnot.dude')
+        BlockedEmail.objects.create(email_domain='.ninja')
+        blocklist = get_email_block_list()
+        expected = set(['stuff.web', 'whatnot.dude', '.ninja'])
+        self.assertSetEqual(set(blocklist), expected)
+
+    @patch('news.utils.BlockedEmail')
+    def test_email_is_blocked(self, BlockedEmailMock):
+        """Asking if blocked should only hit the DB once."""
+        BlockedEmailMock.objects.values_list.return_value = ['.ninja', 'stuff.web']
+        self.assertTrue(email_is_blocked('dude@bowling.ninja'))
+        self.assertTrue(email_is_blocked('walter@stuff.web'))
+        self.assertFalse(email_is_blocked('donnie@example.com'))
+        self.assertEqual(BlockedEmailMock.objects.values_list.call_count, 1)
 
 
 class UpdateUserTaskTests(TestCase):

@@ -14,6 +14,10 @@ from jsonfield import JSONField
 from news.fields import CommaSeparatedEmailField, LocaleField
 
 
+class BlockedEmail(models.Model):
+    email_domain = models.CharField(max_length=50)
+
+
 class SubscriberManager(models.Manager):
     def get_and_sync(self, email, token, fxa_id=None):
         """

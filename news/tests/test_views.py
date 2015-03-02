@@ -14,6 +14,7 @@ from news import models, views, utils
 from news.models import APIUser
 from news.newsletters import newsletter_languages, newsletter_fields
 from news.tasks import SUBSCRIBE
+from news.utils import email_block_list_cache
 
 
 none_mock = Mock(return_value=None)
@@ -41,6 +42,9 @@ class GetInvolvedTests(TestCase):
         self.addCleanup(patcher.stop)
         self.update_get_involved = patcher.start()
 
+    def tearDown(self):
+        email_block_list_cache.clear()
+
     def _request(self, data):
         req = self.rf.post('/', data)
         resp = views.get_involved(req)
@@ -53,6 +57,13 @@ class GetInvolvedTests(TestCase):
         self.update_get_involved.delay.assert_called_with('bowling', 'en', 'The Dude',
                                                           'dude@example.com', 'us', 'T',
                                                           False, None, None)
+
+    @patch('news.utils.get_email_block_list')
+    def test_blocked_email(self, get_email_block_mock):
+        get_email_block_mock.return_value = ['example.com']
+        resp = self._request(self.base_data)
+        self.assertEqual(resp['status'], 'ok', resp)
+        self.assertFalse(self.update_get_involved.delay.called)
 
     def test_requires_valid_interest(self):
         """Should only submit successfully with a valid interest_id."""
@@ -378,7 +389,7 @@ class SubscribeEmailValidationTest(TestCase):
 
     @patch('news.views.update_user_task')
     def test_empty_email_invalid(self, update_user_mock):
-        """Should report invalid email for missing or empty value."""
+        """Should report an error for missing or empty value."""
         req = self.rf.post('/news/subscribe/', data={'email': '',
                                                      'newsletters': 'firefox-os'})
         resp = views.subscribe(req)
@@ -392,7 +403,7 @@ class SubscribeEmailValidationTest(TestCase):
         resp = views.subscribe(req)
         resp_data = json.loads(resp.content)
         self.assertEqual(resp_data['status'], 'error')
-        self.assertEqual(resp_data['code'], errors.BASKET_INVALID_EMAIL)
+        self.assertEqual(resp_data['code'], errors.BASKET_USAGE_ERROR)
         self.assertFalse(update_user_mock.called)
 
 
@@ -414,6 +425,9 @@ class SubscribeTests(TestCase):
         self._patch_views('has_valid_api_key')
         self._patch_views('update_user_task')
 
+    def tearDown(self):
+        email_block_list_cache.clear()
+
     def assert_response_error(self, response, status_code, basket_code):
         self.assertEqual(response.status_code, status_code)
         response_data = json.loads(response.content)
@@ -429,7 +443,7 @@ class SubscribeTests(TestCase):
         """
         If optin is 'Y' but the request isn't HTTPS, disable optin.
         """
-        request_data = {'newsletters': 'asdf', 'optin': 'Y'}
+        request_data = {'newsletters': 'asdf', 'optin': 'Y', 'email': 'dude@example.com'}
         request = self.factory.post('/', request_data)
         request.is_secure = lambda: False
         self.has_valid_api_key.return_value = True
@@ -443,7 +457,7 @@ class SubscribeTests(TestCase):
         """
         If optin is 'Y' but the API key isn't valid, disable optin.
         """
-        request_data = {'newsletters': 'asdf', 'optin': 'Y'}
+        request_data = {'newsletters': 'asdf', 'optin': 'Y', 'email': 'dude@example.com'}
         request = self.factory.post('/', request_data)
         request.is_secure = lambda: True
         self.has_valid_api_key.return_value = False
@@ -457,7 +471,8 @@ class SubscribeTests(TestCase):
         """
         If sync set to 'Y' and the request isn't HTTPS, return a 401.
         """
-        request = self.factory.post('/', {'newsletters': 'asdf', 'sync': 'Y'})
+        request = self.factory.post('/', {'newsletters': 'asdf', 'sync': 'Y',
+                                          'email': 'dude@example.com'})
         request.is_secure = lambda: False
         response = views.subscribe(request)
         self.assert_response_error(response, 401, errors.BASKET_SSL_REQUIRED)
@@ -467,7 +482,8 @@ class SubscribeTests(TestCase):
         If sync is set to 'Y' and the request has an invalid API key,
         return a 401.
         """
-        request = self.factory.post('/', {'newsletters': 'asdf', 'sync': 'Y'})
+        request = self.factory.post('/', {'newsletters': 'asdf', 'sync': 'Y',
+                                          'email': 'dude@example.com'})
         request.is_secure = lambda: True
         self.has_valid_api_key.return_value = False
 
@@ -491,6 +507,18 @@ class SubscribeTests(TestCase):
             self.validate_email.assert_called_with(request_data['email'])
             invalid_email_response.assert_called_with(error)
 
+    @patch('news.utils.get_email_block_list')
+    def test_blocked_email(self, get_block_list_mock):
+        """Test basic success case with no optin or sync."""
+        get_block_list_mock.return_value = ['example.com']
+        request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
+                        'email': 'dude@example.com'}
+        request = self.factory.post('/', request_data)
+
+        response = views.subscribe(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(self.update_user_task.called)
+
     def test_success(self):
         """Test basic success case with no optin or sync."""
         request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
@@ -506,7 +534,8 @@ class SubscribeTests(TestCase):
 
     def test_success_sync_optin(self):
         """Test success case with optin and sync."""
-        request_data = {'newsletters': 'news,lets', 'optin': 'Y', 'sync': 'Y'}
+        request_data = {'newsletters': 'news,lets', 'optin': 'Y', 'sync': 'Y',
+                        'email': 'dude@example.com'}
         request = self.factory.post('/', request_data)
         request.is_secure = lambda: True
         self.has_valid_api_key.return_value = True
@@ -515,13 +544,14 @@ class SubscribeTests(TestCase):
 
         self.has_valid_api_key.assert_called_with(request)
         self.assertEqual(response, self.update_user_task.return_value)
-        self.validate_email.assert_called_with(None)
+        self.validate_email.assert_called_with('dude@example.com')
         self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
                                                      optin=True, sync=True)
 
     def test_success_sync_optin_lowercase(self):
         """Test success case with optin and sync, using lowercase y."""
-        request_data = {'newsletters': 'news,lets', 'optin': 'y', 'sync': 'y'}
+        request_data = {'newsletters': 'news,lets', 'optin': 'y', 'sync': 'y',
+                        'email': 'dude@example.com'}
         request = self.factory.post('/', request_data)
         request.is_secure = lambda: True
 
@@ -531,7 +561,7 @@ class SubscribeTests(TestCase):
             has_valid_api_key.assert_called_with(request)
 
             self.assertEqual(response, self.update_user_task.return_value)
-            self.validate_email.assert_called_with(None)
+            self.validate_email.assert_called_with('dude@example.com')
             self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
                                                      optin=True, sync=True)
 
@@ -670,6 +700,9 @@ class RecoveryViewTest(TestCase):
     def setUp(self):
         self.url = reverse('send_recovery_message')
 
+    def tearDown(self):
+        email_block_list_cache.clear()
+
     def test_no_email(self):
         """email not provided - return 400"""
         resp = self.client.post(self.url, {})
@@ -688,6 +721,18 @@ class RecoveryViewTest(TestCase):
         mock_get_user_data.return_value = None
         resp = self.client.post(self.url, {'email': email})
         self.assertEqual(404, resp.status_code)
+
+    @patch('news.utils.get_email_block_list')
+    @patch('news.views.send_recovery_message_task.delay', autospec=True)
+    def test_blocked_email(self, mock_send_recovery_message_task,
+                           mock_get_email_block_list):
+        """email provided - pass to the task, return 200"""
+        email = 'dude@example.com'
+        mock_get_email_block_list.return_value = ['example.com']
+        # It should pass the email to the task
+        resp = self.client.post(self.url, {'email': email})
+        self.assertEqual(200, resp.status_code)
+        self.assertFalse(mock_send_recovery_message_task.called)
 
     @patch('news.views.validate_email', none_mock)
     @patch('news.views.get_user_data', autospec=True)

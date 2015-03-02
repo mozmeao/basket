@@ -1,7 +1,12 @@
 from django.contrib import admin, messages
 
-from news.models import (APIUser, FailedTask, Interest, LocaleStewards, Newsletter,
+from news.models import (APIUser, BlockedEmail, FailedTask, Interest, LocaleStewards, Newsletter,
                          NewsletterGroup, Subscriber)
+
+
+class BlockedEmailAdmin(admin.ModelAdmin):
+    fields = ('email_domain',)
+    list_display = ('email_domain',)
 
 
 class NewsletterGroupAdmin(admin.ModelAdmin):
@@ -83,6 +88,7 @@ class FailedTaskAdmin(admin.ModelAdmin):
 
 
 admin.site.register(APIUser, APIUserAdmin)
+admin.site.register(BlockedEmail, BlockedEmailAdmin)
 admin.site.register(FailedTask, FailedTaskAdmin)
 admin.site.register(Interest, InterestAdmin)
 admin.site.register(Newsletter, NewsletterAdmin)

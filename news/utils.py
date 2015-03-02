@@ -4,6 +4,7 @@ import re
 from datetime import date
 
 from django.conf import settings
+from django.core.cache import get_cache
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email as dj_validate_email
 from django.http import HttpResponse
@@ -16,7 +17,7 @@ from basket import errors
 from news.backends.common import NewsletterNoResultsException
 from news.backends.exacttarget import (ExactTargetDataExt, NewsletterException,
                                        UnauthorizedException)
-from news.models import APIUser, Subscriber
+from news.models import APIUser, BlockedEmail, Subscriber
 from news.newsletters import (
     newsletter_and_group_slugs,
     newsletter_field,
@@ -40,6 +41,8 @@ SUBSCRIBE = 'SUBSCRIBE'
 UNSUBSCRIBE = 'UNSUBSCRIBE'
 SET = 'SET'
 
+email_block_list_cache = get_cache('email_block_list')
+
 
 class HttpResponseJSON(HttpResponse):
     def __init__(self, data, status=None):
@@ -52,6 +55,26 @@ class EmailValidationError(ValidationError):
     def __init__(self, message, suggestion=None):
         super(EmailValidationError, self).__init__(message)
         self.suggestion = suggestion
+
+
+def get_email_block_list():
+    """Return a list of blocked email domains."""
+    cache_key = 'email_block_list'
+    block_list = email_block_list_cache.get(cache_key)
+    if block_list is None:
+        block_list = list(BlockedEmail.objects.values_list('email_domain', flat=True))
+        email_block_list_cache.set(cache_key, block_list)
+
+    return block_list
+
+
+def email_is_blocked(email):
+    """Check an email and return True if blocked."""
+    for blocked in get_email_block_list():
+        if email.endswith(blocked):
+            return True
+
+    return False
 
 
 def has_valid_api_key(request):

@@ -31,6 +31,7 @@ from news.utils import (
     MSG_EMAIL_OR_TOKEN_REQUIRED,
     MSG_USER_NOT_FOUND,
     EmailValidationError,
+    email_is_blocked,
     get_accept_languages,
     get_best_language,
     get_user_data,
@@ -122,12 +123,16 @@ def get_involved(request):
             'desc': 'email is required',
             'code': errors.BASKET_USAGE_ERROR,
         }, 401)
+    if email_is_blocked(data['email']):
+        # don't let on there's a problem
+        return HttpResponseJSON({'status': 'ok'})
     if 'interest_id' not in data:
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'interest_id is required',
             'code': errors.BASKET_USAGE_ERROR,
         }, 401)
+
     try:
         Interest.objects.get(interest_id=data['interest_id'])
     except Interest.DoesNotExist:
@@ -205,6 +210,17 @@ def subscribe(request):
                 'desc': 'newsletters is missing',
                 'code': errors.BASKET_USAGE_ERROR,
             }, 400)
+
+    if 'email' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'email is required',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+
+    if email_is_blocked(data['email']):
+        # don't let on there's a problem
+        return HttpResponseJSON({'status': 'ok'})
 
     optin = data.get('optin', 'N').upper() == 'Y'
     sync = data.get('sync', 'N').upper() == 'Y'
@@ -326,6 +342,10 @@ def send_recovery_message(request):
         return invalid_email_response(e)
 
     email = request.POST.get('email')
+    if email_is_blocked(email):
+        # don't let on there's a problem
+        return HttpResponseJSON({'status': 'ok'})
+
     try:
         user_data = get_user_data(email=email, sync_data=True)
     except NewsletterException as e:
