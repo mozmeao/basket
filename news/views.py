@@ -49,6 +49,11 @@ from news.utils import (
     newsletter_exception_response)
 
 
+IP_RATE_LIMIT_EXTERNAL = getattr(settings, 'IP_RATE_LIMIT_EXTERNAL', '40/m')
+IP_RATE_LIMIT_INTERNAL = getattr(settings, 'IP_RATE_LIMIT_INTERNAL', '400/m')
+PHONE_NUMBER_RATE_LIMIT = getattr(settings, 'PHONE_NUMBER_RATE_LIMIT', '1/h')
+
+
 def ip_rate_limit_key(group, request):
     return request.META.get('HTTP_X_CLUSTER_CLIENT_IP',
                             request.META.get('REMOTE_ADDR'))
@@ -58,9 +63,9 @@ def ip_rate_limit_rate(group, request):
     client_ip = ip_rate_limit_key(group, request)
     if client_ip and client_ip.startswith('10.'):
         # internal request, high limit.
-        return '400/m'
+        return IP_RATE_LIMIT_INTERNAL
 
-    return '40/m'
+    return IP_RATE_LIMIT_EXTERNAL
 
 
 def source_ip_rate_limit_key(group, request):
@@ -73,7 +78,7 @@ def source_ip_rate_limit_rate(group, request):
         # header not provided, no limit.
         return None
 
-    return '40/m'
+    return IP_RATE_LIMIT_EXTERNAL
 
 
 def ratelimited(request, e):
@@ -339,7 +344,7 @@ def subscribe_sms(request):
     # only rate limit numbers here so we don't rate limit errors.
     if is_ratelimited(request, group='news.views.subscribe_sms',
                       key=lambda x, y: '%s-%s' % (msg_name, mobile),
-                      rate='1/h', increment=True):
+                      rate=PHONE_NUMBER_RATE_LIMIT, increment=True):
         raise Ratelimited()
 
     optin = request.POST.get('optin', 'N') == 'Y'
