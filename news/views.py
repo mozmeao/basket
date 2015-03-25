@@ -10,6 +10,9 @@ from django.views.decorators.http import require_GET, require_POST
 # Get error codes from basket-client so users see the same definitions
 from basket import errors
 from django_statsd.clients import statsd
+from ratelimit.decorators import ratelimit
+from ratelimit.exceptions import Ratelimited
+from ratelimit.utils import is_ratelimited
 from raven.contrib.django.raven_compat.models import client
 
 from news.models import Newsletter, Subscriber, Interest
@@ -44,6 +47,47 @@ from news.utils import (
     update_user_task,
     validate_email,
     newsletter_exception_response)
+
+
+IP_RATE_LIMIT_EXTERNAL = getattr(settings, 'IP_RATE_LIMIT_EXTERNAL', '40/m')
+IP_RATE_LIMIT_INTERNAL = getattr(settings, 'IP_RATE_LIMIT_INTERNAL', '400/m')
+PHONE_NUMBER_RATE_LIMIT = getattr(settings, 'PHONE_NUMBER_RATE_LIMIT', '1/h')
+
+
+def ip_rate_limit_key(group, request):
+    return request.META.get('HTTP_X_CLUSTER_CLIENT_IP',
+                            request.META.get('REMOTE_ADDR'))
+
+
+def ip_rate_limit_rate(group, request):
+    client_ip = ip_rate_limit_key(group, request)
+    if client_ip and client_ip.startswith('10.'):
+        # internal request, high limit.
+        return IP_RATE_LIMIT_INTERNAL
+
+    return IP_RATE_LIMIT_EXTERNAL
+
+
+def source_ip_rate_limit_key(group, request):
+    return request.META.get('HTTP_X_SOURCE_IP', None)
+
+
+def source_ip_rate_limit_rate(group, request):
+    source_ip = source_ip_rate_limit_key(group, request)
+    if source_ip is None:
+        # header not provided, no limit.
+        return None
+
+    return IP_RATE_LIMIT_EXTERNAL
+
+
+def ratelimited(request, e):
+    statsd.incr('.'.join(request.path.split('/') + ['ratelimited']))
+    return HttpResponseJSON({
+        'status': 'error',
+        'desc': 'rate limit reached',
+        'code': errors.BASKET_USAGE_ERROR,
+    }, 429)
 
 
 @require_POST
@@ -188,6 +232,8 @@ def get_involved(request):
 
 @require_POST
 @csrf_exempt
+@ratelimit(key=ip_rate_limit_key, rate=ip_rate_limit_rate, block=True)
+@ratelimit(key=source_ip_rate_limit_key, rate=source_ip_rate_limit_rate, block=True)
 def subscribe(request):
     data = request.POST.dict()
     newsletters = data.get('newsletters', None)
@@ -266,6 +312,8 @@ def invalid_email_response(e):
 
 @require_POST
 @csrf_exempt
+@ratelimit(key=ip_rate_limit_key, rate=ip_rate_limit_rate, block=True)
+@ratelimit(key=source_ip_rate_limit_key, rate=source_ip_rate_limit_rate, block=True)
 def subscribe_sms(request):
     if 'mobile_number' not in request.POST:
         return HttpResponseJSON({
@@ -292,6 +340,12 @@ def subscribe_sms(request):
             'desc': 'mobile_number must be a US number',
             'code': errors.BASKET_USAGE_ERROR,
         }, 400)
+
+    # only rate limit numbers here so we don't rate limit errors.
+    if is_ratelimited(request, group='news.views.subscribe_sms',
+                      key=lambda x, y: '%s-%s' % (msg_name, mobile),
+                      rate=PHONE_NUMBER_RATE_LIMIT, increment=True):
+        raise Ratelimited()
 
     optin = request.POST.get('optin', 'N') == 'Y'
 

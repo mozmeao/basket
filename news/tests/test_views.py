@@ -1,8 +1,9 @@
 # -*- coding: utf8 -*-
 
 import json
-from django.core.exceptions import ValidationError
 
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 from django.test.client import RequestFactory
@@ -14,7 +15,7 @@ from news import models, views, utils
 from news.models import APIUser
 from news.newsletters import newsletter_languages, newsletter_fields
 from news.tasks import SUBSCRIBE
-from news.utils import email_block_list_cache
+from news.utils import email_block_list_cache, HttpResponseJSON
 
 
 none_mock = Mock(return_value=None)
@@ -264,12 +265,14 @@ class FxAccountsTest(TestCase):
 @patch.dict(views.SMS_MESSAGES, {'SMS_Android': 'My_Sherona'})
 class SubscribeSMSTests(TestCase):
     def setUp(self):
+        cache.clear()
+        self.rf = RequestFactory()
         patcher = patch.object(views, 'add_sms_user')
         self.add_sms_user = patcher.start()
         self.addCleanup(patcher.stop)
 
     def _request(self, **data):
-        return views.subscribe_sms(RequestFactory().post('/', data))
+        return views.subscribe_sms(self.rf.post('/', data))
 
     def test_valid_subscribe(self):
         self._request(mobile_number='9198675309')
@@ -298,6 +301,37 @@ class SubscribeSMSTests(TestCase):
         data = json.loads(resp.content)
         self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
         self.assertIn('msg_name', data['desc'])
+
+    @patch('news.views.IP_RATE_LIMIT_EXTERNAL', '1/m')
+    def test_ip_rate_limit(self):
+        self.client.post('/news/subscribe_sms/', {'mobile_number': '9198675309'},
+                         HTTP_X_CLUSTER_CLIENT_IP='1.1.1.1')
+        self.add_sms_user.delay.assert_called_with('SMS_Android', '19198675309', False)
+        self.add_sms_user.reset_mock()
+
+        resp = self.client.post('/news/subscribe_sms/', {'mobile_number': '9195555555'},
+                                HTTP_X_CLUSTER_CLIENT_IP='1.1.1.1')
+        data = json.loads(resp.content)
+        self.assertEqual(data, {
+            'status': 'error',
+            'desc': 'rate limit reached',
+            'code': errors.BASKET_USAGE_ERROR,
+        })
+        self.assertFalse(self.add_sms_user.delay.called)
+
+    def test_phone_number_rate_limit(self):
+        self.client.post('/news/subscribe_sms/', {'mobile_number': '9198675309'})
+        self.add_sms_user.delay.assert_called_with('SMS_Android', '19198675309', False)
+        self.add_sms_user.reset_mock()
+
+        resp = self.client.post('/news/subscribe_sms/', {'mobile_number': '9198675309'})
+        data = json.loads(resp.content)
+        self.assertEqual(data, {
+            'status': 'error',
+            'desc': 'rate limit reached',
+            'code': errors.BASKET_USAGE_ERROR,
+        })
+        self.assertFalse(self.add_sms_user.delay.called)
 
 
 @patch('news.views.validate_email', none_mock)
@@ -411,21 +445,23 @@ class RecoveryMessageEmailValidationTest(SubscribeEmailValidationTest):
     view = 'send_recovery_message'
 
 
-class SubscribeTests(TestCase):
+class ViewsPatcherMixin(object):
     def _patch_views(self, name):
         patcher = patch('news.views.' + name)
         setattr(self, name, patcher.start())
         self.addCleanup(patcher.stop)
 
+
+class SubscribeTests(ViewsPatcherMixin, TestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
         self._patch_views('update_user_task')
         self._patch_views('validate_email')
         self._patch_views('has_valid_api_key')
-        self._patch_views('update_user_task')
 
     def tearDown(self):
+        cache.clear()
         email_block_list_cache.clear()
 
     def assert_response_error(self, response, status_code, basket_code):
@@ -564,6 +600,83 @@ class SubscribeTests(TestCase):
             self.validate_email.assert_called_with('dude@example.com')
             self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
                                                      optin=True, sync=True)
+
+    @patch('news.views.IP_RATE_LIMIT_EXTERNAL', '1/m')
+    def test_ip_rate_limit(self):
+        self.update_user_task.return_value = HttpResponseJSON({'status': 'ok'})
+        request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
+                        'email': 'dude@example.com'}
+        self.client.post('/news/subscribe/', request_data,
+                         HTTP_X_CLUSTER_CLIENT_IP='1.1.1.1')
+        self.assertTrue(self.update_user_task.called)
+        self.update_user_task.reset_mock()
+
+        resp = self.client.post('/news/subscribe/', request_data,
+                                HTTP_X_CLUSTER_CLIENT_IP='1.1.1.1')
+        data = json.loads(resp.content)
+        self.assertEqual(data, {
+            'status': 'error',
+            'desc': 'rate limit reached',
+            'code': errors.BASKET_USAGE_ERROR,
+        })
+        self.assertFalse(self.update_user_task.delay.called)
+
+    @patch('news.views.IP_RATE_LIMIT_EXTERNAL', '1/m')
+    def test_ip_rate_limit_source_ip(self):
+        self.update_user_task.return_value = HttpResponseJSON({'status': 'ok'})
+        request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
+                        'email': 'dude@example.com'}
+        self.client.post('/news/subscribe/', request_data,
+                         HTTP_X_SOURCE_IP='1.1.1.1')
+        self.assertTrue(self.update_user_task.called)
+        self.update_user_task.reset_mock()
+
+        resp = self.client.post('/news/subscribe/', request_data,
+                                HTTP_X_SOURCE_IP='1.1.1.1')
+        data = json.loads(resp.content)
+        self.assertEqual(data, {
+            'status': 'error',
+            'desc': 'rate limit reached',
+            'code': errors.BASKET_USAGE_ERROR,
+        })
+        self.assertFalse(self.update_user_task.delay.called)
+
+
+class TestRateLimitingFunctions(ViewsPatcherMixin, TestCase):
+    def setUp(self):
+        self.rf = RequestFactory()
+
+    def test_ip_rate_limit_key(self):
+        req = self.rf.get('/', HTTP_X_CLUSTER_CLIENT_IP='1.1.1.1', REMOTE_ADDR='2.2.2.2')
+        self.assertEqual(views.ip_rate_limit_key(None, req), '1.1.1.1')
+
+    def test_ip_rate_limit_key_fallback(self):
+        req = self.rf.get('/', REMOTE_ADDR='2.2.2.2')
+        self.assertEqual(views.ip_rate_limit_key(None, req), '2.2.2.2')
+
+    def test_source_ip_rate_limit_key_no_header(self):
+        req = self.rf.get('/')
+        self.assertIsNone(views.source_ip_rate_limit_key(None, req))
+
+    def test_source_ip_rate_limit_key(self):
+        req = self.rf.get('/', HTTP_X_SOURCE_IP='2.2.2.2')
+        self.assertEqual(views.source_ip_rate_limit_key(None, req), '2.2.2.2')
+
+    def test_ip_rate_limit_rate(self):
+        req = self.rf.get('/', HTTP_X_CLUSTER_CLIENT_IP='1.1.1.1')
+        self.assertEqual(views.ip_rate_limit_rate(None, req), '40/m')
+
+    def test_ip_rate_limit_rate_internal(self):
+        req = self.rf.get('/', HTTP_X_CLUSTER_CLIENT_IP='10.1.1.1')
+        self.assertEqual(views.ip_rate_limit_rate(None, req), '400/m')
+
+    def test_source_ip_rate_limit_rate_no_header(self):
+        req = self.rf.get('/')
+        self.assertIsNone(views.source_ip_rate_limit_rate(None, req))
+
+    def test_source_ip_rate_limit_rate(self):
+        req = self.rf.get('/', HTTP_X_SOURCE_IP='2.2.2.2')
+        self.assertEqual(views.source_ip_rate_limit_rate(None, req), '40/m')
 
 
 class TestNewslettersAPI(TestCase):

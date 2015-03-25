@@ -70,6 +70,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.messages.middleware.MessageMiddleware',
     'news.middleware.GraphiteViewHitCountMiddleware',
     'django_statsd.middleware.GraphiteMiddleware',
+    'ratelimit.middleware.RatelimitMiddleware',
 )
 
 ROOT_URLCONF = 'urls'
@@ -115,6 +116,9 @@ EXACTTARGET_USE_SANDBOX = False
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_URLS_REGEX = r'^/news/.*$'
+
+# view rate limiting
+RATELIMIT_VIEW = 'news.views.ratelimited'
 
 # Uncomment these to use Celery, use eager for local dev
 CELERY_ALWAYS_EAGER = False
