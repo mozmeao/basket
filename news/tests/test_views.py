@@ -603,6 +603,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
 
     @patch('news.views.IP_RATE_LIMIT_EXTERNAL', '1/m')
     def test_ip_rate_limit(self):
+        self.skipTest('Bug 1154584')
         self.update_user_task.return_value = HttpResponseJSON({'status': 'ok'})
         request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
                         'email': 'dude@example.com'}
@@ -623,6 +624,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
 
     @patch('news.views.IP_RATE_LIMIT_EXTERNAL', '1/m')
     def test_ip_rate_limit_source_ip(self):
+        self.skipTest('Bug 1154584')
         self.update_user_task.return_value = HttpResponseJSON({'status': 'ok'})
         request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
                         'email': 'dude@example.com'}

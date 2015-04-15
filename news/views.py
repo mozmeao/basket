@@ -232,8 +232,9 @@ def get_involved(request):
 
 @require_POST
 @csrf_exempt
-@ratelimit(key=ip_rate_limit_key, rate=ip_rate_limit_rate, block=True)
-@ratelimit(key=source_ip_rate_limit_key, rate=source_ip_rate_limit_rate, block=True)
+# disabled for bug 1154584
+# @ratelimit(key=ip_rate_limit_key, rate=ip_rate_limit_rate, block=True)
+# @ratelimit(key=source_ip_rate_limit_key, rate=source_ip_rate_limit_rate, block=True)
 def subscribe(request):
     data = request.POST.dict()
     newsletters = data.get('newsletters', None)
@@ -418,7 +419,7 @@ def send_recovery_message(request):
 
 @never_cache
 def debug_user(request):
-    if not 'email' in request.GET or not 'supertoken' in request.GET:
+    if 'email' not in request.GET or 'supertoken' not in request.GET:
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'Using debug_user, you need to pass the '
@@ -456,7 +457,7 @@ def custom_unsub_reason(request):
     """Update the reason field for the user, which logs why the user
     unsubscribed from all newsletters."""
 
-    if not 'token' in request.POST or not 'reason' in request.POST:
+    if 'token' not in request.POST or 'reason' not in request.POST:
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'custom_unsub_reason requires the `token` '
