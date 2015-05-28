@@ -29,7 +29,10 @@ BAD_MESSAGE_ID_CACHE = get_cache('bad_message_ids')
 CONFIRMATION_MESSAGE = "confirmation_email"
 
 SMS_MESSAGES = {
-    'SMS_Android': 'MTo3ODow'
+    'SMS_Android': 'MTo3ODow',
+    'android': 'NTo3ODow',
+    'ios': 'Njo3ODow',
+    'mobile': 'Nzo3ODow',
 }
 PHONEBOOK_GROUPS = (
     'SYSTEMS_ADMINISTRATION',
@@ -670,7 +673,7 @@ def confirm_user(token, user_data):
                  'is already confirmed' % token)
         return
 
-    if not 'email' in user_data or not user_data['email']:
+    if not ('email' in user_data and user_data['email']):
         raise BasketError('token has no email in ET')
 
     # Add user's token to the confirmation database at ET. A nightly
