@@ -262,7 +262,7 @@ class FxAccountsTest(TestCase):
                                                request_data['fxa_id'], skip_welcome=True)
 
 
-@patch.dict(views.SMS_MESSAGES, {'SMS_Android': 'My_Sherona'})
+@patch.dict('news.newsletters.SMS_MESSAGES', {'SMS_Android': 'My_Sherona'})
 class SubscribeSMSTests(TestCase):
     def setUp(self):
         cache.clear()

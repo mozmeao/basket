@@ -16,7 +16,7 @@ from news.backends.common import NewsletterException, NewsletterNoResultsExcepti
 from news.backends.exacttarget import ExactTarget, ExactTargetDataExt
 from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
 from news.models import FailedTask, Newsletter, Subscriber, Interest
-from news.newsletters import is_supported_newsletter_language
+from news.newsletters import get_sms_messages, is_supported_newsletter_language
 from news.utils import (get_user_data, lookup_subscriber, MSG_USER_NOT_FOUND,
                         SUBSCRIBE, parse_newsletters)
 
@@ -28,12 +28,6 @@ BAD_MESSAGE_ID_CACHE = get_cache('bad_message_ids')
 # Base message ID for confirmation email
 CONFIRMATION_MESSAGE = "confirmation_email"
 
-SMS_MESSAGES = {
-    'SMS_Android': 'MTo3ODow',
-    'android': 'NTo3ODow',
-    'ios': 'Njo3ODow',
-    'mobile': 'Nzo3ODow',
-}
 PHONEBOOK_GROUPS = (
     'SYSTEMS_ADMINISTRATION',
     'BOOT2GECKO',
@@ -688,12 +682,13 @@ def confirm_user(token, user_data):
 
 @et_task
 def add_sms_user(send_name, mobile_number, optin):
-    if send_name not in SMS_MESSAGES:
+    messages = get_sms_messages()
+    if send_name not in messages:
         return
     et = ExactTargetRest()
 
     try:
-        et.send_sms([mobile_number], SMS_MESSAGES[send_name])
+        et.send_sms([mobile_number], messages[send_name])
     except ETRestError as error:
         return add_sms_user.retry(exc=error)
 

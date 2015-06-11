@@ -1,7 +1,13 @@
 from django.contrib import admin, messages
 
 from news.models import (APIUser, BlockedEmail, FailedTask, Interest, LocaleStewards, Newsletter,
-                         NewsletterGroup, Subscriber)
+                         NewsletterGroup, SMSMessage, Subscriber)
+
+
+class SMSMessageAdmin(admin.ModelAdmin):
+    fields = ('message_id', 'vendor_id', 'description')
+    list_display = ('message_id', 'vendor_id', 'description')
+    list_editable = ('vendor_id',)
 
 
 class BlockedEmailAdmin(admin.ModelAdmin):
@@ -87,6 +93,7 @@ class FailedTaskAdmin(admin.ModelAdmin):
     retry_task_action.short_description = u"Retry task(s)"
 
 
+admin.site.register(SMSMessage, SMSMessageAdmin)
 admin.site.register(APIUser, APIUserAdmin)
 admin.site.register(BlockedEmail, BlockedEmailAdmin)
 admin.site.register(FailedTask, FailedTaskAdmin)
