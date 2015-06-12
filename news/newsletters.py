@@ -4,16 +4,42 @@ backend-specific data for working with them in the email provider.
 It's used to lookup the backend-specific newsletter name from a
 generic one passed by the user. This decouples the API from any
 specific email provider."""
+from django.db.models.signals import post_save
+from django.db.models.signals import post_delete
 from django.core.cache import cache
 
-from news.models import Newsletter, NewsletterGroup
+from news.models import Newsletter, NewsletterGroup, SMSMessage
 
 
-__all__ = ('clear_newsletter_cache', 'newsletter_field', 'newsletter_name',
-           'newsletter_fields')
+__all__ = ('clear_newsletter_cache', 'get_sms_messages', 'newsletter_field',
+           'newsletter_name', 'newsletter_fields')
 
 
 CACHE_KEY = "newsletters_cache_data"
+SMS_CACHE_KEY = "sms_messages_cache_data"
+# TODO remove after initial deployment. These values should be added to
+#   to the DB. This is so we don't miss any submissions.
+SMS_MESSAGES = {
+    'SMS_Android': 'MTo3ODow',
+}
+
+
+def get_sms_messages():
+    """
+    Returns a dict for which the keys are SMS message IDs that
+    basket clients will send, and the values are the message IDs
+    that our SMS vendor expects.
+    """
+    data = cache.get(SMS_CACHE_KEY)
+    if data is None:
+        # TODO have this be an empty dict when SMS_MESSAGES is removed.
+        data = SMS_MESSAGES.copy()
+        for msg in SMSMessage.objects.all():
+            data[msg.message_id] = msg.vendor_id
+
+        cache.set(SMS_CACHE_KEY, data)
+
+    return data
 
 
 def _newsletters():
@@ -139,5 +165,17 @@ def is_supported_newsletter_language(code):
     return code[:2].lower() in [lang[:2].lower() for lang in newsletter_languages()]
 
 
-def clear_newsletter_cache():
+def clear_newsletter_cache(*args, **kwargs):
     cache.delete(CACHE_KEY)
+
+
+def clear_sms_cache(*args, **kwargs):
+    cache.delete(SMS_CACHE_KEY)
+
+
+post_save.connect(clear_newsletter_cache, sender=Newsletter)
+post_delete.connect(clear_newsletter_cache, sender=Newsletter)
+post_save.connect(clear_newsletter_cache, sender=NewsletterGroup)
+post_delete.connect(clear_newsletter_cache, sender=NewsletterGroup)
+post_save.connect(clear_sms_cache, sender=SMSMessage)
+post_delete.connect(clear_sms_cache, sender=SMSMessage)

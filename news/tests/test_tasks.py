@@ -8,6 +8,7 @@ from mock import Mock, patch
 
 from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
 from news.models import FailedTask, Subscriber
+from news.newsletters import clear_sms_cache
 from news.tasks import (
     add_sms_user,
     et_task,
@@ -169,9 +170,10 @@ class UpdateUserTests(TestCase):
 
 
 @override_settings(ET_CLIENT_ID='client_id', ET_CLIENT_SECRET='client_secret')
-@patch('news.tasks.SMS_MESSAGES', {'foo': 'bar'})
+@patch('news.newsletters.SMS_MESSAGES', {'foo': 'bar'})
 class AddSMSUserTests(TestCase):
     def setUp(self):
+        clear_sms_cache()
         patcher = patch.object(ExactTargetRest, 'send_sms')
         self.send_sms = patcher.start()
         self.addCleanup(patcher.stop)

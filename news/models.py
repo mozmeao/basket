@@ -3,7 +3,6 @@ from uuid import uuid4
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import models
-from django.db.models.signals import post_delete, post_save
 from django.template.loader import render_to_string
 from django.utils.timezone import now
 
@@ -167,18 +166,6 @@ class NewsletterGroup(models.Model):
         return [nl.slug for nl in self.newsletters.all()]
 
 
-def post_newsletter_change(*args, **kwargs):
-    # Cannot import earlier due to circular import
-    from news.newsletters import clear_newsletter_cache
-    clear_newsletter_cache()
-
-
-post_save.connect(post_newsletter_change, sender=Newsletter)
-post_delete.connect(post_newsletter_change, sender=Newsletter)
-post_save.connect(post_newsletter_change, sender=NewsletterGroup)
-post_delete.connect(post_newsletter_change, sender=NewsletterGroup)
-
-
 class APIUser(models.Model):
     """On some API calls, an API key must be passed that must
     exist in this table."""
@@ -340,3 +327,21 @@ class LocaleStewards(models.Model):
             lang_code=self.locale,
             lang_name=product_details.languages[self.locale]['English'],
         )
+
+
+class SMSMessage(models.Model):
+    message_id = models.SlugField(
+        primary_key=True,
+        help_text='The ID for the message that will be used by clients',
+    )
+    vendor_id = models.CharField(
+        max_length=50,
+        help_text="The backend vendor's identifier for this message",
+    )
+    description = models.CharField(
+        max_length=200, blank=True,
+        help_text='Optional short description of this message'
+    )
+
+    class Meta:
+        verbose_name = "SMS message"

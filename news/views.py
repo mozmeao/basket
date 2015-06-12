@@ -16,7 +16,7 @@ from ratelimit.utils import is_ratelimited
 from raven.contrib.django.raven_compat.models import client
 
 from news.models import Newsletter, Subscriber, Interest
-from news.newsletters import newsletter_slugs
+from news.newsletters import get_sms_messages, newsletter_slugs
 from news.tasks import (
     add_sms_user,
     confirm_user,
@@ -25,8 +25,7 @@ from news.tasks import (
     update_fxa_info,
     update_get_involved,
     update_phonebook,
-    update_student_ambassadors,
-    SMS_MESSAGES)
+    update_student_ambassadors)
 from news.utils import (
     SET,
     SUBSCRIBE,
@@ -323,8 +322,9 @@ def subscribe_sms(request):
             'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
+    messages = get_sms_messages()
     msg_name = request.POST.get('msg_name', 'SMS_Android')
-    if msg_name not in SMS_MESSAGES:
+    if msg_name not in messages:
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'Invalid msg_name',
