@@ -6,7 +6,12 @@ VERSION = (0, 1)
 
 # Make filepaths relative to settings.
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-path = lambda *a: os.path.join(ROOT, *a)
+
+
+def path(*args):
+    # makes flake8 happier than a lambda
+    return os.path.join(ROOT, *args)
+
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
@@ -84,7 +89,6 @@ INSTALLED_APPS = (
 
     'corsheaders',
     'djcelery',
-    'south',
     'raven.contrib.django.raven_compat',
     'product_details',
 
@@ -130,7 +134,7 @@ BROKER_VHOST = 'basket'
 CELERY_DISABLE_RATE_LIMITS = True
 CELERY_IGNORE_RESULT = True
 
-import djcelery
+import djcelery  # noqa
 djcelery.setup_loader()
 
 CACHES = {

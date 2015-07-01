@@ -13,6 +13,11 @@ from jsonfield import JSONField
 from news.fields import CommaSeparatedEmailField, LocaleField
 
 
+def get_uuid():
+    """Needed because Django can't make migrations when using lambda."""
+    return str(uuid4())
+
+
 class BlockedEmail(models.Model):
     email_domain = models.CharField(max_length=50)
 
@@ -41,7 +46,7 @@ class SubscriberManager(models.Manager):
 
 class Subscriber(models.Model):
     email = models.EmailField(primary_key=True)
-    token = models.CharField(max_length=40, default=lambda: str(uuid4()),
+    token = models.CharField(max_length=40, default=get_uuid,
                              db_index=True)
     fxa_id = models.CharField(max_length=100, null=True, blank=True,
                               db_index=True)
@@ -174,7 +179,7 @@ class APIUser(models.Model):
         help_text="Descriptive name of this user"
     )
     api_key = models.CharField(max_length=40,
-                               default=lambda: str(uuid4()),
+                               default=get_uuid,
                                db_index=True)
     enabled = models.BooleanField(default=True)
 

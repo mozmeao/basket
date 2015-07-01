@@ -3,7 +3,6 @@ from django.db import models
 from django.forms import TextInput
 
 import product_details
-from south.modelsinspector import add_introspection_rules
 
 
 class CommaSeparatedEmailField(models.TextField):
@@ -46,7 +45,3 @@ class LocaleField(models.CharField):
             kwargs.setdefault(key, value)
 
         return super(LocaleField, self).__init__(*args, **kwargs)
-
-
-add_introspection_rules([], ['^news\.fields\.CommaSeparatedEmailField'])
-add_introspection_rules([], ['^news\.fields\.LocaleField'])
