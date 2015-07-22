@@ -29,7 +29,7 @@ from news.newsletters import (
 )
 
 
-## Error messages
+# Error messages
 MSG_TOKEN_REQUIRED = 'Must have valid token for this request'
 MSG_EMAIL_OR_TOKEN_REQUIRED = 'Must have valid token OR email for this request'
 MSG_USER_NOT_FOUND = 'User not found'
@@ -396,9 +396,12 @@ def get_user_data(token=None, email=None, sync_data=False):
             # Confirmed database.  Do it simply; the confirmed database
             # doesn't have most of the user's data, just their token.
             if look_for_user(settings.EXACTTARGET_CONFIRMATION,
-                             email, token, ['Token']):
+                             None, user_data['token'], ['Token']):
                 # Ah-ha, they're in the Confirmed DB so they did confirm
                 confirmed = True
+            else:
+                # They're in the optin db, but not confirmed, so we wait
+                pending = True
 
         user_data['confirmed'] = confirmed
         user_data['pending'] = pending

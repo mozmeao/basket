@@ -527,6 +527,22 @@ class TestGetUserData(TestCase):
         mock_user = {'token': 'Just a dummy user'}
         self.check_get_user(None, mock_user, ANY, False, mock_user)
 
+    @patch('news.utils.look_for_user')
+    def test_look_for_user_called_correctly_confirmation(self, mock_look_for_user):
+        """
+        If user is looked for by email, is not in master
+        but is in opt_in, make sure confirmation is called
+        correctly, and that if not in confirmation return a "pending" state.
+        """
+        mock_look_for_user.side_effect = [None, {'token': 'dude'}, None]
+        result = get_user_data(email='dude@example.com')
+        self.assertTrue(result['pending'])
+        self.assertFalse(result['master'])
+        self.assertFalse(result['confirmed'])
+        # must be called with token returned from previous call only
+        mock_look_for_user.assert_called_with(settings.EXACTTARGET_CONFIRMATION,
+                                              None, 'dude', ['Token'])
+
 
 class UserTest(TestCase):
     def setUp(self):
