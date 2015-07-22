@@ -16,10 +16,10 @@ from celery.task import Task, task
 from news.backends.common import NewsletterException, NewsletterNoResultsException
 from news.backends.exacttarget import ExactTarget, ExactTargetDataExt
 from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
-from news.models import FailedTask, Newsletter, Subscriber, Interest
+from news.models import FailedTask, Newsletter, Interest
 from news.newsletters import get_sms_messages, is_supported_newsletter_language
-from news.utils import (get_user_data, lookup_subscriber, MSG_USER_NOT_FOUND,
-                        SUBSCRIBE, parse_newsletters)
+from news.utils import (generate_token, get_user_data, MSG_USER_NOT_FOUND,
+                        parse_newsletters, SUBSCRIBE)
 
 
 log = logging.getLogger(__name__)
@@ -236,14 +236,9 @@ def update_fxa_info(email, lang, fxa_id, source_url=None, skip_welcome=False):
     if user:
         welcome_format = user['format']
         token = user['token']
-        Subscriber.objects.get_and_sync(email, token, fxa_id)
     else:
-        sub, created = Subscriber.objects.get_or_create(email=email, defaults={'fxa_id': fxa_id})
-        if not created:
-            sub.fxa_id = fxa_id
-            sub.save()
         welcome_format = 'H'
-        token = sub.token
+        token = generate_token()
         # only want source url for first contact
         record['SOURCE_URL'] = source_url or 'https://accounts.firefox.com'
 
@@ -280,12 +275,10 @@ def update_get_involved(interest_id, lang, name, email, country, email_format,
     }
     if user:
         token = user['token']
-        Subscriber.objects.get_and_sync(email, token)
         if 'get-involved' not in user.get('newsletters', []):
             record['GET_INVOLVED_DATE'] = gmttime()
     else:
-        sub, created = Subscriber.objects.get_or_create(email=email)
-        token = sub.token
+        token = generate_token()
         record['EMAIL_FORMAT_'] = email_format
         record['GET_INVOLVED_DATE'] = gmttime()
         # only want source url for first contact
@@ -330,9 +323,14 @@ def update_get_involved(interest_id, lang, name, email, country, email_format,
 
 
 @et_task
-def update_phonebook(data, email, token):
+def update_phonebook(data, token):
+    user_data = get_user_data(token=token)
+    if not user_data:
+        # no user with that token
+        return
+
     record = {
-        'EMAIL_ADDRESS': email,
+        'EMAIL_ADDRESS': user_data['email'],
         'TOKEN': token,
     }
     if 'city' in data:
@@ -347,8 +345,13 @@ def update_phonebook(data, email, token):
 
 
 @et_task
-def update_student_ambassadors(data, email, token):
-    data['EMAIL_ADDRESS'] = email
+def update_student_ambassadors(data, token):
+    user_data = get_user_data(token=token)
+    if not user_data:
+        # no user with that token
+        return
+
+    data['EMAIL_ADDRESS'] = user_data['email']
     data['TOKEN'] = token
     et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
     et.data_ext().add_record('Student_Ambassadors', data.keys(), data.values())
@@ -383,10 +386,23 @@ def update_user(data, email, token, api_call_type, optin):
     :raises: NewsletterException if there are any errors that would be
         worth retrying. Our task wrapper will retry in that case.
     """
-    # If token is missing, find it or generate it.
-    if not token:
-        sub, user_data, created = lookup_subscriber(email=email)
-        token = sub.token
+    # Get the user's current settings from ET, if any
+    user_data = get_user_data(email=email, token=token)
+    # If we don't find the user, get_user_data returns None. Create
+    # a minimal dictionary to use going forward. This will happen
+    # often due to new people signing up.
+    if user_data is None:
+        user_data = {
+            'email': email,
+            'token': token or generate_token(),
+            'master': False,
+            'pending': False,
+            'confirmed': False,
+            'lang': '',
+            'status': 'ok',
+        }
+    else:
+        token = user_data['token']
 
     # Parse the parameters
     # `record` will contain the data we send to ET in the format they want.
@@ -409,22 +425,6 @@ def update_user(data, email, token, api_call_type, optin):
             record[extra_fields[field]] = data[field]
 
     lang = record.get('LANGUAGE_ISO2', '') or ''
-
-    # Get the user's current settings from ET, if any
-    user_data = get_user_data(token=token)
-    # If we don't find the user, get_user_data returns None. Create
-    # a minimal dictionary to use going forward. This will happen
-    # often due to new people signing up.
-    if user_data is None:
-        user_data = {
-            'email': email,
-            'token': token,
-            'master': False,
-            'pending': False,
-            'confirmed': False,
-            'lang': lang,
-            'status': 'ok',
-        }
 
     if lang:
         # User asked for a language change. Use the new language from
@@ -665,7 +665,7 @@ def send_welcomes(user_data, newsletter_slugs, format):
 
 
 @et_task
-def confirm_user(token, user_data):
+def confirm_user(token):
     """
     Confirm any pending subscriptions for the user with this token.
 
@@ -679,11 +679,7 @@ def confirm_user(token, user_data):
     :raises: BasketError for fatal errors, NewsletterException for retryable
         errors.
     """
-    # Get user data if we don't already have it
-    if user_data is None:
-        from .utils import get_user_data   # Avoid circular import
-        user_data = get_user_data(token=token)
-
+    user_data = get_user_data(token=token)
     if user_data is None:
         raise BasketError(MSG_USER_NOT_FOUND)
 
@@ -762,7 +758,7 @@ def send_recovery_message_task(email):
     # We should check ET so we can get format and lang if they exist.
     # If they don't exist, then we can create a basket subscriber.
 
-    user_data = get_user_data(email=email, sync_data=True)
+    user_data = get_user_data(email=email)
     if not user_data:
         log.warn("In send_recovery_message_task, email not known: %s" % email)
         return

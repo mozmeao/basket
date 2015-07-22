@@ -14,8 +14,8 @@ from django_statsd.clients import statsd
 from ratelimit.exceptions import Ratelimited
 from ratelimit.utils import is_ratelimited
 
-from news.models import Newsletter, Subscriber, Interest
-from news.newsletters import get_sms_messages, newsletter_slugs
+from news.models import Newsletter, Interest
+from news.newsletters import get_sms_messages, newsletter_slugs, newsletter_and_group_slugs
 from news.tasks import (
     add_fxa_activity,
     add_sms_user,
@@ -25,7 +25,8 @@ from news.tasks import (
     update_fxa_info,
     update_get_involved,
     update_phonebook,
-    update_student_ambassadors)
+    update_student_ambassadors,
+    update_user)
 from news.utils import (
     SET,
     SUBSCRIBE,
@@ -41,11 +42,9 @@ from news.utils import (
     has_valid_api_key,
     HttpResponseJSON,
     language_code_is_valid,
-    logged_in,
     NewsletterException,
-    update_user_task,
     validate_email,
-    newsletter_exception_response)
+    newsletter_exception_response, get_or_create_user_data)
 
 
 IP_RATE_LIMIT_EXTERNAL = getattr(settings, 'IP_RATE_LIMIT_EXTERNAL', '40/m')
@@ -90,11 +89,9 @@ def ratelimited(request, e):
 
 
 @require_POST
-@logged_in
 @csrf_exempt
 def confirm(request, token):
-    confirm_user.delay(request.subscriber.token,
-                       request.subscriber_data)
+    confirm_user.delay(token)
     return HttpResponseJSON({'status': 'ok'})
 
 
@@ -376,10 +373,10 @@ def subscribe_sms(request):
 
 
 @require_POST
-@logged_in
 @csrf_exempt
 def unsubscribe(request, token):
     data = request.POST.dict()
+    data['token'] = token
 
     if data.get('optout', 'N') == 'Y':
         data['newsletters'] = ','.join(newsletter_slugs())
@@ -387,17 +384,15 @@ def unsubscribe(request, token):
     return update_user_task(request, UNSUBSCRIBE, data)
 
 
-@logged_in
 @csrf_exempt
 @never_cache
 def user(request, token):
     if request.method == 'POST':
-        return update_user_task(request, SET)
+        data = request.POST.dict()
+        data['token'] = token
+        return update_user_task(request, SET, data=data)
 
-    if request.subscriber_data:
-        return HttpResponseJSON(request.subscriber_data)
-
-    return get_user(request.subscriber.token)
+    return get_user(token)
 
 
 @require_POST
@@ -423,7 +418,7 @@ def send_recovery_message(request):
         return HttpResponseJSON({'status': 'ok'})
 
     try:
-        user_data = get_user_data(email=email, sync_data=True)
+        user_data = get_user_data(email=email)
     except NewsletterException as e:
         return newsletter_exception_response(e)
 
@@ -460,14 +455,6 @@ def debug_user(request):
     except NewsletterException as e:
         return newsletter_exception_response(e)
 
-    try:
-        user = Subscriber.objects.get(email=email)
-        user_data['in_basket'] = True
-        user_data['basket_token'] = user.token
-    except Subscriber.DoesNotExist:
-        user_data['in_basket'] = False
-        user_data['basket_token'] = ''
-
     return HttpResponseJSON(user_data, 200)
 
 
@@ -491,21 +478,16 @@ def custom_unsub_reason(request):
 
 
 @require_POST
-@logged_in
 @csrf_exempt
 def custom_update_student_ambassadors(request, token):
-    sub = request.subscriber
-    update_student_ambassadors.delay(request.POST.dict(), sub.email,
-                                     sub.token)
+    update_student_ambassadors.delay(request.POST.dict(), token)
     return HttpResponseJSON({'status': 'ok'})
 
 
 @require_POST
-@logged_in
 @csrf_exempt
 def custom_update_phonebook(request, token):
-    sub = request.subscriber
-    update_phonebook.delay(request.POST.dict(), sub.email, sub.token)
+    update_phonebook.delay(request.POST.dict(), token)
     return HttpResponseJSON({'status': 'ok'})
 
 
@@ -620,3 +602,64 @@ def list_newsletters(request):
     active_newsletters = Newsletter.objects.filter(active=True)
     return render(request, 'news/newsletters.html',
                   {'newsletters': active_newsletters})
+
+
+def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
+    """Call the update_user task async with the right parameters.
+
+    If sync==True, be sure to do the update synchronously and include the token
+    in the response.  Otherwise, basket has the option to do it all later
+    in the background.
+    """
+    data = data or request.POST.dict()
+
+    newsletters = data.get('newsletters', None)
+    if newsletters:
+        if api_call_type == SUBSCRIBE:
+            all_newsletters = newsletter_and_group_slugs()
+        else:
+            all_newsletters = newsletter_slugs()
+        for nl in [x.strip() for x in newsletters.split(',')]:
+            if nl not in all_newsletters:
+                return HttpResponseJSON({
+                    'status': 'error',
+                    'desc': 'invalid newsletter',
+                    'code': errors.BASKET_INVALID_NEWSLETTER,
+                }, 400)
+
+    if 'lang' in data and not language_code_is_valid(data['lang']):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'invalid language',
+            'code': errors.BASKET_INVALID_LANGUAGE,
+        }, 400)
+
+    email = data.get('email')
+    token = data.get('token')
+    if not (email or token):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': MSG_EMAIL_OR_TOKEN_REQUIRED,
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 400)
+
+    if sync:
+        # We need a token for this user. If we don't have a Subscriber
+        # object for them already, we'll need to find or make one,
+        # checking ET first if need be.
+        try:
+            user_data, created = get_or_create_user_data(email=email, token=token)
+        except NewsletterException as e:
+            return newsletter_exception_response(e)
+
+        update_user.delay(data, user_data['email'], user_data['token'], api_call_type, optin)
+        return HttpResponseJSON({
+            'status': 'ok',
+            'token': user_data['token'],
+            'created': created,
+        })
+    else:
+        update_user.delay(data, email, token, api_call_type, optin)
+        return HttpResponseJSON({
+            'status': 'ok',
+        })

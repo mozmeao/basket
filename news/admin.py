@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 
 from news.models import (APIUser, BlockedEmail, FailedTask, Interest, LocaleStewards, Newsletter,
-                         NewsletterGroup, SMSMessage, Subscriber)
+                         NewsletterGroup, SMSMessage)
 
 
 class SMSMessageAdmin(admin.ModelAdmin):
@@ -37,12 +37,6 @@ class InterestAdmin(admin.ModelAdmin):
 
 class APIUserAdmin(admin.ModelAdmin):
     list_display = ('name', 'enabled')
-
-
-class SubscriberAdmin(admin.ModelAdmin):
-    fields = ('email', 'token', 'fxa_id')
-    list_display = ('email', 'token', 'fxa_id')
-    search_fields = ('email', 'token', 'fxa_id')
 
 
 class NewsletterAdmin(admin.ModelAdmin):
@@ -100,4 +94,3 @@ admin.site.register(FailedTask, FailedTaskAdmin)
 admin.site.register(Interest, InterestAdmin)
 admin.site.register(Newsletter, NewsletterAdmin)
 admin.site.register(NewsletterGroup, NewsletterGroupAdmin)
-admin.site.register(Subscriber, SubscriberAdmin)

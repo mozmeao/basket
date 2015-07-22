@@ -149,7 +149,7 @@ class UpdateUserTests(TestCase):
         self.addCleanup(patcher.stop)
 
     def setUp(self):
-        self._patch_tasks('lookup_subscriber')
+        self._patch_tasks('get_or_create_user_data')
         self._patch_tasks('get_user_data')
         self._patch_tasks('parse_newsletters', return_value=([], []))
         self._patch_tasks('apply_updates')
@@ -159,7 +159,7 @@ class UpdateUserTests(TestCase):
 
     def self_test_success_no_token_create_user(self):
         """
-        If no token is provided, use lookup_subscriber to find (and
+        If no token is provided, use get_or_create_user_data to find (and
         possibly create) a user with a matching email.
         """
         subscriber = Mock(email='a@example.com', token='mytoken')

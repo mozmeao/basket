@@ -19,9 +19,9 @@ from news.utils import (
     get_best_language,
     get_email_block_list,
     language_code_is_valid,
-    update_user_task,
     validate_email,
 )
+from news.views import update_user_task
 
 
 class EmailIsBlockedTests(TestCase):
@@ -51,7 +51,7 @@ class UpdateUserTaskTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
-        patcher = patch('news.utils.lookup_subscriber')
+        patcher = patch('news.utils.get_or_create_user_data')
         self.lookup_subscriber = patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -147,7 +147,7 @@ class UpdateUserTaskTests(TestCase):
 
     def test_success_no_sync(self):
         """
-        If sync is False, do not generate a token via lookup_subscriber
+        If sync is False, do not generate a token via get_or_create_user_data
         and return an OK response without a token.
         """
         request = self.factory.post('/')
@@ -207,7 +207,7 @@ class UpdateUserTaskTests(TestCase):
     def test_success_with_sync_and_subscriber(self):
         """
         If sync is True, and a subscriber is provided, do not call
-        lookup_subscriber and return an OK response with the token and
+        get_or_create_user_data and return an OK response with the token and
         created == False.
         """
         request = self.factory.post('/')
@@ -220,7 +220,7 @@ class UpdateUserTaskTests(TestCase):
     def test_success_with_sync_no_subscriber(self):
         """
         If sync is True, and a subscriber is not provided, look them up
-        with lookup_subscriber and return an OK response with the token
+        with get_or_create_user_data and return an OK response with the token
         and created from the fetched subscriber.
         """
         request = self.factory.post('/')

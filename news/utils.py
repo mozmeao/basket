@@ -1,8 +1,8 @@
 import json
 import re
 from datetime import date
-from functools import wraps
 from itertools import chain
+from uuid import uuid4
 
 from django.conf import settings
 from django.core.cache import get_cache
@@ -12,15 +12,15 @@ from django.http import HttpResponse
 from django.utils.encoding import force_unicode
 from django.utils.translation.trans_real import parse_accept_lang_header
 
+
 # Get error codes from basket-client so users see the same definitions
 from basket import errors
 
 from news.backends.common import NewsletterNoResultsException
 from news.backends.exacttarget import (ExactTargetDataExt, NewsletterException,
                                        UnauthorizedException)
-from news.models import APIUser, BlockedEmail, Subscriber
+from news.models import APIUser, BlockedEmail
 from news.newsletters import (
-    newsletter_and_group_slugs,
     newsletter_field,
     newsletter_fields,
     newsletter_group_newsletter_slugs,
@@ -43,6 +43,10 @@ UNSUBSCRIBE = 'UNSUBSCRIBE'
 SET = 'SET'
 
 email_block_list_cache = get_cache('email_block_list')
+
+
+def generate_token():
+    return str(uuid4())
 
 
 class HttpResponseJSON(HttpResponse):
@@ -87,7 +91,7 @@ def has_valid_api_key(request):
     return APIUser.is_valid(api_key)
 
 
-def lookup_subscriber(token=None, email=None):
+def get_or_create_user_data(token=None, email=None):
     """
     Find or create Subscriber object for given token and/or email.
 
@@ -105,50 +109,44 @@ def lookup_subscriber(token=None, email=None):
     to come up with another solution.
 
     If we are only given a token, and cannot find any user with that
-    token in Basket or ET, then the returned subscriber is None.
+    token in Basket or ET, then the returned user_data is None.
 
-    Returns (Subscriber, user_data, created).
-
-    The user_data is only provided if we had to ask ET about this
-    email/token (and found it there); otherwise, it's None.
+    Returns (user_data, created).
     """
-    if not (token or email):
-        raise Exception(MSG_EMAIL_OR_TOKEN_REQUIRED)
     kwargs = {}
     if token:
         kwargs['token'] = token
-    if email:
+    elif email:
         kwargs['email'] = email
-    user_data = None
-    try:
-        subscriber = Subscriber.objects.get(**kwargs)
-    except Subscriber.DoesNotExist:
-        # Note: If both token and email were passed in, it would be possible
-        # that subscribers exist that match one or the other but not both.
-        # But currently no callers pass both, so luckily we don't have to
-        # figure out what we would do in that case.
-        created = True
-        # Check with ET to see if our DB is just out of sync
-        user_data = get_user_data(sync_data=True, **kwargs)
-        if user_data and user_data['status'] == 'ok':
-            # Found them in ET and updated subscriber db locally
-            subscriber = Subscriber.objects.get(**kwargs)
-        else:
-            # Not in ET. If we have an email, create a new basket
-            # record for them
-            if email:
-                # It's barely possible the subscriber has been created
-                # since we checked, so play it safe and get_or_create.
-                # (Yes, this has been seen.)
-                subscriber, created = Subscriber.objects.\
-                    get_or_create(email=email)
-            else:
-                # No email?  Just token? Token not known in basket or ET?
-                # That's an error.
-                subscriber = None
     else:
+        raise Exception(MSG_EMAIL_OR_TOKEN_REQUIRED)
+
+    # Note: If both token and email were passed in we use the token as it is the most explicit.
+
+    # NewsletterException uncaught here on purpose
+    user_data = get_user_data(**kwargs)
+    if user_data and user_data['status'] == 'ok':
+        # Found them in ET and updated subscriber db locally
         created = False
-    return subscriber, user_data, created
+
+    # Not in ET. If we have an email, generate a token.
+    elif email:
+        user_data = {
+            'email': email,
+            'token': generate_token(),
+            'master': False,
+            'pending': False,
+            'confirmed': False,
+            'lang': '',
+            'status': 'ok',
+        }
+        created = True
+    else:
+        # No email?  Just token? Token not known in basket or ET?
+        # That's an error.
+        user_data = created = None
+
+    return user_data, created
 
 
 def newsletter_exception_response(exc):
@@ -158,30 +156,6 @@ def newsletter_exception_response(exc):
         'code': exc.error_code or errors.BASKET_UNKNOWN_ERROR,
         'desc': str(exc),
     }, exc.status_code or 400)
-
-
-def logged_in(f):
-    """Decorator to check if the user has permission to view these
-    pages"""
-
-    @wraps(f)
-    def wrapper(request, token, *args, **kwargs):
-        try:
-            subscriber, subscriber_data, created = lookup_subscriber(token=token)
-        except NewsletterException as e:
-            return newsletter_exception_response(e)
-
-        if not subscriber:
-            return HttpResponseJSON({
-                'status': 'error',
-                'desc': MSG_TOKEN_REQUIRED,
-                'code': errors.BASKET_USAGE_ERROR,
-            }, 403)
-
-        request.subscriber_data = subscriber_data
-        request.subscriber = subscriber
-        return f(request, token, *args, **kwargs)
-    return wrapper
 
 
 LANG_RE = re.compile(r'^[a-z]{2,3}(?:-[a-z]{2})?$', re.IGNORECASE)
@@ -203,81 +177,6 @@ def language_code_is_valid(code):
         return True
     else:
         return bool(LANG_RE.match(code))
-
-
-def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
-    """Call the update_user task async with the right parameters.
-
-    If sync==True, be sure to do the update synchronously and include the token
-    in the response.  Otherwise, basket has the option to do it all later
-    in the background.
-    """
-    from news.tasks import update_user
-
-    sub = getattr(request, 'subscriber', None)
-    data = data or request.POST.dict()
-
-    newsletters = data.get('newsletters', None)
-    if newsletters:
-        if api_call_type == SUBSCRIBE:
-            all_newsletters = newsletter_and_group_slugs()
-        else:
-            all_newsletters = newsletter_slugs()
-        for nl in [x.strip() for x in newsletters.split(',')]:
-            if nl not in all_newsletters:
-                return HttpResponseJSON({
-                    'status': 'error',
-                    'desc': 'invalid newsletter',
-                    'code': errors.BASKET_INVALID_NEWSLETTER,
-                }, 400)
-
-    if 'lang' in data:
-        if not language_code_is_valid(data['lang']):
-            return HttpResponseJSON({
-                'status': 'error',
-                'desc': 'invalid language',
-                'code': errors.BASKET_INVALID_LANGUAGE,
-            }, 400)
-    elif 'accept_lang' in data:
-        lang = get_best_language(get_accept_languages(data['accept_lang']))
-        if lang:
-            data['lang'] = lang
-            del data['accept_lang']
-        else:
-            return HttpResponseJSON({
-                'status': 'error',
-                'desc': 'invalid language',
-                'code': errors.BASKET_INVALID_LANGUAGE,
-            }, 400)
-
-    email = data.get('email', sub.email if sub else None)
-    if not email:
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': MSG_EMAIL_OR_TOKEN_REQUIRED,
-            'code': errors.BASKET_USAGE_ERROR,
-        }, 400)
-
-    if sync:
-        if sub:
-            created = False
-        else:
-            # We need a token for this user. If we don't have a Subscriber
-            # object for them already, we'll need to find or make one,
-            # checking ET first if need be.
-            sub, user_data, created = lookup_subscriber(email=email)
-
-        update_user.delay(data, sub.email, sub.token, api_call_type, optin)
-        return HttpResponseJSON({
-            'status': 'ok',
-            'token': sub.token,
-            'created': created,
-        })
-    else:
-        update_user.delay(data, email, None, api_call_type, optin)
-        return HttpResponseJSON({
-            'status': 'ok',
-        })
 
 
 def look_for_user(database, email, token, fields):
@@ -319,13 +218,9 @@ def look_for_user(database, email, token, fields):
     return user_data
 
 
-def get_user_data(token=None, email=None, sync_data=False):
+def get_user_data(token=None, email=None):
     """Return a dictionary of the user's data from Exact Target.
     Look them up by their email if given, otherwise by the token.
-
-    If sync_data is set, create or update our local basket record
-    if needed so we have a record of this email and the token that
-    goes with it.
 
     Look first for the user in the master subscribers database, then in the
     optin database.
@@ -428,17 +323,12 @@ def get_user_data(token=None, email=None, sync_data=False):
                                   error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
                                   status_code=500)
 
-    # We did find a user
-    if sync_data:
-        # if user not in our db create it, if token mismatch fix it.
-        Subscriber.objects.get_and_sync(user_data['email'], user_data['token'])
-
     return user_data
 
 
-def get_user(token=None, email=None, sync_data=False):
+def get_user(token=None, email=None):
     try:
-        user_data = get_user_data(token, email, sync_data)
+        user_data = get_user_data(token, email)
         status_code = 200
     except NewsletterException as e:
         return newsletter_exception_response(e)
@@ -447,9 +337,9 @@ def get_user(token=None, email=None, sync_data=False):
         user_data = {
             'status': 'error',
             'code': errors.BASKET_UNKNOWN_EMAIL if email else errors.BASKET_UNKNOWN_TOKEN,
-            'desc': 'Unable to find user.'
+            'desc': MSG_USER_NOT_FOUND,
         }
-        status_code = 400
+        status_code = 404
     return HttpResponseJSON(user_data, status_code)
 
 

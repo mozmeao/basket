@@ -22,38 +22,6 @@ class BlockedEmail(models.Model):
     email_domain = models.CharField(max_length=50)
 
 
-class SubscriberManager(models.Manager):
-    def get_and_sync(self, email, token, fxa_id=None):
-        """
-        Get the subscriber for the email and token and ensure that such a
-        subscriber exists.
-        """
-        defaults = {'token': token}
-        if fxa_id:
-            defaults['fxa_id'] = fxa_id
-
-        sub, created = self.get_or_create(email=email, defaults=defaults)
-        if not created:
-            sub.token = token
-            if fxa_id:
-                sub.fxa_id = fxa_id
-            sub.save()
-            # FIXME: this could mean there's another record in Exact Target
-            # with the other token
-
-        return sub
-
-
-class Subscriber(models.Model):
-    email = models.EmailField(primary_key=True)
-    token = models.CharField(max_length=40, default=get_uuid,
-                             db_index=True)
-    fxa_id = models.CharField(max_length=100, null=True, blank=True,
-                              db_index=True)
-
-    objects = SubscriberManager()
-
-
 class Newsletter(models.Model):
     slug = models.SlugField(
         unique=True,

@@ -39,8 +39,9 @@ class TestConfirmationLogic(TestCase):
             user['master'] = user_in_master
             user['confirmed'] = user_in_master or user_in_confirmed
             user['pending'] = user_in_optin and not user_in_confirmed
-            user['newsletters'] = []   # start with none so whatever we call
-                    # update_user with is a new subscription
+            # start with none so whatever we call
+            # update_user with is a new subscription
+            user['newsletters'] = []
         else:
             # User not in Exact Target at all
             user = None
@@ -318,7 +319,7 @@ class TestConfirmationLogic(TestCase):
 @patch('news.tasks.send_welcomes')
 @patch('news.tasks.apply_updates')
 class TestConfirmTask(TestCase):
-    @patch('news.utils.lookup_subscriber')
+    @patch('news.utils.get_or_create_user_data')
     def test_error(self, lookup_subscriber, apply_updates, send_welcomes):
         """
         If user_data shows an error talking to ET, the task raises
