@@ -607,9 +607,8 @@ def list_newsletters(request):
 def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
     """Call the update_user task async with the right parameters.
 
-    If sync==True, be sure to do the update synchronously and include the token
-    in the response.  Otherwise, basket has the option to do it all later
-    in the background.
+    If sync==True, be sure to include the token in the response.
+    Otherwise, basket can just do everything in the background.
     """
     data = data or request.POST.dict()
 
@@ -644,9 +643,6 @@ def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
         }, 400)
 
     if sync:
-        # We need a token for this user. If we don't have a Subscriber
-        # object for them already, we'll need to find or make one,
-        # checking ET first if need be.
         try:
             user_data, created = get_or_create_user_data(email=email, token=token)
         except NewsletterException as e:

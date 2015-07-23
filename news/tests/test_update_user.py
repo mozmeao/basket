@@ -10,15 +10,16 @@ from mock import patch, ANY
 from news import models
 from news.backends.common import NewsletterException
 from news.tasks import update_user, UU_EXEMPT_NEW, UU_ALREADY_CONFIRMED
-from news.utils import SET, SUBSCRIBE, UNSUBSCRIBE
+from news.utils import SET, SUBSCRIBE, UNSUBSCRIBE, generate_token
 
 
 class UpdateUserTest(TestCase):
     def setUp(self):
-        self.sub = models.Subscriber.objects.create(email='dude@example.com')
         self.rf = RequestFactory()
+        self.token = generate_token()
+        self.email = 'dude@example.com'
         self.user_data = {
-            'EMAIL_ADDRESS_': 'dude@example.com',
+            'EMAIL_ADDRESS_': self.email,
             'EMAIL_FORMAT_': 'H',
             'COUNTRY_': 'us',
             'LANGUAGE_ISO2': 'en',
@@ -28,11 +29,11 @@ class UpdateUserTest(TestCase):
         }
         # User data in format that get_user_data() returns it
         self.get_user_data = {
-            'email': 'dude@example.com',
+            'email': self.email,
             'format': 'H',
             'country': 'us',
             'lang': 'en',
-            'token': 'token',
+            'token': self.token,
             'newsletters': ['slug'],
             'confirmed': True,
             'master': True,
@@ -52,7 +53,6 @@ class UpdateUserTest(TestCase):
         # User does not subscribe to anything yet
         self.get_user_data['confirmed'] = True
         self.get_user_data['newsletters'] = []
-        self.get_user_data['token'] = self.sub.token
         get_user_data.return_value = self.get_user_data
 
         # A newsletter with a welcome message
@@ -71,16 +71,16 @@ class UpdateUserTest(TestCase):
             'newsletters': nl.slug,
         }
         rc = update_user(data=data,
-                         email=self.sub.email,
-                         token=self.sub.token,
+                         email=self.email,
+                         token=self.token,
                          api_call_type=SUBSCRIBE,
                          optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         apply_updates.assert_called()
         # The welcome should have been sent
         send_message.delay.assert_called()
-        send_message.delay.assert_called_with('en_' + welcome_id, self.sub.email,
-                                              self.sub.token, 'H')
+        send_message.delay.assert_called_with('en_' + welcome_id, self.email,
+                                              self.token, 'H')
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
@@ -94,7 +94,6 @@ class UpdateUserTest(TestCase):
         # User does not subscribe to anything yet
         self.get_user_data['confirmed'] = True
         self.get_user_data['newsletters'] = []
-        self.get_user_data['token'] = self.sub.token
         get_user_data.return_value = self.get_user_data
 
         # A newsletter with a welcome message
@@ -114,8 +113,8 @@ class UpdateUserTest(TestCase):
             'trigger_welcome': 'Nope',
         }
         rc = update_user(data=data,
-                         email=self.sub.email,
-                         token=self.sub.token,
+                         email=self.email,
+                         token=self.token,
                          api_call_type=SUBSCRIBE,
                          optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
@@ -135,7 +134,6 @@ class UpdateUserTest(TestCase):
         # User does not subscribe to anything yet
         self.get_user_data['confirmed'] = True
         self.get_user_data['newsletters'] = []
-        self.get_user_data['token'] = self.sub.token
         get_user_data.return_value = self.get_user_data
 
         # A newsletter with a welcome message
@@ -154,8 +152,8 @@ class UpdateUserTest(TestCase):
             'newsletters': nl.slug,
         }
         rc = update_user(data=data,
-                         email=self.sub.email,
-                         token=self.sub.token,
+                         email=self.email,
+                         token=self.token,
                          api_call_type=SET,
                          optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
@@ -185,12 +183,11 @@ class UpdateUserTest(TestCase):
             'newsletters': nl1.slug,
         }
 
-        self.get_user_data['token'] = self.sub.token
         self.get_user_data['newsletters'] = []
         get_user_data.return_value = self.get_user_data
 
-        rc = update_user(data=data, email=self.sub.email,
-                         token=self.sub.token,
+        rc = update_user(data=data, email=self.email,
+                         token=self.token,
                          api_call_type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         self.assertFalse(et.trigger_send.called)
@@ -198,28 +195,11 @@ class UpdateUserTest(TestCase):
         # welcome of ' ' is same as none
         nl1.welcome = ' '
         et.trigger_send.reset_mock()
-        rc = update_user(data=data, email=self.sub.email,
-                         token=self.sub.token,
+        rc = update_user(data=data, email=self.email,
+                         token=self.token,
                          api_call_type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         self.assertFalse(et.trigger_send.called)
-
-        # FIXME? I think we don't need the ability for the caller
-        # to override the welcome message
-        # Can specify a different welcome
-        # welcome = 'MyWelcome_H'
-        # data['welcome_message'] = welcome
-        # update_user(data=data, email=self.sub.email,
-        #             token=self.sub.token,
-        #             api_call_type=SUBSCRIBE, optin=True)
-        # et.trigger_send.assert_called_with(
-        #     welcome,
-        #     {
-        #         'EMAIL_FORMAT_': 'H',
-        #         'EMAIL_ADDRESS_': self.sub.email,
-        #         'TOKEN': self.sub.token,
-        #     },
-        # )
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
@@ -253,16 +233,16 @@ class UpdateUserTest(TestCase):
             'newsletters': "%s,%s" % (nl1.slug, nl2.slug),
         }
         rc = update_user(data=data,
-                         email=self.sub.email,
-                         token=self.sub.token,
+                         email=self.email,
+                         token=self.token,
                          api_call_type=SUBSCRIBE,
                          optin=True)
         self.assertEqual(UU_EXEMPT_NEW, rc)
         self.assertEqual(2, send_message.delay.call_count)
         calls_args = [x[0] for x in send_message.delay.call_args_list]
-        self.assertIn(('en_WELCOME1', self.sub.email, self.sub.token, 'H'),
+        self.assertIn(('en_WELCOME1', self.email, self.token, 'H'),
                       calls_args)
-        self.assertIn(('en_WELCOME2', self.sub.email, self.sub.token, 'H'),
+        self.assertIn(('en_WELCOME2', self.email, self.token, 'H'),
                       calls_args)
 
     @patch('news.tasks.apply_updates')
@@ -289,8 +269,8 @@ class UpdateUserTest(TestCase):
         }
         self.get_user_data['confirmed'] = True
         get_user_data.return_value = self.get_user_data
-        rc = update_user(data=data, email=self.sub.email,
-                         token=self.sub.token,
+        rc = update_user(data=data, email=self.email,
+                         token=self.token,
                          api_call_type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         apply_updates.assert_called()
@@ -320,14 +300,14 @@ class UpdateUserTest(TestCase):
         }
         # new user, not in ET yet
         get_user_data.return_value = None
-        rc = update_user(data=data, email=self.sub.email,
-                         token=self.sub.token,
+        rc = update_user(data=data, email=self.email,
+                         token=self.token,
                          api_call_type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_EXEMPT_NEW, rc)
         apply_updates.assert_called()
         send_message.delay.assert_called_with(u'en_Welcome_T',
-                                              self.sub.email,
-                                              self.sub.token,
+                                              self.email,
+                                              self.token,
                                               'T')
 
     @patch('news.tasks.apply_updates')
@@ -367,7 +347,7 @@ class UpdateUserTest(TestCase):
         self.get_user_data['newsletters'] = ['slug']
         get_user_data.return_value = self.get_user_data
 
-        rc = update_user(data, self.sub.email, self.sub.token,
+        rc = update_user(data, self.email, self.token,
                          SET, True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         # no welcome should be triggered for SET
@@ -428,7 +408,7 @@ class UpdateUserTest(TestCase):
         # Mock user data - we want our user subbed to our newsletter to start
         etde.get_record.return_value = self.user_data
 
-        rc = update_user(data, self.sub.email, self.sub.token,
+        rc = update_user(data, self.email, self.token,
                          SUBSCRIBE, True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         # We should have looked up the user's data
@@ -475,9 +455,9 @@ class UpdateUserTest(TestCase):
 
         # Mock user data - we want our user subbed to our newsletter to start
         get_user_data.return_value = self.get_user_data
-        #etde.get_record.return_value = self.user_data
+        # etde.get_record.return_value = self.user_data
 
-        update_user(data, self.sub.email, self.sub.token, SET, True)
+        update_user(data, self.email, self.token, SET, True)
         # We should have looked up the user's data
         self.assertTrue(get_user_data.called)
         # We should not have mentioned this newsletter in our call to ET
@@ -518,7 +498,7 @@ class UpdateUserTest(TestCase):
             'format': 'H',
         }
 
-        update_user(data, self.sub.email, self.sub.token, SET, True)
+        update_user(data, self.email, self.token, SET, True)
         # We should have mentioned this newsletter in our call to ET
         et.data_ext.return_value.add_record.assert_called_with(
             ANY,
@@ -564,7 +544,7 @@ class UpdateUserTest(TestCase):
             'format': 'H',
         }
 
-        update_user(data, self.sub.email, self.sub.token, UNSUBSCRIBE,
+        update_user(data, self.email, self.token, UNSUBSCRIBE,
                     True)
         # We should mention both TITLE_UNKNOWN, and TITLE2_UNKNOWN
         et.data_ext.return_value.add_record.assert_called_with(
@@ -617,7 +597,7 @@ class UpdateUserTest(TestCase):
         # We're only subscribed to TITLE_UNKNOWN though, not the other one
         etde.get_record.return_value = self.user_data
 
-        rc = update_user(data, self.sub.email, self.sub.token, UNSUBSCRIBE, True)
+        rc = update_user(data, self.email, self.token, UNSUBSCRIBE, True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         # We should have looked up the user's data
         self.assertTrue(get_user_data.called)
@@ -662,7 +642,7 @@ class UpdateUserTest(TestCase):
         }
 
         with self.assertRaises(NewsletterException):
-            update_user(data, self.sub.email, self.sub.token, SUBSCRIBE, True)
+            update_user(data, self.email, self.token, SUBSCRIBE, True)
         # We should have mentioned this newsletter in our call to ET
         et.data_ext.return_value.add_record.assert_called_with(
             ANY,
@@ -711,7 +691,7 @@ class UpdateUserTest(TestCase):
             'country': 'US',
             'newsletters': 'slug',
         }
-        update_user(data, self.sub.email, self.sub.token, SUBSCRIBE, True)
+        update_user(data, self.email, self.token, SUBSCRIBE, True)
         # We'll pass no format to ET
         et.data_ext.return_value.add_record.assert_called_with(
             ANY,
@@ -767,7 +747,7 @@ class UpdateUserTest(TestCase):
             'country': 'US',
             'newsletters': 'slug',
         }
-        update_user(data, self.sub.email, self.sub.token, SUBSCRIBE, True)
+        update_user(data, self.email, self.token, SUBSCRIBE, True)
         # We'll pass no format to ET
         et.data_ext.return_value.add_record.assert_called_with(
             ANY,

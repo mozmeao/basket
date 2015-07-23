@@ -2,7 +2,6 @@ from django.test import TestCase
 from django.test.utils import override_settings
 
 from mock import patch, Mock
-from nose.tools import ok_
 
 from news.backends.exacttarget import logged_in
 
@@ -20,7 +19,7 @@ class TestWSDLSwitch(TestCase):
         self.test_function(Mock(client=None))
 
         call_args = client_mock.call_args
-        ok_(call_args[0][0].endswith('et-sandbox-wsdl.txt'))
+        assert call_args[0][0].endswith('et-sandbox-wsdl.txt')
 
     @override_settings(EXACTTARGET_USE_SANDBOX=False)
     def test_prod_wsdl(self, client_mock):
@@ -28,4 +27,4 @@ class TestWSDLSwitch(TestCase):
         self.test_function(Mock(client=None))
 
         call_args = client_mock.call_args
-        ok_(call_args[0][0].endswith('et-wsdl.txt'))
+        assert call_args[0][0].endswith('et-wsdl.txt')

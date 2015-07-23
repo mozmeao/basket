@@ -2,14 +2,14 @@ from django.test import TestCase
 
 from mock import patch
 
-from news import models
+from news.utils import generate_token
 
 
 class UpdateStudentAmbassadorsTest(TestCase):
     def setUp(self):
-        self.sub = models.Subscriber.objects.create(email='dude@example.com')
+        self.token = generate_token()
         self.url = '/news/custom_update_student_ambassadors/%s/' % \
-                   self.sub.token
+                   self.token
         self.data = {'FIRST_NAME': 'Foo',
                      'LAST_NAME': 'Bar',
                      'STUDENTS_CURRENT_STATUS': 'student',
@@ -26,17 +26,19 @@ class UpdateStudentAmbassadorsTest(TestCase):
         Should call the task with the user's information.
         """
         self.client.post(self.url, self.data)
-        pb_mock.assert_called_with(self.data, self.sub.email, self.sub.token)
+        pb_mock.assert_called_with(self.data, self.token)
 
     @patch('news.tasks.ExactTarget')
-    def test_update_phonebook_task(self, et_mock):
+    @patch('news.tasks.get_user_data')
+    def test_update_phonebook_task(self, user_data_mock, et_mock):
         """
         Should call Exact Target only with the approved information.
         """
         et = et_mock()
         record = self.data.copy()
-        record.update({'EMAIL_ADDRESS': self.sub.email,
-                       'TOKEN': self.sub.token})
+        record.update({'EMAIL_ADDRESS': 'dude@example.com',
+                       'TOKEN': self.token})
+        user_data_mock.return_value = {'email': 'dude@example.com'}
         self.client.post(self.url, self.data)
         et.data_ext().add_record.assert_called_with('Student_Ambassadors',
                                                     record.keys(),

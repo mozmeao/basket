@@ -6,9 +6,8 @@ from django.test import TestCase
 from django.test.client import RequestFactory
 
 from basket import errors
-from mock import Mock, patch
+from mock import patch
 
-from news import tasks
 from news.models import BlockedEmail
 from news.tasks import SUBSCRIBE
 from news.utils import (
@@ -51,11 +50,11 @@ class UpdateUserTaskTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
-        patcher = patch('news.utils.get_or_create_user_data')
-        self.lookup_subscriber = patcher.start()
+        patcher = patch('news.views.get_or_create_user_data')
+        self.get_or_create_user_data = patcher.start()
         self.addCleanup(patcher.stop)
 
-        patcher = patch.object(tasks, 'update_user')
+        patcher = patch('news.views.update_user')
         self.update_user = patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -76,7 +75,7 @@ class UpdateUserTaskTests(TestCase):
         """If an invalid newsletter is given, return a 400 error."""
         request = self.factory.post('/')
 
-        with patch('news.utils.newsletter_slugs') as newsletter_slugs:
+        with patch('news.views.newsletter_slugs') as newsletter_slugs:
             newsletter_slugs.return_value = ['foo', 'baz']
             response = update_user_task(request, SUBSCRIBE, {'newsletters': 'foo,bar'})
 
@@ -86,7 +85,7 @@ class UpdateUserTaskTests(TestCase):
         """If the given lang is invalid, return a 400 error."""
         request = self.factory.post('/')
 
-        with patch('news.utils.language_code_is_valid') as mock_language_code_is_valid:
+        with patch('news.views.language_code_is_valid') as mock_language_code_is_valid:
             mock_language_code_is_valid.return_value = False
             response = update_user_task(request, SUBSCRIBE, {'lang': 'pt-BR'})
 
@@ -135,10 +134,9 @@ class UpdateUserTaskTests(TestCase):
         self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True)
         self.assertFalse(self.lookup_subscriber.called)
 
-    def test_missing_email_and_sub(self):
+    def test_missing_email(self):
         """
-        If both the email and subscriber are missing, return a 400
-        error.
+        If the email is missing, return a 400 error.
         """
         request = self.factory.post('/')
         response = update_user_task(request, SUBSCRIBE)
@@ -156,7 +154,7 @@ class UpdateUserTaskTests(TestCase):
         response = update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
         self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True)
-        self.assertFalse(self.lookup_subscriber.called)
+        self.assertFalse(self.get_or_create_user_data.called)
 
     def test_success_with_valid_newsletters(self):
         """
@@ -165,7 +163,7 @@ class UpdateUserTaskTests(TestCase):
         request = self.factory.post('/')
         data = {'email': 'a@example.com', 'newsletters': 'foo,bar'}
 
-        with patch('news.utils.newsletter_and_group_slugs') as newsletter_slugs:
+        with patch('news.views.newsletter_and_group_slugs') as newsletter_slugs:
             newsletter_slugs.return_value = ['foo', 'bar']
             response = update_user_task(request, SUBSCRIBE, data, sync=False)
             self.assert_response_ok(response)
@@ -175,22 +173,10 @@ class UpdateUserTaskTests(TestCase):
         request = self.factory.post('/')
         data = {'email': 'a@example.com', 'lang': 'pt-BR'}
 
-        with patch('news.utils.language_code_is_valid') as mock_language_code_is_valid:
+        with patch('news.views.language_code_is_valid') as mock_language_code_is_valid:
             mock_language_code_is_valid.return_value = True
             response = update_user_task(request, SUBSCRIBE, data, sync=False)
             self.assert_response_ok(response)
-
-    def test_success_with_subscriber(self):
-        """
-        If no email is given but a subscriber is, use the subscriber's
-        email.
-        """
-        request = self.factory.post('/')
-        request.subscriber = Mock(email='a@example.com')
-        response = update_user_task(request, SUBSCRIBE, {}, sync=False)
-
-        self.assert_response_ok(response)
-        self.update_user.delay.assert_called_with({}, 'a@example.com', None, SUBSCRIBE, True)
 
     def test_success_with_request_data(self):
         """
@@ -204,34 +190,21 @@ class UpdateUserTaskTests(TestCase):
         self.assert_response_ok(response)
         self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True)
 
-    def test_success_with_sync_and_subscriber(self):
+    def test_success_with_sync(self):
         """
-        If sync is True, and a subscriber is provided, do not call
-        get_or_create_user_data and return an OK response with the token and
-        created == False.
-        """
-        request = self.factory.post('/')
-        request.subscriber = Mock(email='a@example.com', token='mytoken')
-        response = update_user_task(request, SUBSCRIBE, {}, sync=True)
-
-        self.assert_response_ok(response, token='mytoken', created=False)
-        self.update_user.delay.assert_called_with({}, 'a@example.com', 'mytoken', SUBSCRIBE, True)
-
-    def test_success_with_sync_no_subscriber(self):
-        """
-        If sync is True, and a subscriber is not provided, look them up
-        with get_or_create_user_data and return an OK response with the token
-        and created from the fetched subscriber.
+        If sync is True look up the user with get_or_create_user_data and
+        return an OK response with the token and created from the fetched subscriber.
         """
         request = self.factory.post('/')
         data = {'email': 'a@example.com'}
-        subscriber = Mock(email='a@example.com', token='mytoken')
-        self.lookup_subscriber.return_value = subscriber, None, True
+        self.get_or_create_user_data.return_value = {'token': 'mytoken',
+                                                     'email': 'a@example.com'}, True
 
         response = update_user_task(request, SUBSCRIBE, data, sync=True)
 
         self.assert_response_ok(response, token='mytoken', created=True)
-        self.update_user.delay.assert_called_with(data, 'a@example.com', 'mytoken', SUBSCRIBE, True)
+        self.update_user.delay.assert_called_with(data, 'a@example.com', 'mytoken',
+                                                  SUBSCRIBE, True)
 
 
 class TestGetAcceptLanguages(TestCase):

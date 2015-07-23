@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 from django.conf import settings
 from django.test import TestCase
 
@@ -11,10 +9,11 @@ from news.models import Newsletter
 from news.tasks import SUBSCRIBE, UU_ALREADY_CONFIRMED, UU_EXEMPT_NEW, \
     UU_EXEMPT_PENDING, UU_MUST_CONFIRM_NEW, UU_MUST_CONFIRM_PENDING, \
     BasketError, confirm_user, update_user
+from news.utils import generate_token
 
 
 class TestConfirmationLogic(TestCase):
-    def check_confirmation(self, user_in_basket, user_in_master,
+    def check_confirmation(self, user_in_master,
                            user_in_optin, user_in_confirmed,
                            newsletter_with_required_confirmation,
                            newsletter_without_required_confirmation,
@@ -23,10 +22,7 @@ class TestConfirmationLogic(TestCase):
         # an expected result, set up the conditions, make the call,
         # and verify we get the expected result.
         email = "dude@example.com"
-        token = uuid4()
-
-        if user_in_basket:
-            models.Subscriber.objects.create(email=email, token=token)
+        token = generate_token()
 
         # What should get_user_data return?
         user = {}
@@ -90,8 +86,7 @@ class TestConfirmationLogic(TestCase):
     #
 
     def test_new_english_non_required(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=False,
                                 user_in_confirmed=False,
                                 newsletter_with_required_confirmation=False,
@@ -101,8 +96,7 @@ class TestConfirmationLogic(TestCase):
                                 expected_result=UU_EXEMPT_NEW)
 
     def test_new_non_english_non_required(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=False,
                                 user_in_confirmed=False,
                                 newsletter_with_required_confirmation=False,
@@ -112,8 +106,7 @@ class TestConfirmationLogic(TestCase):
                                 expected_result=UU_EXEMPT_NEW)
 
     def test_new_english_required_and_not(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=False,
                                 user_in_confirmed=False,
                                 newsletter_with_required_confirmation=True,
@@ -123,8 +116,7 @@ class TestConfirmationLogic(TestCase):
                                 expected_result=UU_EXEMPT_NEW)
 
     def test_new_non_english_required_and_not(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=False,
                                 user_in_confirmed=False,
                                 newsletter_with_required_confirmation=True,
@@ -134,8 +126,7 @@ class TestConfirmationLogic(TestCase):
                                 expected_result=UU_EXEMPT_NEW)
 
     def test_new_non_english_required(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=False,
                                 user_in_confirmed=False,
                                 newsletter_with_required_confirmation=True,
@@ -145,8 +136,7 @@ class TestConfirmationLogic(TestCase):
                                 expected_result=UU_MUST_CONFIRM_NEW)
 
     def test_new_english_optin(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=False,
                                 user_in_confirmed=False,
                                 newsletter_with_required_confirmation=True,
@@ -162,8 +152,7 @@ class TestConfirmationLogic(TestCase):
 
     def test_pending_english_required(self):
         # Should NOT exempt them and confirm them
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=True,
                                 user_in_confirmed=False,
                                 newsletter_with_required_confirmation=True,
@@ -174,8 +163,7 @@ class TestConfirmationLogic(TestCase):
 
     def test_pending_english_not_required(self):
         # Should exempt them and confirm them
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=True,
                                 user_in_confirmed=False,
                                 newsletter_with_required_confirmation=True,
@@ -186,8 +174,7 @@ class TestConfirmationLogic(TestCase):
 
     def test_pending_non_english_required(self):
         # Still have to confirm
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=True,
                                 user_in_confirmed=False,
                                 newsletter_with_required_confirmation=True,
@@ -198,8 +185,7 @@ class TestConfirmationLogic(TestCase):
 
     def test_pending_non_english_not_required(self):
         # Should exempt them and confirm them
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=True,
                                 user_in_confirmed=False,
                                 newsletter_with_required_confirmation=True,
@@ -209,8 +195,7 @@ class TestConfirmationLogic(TestCase):
                                 expected_result=UU_EXEMPT_PENDING)
 
     def test_pending_english_optin(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=True,
                                 user_in_confirmed=False,
                                 newsletter_with_required_confirmation=True,
@@ -225,8 +210,7 @@ class TestConfirmationLogic(TestCase):
     #
 
     def test_confirmed_english_required(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=True,
                                 user_in_confirmed=True,
                                 newsletter_with_required_confirmation=True,
@@ -236,8 +220,7 @@ class TestConfirmationLogic(TestCase):
                                 expected_result=UU_ALREADY_CONFIRMED)
 
     def test_confirmed_non_english_required(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=True,
                                 user_in_confirmed=True,
                                 newsletter_with_required_confirmation=True,
@@ -247,8 +230,7 @@ class TestConfirmationLogic(TestCase):
                                 expected_result=UU_ALREADY_CONFIRMED)
 
     def test_confirmed_english_not_required(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=True,
                                 user_in_confirmed=True,
                                 newsletter_with_required_confirmation=False,
@@ -258,8 +240,7 @@ class TestConfirmationLogic(TestCase):
                                 expected_result=UU_ALREADY_CONFIRMED)
 
     def test_confirmed_non_english_not_required(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=False,
+        self.check_confirmation(user_in_master=False,
                                 user_in_optin=True,
                                 user_in_confirmed=True,
                                 newsletter_with_required_confirmation=False,
@@ -272,8 +253,7 @@ class TestConfirmationLogic(TestCase):
     #
 
     def test_master_english_required(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=True,
+        self.check_confirmation(user_in_master=True,
                                 user_in_optin=False,
                                 user_in_confirmed=True,
                                 newsletter_with_required_confirmation=True,
@@ -283,8 +263,7 @@ class TestConfirmationLogic(TestCase):
                                 expected_result=UU_ALREADY_CONFIRMED)
 
     def test_master_non_english_required(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=True,
+        self.check_confirmation(user_in_master=True,
                                 user_in_optin=False,
                                 user_in_confirmed=True,
                                 newsletter_with_required_confirmation=True,
@@ -294,8 +273,7 @@ class TestConfirmationLogic(TestCase):
                                 expected_result=UU_ALREADY_CONFIRMED)
 
     def test_master_english_not_required(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=True,
+        self.check_confirmation(user_in_master=True,
                                 user_in_optin=False,
                                 user_in_confirmed=True,
                                 newsletter_with_required_confirmation=False,
@@ -305,8 +283,7 @@ class TestConfirmationLogic(TestCase):
                                 expected_result=UU_ALREADY_CONFIRMED)
 
     def test_master_non_english_not_required(self):
-        self.check_confirmation(user_in_basket=False,
-                                user_in_master=True,
+        self.check_confirmation(user_in_master=True,
                                 user_in_optin=False,
                                 user_in_confirmed=True,
                                 newsletter_with_required_confirmation=False,
@@ -318,37 +295,33 @@ class TestConfirmationLogic(TestCase):
 
 @patch('news.tasks.send_welcomes')
 @patch('news.tasks.apply_updates')
+@patch('news.tasks.get_user_data')
 class TestConfirmTask(TestCase):
-    @patch('news.utils.get_or_create_user_data')
-    def test_error(self, lookup_subscriber, apply_updates, send_welcomes):
+    def test_error(self, get_user_data, apply_updates, send_welcomes):
         """
         If user_data shows an error talking to ET, the task raises
         an exception so our task logic will retry
         """
-        lookup_subscriber.side_effect = NewsletterException('Stuffs broke yo.')
+        get_user_data.side_effect = NewsletterException('Stuffs broke yo.')
         with self.assertRaises(NewsletterException):
-            confirm_user('token', None)
+            confirm_user('token')
         self.assertFalse(apply_updates.called)
         self.assertFalse(send_welcomes.called)
 
-    def test_normal(self, apply_updates, send_welcomes):
+    def test_normal(self, get_user_data, apply_updates, send_welcomes):
         """If user_data is okay, and not yet confirmed, the task calls
          the right stuff"""
-        user_data = {
-            'status': 'ok',
-            'confirmed': False,
-            'newsletters': Mock(),
-            'format': 'ZZ',
-            'email': 'dude@example.com',
-        }
+        user_data = {'status': 'ok', 'confirmed': False, 'newsletters': Mock(), 'format': 'ZZ',
+                     'email': 'dude@example.com', }
+        get_user_data.return_value = user_data
         token = "TOKEN"
-        confirm_user(token, user_data)
+        confirm_user(token)
         apply_updates.assert_called_with(settings.EXACTTARGET_CONFIRMATION,
                                          {'TOKEN': token})
         send_welcomes.assert_called_with(user_data, user_data['newsletters'],
                                          user_data['format'])
 
-    def test_already_confirmed(self, apply_updates, send_welcomes):
+    def test_already_confirmed(self, get_user_data, apply_updates, send_welcomes):
         """If user_data already confirmed, task does nothing"""
         user_data = {
             'status': 'ok',
@@ -356,31 +329,27 @@ class TestConfirmTask(TestCase):
             'newsletters': Mock(),
             'format': 'ZZ',
         }
+        get_user_data.return_value = user_data
         token = "TOKEN"
-        confirm_user(token, user_data)
+        confirm_user(token)
         self.assertFalse(apply_updates.called)
         self.assertFalse(send_welcomes.called)
 
-    def test_user_not_found(self, apply_updates, send_welcomes):
+    def test_user_not_found(self, get_user_data, apply_updates, send_welcomes):
         """If we can't find the user, raise exception"""
-        # Can't patch get_user_data because confirm_user imports it
-        # internally. But we can patch look_for_user, which get_user_data
-        # will call
-        with patch('news.utils.look_for_user') as look_for_user:
-            look_for_user.return_value = None
-            user_data = None
-            token = "TOKEN"
-            with self.assertRaises(BasketError):
-                confirm_user(token, user_data)
+        get_user_data.return_value = None
+        token = "TOKEN"
+        with self.assertRaises(BasketError):
+            confirm_user(token)
         self.assertFalse(apply_updates.called)
         self.assertFalse(send_welcomes.called)
 
 
+@patch('news.tasks.get_user_data')
+@patch('news.tasks.send_message')
+@patch('news.tasks.apply_updates', Mock())
 class TestSendWelcomes(TestCase):
-
-    @patch('news.tasks.send_message')
-    @patch('news.tasks.apply_updates')
-    def test_text_welcome(self, apply_updates, send_message):
+    def test_text_welcome(self, send_message, get_user_data):
         """Test sending the right welcome message"""
         welcome = u'welcome'
         Newsletter.objects.create(
@@ -394,7 +363,7 @@ class TestSendWelcomes(TestCase):
         lang = 'ru'
         format = 'T'
         # User who prefers Russian Text messages
-        user_data = {
+        get_user_data.return_value = {
             'status': 'ok',
             'confirmed': False,
             'newsletters': ['slug'],
@@ -403,13 +372,11 @@ class TestSendWelcomes(TestCase):
             'token': token,
             'email': email,
         }
-        confirm_user(token, user_data)
+        confirm_user(token)
         expected_welcome = "%s_%s_%s" % (lang, welcome, format)
         send_message.delay.assert_called_with(expected_welcome, email, token, format)
 
-    @patch('news.tasks.send_message')
-    @patch('news.tasks.apply_updates')
-    def test_html_welcome(self, apply_updates, send_message):
+    def test_html_welcome(self, send_message, get_user_data):
         """Test sending the right welcome message"""
         welcome = u'welcome'
         Newsletter.objects.create(
@@ -423,7 +390,7 @@ class TestSendWelcomes(TestCase):
         lang = 'RU'  # This guy had an uppercase lang code for some reason
         format = 'H'
         # User who prefers Russian HTML messages
-        user_data = {
+        get_user_data.return_value = {
             'status': 'ok',
             'confirmed': False,
             'newsletters': ['slug'],
@@ -432,14 +399,12 @@ class TestSendWelcomes(TestCase):
             'token': token,
             'email': email,
         }
-        confirm_user(token, user_data)
+        confirm_user(token)
         # Lang code is lowercased. And we don't append anything for HTML.
         expected_welcome = "%s_%s" % (lang.lower(), welcome)
         send_message.delay.assert_called_with(expected_welcome, email, token, format)
 
-    @patch('news.tasks.send_message')
-    @patch('news.tasks.apply_updates')
-    def test_bad_lang_welcome(self, apply_updates, send_message):
+    def test_bad_lang_welcome(self, send_message, get_user_data):
         """Test sending welcome in english if user wants a lang that
         our newsletter doesn't support"""
         welcome = u'welcome'
@@ -454,7 +419,7 @@ class TestSendWelcomes(TestCase):
         lang = 'fr'
         format = 'H'
         # User who prefers French HTML messages
-        user_data = {
+        get_user_data.return_value = {
             'status': 'ok',
             'confirmed': False,
             'newsletters': ['slug'],
@@ -463,14 +428,12 @@ class TestSendWelcomes(TestCase):
             'token': token,
             'email': email,
         }
-        confirm_user(token, user_data)
+        confirm_user(token)
         # They're getting English. And we don't append anything for HTML.
         expected_welcome = "en_%s" % welcome
         send_message.delay.assert_called_with(expected_welcome, email, token, format)
 
-    @patch('news.tasks.send_message')
-    @patch('news.tasks.apply_updates')
-    def test_long_lang_welcome(self, apply_updates, send_message):
+    def test_long_lang_welcome(self, send_message, get_user_data):
         """Test sending welcome in pt if the user wants pt and the newsletter
         supports pt-Br"""
         welcome = u'welcome'
@@ -484,7 +447,7 @@ class TestSendWelcomes(TestCase):
         email = 'dude@example.com'
         lang = 'pt'
         format = 'H'
-        user_data = {
+        get_user_data.return_value = {
             'status': 'ok',
             'confirmed': False,
             'newsletters': ['slug'],
@@ -493,14 +456,12 @@ class TestSendWelcomes(TestCase):
             'token': token,
             'email': email,
         }
-        confirm_user(token, user_data)
+        confirm_user(token)
         # They're getting pt. And we don't append anything for HTML.
         expected_welcome = "pt_%s" % welcome
         send_message.delay.assert_called_with(expected_welcome, email, token, format)
 
-    @patch('news.tasks.send_message')
-    @patch('news.tasks.apply_updates')
-    def test_other_long_lang_welcome(self, apply_updates, send_message):
+    def test_other_long_lang_welcome(self, send_message, get_user_data):
         """Test sending welcome in pt if the user wants pt-Br and the
         newsletter supports pt"""
         welcome = u'welcome'
@@ -514,7 +475,7 @@ class TestSendWelcomes(TestCase):
         email = 'dude@example.com'
         lang = 'pt-Br'
         format = 'H'
-        user_data = {
+        get_user_data.return_value = {
             'status': 'ok',
             'confirmed': False,
             'newsletters': ['slug'],
@@ -523,14 +484,12 @@ class TestSendWelcomes(TestCase):
             'token': token,
             'email': email,
         }
-        confirm_user(token, user_data)
+        confirm_user(token)
         # They're getting pt. And we don't append anything for HTML.
         expected_welcome = "pt_%s" % welcome
         send_message.delay.assert_called_with(expected_welcome, email, token, format)
 
-    @patch('news.tasks.send_message')
-    @patch('news.tasks.apply_updates')
-    def test_one_lang_welcome(self, apply_updates, send_message):
+    def test_one_lang_welcome(self, send_message, get_user_data):
         """If a newsletter only has one language, the welcome message
         still gets a language prefix"""
         welcome = u'welcome'
@@ -544,7 +503,7 @@ class TestSendWelcomes(TestCase):
         email = 'dude@example.com'
         lang = 'pt-Br'
         format = 'H'
-        user_data = {
+        get_user_data.return_value = {
             'status': 'ok',
             'confirmed': False,
             'newsletters': ['slug'],
@@ -553,6 +512,6 @@ class TestSendWelcomes(TestCase):
             'token': token,
             'email': email,
         }
-        confirm_user(token, user_data)
+        confirm_user(token)
         expected_welcome = 'en_' + welcome
         send_message.delay.assert_called_with(expected_welcome, email, token, format)

@@ -30,4 +30,3 @@ CACHES['email_block_list'] = {
 if len(sys.argv) > 1 and sys.argv[1] == 'test':
     # stuff that's absolutely required for a test run
     CELERY_ALWAYS_EAGER = True
-    INSTALLED_APPS += ('django_nose',)

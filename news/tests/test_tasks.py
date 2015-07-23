@@ -7,7 +7,7 @@ import celery
 from mock import Mock, patch
 
 from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
-from news.models import FailedTask, Subscriber
+from news.models import FailedTask
 from news.newsletters import clear_sms_cache
 from news.tasks import (
     add_fxa_activity,
@@ -26,12 +26,12 @@ from news.tasks import (
 class FailedTaskTest(TestCase):
     """Test that failed tasks are logged in our FailedTask table"""
 
-    @patch('news.tasks.ExactTarget', autospec=True)
-    def test_failed_task_logging(self, mock_exact_target):
+    @patch('news.tasks.get_user_data')
+    def test_failed_task_logging(self, mock_get_user_data):
         """Failed task is logged in FailedTask table"""
-        mock_exact_target.side_effect = Exception("Test exception")
+        mock_get_user_data.side_effect = Exception("Test exception")
         self.assertEqual(0, FailedTask.objects.count())
-        args = [{'arg1': 1, 'arg2': 2}, "foo@example.com"]
+        args = [{'arg1': 1, 'arg2': 2}]
         kwargs = {'token': 3}
         result = update_phonebook.apply(args=args, kwargs=kwargs)
         fail = FailedTask.objects.get()
@@ -91,10 +91,9 @@ class RecoveryMessageTask(TestCase):
 
         self.assertFalse(mock_send.called)
 
-    def test_email_only_in_et(self, mock_look_for_user, mock_send):
+    def test_email_in_et(self, mock_look_for_user, mock_send):
         """Email not in basket but in ET"""
-        # Should create new subscriber with ET data, then trigger message
-        # We can follow the user's format and lang pref
+        # Should trigger message. We can follow the user's format and lang pref
         format = 'T'
         lang = 'fr'
         mock_look_for_user.return_value = {
@@ -107,39 +106,9 @@ class RecoveryMessageTask(TestCase):
             'newsletters': [],
         }
         send_recovery_message_task(self.email)
-        subscriber = Subscriber.objects.get(email=self.email)
-        self.assertEqual('USERTOKEN', subscriber.token)
         message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
         mock_send.delay.assert_called_with(message_id, self.email,
-                                           subscriber.token, format)
-
-    def test_email_only_in_basket(self, mock_look_for_user, mock_send):
-        """Email known in basket, not in ET"""
-        # Should log error and return
-        Subscriber.objects.create(email=self.email)
-        mock_look_for_user.return_value = None
-        send_recovery_message_task(self.email)
-        self.assertFalse(mock_send.called)
-
-    def test_email_in_both(self, mock_look_for_user, mock_send):
-        """Email known in both basket and ET"""
-        # We can follow the user's format and lang pref
-        subscriber = Subscriber.objects.create(email=self.email)
-        format = 'T'
-        lang = 'fr'
-        mock_look_for_user.return_value = {
-            'status': 'ok',
-            'email': self.email,
-            'format': format,
-            'country': '',
-            'lang': lang,
-            'token': subscriber.token,
-            'newsletters': [],
-        }
-        send_recovery_message_task(self.email)
-        message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
-        mock_send.delay.assert_called_with(message_id, self.email,
-                                           subscriber.token, format)
+                                           'USERTOKEN', format)
 
 
 class UpdateUserTests(TestCase):

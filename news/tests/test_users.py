@@ -14,7 +14,7 @@ from basket import errors
 from news import models, tasks, views
 from news.backends.common import NewsletterException
 from news.models import Newsletter, APIUser
-from news.utils import look_for_user, get_user_data, SET
+from news.utils import look_for_user, get_user_data, SET, generate_token
 
 
 class UpdateFxAInfoTest(TestCase):
@@ -32,18 +32,16 @@ class UpdateFxAInfoTest(TestCase):
         self.get_external_user_data = patcher.start()
 
     def test_new_user(self):
-        """Adding a new user to the DB should add fxa_id."""
+        """Adding a new user should add fxa_id."""
         self.get_external_user_data.return_value = None
         email = 'dude@example.com'
         fxa_id = 'the fxa abides'
 
         tasks.update_fxa_info(email, 'de', fxa_id)
-        sub = models.Subscriber.objects.get(email=email)
-        self.assertEqual(sub.fxa_id, fxa_id)
 
         self.apply_updates.assert_called_once_with(settings.EXACTTARGET_DATA, {
             'EMAIL_ADDRESS_': email,
-            'TOKEN': sub.token,
+            'TOKEN': ANY,
             'FXA_ID': fxa_id,
             'FXA_LANGUAGE_ISO2': 'de',
             'SOURCE_URL': 'https://accounts.firefox.com',
@@ -51,7 +49,7 @@ class UpdateFxAInfoTest(TestCase):
         })
         self.get_external_user_data.assert_called_with(email=email)
         self.send_message.delay.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
-                                                   email, sub.token, 'H')
+                                                   email, ANY, 'H')
 
     def test_skip_welcome(self):
         """Passing skip_welcome should add user but not send welcome."""
@@ -60,12 +58,9 @@ class UpdateFxAInfoTest(TestCase):
         fxa_id = 'the fxa abides'
 
         tasks.update_fxa_info(email, 'de', fxa_id, skip_welcome=True)
-        sub = models.Subscriber.objects.get(email=email)
-        self.assertEqual(sub.fxa_id, fxa_id)
-
         self.apply_updates.assert_called_once_with(settings.EXACTTARGET_DATA, {
             'EMAIL_ADDRESS_': email,
-            'TOKEN': sub.token,
+            'TOKEN': ANY,
             'FXA_ID': fxa_id,
             'FXA_LANGUAGE_ISO2': 'de',
             'SOURCE_URL': 'https://accounts.firefox.com',
@@ -74,44 +69,18 @@ class UpdateFxAInfoTest(TestCase):
         self.get_external_user_data.assert_called_with(email=email)
         self.assertFalse(self.send_message.delay.called)
 
-    def test_user_in_et_not_basket(self):
-        """A user could exist in basket but not ET, should still work."""
-        self.get_external_user_data.return_value = None
+    def test_existing_user(self):
+        """Adding a fxa_id to an existing user shouldn't modify other things."""
         email = 'dude@example.com'
         fxa_id = 'the fxa abides'
-
-        models.Subscriber.objects.create(email=email)
-        tasks.update_fxa_info(email, 'de', fxa_id)
-        sub = models.Subscriber.objects.get(email=email)
-        self.assertEqual(sub.fxa_id, fxa_id)
-
-        self.apply_updates.assert_called_once_with(settings.EXACTTARGET_DATA, {
-            'EMAIL_ADDRESS_': email,
-            'TOKEN': sub.token,
-            'FXA_ID': fxa_id,
-            'FXA_LANGUAGE_ISO2': 'de',
-            'SOURCE_URL': 'https://accounts.firefox.com',
-            'MODIFIED_DATE_': ANY,
-        })
-        self.get_external_user_data.assert_called_with(email=email)
-        self.send_message.delay.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
-                                                   email, sub.token, 'H')
-
-    def test_existing_user_not_in_basket(self):
-        """Adding a user already in ET but not basket should preserve token."""
-        email = 'dude@example.com'
-        fxa_id = 'the fxa abides'
-        token = 'hehe... you said **token**.'
+        token = 'the dudes token, man'
         self.get_external_user_data.return_value = {
             'email': email,
             'token': token,
             'lang': 'de',
-            'format': '',
+            'format': 'T',
         }
         tasks.update_fxa_info(email, 'de', fxa_id)
-        sub = models.Subscriber.objects.get(email=email)
-        self.assertEqual(sub.fxa_id, fxa_id)
-        self.assertEqual(sub.token, token)
 
         self.apply_updates.assert_called_once_with(settings.EXACTTARGET_DATA, {
             'EMAIL_ADDRESS_': email,
@@ -120,34 +89,8 @@ class UpdateFxAInfoTest(TestCase):
             'MODIFIED_DATE_': ANY,
             'FXA_LANGUAGE_ISO2': 'de',
         })
-        self.get_external_user_data.assert_called_with(email=email)
-        self.send_message.delay.assert_called_with('de_{0}'.format(tasks.FXACCOUNT_WELCOME),
-                                                   email, sub.token, '')
-
-    def test_existing_user(self):
-        """Adding a fxa_id to an existing user shouldn't modify other things."""
-        email = 'dude@example.com'
-        fxa_id = 'the fxa abides'
-        old_sub = models.Subscriber.objects.create(email=email)
-        self.get_external_user_data.return_value = {
-            'email': email,
-            'token': old_sub.token,
-            'lang': 'de',
-            'format': 'T',
-        }
-        tasks.update_fxa_info(email, 'de', fxa_id)
-        sub = models.Subscriber.objects.get(email=email)
-        self.assertEqual(sub.fxa_id, fxa_id)
-
-        self.apply_updates.assert_called_once_with(settings.EXACTTARGET_DATA, {
-            'EMAIL_ADDRESS_': email,
-            'TOKEN': old_sub.token,
-            'FXA_ID': fxa_id,
-            'MODIFIED_DATE_': ANY,
-            'FXA_LANGUAGE_ISO2': 'de',
-        })
         self.send_message.delay.assert_called_with('de_{0}_T'.format(tasks.FXACCOUNT_WELCOME),
-                                                   email, sub.token, 'T')
+                                                   email, token, 'T')
 
 
 @override_settings(EXACTTARGET_DATA='DATA_FOR_DUDE',
@@ -187,14 +130,13 @@ class UpdateGetInvolvedTests(TestCase):
         self.get_user_data.return_value = None
         tasks.update_get_involved('bowling', 'en', 'Walter', email,
                                   'US', 'T', 'Y', 'It really tied the room together.', None)
-        token = models.Subscriber.objects.get(email=email).token
         self.apply_updates.assert_has_calls([
             call(settings.EXACTTARGET_DATA, {
                 'EMAIL_ADDRESS_': email,
                 'MODIFIED_DATE_': ANY,
                 'LANGUAGE_ISO2': 'en',
                 'COUNTRY_': 'US',
-                'TOKEN': token,
+                'TOKEN': ANY,
                 'EMAIL_FORMAT_': 'T',
                 'ABOUT_MOZILLA_FLG': 'Y',
                 'ABOUT_MOZILLA_DATE': ANY,
@@ -202,14 +144,14 @@ class UpdateGetInvolvedTests(TestCase):
                 'GET_INVOLVED_DATE': ANY,
             }),
             call(settings.EXACTTARGET_INTERESTS, {
-                'TOKEN': token,
+                'TOKEN': ANY,
                 'INTEREST': 'bowling',
             }),
         ])
-        self.send_message.delay.assert_called_with('en_welcome_bowling_T', email, token, 'T')
+        self.send_message.delay.assert_called_with('en_welcome_bowling_T', email, ANY, 'T')
         self.send_welcomes.assert_called_once_with({
             'email': email,
-            'token': token,
+            'token': ANY,
             'lang': 'en',
         }, ['about-mozilla'], 'T')
         self.interest.notify_stewards.assert_called_with('Walter', email, 'en',
@@ -229,8 +171,7 @@ class UpdateGetInvolvedTests(TestCase):
     def test_existing_user_interested(self):
         """Successful submission of the form for existing newsletter user."""
         email = 'walter@example.com'
-        sub = models.Subscriber.objects.create(email=email)
-        token = sub.token
+        token = 'the dudes token, man'
         self.get_user_data.return_value = {
             'status': 'ok',
             'format': 'T',
@@ -265,8 +206,7 @@ class UpdateGetInvolvedTests(TestCase):
         subscribed to get-involved.
         """
         email = 'walter@example.com'
-        sub = models.Subscriber.objects.create(email=email)
-        token = sub.token
+        token = 'the dudes token, man'
         self.get_user_data.return_value = {
             'status': 'ok',
             'format': 'T',
@@ -304,7 +244,7 @@ class UpdateGetInvolvedTests(TestCase):
         self.get_user_data.return_value = None
         tasks.update_get_involved('bowling', 'en', 'Walter', email,
                                   'US', 'H', False, 'It really tied the room together.', None)
-        token = models.Subscriber.objects.get(email=email).token
+        token = ANY
         self.apply_updates.assert_has_calls([
             call(settings.EXACTTARGET_DATA, {
                 'EMAIL_ADDRESS_': email,
@@ -325,48 +265,6 @@ class UpdateGetInvolvedTests(TestCase):
         self.assertFalse(self.send_welcomes.called)
         self.interest.notify_stewards.assert_called_with('Walter', email, 'en',
                                                          'It really tied the room together.')
-
-
-class DebugUserTest(TestCase):
-    def setUp(self):
-        self.sub = models.Subscriber.objects.create(email='dude@example.com')
-
-    @patch('news.views.get_user_data')
-    def test_basket_data_included(self, et_mock):
-        """
-        The token from the basket DB should be included, and can be
-        different from that returned by ET
-        """
-        et_mock.return_value = {
-            'email': self.sub.email,
-            'token': 'not-the-users-basket-token',
-        }
-        resp = self.client.get('/news/debug-user/', {
-            'email': self.sub.email,
-            'supertoken': settings.SUPERTOKEN,
-        })
-        resp_data = json.loads(resp.content)
-        self.assertEqual(resp_data['basket_token'], self.sub.token)
-        self.assertNotEqual(resp_data['token'], self.sub.token)
-        self.assertTrue(resp_data['in_basket'])
-
-    @patch('news.views.get_user_data')
-    def test_user_not_in_basket(self, et_mock):
-        """
-        It's possible the user is in ET but not basket. Response should
-        indicate that.
-        """
-        et_mock.return_value = {
-            'email': 'donnie@example.com',
-            'token': 'not-the-users-basket-token',
-        }
-        resp = self.client.get('/news/debug-user/', {
-            'email': 'donnie@example.com',
-            'supertoken': settings.SUPERTOKEN,
-        })
-        resp_data = json.loads(resp.content)
-        self.assertEqual(resp_data['token'], 'not-the-users-basket-token')
-        self.assertFalse(resp_data['in_basket'])
 
 
 class TestLookForUser(TestCase):
@@ -552,23 +450,19 @@ class UserTest(TestCase):
         """If the user view is sent a POST request, it should attempt to update
         the user's info.
         """
-        subscriber = models.Subscriber(email='test@example.com', token='asdf')
-        subscriber.save()
-
         request = self.factory.post('/news/user/asdf/', {'fake': 'data'})
         with patch.object(views, 'update_user_task') as update_user_task:
             update_user_task.return_value = HttpResponse()
             views.user(request, 'asdf')
-            update_user_task.assert_called_with(request, SET)
+            update_user_task.assert_called_with(request, SET, data={'fake': 'data',
+                                                                    'token': 'asdf'})
 
     def test_user_set_bad_language(self):
         """If the user view is sent a POST request with an invalid
         language, it fails.
         """
-        subscriber = models.Subscriber(email='test@example.com', token='asdf')
-        subscriber.save()
-
-        resp = self.client.post('/news/user/asdf/',
+        token = generate_token()
+        resp = self.client.post('/news/user/{}/'.format(token),
                                 {'fake': 'data', 'lang': '55'})
         self.assertEqual(resp.status_code, 400)
         data = json.loads(resp.content)
@@ -576,36 +470,12 @@ class UserTest(TestCase):
         self.assertEqual(data['desc'], 'invalid language')
 
     @patch('news.utils.ExactTargetDataExt')
-    def test_missing_user_created(self, et_ext):
-        """
-        If a user is in ET but not Basket, it should be created.
-        """
-        data_ext = et_ext()
-        data_ext.get_record.return_value = {
-            'EMAIL_ADDRESS_': 'dude@example.com',
-            'EMAIL_FORMAT_': 'HTML',
-            'COUNTRY_': 'us',
-            'LANGUAGE_ISO2': 'en',
-            'TOKEN': 'asdf',
-            'CREATED_DATE_': 'Yesterday',
-        }
-        with self.assertRaises(models.Subscriber.DoesNotExist):
-            models.Subscriber.objects.get(email='dude@example.com')
-
-        resp = self.client.get('/news/user/asdf/')
-        self.assertEqual(data_ext.get_record.call_count, 1)
-        self.assertEqual(resp.status_code, 200)
-        sub = models.Subscriber.objects.get(email='dude@example.com')
-        self.assertEqual(sub.token, 'asdf')
-
-    @patch('news.utils.ExactTargetDataExt')
     def test_user_not_in_et(self, et_ext):
         """A user not found in ET should produce an error response."""
         data_ext = et_ext()
         data_ext.get_record.side_effect = NewsletterException('DANGER!')
-        models.Subscriber.objects.create(email='dude@example.com',
-                                         token='asdfjkl')
-        resp = self.client.get('/news/user/asdfjkl/')
+        token = generate_token()
+        resp = self.client.get('/news/user/{}/'.format(token))
         self.assertEqual(resp.status_code, 400)
         resp_data = json.loads(resp.content)
         self.assertDictEqual(resp_data, {

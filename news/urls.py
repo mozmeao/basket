@@ -7,7 +7,11 @@ from .views import (confirm, custom_unsub_reason, custom_update_phonebook,
                     unsubscribe, user)
 
 
-TOKEN_RE = '(?P<token>[0-9A-Fa-f-]{36})'
+def token_url(url_prefix, *args, **kwargs):
+    """Require a properly formatted token as the last component of the URL."""
+    url_re = '^{0}/(?P<token>[0-9A-Fa-f-]{{36}})/$'.format(url_prefix)
+    return url(url_re, *args, **kwargs)
+
 
 urlpatterns = patterns('',  # noqa
     url('^get-involved/$', get_involved),
@@ -15,17 +19,16 @@ urlpatterns = patterns('',  # noqa
     url('^fxa-activity/$', fxa_activity),
     url('^subscribe/$', subscribe),
     url('^subscribe_sms/$', subscribe_sms),
-    url('^unsubscribe/{0}/$'.format(TOKEN_RE), unsubscribe),
-    url('^user/{0}/$'.format(TOKEN_RE), user),
-    url('^confirm/{0}/$'.format(TOKEN_RE), confirm),
+    token_url('unsubscribe', unsubscribe),
+    token_url('user', user),
+    token_url('confirm', confirm),
     url('^debug-user/$', debug_user),
     url('^lookup-user/$', lookup_user, name='lookup_user'),
     url('^recover/$', send_recovery_message, name='send_recovery_message'),
 
     url('^custom_unsub_reason/$', custom_unsub_reason),
-    url('^custom_update_student_ambassadors/{0}/$'.format(TOKEN_RE),
-        custom_update_student_ambassadors),
-    url('^custom_update_phonebook/{0}/$'.format(TOKEN_RE), custom_update_phonebook),
+    token_url('custom_update_student_ambassadors', custom_update_student_ambassadors),
+    token_url('custom_update_phonebook', custom_update_phonebook),
 
     url('^newsletters/$', newsletters, name='newsletters_api'),
     url('^$', list_newsletters),
