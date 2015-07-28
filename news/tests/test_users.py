@@ -336,6 +336,9 @@ class TestLookForUser(TestCase):
         self.assertEqual(expected_result, result)
 
 
+@override_settings(EXACTTARGET_DATA='data',
+                   EXACTTARGET_OPTIN_STAGE='optin',
+                   EXACTTARGET_CONFIRMATION='confirmation')
 class TestGetUserData(TestCase):
 
     def check_get_user(self, master, optin, confirm, error, expected_result):
@@ -372,25 +375,6 @@ class TestGetUserData(TestCase):
             result = get_user_data()
 
         self.assertEqual(expected_result, result)
-
-    def test_setting_are_sane(self):
-        # This is more to test that the settings are sane for running the
-        # tests and complain loudly, than to test the code.
-        # We need settings for the data table names,
-        # and also verify that all the table name settings are
-        # different.
-        self.assertTrue(hasattr(settings, 'EXACTTARGET_DATA'))
-        self.assertTrue(settings.EXACTTARGET_DATA)
-        self.assertTrue(hasattr(settings, 'EXACTTARGET_OPTIN_STAGE'))
-        self.assertTrue(settings.EXACTTARGET_OPTIN_STAGE)
-        self.assertTrue(hasattr(settings, 'EXACTTARGET_CONFIRMATION'))
-        self.assertTrue(settings.EXACTTARGET_CONFIRMATION)
-        self.assertNotEqual(settings.EXACTTARGET_DATA,
-                            settings.EXACTTARGET_OPTIN_STAGE)
-        self.assertNotEqual(settings.EXACTTARGET_DATA,
-                            settings.EXACTTARGET_CONFIRMATION)
-        self.assertNotEqual(settings.EXACTTARGET_OPTIN_STAGE,
-                            settings.EXACTTARGET_CONFIRMATION)
 
     def test_not_in_et(self):
         # User not in Exact Target, return None

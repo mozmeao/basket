@@ -1,6 +1,7 @@
 settings/local.py
 *.py[co]
 *.sw[po]
+.env
 .coverage
 pip-log.txt
 docs/_build

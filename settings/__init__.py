@@ -1,20 +1,16 @@
-import os
 import sys
 
-if os.getenv('TRAVIS', False):
-    from settings.travis import *  # noqa
-else:
+try:
+    from settings.local import *  # noqa
+except ImportError:
     try:
-        from settings.local import *  # noqa
+        from settings.base import *  # noqa
     except ImportError:
-        try:
-            from settings.base import *  # noqa
-        except ImportError:
-            sys.stderr.write(
-                "Error: Tried importing 'settings.local' and 'settings.base' "
-                "but neither could be found (or they're throwing an "
-                "ImportError). Please fix and try again.")
-            raise
+        sys.stderr.write(
+            "Error: Tried importing 'settings.local' and 'settings.base' "
+            "but neither could be found (or they're throwing an "
+            "ImportError). Please fix and try again.")
+        raise
 
 
 CACHES['bad_message_ids'] = {
@@ -27,6 +23,6 @@ CACHES['email_block_list'] = {
     'TIMEOUT': 60 * 60,  # 1 hour
 }
 
-if len(sys.argv) > 1 and sys.argv[1] == 'test':
+if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run
     CELERY_ALWAYS_EAGER = True

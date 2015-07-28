@@ -1,0 +1,5 @@
+# TODO use peep. will do when removing vendor.
+python-decouple==2.3
+dj-database-url==0.3.0
+django-cache-url==1.0.0
+pathlib==1.0.1
