@@ -1,7 +1,8 @@
-from functools import wraps
 import json
 import re
 from datetime import date
+from functools import wraps
+from itertools import chain
 
 from django.conf import settings
 from django.core.cache import get_cache
@@ -230,12 +231,24 @@ def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
                     'code': errors.BASKET_INVALID_NEWSLETTER,
                 }, 400)
 
-    if 'lang' in data and not language_code_is_valid(data['lang']):
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': 'invalid language',
-            'code': errors.BASKET_INVALID_LANGUAGE,
-        }, 400)
+    if 'lang' in data:
+        if not language_code_is_valid(data['lang']):
+            return HttpResponseJSON({
+                'status': 'error',
+                'desc': 'invalid language',
+                'code': errors.BASKET_INVALID_LANGUAGE,
+            }, 400)
+    elif 'accept_lang' in data:
+        lang = get_best_language(get_accept_languages(data['accept_lang']))
+        if lang:
+            data['lang'] = lang
+            del data['accept_lang']
+        else:
+            return HttpResponseJSON({
+                'status': 'error',
+                'desc': 'invalid language',
+                'code': errors.BASKET_INVALID_LANGUAGE,
+            }, 400)
 
     email = data.get('email', sub.email if sub else None)
     if not email:
@@ -485,8 +498,11 @@ def get_best_language(languages):
     if not languages:
         return None
 
+    # try again with 2 letter languages
+    languages_2l = [lang[:2] for lang in languages]
     supported_langs = newsletter_languages()
-    for lang in languages:
+
+    for lang in chain(languages, languages_2l):
         if lang in supported_langs:
             return lang
 
