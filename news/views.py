@@ -13,7 +13,6 @@ from django_statsd.clients import statsd
 from ratelimit.decorators import ratelimit
 from ratelimit.exceptions import Ratelimited
 from ratelimit.utils import is_ratelimited
-from raven.contrib.django.raven_compat.models import client
 
 from news.models import Newsletter, Subscriber, Interest
 from news.newsletters import get_sms_messages, newsletter_slugs
@@ -128,7 +127,6 @@ def fxa_register(request):
             'code': errors.BASKET_USAGE_ERROR,
         }, 401)
     if 'accept_lang' not in data:
-        client.captureMessage(message='accept_lang missing from fxa-register request', data=data)
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'fxa-register requires accept_lang',
@@ -137,7 +135,6 @@ def fxa_register(request):
 
     lang = get_best_language(get_accept_languages(data['accept_lang']))
     if lang is None:
-        client.captureMessage(message='invalid accept_lang value', data=data)
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'invalid language',

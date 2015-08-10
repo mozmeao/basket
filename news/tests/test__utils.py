@@ -93,6 +93,48 @@ class UpdateUserTaskTests(TestCase):
             self.assert_response_error(response, 400, errors.BASKET_INVALID_LANGUAGE)
             mock_language_code_is_valid.assert_called_with('pt-BR')
 
+    @patch('news.utils.get_best_language')
+    def test_accept_lang(self, get_best_language_mock):
+        """If accept_lang param is provided, should set the lang in data."""
+        get_best_language_mock.return_value = 'pt'
+        request = self.factory.post('/')
+        data = {'email': 'dude@example.com', 'accept_lang': 'pt-pt,fr;q=0.8'}
+        after_data = {'email': 'dude@example.com', 'lang': 'pt'}
+
+        response = update_user_task(request, SUBSCRIBE, data, sync=False)
+        self.assert_response_ok(response)
+        self.update_user.delay.assert_called_with(after_data, 'dude@example.com',
+                                                  None, SUBSCRIBE, True)
+        self.assertFalse(self.lookup_subscriber.called)
+
+    def test_invalid_accept_lang(self):
+        """If accept_lang param is provided but invalid, return a 400."""
+        request = self.factory.post('/')
+        data = {'email': 'dude@example.com', 'accept_lang': 'the dude minds, man'}
+
+        response = update_user_task(request, SUBSCRIBE, data, sync=False)
+        self.assert_response_error(response, 400, errors.BASKET_INVALID_LANGUAGE)
+        self.assertFalse(self.update_user.delay.called)
+        self.assertFalse(self.lookup_subscriber.called)
+
+    @patch('news.utils.get_best_language')
+    def test_lang_overrides_accept_lang(self, get_best_language_mock):
+        """
+        If lang is provided it was from the user, and accept_lang isn't as reliable, so we should
+        prefer lang.
+        """
+        get_best_language_mock.return_value = 'pt-BR'
+        request = self.factory.post('/')
+        data = {'email': 'a@example.com',
+                'lang': 'de',
+                'accept_lang': 'pt-BR'}
+
+        response = update_user_task(request, SUBSCRIBE, data, sync=False)
+        self.assert_response_ok(response)
+        # basically asserts that the data['lang'] value wasn't changed.
+        self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True)
+        self.assertFalse(self.lookup_subscriber.called)
+
     def test_missing_email_and_sub(self):
         """
         If both the email and subscriber are missing, return a 400
@@ -247,6 +289,10 @@ class GetBestLanguageTests(TestCase):
         """Should return first language in the list that a newsletter supports."""
         self._test(['zh-TW', 'es', 'de', 'en'], 'es')
         self._test(['pt-PT', 'zh-TW', 'pt-BR', 'en'], 'pt-BR')
+
+    def test_returns_first_good_lang_2_letter(self):
+        """Should return first 2 letter prefix language in the list that a newsletter supports."""
+        self._test(['pt-PT', 'zh-TW', 'es-AR', 'ar'], 'es')
 
     def test_returns_first_lang_no_good(self):
         """Should return the first in the list if no supported are found."""
