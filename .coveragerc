@@ -1,3 +1,5 @@
 [run]
 source = news
-omit = news/tests/*
+omit =
+  news/tests/*
+  news/migrations/*
