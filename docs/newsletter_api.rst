@@ -149,7 +149,7 @@ The following URLs are available (assuming "/news" is app url):
     Returns information about all of the available newsletters::
 
         method: GET
-        fiends: *none*
+        fields: *none*
         returns: {
             status: ok,
             newsletters: {
