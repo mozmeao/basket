@@ -11,8 +11,8 @@ Installing Basket
 Requirements
 ============
 
-* Python >= 2.6, < 3
-* MySQL
+* Python >= 2.7, < 3
+* MySQL (only for prod)
 
 Installation
 ============
@@ -32,13 +32,17 @@ Make a virtualenv
 
 Using virtualenvwrapper::
 
-    mkvirtualenv --python=python2.6 basket
+    mkvirtualenv --python=python2.7 basket
 
 
 Install packages
 ----------------
 
 ::
+
+    pip install -r requirements/default.txt
+
+If you'll be using MySQL for the database::
 
     pip install -r requirements/compiled.txt
 
@@ -50,15 +54,15 @@ For developers::
 Settings
 --------
 
-Create a settings_local.py file.  Typical settings can be found in settings_ex.py
-NOTE: make sure you have ``from settings import *`` at the top, or you'll be
-confused when things aren't working correctly.
-
+Settings are discovered in the environment. You can either provide them via environment variables
+or by providing those variables in a ``.env`` file in the root of the project
+(along side of ``manage.py``). To get started you can copy ``env-dist`` to ``.env`` and that will
+provide the basics you need to run the site and the tests.
 
 Database schema
 ---------------
 
 ::
 
-    ./manage.py syncdb --noinput
+    ./manage.py migrate
 

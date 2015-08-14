@@ -2,7 +2,7 @@ from os.path import abspath
 
 import dj_database_url
 import django_cache_url
-from decouple import config, Csv
+from decouple import config, Csv, UndefinedValueError
 from pathlib import Path
 
 # Application version.
@@ -60,8 +60,12 @@ USE_I18N = False
 STATIC_ROOT = path('static')
 STATIC_URL = '/static/'
 
-# Make this unique, and don't share it with anybody.
-SECRET_KEY = config('SECRET_KEY')
+try:
+    # Make this unique, and don't share it with anybody.
+    SECRET_KEY = config('SECRET_KEY')
+except UndefinedValueError:
+    raise UndefinedValueError('The SECRET_KEY environment varialbe is required. '
+                              'Move env-dist to .env if you want the defaults.')
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (
