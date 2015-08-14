@@ -85,7 +85,6 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     'django.contrib.auth.context_processors.auth',
     'django.core.context_processors.request',
     'django.contrib.messages.context_processors.messages',
-    'csrf_context.csrf',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -112,7 +111,6 @@ INSTALLED_APPS = (
 
     'corsheaders',
     'djcelery',
-    'raven.contrib.django.raven_compat',
     'product_details',
 
     'django.contrib.auth',
@@ -168,7 +166,7 @@ LOGGING = {
     'disable_existing_loggers': True,
     'root': {
         'level': 'WARNING',
-        'handlers': ['sentry'],
+        'handlers': ['console'],
     },
     'formatters': {
         'verbose': {
@@ -176,10 +174,6 @@ LOGGING = {
         },
     },
     'handlers': {
-        'sentry': {
-            'level': 'ERROR',
-            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
-        },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
@@ -189,16 +183,6 @@ LOGGING = {
     'loggers': {
         'django.db.backends': {
             'level': 'ERROR',
-            'handlers': ['console'],
-            'propagate': False,
-        },
-        'raven': {
-            'level': 'WARNING',
-            'handlers': ['console'],
-            'propagate': False,
-        },
-        'sentry.errors': {
-            'level': 'WARNING',
             'handlers': ['console'],
             'propagate': False,
         },

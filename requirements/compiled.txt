@@ -1,1 +1,2 @@
+# sha256: H6pJd-mFBzHot_ih1YuGJzk6N0RUN4jsQ3-0XgbP5AE
 MySQL-python==1.2.3c1

@@ -2,7 +2,7 @@ from django.core.validators import validate_email
 from django.db import models
 from django.forms import TextInput
 
-import product_details
+from product_details import product_details
 
 
 class CommaSeparatedEmailField(models.TextField):

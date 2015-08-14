@@ -1,5 +1,106 @@
-# TODO use peep. will do when removing vendor.
-python-decouple==2.3
+# sha256: TVjkUnRLdodtgZnKRBRKJSwlTokUk5JArjUnxOqhiC8
+# sha256: Tz-f5OXSD_jtapC10vLfLY_AVOR4zcw9uBxrKb0heGA
+Django==1.7.9
+
+# sha256: eI_6Kd-3VJAOCLkIgffqFsPCXKKUlUjup7Q9LKc54z8
+# sha256: -65f6zOuk5TCdbyDSrlGhLlN4DrMjzY4e9C_DFHvKO4
+statsd==3.1
+
+# sha256: hD1ptoGmCv0h-_UPMQQE7Gf8350T389unUHztFYhfls
+amqplib==1.0.2
+
+# sha256: FkPArbfb7MQzFDfuFO9faj1VtP_KFH2xzJV9yWYGI0A
+anyjson==0.3.1
+
+# sha256: SPn2n5cJiLPfLIpWhNqItS8RXhleyluJYXLbD4wCYOM
+basket-client==0.3.11
+
+# sha256: UQlMVz0kikkIqWjnXt0FurE28Q_MinC4fIJDttRXMfg
+cchardet==0.3.5
+
+# sha256: CqalZgoh1bM65hkgNcFxEwIZkynXFPikjd-MiNk7nIM
+celery==2.5.5
+
+# sha256: 5T44s6Sv5tETLeYrdACkrDY0Utxd_PjYjo4MzmY8aKo
+chardet==2.3.0
+
+# sha256: ygF2j97N4TQwHzFwdDIm9g7f9cOTXxJDc3jr2RFQY1M
+# sha256: 8uJz7TSsu1YJYtXPEpF5NtjfAil98JvTCJuFRtRYQTg
 dj-database-url==0.3.0
+
+# sha256: cVBsEnq6Vmqxubd78JzNMRmjh663bfGzTyVBzkdkkBw
+# sha256: NYPKHJtDsIudxxRjpcAv2ubr697oEqZxmOKn5CnFQhA
 django-cache-url==1.0.0
+
+# sha256: lSJtho1hObjVKOvTNDJrVheiY7g3JHZIwuH8_yVSvYs
+django-celery==2.5.5
+
+# sha256: _NluK-R8ju80xlDgB6bVRuGefuYQQbie27u-dhmqOYc
+django-cors-headers==1.1.0
+
+# sha256: QpaQscacvWXGxZLGbRWS-KHPPVKCEDCDcx-pDqU8F8I
+django-jsonfield==0.9.15
+
+# sha256: xQv_uYKKkTkVaQShHFCHMtE9v1esJWJevF7ao-0xKEA
+django-mozilla-product-details==0.7.1
+
+# sha256: 2ZQmvkb9kv5rZLn1xZJuqYWTlOROw--eH3xkfTomZX8
+django-picklefield==0.3.1
+
+# sha256: 9ztTssT9NCy9S5g__DP9z4-Kb1ldVIhl6mPIOe84KTw
+# sha256: k9q80xMaiNb9Gf9N4Kg1HtRLTslD6NWNJzBvf6-IIa8
+django-ratelimit==0.6.0
+
+# sha256: 9POHfkrOhFHe13ZPf0twRZ2kBdc6WnKijw0j9QCAKR0
+django-sslify-admin==0.5.0
+
+# sha256: wOkPMEu_bxD2PgAZECmAyVDcaDMm0qTlDnGZ3sxDw2o
+django-statsd-mozilla==0.3.15
+
+# sha256: Y70frmGAnu25H4SyGFgW-sEnCuUUlPvdNuol-QSoUC8
+dnspython==1.12.0
+
+# sha256: lP1G9jK1GjUBc94H8fyCAMOsDCl0BqJh4Aa7nY3ZJz8
+dnsq==1.1.5
+
+# sha256: CL69xeAICF4GEr0UHWL4N8P4C4wYgKleCGMQB1e1Wwg
+expiringdict==1.1.3
+
+# sha256: fdtc_-toGbQaM-Z3LhdW_dhV4sX_YnduuGp1U-yVTBc
+flanker==0.4.35
+
+# sha256: YBKTHxpXJLUrDlNdRi-BxHwtFStdrl-kOEPTBtvPPcg
+kombu==2.1.8
+
+# sha256: aUBxjfw-_0JYIDrVAhCQkz5cBHB9XKjMnnPJSniU6p8
 pathlib==1.0.1
+
+# sha256: bxlzSLRvuM358_z8Kn1al9qV2z4uhmfPZXIWJ0_hsAk
+python-dateutil==1.5
+
+# sha256: ufv3R_qOcR0zDy9Da5suz17tnrZ6Y3yoGrzRHCq-3sg
+python-decouple==2.3
+
+# sha256: TWTtG54OcwlfXPqH8Ol920yEAEno7-t-Y7RhGLodYjo
+# sha256: p4tITVRy3Yxoj4s-7hhkaiXGbORbLCZlKFD2r5zlKxc
+pytz==2015.4
+
+# sha256: pPs3sChg9rFhf2RpSHRx_Qht0tOLvOZAwgVYYrnEAZw
+redis==2.10.3
+
+# sha256: wdxYIG9Fh0kEC6gT72UGfXAYkIyrS7FvTxLZx2MeSLc
+regex==2015.07.19
+
+# sha256: IPl2zc4CpCtpzoDp4DiXpRgUs21EizcohUYIbrxHMUY
+# sha256: OYo9ttYYmdJf1KBsbKEgUbDOFx1wXezX7VURUXtLuT0
+requests==2.7.0
+
+# sha256: QYqTw5en7asj5ViNvAZ6x0pyPts9VBvUk295R252Rdo
+# sha256: 4kBSQR_E-9H2cmNVN8P8IzDZSBsYwDF2lbRiWVEskdU
+six==1.9.0
+
+# sha256: 1VJK5SO7ngnFe829HvriwofSBgNojqMfYCDtGApImvA
+suds==0.4
+
+# sha256: Evi5g5C-_EczbSwOW62cxIYJ2Ajquz-GddwQJ6Op6ds
+WebOb==1.4.1
