@@ -1,4 +1,4 @@
-from os.path import abspath
+import sys
 
 import dj_database_url
 import django_cache_url
@@ -9,12 +9,12 @@ from pathlib import Path
 VERSION = (0, 1)
 
 # ROOT path of the project. A pathlib.Path object.
-ROOT_PATH = Path(__file__).resolve().parents[1]
+ROOT_PATH = Path(__file__).parent
 ROOT = str(ROOT_PATH)
 
 
 def path(*args):
-    return abspath(str(ROOT_PATH.joinpath(*args)))
+    return str(ROOT_PATH.joinpath(*args))
 
 
 DEBUG = config('DEBUG', default=False, cast=bool)
@@ -43,7 +43,15 @@ if DATABASES['default']['ENGINE'] == 'django.db.backends.mysql':
 CACHES = {
     'default': config('CACHE_URL',
                       default='locmem://',
-                      cast=django_cache_url.parse)
+                      cast=django_cache_url.parse),
+    'bad_message_ids': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'TIMEOUT': 12 * 60 * 60,  # 12 hours
+    },
+    'email_block_list': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'TIMEOUT': 60 * 60,  # 1 hour
+    },
 }
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS',
@@ -139,7 +147,6 @@ CORS_URLS_REGEX = r'^/news/.*$'
 # view rate limiting
 RATELIMIT_VIEW = 'news.views.ratelimited'
 
-# Uncomment these to use Celery, use eager for local dev
 CELERY_ALWAYS_EAGER = config('CELERY_ALWAYS_EAGER', DEBUG, cast=bool)
 BROKER_HOST = config('BROKER_HOST', 'localhost')
 BROKER_PORT = config('BROKER_PORT', 5672, cast=int)
@@ -201,3 +208,7 @@ LOGGING = {
 # Tells the product_details module where to find our local JSON files.
 # This ultimately controls how LANGUAGES are constructed.
 PROD_DETAILS_DIR = path('libs/product_details_json')
+
+if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
+    # stuff that's absolutely required for a test run
+    CELERY_ALWAYS_EAGER = True
