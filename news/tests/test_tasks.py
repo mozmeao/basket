@@ -3,10 +3,10 @@ from urllib2 import URLError
 from django.test import TestCase
 from django.test.utils import override_settings
 
-import celery
 from mock import Mock, patch
 
 from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
+from news.celery import app as celery_app
 from news.models import FailedTask
 from news.newsletters import clear_sms_cache
 from news.tasks import (
@@ -58,13 +58,11 @@ class RetryTaskTest(TestCase):
         # that have been saved, so just mock that and check later that it was
         # called.
         failed_task.delete = Mock(spec=failed_task.delete)
-        # Mock the actual task (already registered with celery):
-        mock_update_phonebook = Mock(spec=update_phonebook)
-        with patch.dict(celery.registry.tasks, {TASK_NAME: mock_update_phonebook}):
+        with patch.object(celery_app, 'send_task') as send_task_mock:
             # Let's retry.
             failed_task.retry()
         # Task was submitted again
-        mock_update_phonebook.apply_async.assert_called_with((1, 2), {'token': 3})
+        send_task_mock.assert_called_with(TASK_NAME, args=[1, 2], kwargs={'token': 3})
         # Previous failed task was deleted
         self.assertTrue(failed_task.delete.called)
 
@@ -197,9 +195,10 @@ class ETTaskTests(TestCase):
         def myfunc():
             raise error
 
-        myfunc.request.retries = 4
+        myfunc.push_request(retries=4)
         myfunc.retry = Mock()
-        myfunc()
+        # have to use run() to make sure our request above is used
+        myfunc.run()
 
         myfunc.retry.assert_called_with(exc=error, countdown=16 * 60)
 

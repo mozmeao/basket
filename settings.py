@@ -117,7 +117,6 @@ INSTALLED_APPS = (
     'news',
 
     'corsheaders',
-    'djcelery',
     'product_details',
 
     'django.contrib.auth',
@@ -160,9 +159,6 @@ CELERY_IGNORE_RESULT = True
 STATSD_HOST = config('STATSD_HOST', 'localhost')
 STATSD_PORT = config('STATSD_PORT', 8125, cast=int)
 STATSD_PREFIX = config('STATSD_PREFIX', None)
-
-import djcelery  # noqa
-djcelery.setup_loader()
 
 LOGGING = {
     'version': 1,

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from uuid import uuid4
 
 from django.conf import settings
@@ -7,7 +8,7 @@ from django.template.loader import render_to_string
 from django.utils.timezone import now
 
 import product_details
-from celery.task import subtask
+from .celery import app as celery_app
 from jsonfield import JSONField
 
 from news.fields import CommaSeparatedEmailField, LocaleField
@@ -214,9 +215,7 @@ class FailedTask(models.Model):
     def retry(self):
         # Meet the new task,
         # same as the old task.
-        new_task = subtask(self.name, args=self.filtered_args, kwargs=self.kwargs)
-        # Queue the new task.
-        new_task.apply_async()
+        celery_app.send_task(self.name, args=self.filtered_args, kwargs=self.kwargs)
         # Forget the old task
         self.delete()
 

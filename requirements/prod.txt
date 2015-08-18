@@ -11,3 +11,6 @@ gunicorn==19.3.0
 
 # sha256: pPs3sChg9rFhf2RpSHRx_Qht0tOLvOZAwgVYYrnEAZw
 redis==2.10.3
+
+# sha256: v8xYHJ278HzC-VG68wwySaV-INy9YPfm_8Q6s8xhR5Q
+msgpack-python==0.4.6

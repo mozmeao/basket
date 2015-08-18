@@ -15,7 +15,7 @@ class FailedTaskTest(TestCase):
         task = models.FailedTask.objects.create(task_id='el-dudarino',
                                                 name=task_name,
                                                 args=self.good_task_args)
-        with patch.object(models, 'subtask') as sub_mock:
+        with patch.object(models.celery_app, 'send_task') as sub_mock:
             task.retry()
 
         sub_mock.assert_called_with(task_name, args=self.good_task_args, kwargs={})
@@ -27,7 +27,7 @@ class FailedTaskTest(TestCase):
         task = models.FailedTask.objects.create(task_id='el-dudarino',
                                                 name=task_name,
                                                 args=task_args)
-        with patch.object(models, 'subtask') as sub_mock:
+        with patch.object(models.celery_app, 'send_task') as sub_mock:
             task.retry()
 
         sub_mock.assert_called_with(task_name, args=self.good_task_args, kwargs={})
@@ -39,7 +39,7 @@ class FailedTaskTest(TestCase):
         task = models.FailedTask.objects.create(task_id='el-dudarino',
                                                 name=task_name,
                                                 args=task_args)
-        with patch.object(models, 'subtask') as sub_mock:
+        with patch.object(models.celery_app, 'send_task') as sub_mock:
             task.retry()
 
         sub_mock.assert_called_with(task_name, args=['donny'] + self.good_task_args, kwargs={})
@@ -51,7 +51,7 @@ class FailedTaskTest(TestCase):
         task = models.FailedTask.objects.create(task_id='el-dudarino',
                                                 name=task_name,
                                                 args=task_args)
-        with patch.object(models, 'subtask') as sub_mock:
+        with patch.object(models.celery_app, 'send_task') as sub_mock:
             task.retry()
 
         sub_mock.assert_called_with(task_name, args=task_args, kwargs={})

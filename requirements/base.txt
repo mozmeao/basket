@@ -6,20 +6,11 @@ Django==1.7.9
 # sha256: -65f6zOuk5TCdbyDSrlGhLlN4DrMjzY4e9C_DFHvKO4
 statsd==3.1
 
-# sha256: hD1ptoGmCv0h-_UPMQQE7Gf8350T389unUHztFYhfls
-amqplib==1.0.2
-
-# sha256: FkPArbfb7MQzFDfuFO9faj1VtP_KFH2xzJV9yWYGI0A
-anyjson==0.3.1
-
 # sha256: SPn2n5cJiLPfLIpWhNqItS8RXhleyluJYXLbD4wCYOM
 basket-client==0.3.11
 
 # sha256: UQlMVz0kikkIqWjnXt0FurE28Q_MinC4fIJDttRXMfg
 cchardet==0.3.5
-
-# sha256: CqalZgoh1bM65hkgNcFxEwIZkynXFPikjd-MiNk7nIM
-celery==2.5.5
 
 # sha256: 5T44s6Sv5tETLeYrdACkrDY0Utxd_PjYjo4MzmY8aKo
 chardet==2.3.0
@@ -31,9 +22,6 @@ dj-database-url==0.3.0
 # sha256: cVBsEnq6Vmqxubd78JzNMRmjh663bfGzTyVBzkdkkBw
 # sha256: NYPKHJtDsIudxxRjpcAv2ubr697oEqZxmOKn5CnFQhA
 django-cache-url==1.0.0
-
-# sha256: lSJtho1hObjVKOvTNDJrVheiY7g3JHZIwuH8_yVSvYs
-django-celery==2.5.5
 
 # sha256: _NluK-R8ju80xlDgB6bVRuGefuYQQbie27u-dhmqOYc
 django-cors-headers==1.1.0
@@ -68,9 +56,6 @@ expiringdict==1.1.3
 
 # sha256: fdtc_-toGbQaM-Z3LhdW_dhV4sX_YnduuGp1U-yVTBc
 flanker==0.4.35
-
-# sha256: YBKTHxpXJLUrDlNdRi-BxHwtFStdrl-kOEPTBtvPPcg
-kombu==2.1.8
 
 # sha256: aUBxjfw-_0JYIDrVAhCQkz5cBHB9XKjMnnPJSniU6p8
 pathlib==1.0.1
@@ -124,3 +109,21 @@ user-agents==1.0.1
 
 # sha256: z_bIljUu-NmVNSqJ7vmK0bl3J_nFPVOf137LbnozByU
 https://s3-us-west-2.amazonaws.com/ee-basket-deps/ua-parser-0.5.0.tar.gz#egg=ua-parser==0.5
+
+# sha256: 68_IZ95aaPn1uhTRHbrYjmr_hDWo05M51c6w5bBt5kA
+# sha256: 406XZaYSD0ZkwSD0GYp4bDmg-35KWb0ZotbjqIS2OIk
+amqp==1.4.6
+
+# sha256: N4Ethjya0-NcBzTELgvwMgzow77YLNIK1UyzTRWBV7o
+anyjson==0.3.3
+
+# sha256: aI-UZrHDrhQQY4Hm29MoEV51xSYMVC60jmxGkx9pKMw
+billiard==3.3.0.20
+
+# sha256: CST5QHDG_FfUCLFphIxbOIMmaP_-Bg5ItIA_sj4OPq8
+# sha256: 2_WWGNWp7_Fy0lAh82YUvlrwUB5FJ5dcpQS5WGPxT-0
+celery==3.1.18
+
+# sha256: H1ZavUTEt9-qTdVD1S-YLS8AaroKKzgwVCtNJagB_gk
+# sha256: _qhlOuS4en6wmWWUCfCeaANqe4PwoVoLxq7629mKUdw
+kombu==3.0.26

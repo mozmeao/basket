@@ -11,11 +11,12 @@ from django.core.cache import get_cache
 from django_statsd.clients import statsd
 
 import user_agents
-from celery.task import Task, task
+from celery import Task
 
 from news.backends.common import NewsletterException, NewsletterNoResultsException
 from news.backends.exacttarget import ExactTarget, ExactTargetDataExt
 from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
+from news.celery import app as celery_app
 from news.models import FailedTask, Newsletter, Interest
 from news.newsletters import get_sms_messages, is_supported_newsletter_language
 from news.utils import (generate_token, get_user_data, MSG_USER_NOT_FOUND,
@@ -153,7 +154,7 @@ class ETTask(Task):
 
 def et_task(func):
     """Decorator to standardize ET Celery tasks."""
-    @task(base=ETTask)
+    @celery_app.task(base=ETTask)
     @wraps(func)
     def wrapped(*args, **kwargs):
         statsd.incr(wrapped.name + '.total')
