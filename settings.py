@@ -74,6 +74,8 @@ USE_I18N = False
 
 STATIC_ROOT = path('static')
 STATIC_URL = '/static/'
+if not DEBUG:
+    STATICFILES_STORAGE = 'whitenoise.django.GzipManifestStaticFilesStorage'
 
 try:
     # Make this unique, and don't share it with anybody.

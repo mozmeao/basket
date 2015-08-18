@@ -14,3 +14,7 @@ redis==2.10.3
 
 # sha256: v8xYHJ278HzC-VG68wwySaV-INy9YPfm_8Q6s8xhR5Q
 msgpack-python==0.4.6
+
+# sha256: GclSD80sHoOWHNx92wsN63uToa6nn1buDWxeJAP8qk0
+# sha256: wLZGoH80oy6PZjJqgZzu8PvBwjNW3IRFFgvHaGGw30w
+whitenoise==2.0.3
