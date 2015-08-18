@@ -1,3 +1,4 @@
+import os
 import sys
 
 import dj_database_url
@@ -27,6 +28,12 @@ ADMINS = (
 MANAGERS = ADMINS
 # avoids a warning from django
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
+
+REDIS_URL = config('REDIS_URL', None)
+if REDIS_URL:
+    # use redis for celery and cache
+    os.environ['CACHE_URL'] = REDIS_URL + '/0'
+    os.environ['BROKER_URL'] = REDIS_URL + '/1'
 
 # Production uses MySQL, but Sqlite should be sufficient for local development.
 # Our CI server tests against MySQL. See travis.py in this directory
@@ -146,11 +153,7 @@ CORS_URLS_REGEX = r'^/news/.*$'
 RATELIMIT_VIEW = 'news.views.ratelimited'
 
 CELERY_ALWAYS_EAGER = config('CELERY_ALWAYS_EAGER', DEBUG, cast=bool)
-BROKER_HOST = config('BROKER_HOST', 'localhost')
-BROKER_PORT = config('BROKER_PORT', 5672, cast=int)
-BROKER_USER = config('BROKER_USER', 'basket')
-BROKER_PASSWORD = config('BROKER_PASSWORD', 'basket')
-BROKER_VHOST = config('BROKER_VHOST', 'basket')
+BROKER_HOST = config('BROKER_URL', None)
 CELERY_DISABLE_RATE_LIMITS = True
 CELERY_IGNORE_RESULT = True
 

@@ -1,0 +1,4 @@
+# for heroku/deis
+
+-r requirements/prod.txt
+

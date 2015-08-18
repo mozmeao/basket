@@ -85,9 +85,6 @@ python-decouple==2.3
 # sha256: p4tITVRy3Yxoj4s-7hhkaiXGbORbLCZlKFD2r5zlKxc
 pytz==2015.4
 
-# sha256: pPs3sChg9rFhf2RpSHRx_Qht0tOLvOZAwgVYYrnEAZw
-redis==2.10.3
-
 # sha256: wdxYIG9Fh0kEC6gT72UGfXAYkIyrS7FvTxLZx2MeSLc
 regex==2015.07.19
 

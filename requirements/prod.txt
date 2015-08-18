@@ -1,0 +1,13 @@
+-r base.txt
+
+# sha256: as-au751fvddwuzZ2RunSVR5Qauv--af8ghqnjfUkEw
+psycopg2==2.6.1
+
+# sha256: mtaymUWPfmv676iQX1JWABc2nYL7j7DtS0GtwEjb8Rw
+django-redis==4.2.0
+
+# sha256: pRec3pItK04EXuWxHocyPud9NjrkApT8glLyXWoOrwY
+gunicorn==19.3.0
+
+# sha256: pPs3sChg9rFhf2RpSHRx_Qht0tOLvOZAwgVYYrnEAZw
+redis==2.10.3

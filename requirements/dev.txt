@@ -2,6 +2,8 @@
 # needed to run the site, it belongs in requirements/default.txt.  If it's a
 # package for developers (testing, docs, etc.), it goes in this file.
 
+-r base.txt
+
 # sha256: ShTGfVIP2p1CsNphNGOFeMquHTdLm7Ri2N4AWH26dkw
 cov-core==1.15.0
 
