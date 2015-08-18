@@ -128,6 +128,10 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
 )
 
+SSLIFY_ADMIN_DISABLE = config('SSLIFY_ADMIN_DISABLE', DEBUG)
+if not SSLIFY_ADMIN_DISABLE:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Default newsletter welcome message ID for HTML format.
 # There must also exist a text-format message with the same
 # ID with "_T" appended, e.g. "39_T"
