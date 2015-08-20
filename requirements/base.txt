@@ -22,9 +22,8 @@ django-cors-headers==1.1.0
 
 # sha256: QpaQscacvWXGxZLGbRWS-KHPPVKCEDCDcx-pDqU8F8I
 django-jsonfield==0.9.15
-
-# sha256: xQv_uYKKkTkVaQShHFCHMtE9v1esJWJevF7ao-0xKEA
-django-mozilla-product-details==0.7.1
+# sha256: WN0CwygZupfEB4uMEziI0w9_vTk3KW_9rVD3n7V9XNs
+django-mozilla-product-details==0.8.1
 
 # sha256: 2ZQmvkb9kv5rZLn1xZJuqYWTlOROw--eH3xkfTomZX8
 django-picklefield==0.3.1

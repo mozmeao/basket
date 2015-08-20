@@ -198,9 +198,6 @@ LOGGING = {
     },
 }
 
-# Tells the product_details module where to find our local JSON files.
-# This ultimately controls how LANGUAGES are constructed.
-PROD_DETAILS_DIR = path('libs/product_details_json')
 PROD_DETAILS_CACHE_NAME = 'product_details'
 PROD_DETAILS_CACHE_TIMEOUT = None
 
