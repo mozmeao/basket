@@ -59,6 +59,9 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         'TIMEOUT': 60 * 60,  # 1 hour
     },
+    'product_details': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    },
 }
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS',
@@ -198,6 +201,8 @@ LOGGING = {
 # Tells the product_details module where to find our local JSON files.
 # This ultimately controls how LANGUAGES are constructed.
 PROD_DETAILS_DIR = path('libs/product_details_json')
+PROD_DETAILS_CACHE_NAME = 'product_details'
+PROD_DETAILS_CACHE_TIMEOUT = None
 
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run
