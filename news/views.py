@@ -1,3 +1,4 @@
+import json
 import re
 
 from django.conf import settings
@@ -17,6 +18,7 @@ from ratelimit.utils import is_ratelimited
 from news.models import Newsletter, Subscriber, Interest
 from news.newsletters import get_sms_messages, newsletter_slugs
 from news.tasks import (
+    add_fxa_activity,
     add_sms_user,
     confirm_user,
     send_recovery_message_task,
@@ -94,6 +96,34 @@ def ratelimited(request, e):
 def confirm(request, token):
     confirm_user.delay(request.subscriber.token,
                        request.subscriber_data)
+    return HttpResponseJSON({'status': 'ok'})
+
+
+@require_POST
+@csrf_exempt
+def fxa_activity(request):
+    if not request.is_secure():
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'fxa-activity requires SSL',
+            'code': errors.BASKET_SSL_REQUIRED,
+        }, 401)
+    if not has_valid_api_key(request):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'fxa-activity requires a valid API-key',
+            'code': errors.BASKET_AUTH_ERROR,
+        }, 401)
+
+    data = json.loads(request.body)
+    if 'fxa_id' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'fxa-activity requires a Firefox Account ID',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+
+    add_fxa_activity.delay(data)
     return HttpResponseJSON({'status': 'ok'})
 
 

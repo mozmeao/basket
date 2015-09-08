@@ -200,6 +200,22 @@ def get_external_user_data(email=None, token=None, fields=None, database=None):
 
 
 @et_task
+def add_fxa_activity(data):
+    record = {
+        'FXA_ID': data['fxa_id'],
+        'LOGIN_DATE': gmttime(),
+        'FIRST_DEVICE': 'y' if data['first_device'] else 'n',
+    }
+    # now do magic to parse the UA string.
+    # good deps I've found for this:
+    # * https://pypi.python.org/pypi/user-agents  # depends on ua-parser
+    # * https://pypi.python.org/pypi/ua-parser
+    # doesn't seem either of those support py2.6 :(
+
+    apply_updates('Sync_Device_Logins', record)
+
+
+@et_task
 def update_fxa_info(email, lang, fxa_id, source_url=None, skip_welcome=False):
     user = get_external_user_data(email=email)
     record = {
