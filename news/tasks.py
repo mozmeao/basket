@@ -10,6 +10,7 @@ from django.conf import settings
 from django.core.cache import get_cache
 from django_statsd.clients import statsd
 
+import user_agents
 from celery.task import Task, task
 
 from news.backends.common import NewsletterException, NewsletterNoResultsException
@@ -201,16 +202,24 @@ def get_external_user_data(email=None, token=None, fields=None, database=None):
 
 @et_task
 def add_fxa_activity(data):
+    user_agent = user_agents.parse(data['user_agent'])
+    device_type = 'D'
+    if user_agent.is_mobile:
+        device_type = 'M'
+    elif user_agent.is_tablet:
+        device_type = 'T'
+
     record = {
         'FXA_ID': data['fxa_id'],
         'LOGIN_DATE': gmttime(),
         'FIRST_DEVICE': 'y' if data['first_device'] else 'n',
+        'OS': user_agent.os.family,
+        'OS_VERSION': user_agent.os.version_string,
+        'BROWSER': '{0} {1}'.format(user_agent.browser.family,
+                                    user_agent.browser.version_string),
+        'DEVICE_NAME': user_agent.device.family,
+        'DEVICE_TYPE': device_type,
     }
-    # now do magic to parse the UA string.
-    # good deps I've found for this:
-    # * https://pypi.python.org/pypi/user-agents  # depends on ua-parser
-    # * https://pypi.python.org/pypi/ua-parser
-    # doesn't seem either of those support py2.6 :(
 
     apply_updates('Sync_Device_Logins', record)
 

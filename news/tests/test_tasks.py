@@ -10,6 +10,7 @@ from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
 from news.models import FailedTask, Subscriber
 from news.newsletters import clear_sms_cache
 from news.tasks import (
+    add_fxa_activity,
     add_sms_user,
     et_task,
     mogrify_message_id,
@@ -232,3 +233,147 @@ class ETTaskTests(TestCase):
         myfunc()
 
         myfunc.retry.assert_called_with(exc=error, countdown=16 * 60)
+
+
+class AddFxaActivityTests(TestCase):
+    def _base_test(self, user_agent=None, fxa_id='123', first_device=True):
+        if not user_agent:
+            user_agent = 'Mozilla/5.0 (Windows NT 6.1; rv:10.0) Gecko/20100101 Firefox/10.0'
+
+        data = {
+            'fxa_id': fxa_id,
+            'first_device': first_device,
+            'user_agent': user_agent
+            }
+        with patch('news.tasks.apply_updates') as apply_updates_mock:
+            add_fxa_activity(data)
+        record = apply_updates_mock.call_args[0][1]
+        return record
+
+    def test_login_date(self):
+        with patch('news.tasks.gmttime') as gmttime_mock:
+            gmttime_mock.return_value = 'this is time'
+            record = self._base_test()
+        self.assertEqual(record['LOGIN_DATE'], 'this is time')
+
+    def test_first_device(self):
+        record = self._base_test(first_device=True)
+        self.assertEqual(record['FIRST_DEVICE'], 'y')
+
+        record = self._base_test(first_device=False)
+        self.assertEqual(record['FIRST_DEVICE'], 'n')
+
+    def test_fxa_id(self):
+        record = self._base_test(fxa_id='This is id')
+        self.assertEqual(record['FXA_ID'], 'This is id')
+
+    def test_windows(self):
+        ua = 'Mozilla/5.0 (Windows NT 6.1; rv:10.0) Gecko/20100101 Firefox/10.0'
+        record = self._base_test(ua)
+        self.assertEqual(record['OS'], 'Windows 7')
+        self.assertEqual(record['OS_VERSION'], '')  # Not sure if we expect '7' here.
+        self.assertEqual(record['BROWSER'], 'Firefox 10')
+        self.assertEqual(record['DEVICE_NAME'], 'Other')
+        self.assertEqual(record['DEVICE_TYPE'], 'D')
+
+    def test_mac(self):
+        ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6; rv:10.0) Gecko/20100101 Firefox/30.2'
+        record = self._base_test(ua)
+        self.assertEqual(record['OS'], 'Mac OS X')
+        self.assertEqual(record['OS_VERSION'], '10.6')
+        self.assertEqual(record['BROWSER'], 'Firefox 30.2')
+        self.assertEqual(record['DEVICE_NAME'], 'Other')
+        self.assertEqual(record['DEVICE_TYPE'], 'D')
+
+    def test_linux(self):
+        ua = 'Mozilla/5.0 (X11; Linux i686 on x86_64; rv:10.0) Gecko/20100101 Firefox/42.0'
+        record = self._base_test(ua)
+        self.assertEqual(record['OS'], 'Linux')
+        self.assertEqual(record['OS_VERSION'], '')
+        self.assertEqual(record['BROWSER'], 'Firefox 42')
+        self.assertEqual(record['DEVICE_NAME'], 'Other')
+        self.assertEqual(record['DEVICE_TYPE'], 'D')
+
+    def test_android_phone_below_version_41(self):
+        ua = 'Mozilla/5.0 (Android; Mobile; rv:40.0) Gecko/40.0 Firefox/40.0'
+        record = self._base_test(ua)
+        self.assertEqual(record['OS'], 'Android')
+        self.assertEqual(record['OS_VERSION'], '')
+        self.assertEqual(record['BROWSER'], 'Firefox Mobile 40')
+        self.assertEqual(record['DEVICE_NAME'], 'Generic Smartphone')
+        self.assertEqual(record['DEVICE_TYPE'], 'M')
+
+    def test_android_tablet_below_version_41(self):
+        ua = 'Mozilla/5.0 (Android; Tablet; rv:40.0) Gecko/40.0 Firefox/40.0'
+        record = self._base_test(ua)
+        self.assertEqual(record['OS'], 'Android')
+        self.assertEqual(record['OS_VERSION'], '')
+        self.assertEqual(record['BROWSER'], 'Firefox 40')
+        self.assertEqual(record['DEVICE_NAME'], 'Generic Tablet')
+        self.assertEqual(record['DEVICE_TYPE'], 'T')
+
+    def test_android_phone_from_version_41(self):
+        ua = 'Mozilla/5.0 (Android 4.4; Mobile; rv:41.0) Gecko/41.0 Firefox/41.0'
+        record = self._base_test(ua)
+        self.assertEqual(record['OS'], 'Android')
+        self.assertEqual(record['OS_VERSION'], '4.4')
+        self.assertEqual(record['BROWSER'], 'Firefox Mobile 41')
+        self.assertEqual(record['DEVICE_NAME'], 'Generic Smartphone')
+        self.assertEqual(record['DEVICE_TYPE'], 'M')
+
+    # TODO This reports Android 5 instead of Firefox 40
+    #
+    # def test_android_tablet_from_version_41(self):
+    #     ua = 'Mozilla/5.0 (Android 5.0; Tablet; rv:41.0) Gecko/41.0 Firefox/41.0'
+    #     record = self._base_test(ua)
+    #     self.assertEqual(record['OS'], 'Android')
+    #     self.assertEqual(record['OS_VERSION'], '5')
+    #     self.assertEqual(record['BROWSER'], 'Firefox 40')
+    #     self.assertEqual(record['DEVICE_NAME'], 'Generic Tablet')
+    #     self.assertEqual(record['DEVICE_TYPE'], 'T')
+
+    def test_firefox_os_phone(self):
+        ua = 'Mozilla/5.0 (Mobile; rv:26.0) Gecko/26.0 Firefox/26.0'
+        record = self._base_test(ua)
+        self.assertEqual(record['OS'], 'Firefox OS')
+        self.assertEqual(record['OS_VERSION'], '1.2')
+        self.assertEqual(record['BROWSER'], 'Firefox Mobile 26')
+        self.assertEqual(record['DEVICE_NAME'], 'Generic Smartphone')
+        self.assertEqual(record['DEVICE_TYPE'], 'M')
+
+    def test_firefox_os_tablet(self):
+        ua = 'Mozilla/5.0 (Tablet; rv:26.0) Gecko/26.0 Firefox/26.0'
+        record = self._base_test(ua)
+
+        self.assertEqual(record['OS'], 'Firefox OS')
+        self.assertEqual(record['OS_VERSION'], '1.2')
+        self.assertEqual(record['BROWSER'], 'Firefox 26')
+        self.assertEqual(record['DEVICE_NAME'], 'Generic Tablet')
+        self.assertEqual(record['DEVICE_TYPE'], 'T')
+
+    def test_firefox_os_device_specific(self):
+        ua = 'Mozilla/5.0 (Mobile; ZTEOPEN; rv:18.1) Gecko/18.1 Firefox/18.1'
+        record = self._base_test(ua)
+        self.assertEqual(record['OS'], 'Firefox OS')
+        self.assertEqual(record['OS_VERSION'], '1.1')
+        self.assertEqual(record['BROWSER'], 'Firefox Mobile 18.1')
+        self.assertEqual(record['DEVICE_NAME'], 'ZTE OPEN')
+        self.assertEqual(record['DEVICE_TYPE'], 'M')
+
+    def test_firefox_ios_iphone(self):
+        ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 8_3 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) FxiOS/1.0 Mobile/12F69 Safari/600.1.4'
+        record = self._base_test(ua)
+        self.assertEqual(record['OS'], 'iOS')
+        self.assertEqual(record['OS_VERSION'], '8.3')
+        self.assertEqual(record['BROWSER'], 'Firefox iOS 1')
+        self.assertEqual(record['DEVICE_NAME'], 'iPhone')
+        self.assertEqual(record['DEVICE_TYPE'], 'M')
+
+    def test_firefox_ios_tablet(self):
+        ua = 'Mozilla/5.0 (iPad; CPU iPhone OS 8_3 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) FxiOS/1.0 Mobile/12F69 Safari/600.1.4'
+        record = self._base_test(ua)
+        self.assertEqual(record['OS'], 'iOS')
+        self.assertEqual(record['OS_VERSION'], '8.3')
+        self.assertEqual(record['BROWSER'], 'Firefox iOS 1')
+        self.assertEqual(record['DEVICE_NAME'], 'iPad')
+        self.assertEqual(record['DEVICE_TYPE'], 'T')
