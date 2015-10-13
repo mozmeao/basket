@@ -1,2 +1,2 @@
-web: gunicorn wsgi:application --log-file -
-worker: celery -A news worker -l info -c 1
+web: bin/run-prod.sh
+worker: celery -A news worker -l info -c 4
