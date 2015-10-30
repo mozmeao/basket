@@ -81,12 +81,11 @@ WebOb==1.4.1
 # sha256: Gbs6w1Dvh43ahKYtN8fVwXoTc4bd6cLOcknHoh1_ask
 PyYAML==3.11
 
-# sha256: tZdtlx6eVeyNgPbGQo9t5d4UZ4RKDTcYS17l5Akp6Tk
-# sha256: JqjO2d-2YNcYssxuZpnVn61pzh5NMYRzC_y4O0b-A7E
-user-agents==1.0.1
+# sha256: aaTNrvMmjYjy3G-Lj1w6E5Vf49ql9ZdGqBfc-JG-WJk
+ua-parser==0.5.1
 
-# sha256: z_bIljUu-NmVNSqJ7vmK0bl3J_nFPVOf137LbnozByU
-https://s3-us-west-2.amazonaws.com/ee-basket-deps/ua-parser-0.5.0.tar.gz#egg=ua-parser==0.5
+# sha256: 931rAsJUHav8ffd_P8Upu5EiOHVVrPs8O5OXtHM8E1U
+https://github.com/selwin/python-user-agents/archive/ad0b20b4d28e04c231805df96ef8e97a5c12db2a.tar.gz#egg=user-agents==1.0.1
 
 # sha256: 68_IZ95aaPn1uhTRHbrYjmr_hDWo05M51c6w5bBt5kA
 # sha256: 406XZaYSD0ZkwSD0GYp4bDmg-35KWb0ZotbjqIS2OIk

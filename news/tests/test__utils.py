@@ -92,7 +92,7 @@ class UpdateUserTaskTests(TestCase):
             self.assert_response_error(response, 400, errors.BASKET_INVALID_LANGUAGE)
             mock_language_code_is_valid.assert_called_with('pt-BR')
 
-    @patch('news.utils.get_best_language')
+    @patch('news.views.get_best_language')
     def test_accept_lang(self, get_best_language_mock):
         """If accept_lang param is provided, should set the lang in data."""
         get_best_language_mock.return_value = 'pt'
@@ -104,7 +104,6 @@ class UpdateUserTaskTests(TestCase):
         self.assert_response_ok(response)
         self.update_user.delay.assert_called_with(after_data, 'dude@example.com',
                                                   None, SUBSCRIBE, True)
-        self.assertFalse(self.lookup_subscriber.called)
 
     def test_invalid_accept_lang(self):
         """If accept_lang param is provided but invalid, return a 400."""
@@ -114,7 +113,6 @@ class UpdateUserTaskTests(TestCase):
         response = update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_error(response, 400, errors.BASKET_INVALID_LANGUAGE)
         self.assertFalse(self.update_user.delay.called)
-        self.assertFalse(self.lookup_subscriber.called)
 
     @patch('news.utils.get_best_language')
     def test_lang_overrides_accept_lang(self, get_best_language_mock):
@@ -132,7 +130,6 @@ class UpdateUserTaskTests(TestCase):
         self.assert_response_ok(response)
         # basically asserts that the data['lang'] value wasn't changed.
         self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True)
-        self.assertFalse(self.lookup_subscriber.called)
 
     def test_missing_email(self):
         """

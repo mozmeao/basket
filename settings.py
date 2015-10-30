@@ -32,8 +32,8 @@ TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 REDIS_URL = config('REDIS_URL', None)
 if REDIS_URL:
     # use redis for celery and cache
-    os.environ['CACHE_URL'] = REDIS_URL + '/0'
-    os.environ['BROKER_URL'] = REDIS_URL + '/1'
+    os.environ['BROKER_URL'] = REDIS_URL + '/' + config('REDIS_CELERY_DB', '0')
+    os.environ['CACHE_URL'] = REDIS_URL + '/' + config('REDIS_CACHE_DB', '1')
 
 # Production uses MySQL, but Sqlite should be sufficient for local development.
 # Our CI server tests against MySQL. See travis.py in this directory

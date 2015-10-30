@@ -32,7 +32,7 @@ from .common import NewsletterException, NewsletterNoResultsException, \
     UnauthorizedException
 
 
-ET_TIMEOUT = getattr(settings, 'EXACTTARGET_TIMEOUT', 5)
+ET_TIMEOUT = getattr(settings, 'EXACTTARGET_TIMEOUT', 20)
 
 
 class SudsDjangoCache(Cache):

@@ -626,12 +626,24 @@ def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
                     'code': errors.BASKET_INVALID_NEWSLETTER,
                 }, 400)
 
-    if 'lang' in data and not language_code_is_valid(data['lang']):
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': 'invalid language',
-            'code': errors.BASKET_INVALID_LANGUAGE,
-        }, 400)
+    if 'lang' in data:
+        if not language_code_is_valid(data['lang']):
+            return HttpResponseJSON({
+                'status': 'error',
+                'desc': 'invalid language',
+                'code': errors.BASKET_INVALID_LANGUAGE,
+            }, 400)
+    elif 'accept_lang' in data:
+        lang = get_best_language(get_accept_languages(data['accept_lang']))
+        if lang:
+            data['lang'] = lang
+            del data['accept_lang']
+        else:
+            return HttpResponseJSON({
+                'status': 'error',
+                'desc': 'invalid language',
+                'code': errors.BASKET_INVALID_LANGUAGE,
+            }, 400)
 
     email = data.get('email')
     token = data.get('token')
