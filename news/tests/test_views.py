@@ -15,7 +15,7 @@ from news import models, views, utils
 from news.models import APIUser
 from news.newsletters import newsletter_languages, newsletter_fields
 from news.tasks import SUBSCRIBE
-from news.utils import email_block_list_cache, HttpResponseJSON
+from news.utils import email_block_list_cache
 
 
 none_mock = Mock(return_value=None)
@@ -302,23 +302,6 @@ class SubscribeSMSTests(TestCase):
         self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
         self.assertIn('msg_name', data['desc'])
 
-    @patch('news.views.IP_RATE_LIMIT_EXTERNAL', '1/m')
-    def test_ip_rate_limit(self):
-        self.client.post('/news/subscribe_sms/', {'mobile_number': '9198675309'},
-                         HTTP_X_CLUSTER_CLIENT_IP='1.1.1.1')
-        self.add_sms_user.delay.assert_called_with('SMS_Android', '19198675309', False)
-        self.add_sms_user.reset_mock()
-
-        resp = self.client.post('/news/subscribe_sms/', {'mobile_number': '9195555555'},
-                                HTTP_X_CLUSTER_CLIENT_IP='1.1.1.1')
-        data = json.loads(resp.content)
-        self.assertEqual(data, {
-            'status': 'error',
-            'desc': 'rate limit reached',
-            'code': errors.BASKET_USAGE_ERROR,
-        })
-        self.assertFalse(self.add_sms_user.delay.called)
-
     def test_phone_number_rate_limit(self):
         self.client.post('/news/subscribe_sms/', {'mobile_number': '9198675309'})
         self.add_sms_user.delay.assert_called_with('SMS_Android', '19198675309', False)
@@ -600,48 +583,6 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             self.validate_email.assert_called_with('dude@example.com')
             self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
                                                      optin=True, sync=True)
-
-    @patch('news.views.IP_RATE_LIMIT_EXTERNAL', '1/m')
-    def test_ip_rate_limit(self):
-        self.skipTest('Bug 1154584')
-        self.update_user_task.return_value = HttpResponseJSON({'status': 'ok'})
-        request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
-                        'email': 'dude@example.com'}
-        self.client.post('/news/subscribe/', request_data,
-                         HTTP_X_CLUSTER_CLIENT_IP='1.1.1.1')
-        self.assertTrue(self.update_user_task.called)
-        self.update_user_task.reset_mock()
-
-        resp = self.client.post('/news/subscribe/', request_data,
-                                HTTP_X_CLUSTER_CLIENT_IP='1.1.1.1')
-        data = json.loads(resp.content)
-        self.assertEqual(data, {
-            'status': 'error',
-            'desc': 'rate limit reached',
-            'code': errors.BASKET_USAGE_ERROR,
-        })
-        self.assertFalse(self.update_user_task.delay.called)
-
-    @patch('news.views.IP_RATE_LIMIT_EXTERNAL', '1/m')
-    def test_ip_rate_limit_source_ip(self):
-        self.skipTest('Bug 1154584')
-        self.update_user_task.return_value = HttpResponseJSON({'status': 'ok'})
-        request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
-                        'email': 'dude@example.com'}
-        self.client.post('/news/subscribe/', request_data,
-                         HTTP_X_SOURCE_IP='1.1.1.1')
-        self.assertTrue(self.update_user_task.called)
-        self.update_user_task.reset_mock()
-
-        resp = self.client.post('/news/subscribe/', request_data,
-                                HTTP_X_SOURCE_IP='1.1.1.1')
-        data = json.loads(resp.content)
-        self.assertEqual(data, {
-            'status': 'error',
-            'desc': 'rate limit reached',
-            'code': errors.BASKET_USAGE_ERROR,
-        })
-        self.assertFalse(self.update_user_task.delay.called)
 
 
 class TestRateLimitingFunctions(ViewsPatcherMixin, TestCase):

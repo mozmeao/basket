@@ -11,7 +11,6 @@ from django.views.decorators.http import require_GET, require_POST
 # Get error codes from basket-client so users see the same definitions
 from basket import errors
 from django_statsd.clients import statsd
-from ratelimit.decorators import ratelimit
 from ratelimit.exceptions import Ratelimited
 from ratelimit.utils import is_ratelimited
 
@@ -258,9 +257,6 @@ def get_involved(request):
 
 @require_POST
 @csrf_exempt
-# disabled for bug 1154584
-# @ratelimit(key=ip_rate_limit_key, rate=ip_rate_limit_rate, block=True)
-# @ratelimit(key=source_ip_rate_limit_key, rate=source_ip_rate_limit_rate, block=True)
 def subscribe(request):
     data = request.POST.dict()
     newsletters = data.get('newsletters', None)
@@ -339,8 +335,6 @@ def invalid_email_response(e):
 
 @require_POST
 @csrf_exempt
-@ratelimit(key=ip_rate_limit_key, rate=ip_rate_limit_rate, block=True)
-@ratelimit(key=source_ip_rate_limit_key, rate=source_ip_rate_limit_rate, block=True)
 def subscribe_sms(request):
     if 'mobile_number' not in request.POST:
         return HttpResponseJSON({
