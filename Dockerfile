@@ -17,11 +17,6 @@ RUN bin/peep.py install -r requirements/prod.txt
 
 COPY . /app
 
-# Cleanup
-RUN apt-get purge -y python-dev build-essential
-RUN apt-get autoremove -y
-RUN rm -rf /var/lib/{apt,dpkg,cache,log} /usr/share/doc /usr/share/man /tmp/*
-
 # Change User
 RUN chown webdev.webdev -R .
 USER webdev
