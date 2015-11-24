@@ -276,7 +276,7 @@ class AddFxaActivityTests(TestCase):
         record = self._base_test(ua)
         self.assertEqual(record['OS'], 'Android')
         self.assertEqual(record['OS_VERSION'], '')
-        self.assertEqual(record['BROWSER'], 'Firefox 40')
+        self.assertEqual(record['BROWSER'], 'Firefox Mobile 40')
         self.assertEqual(record['DEVICE_NAME'], 'Generic Tablet')
         self.assertEqual(record['DEVICE_TYPE'], 'T')
 
@@ -315,7 +315,7 @@ class AddFxaActivityTests(TestCase):
 
         self.assertEqual(record['OS'], 'Firefox OS')
         self.assertEqual(record['OS_VERSION'], '1.2')
-        self.assertEqual(record['BROWSER'], 'Firefox 26')
+        self.assertEqual(record['BROWSER'], 'Firefox Mobile 26')
         self.assertEqual(record['DEVICE_NAME'], 'Generic Tablet')
         self.assertEqual(record['DEVICE_TYPE'], 'T')
 
