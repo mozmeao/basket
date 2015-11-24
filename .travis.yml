@@ -1,24 +1,34 @@
 sudo: false
 language: python
 python:
-  - "2.7"
+  - '2.7'
 before_script:
   - flake8 news
   - mysql -e 'create database basket;'
   - python manage.py migrate --noinput
 script: py.test --cov news
 env:
-   - SECRET_KEY=FOO DEBUG=False ALLOWED_HOSTS=* DATABASE_URL=mysql://root@localhost/basket SUPERTOKEN='foo'
+  - SECRET_KEY=FOO DEBUG=False ALLOWED_HOSTS=* DATABASE_URL=mysql://root@localhost/basket SUPERTOKEN='foo'
 install:
   - bin/peep.py install -r requirements/compiled.txt -r requirements/dev.txt
   - pip install coveralls
 after_success:
-  # Report coverage results to coveralls.io
   - coveralls
 notifications:
   irc:
     channels:
-      - "irc.mozilla.org#basket"
+      - irc.mozilla.org#basket
     on_success: change
     on_failure: always
     use_notice: true
+deploy:
+  provider: deis
+  controller: https://deis.us-west.moz.works
+  app: basket-dev
+  cli_version: 1.11.1
+  username: travis
+  password:
+    secure: lmLWDrN9TPp/BvN8s0ybtec+xQ8HnNgVVuDJjC/hNMIdUE/OAUi5V5il58GcG49udbyx/3QZN6QG4J1HJYwERGJa+VQnRcehEAU7LCbw02BMbfpCOJJvfHuUxCrd6bt7HkB01D459fKuzSeFigsa3sx+VQ7NkDwd3eKpqGIqzfY=
+  on:
+    repo: mozilla/basket
+    branch: master
