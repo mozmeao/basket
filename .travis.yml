@@ -22,13 +22,18 @@ notifications:
     on_failure: always
     use_notice: true
 deploy:
-  provider: deis
-  controller: https://deis.us-west.moz.works
-  app: basket-dev
-  cli_version: 1.11.1
-  username: travis
-  password:
-    secure: lmLWDrN9TPp/BvN8s0ybtec+xQ8HnNgVVuDJjC/hNMIdUE/OAUi5V5il58GcG49udbyx/3QZN6QG4J1HJYwERGJa+VQnRcehEAU7LCbw02BMbfpCOJJvfHuUxCrd6bt7HkB01D459fKuzSeFigsa3sx+VQ7NkDwd3eKpqGIqzfY=
-  on:
-    repo: mozilla/basket
-    branch: master
+  - provider: script
+    script: bin/deploy-travis.sh dev
+    on:
+      branch: master
+      repo: mozilla/basket
+  - provider: script
+    script: bin/deploy-travis.sh stage
+    on:
+      branch: master
+      repo: mozilla/basket
+  - provider: script
+    script: bin/deploy-travis.sh prod
+    on:
+      tag: true
+      repo: mozilla/basket
