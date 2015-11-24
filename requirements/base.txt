@@ -84,8 +84,8 @@ PyYAML==3.11
 # sha256: aaTNrvMmjYjy3G-Lj1w6E5Vf49ql9ZdGqBfc-JG-WJk
 ua-parser==0.5.1
 
-# sha256: 931rAsJUHav8ffd_P8Upu5EiOHVVrPs8O5OXtHM8E1U
-https://github.com/selwin/python-user-agents/archive/ad0b20b4d28e04c231805df96ef8e97a5c12db2a.tar.gz#egg=user-agents==1.0.1
+# sha256: gr4ORO1AwOr4fqDoeiT8jwr92OsU_7R4qtAssp4-7Sw
+https://github.com/selwin/python-user-agents/archive/ed386c818ff7a10849348711d4bdd00506088702.tar.gz#egg=user-agents==1.0.1
 
 # sha256: 68_IZ95aaPn1uhTRHbrYjmr_hDWo05M51c6w5bBt5kA
 # sha256: 406XZaYSD0ZkwSD0GYp4bDmg-35KWb0ZotbjqIS2OIk
