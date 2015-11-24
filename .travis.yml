@@ -7,6 +7,8 @@ before_script:
   - mysql -e 'create database basket;'
   - python manage.py migrate --noinput
 script: py.test --cov news
+env:
+   - SECRET_KEY=FOO DEBUG=False ALLOWED_HOSTS=* DATABASE_URL=mysql://root@localhost/basket SUPERTOKEN='foo'
 install:
   - bin/peep.py install -r requirements/compiled.txt -r requirements/dev.txt
   - pip install coveralls
