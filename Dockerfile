@@ -1,5 +1,6 @@
 FROM debian:jessie
 
+RUN adduser --uid 1000 --disabled-password --gecos '' --no-create-home webdev
 WORKDIR /app
 
 EXPOSE 8000
@@ -20,3 +21,7 @@ COPY . /app
 RUN apt-get purge -y python-dev build-essential
 RUN apt-get autoremove -y
 RUN rm -rf /var/lib/{apt,dpkg,cache,log} /usr/share/doc /usr/share/man /tmp/*
+
+# Change User
+RUN chown webdev.webdev -R .
+USER webdev
