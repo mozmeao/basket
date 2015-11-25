@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Workaround to ignore mtime until we upgrade to Docker 1.8
+# See https://github.com/docker/docker/pull/12031
+find . -newerat 20140101 -exec touch -t 201401010000 {} \;
+
 function setup_ssh_bin() {
   echo '#!/bin/sh' >> ssh-bin
   echo 'exec ssh -o StrictHostKeychecking=no -o CheckHostIP=no -o UserKnownHostsFile=/dev/null "$@"' >> ssh-bin
