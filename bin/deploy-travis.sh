@@ -15,6 +15,6 @@ openssl aes-256-cbc -K $encrypted_83630750896a_key -iv $encrypted_83630750896a_i
 chmod 600 .travis/id_rsa
 ssh-add .travis/id_rsa
 
-git remote add deis ssh://git@deis.us-west.moz.works:2222/basket-$1.git
-git checkout -b deploy
-git push -f  deis deploy:master
+git remote add deis-$1 ssh://git@deis.us-west.moz.works:2222/basket-$1.git
+git checkout -b travis-deploy-$1
+git push -f deis-$1 travis-deploy-$1:master
