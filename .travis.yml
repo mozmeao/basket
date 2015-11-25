@@ -35,5 +35,5 @@ deploy:
   - provider: script
     script: bin/deploy-travis.sh prod
     on:
-      tag: true
+      tags: true
       repo: mozilla/basket
