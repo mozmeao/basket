@@ -48,6 +48,11 @@ class Newsletter(models.Model):
                   "are only shown to those who are already subscribed, and "
                   "might have other differences in behavior.",
     )
+    private = models.BooleanField(
+        default=False,
+        help_text="Whether this newsletter is private. Private newsletters "
+                  "require the subscribe requests to use an API key.",
+    )
     # Note: use .welcome_id property to get this field or the default
     welcome = models.CharField(
         max_length=64,

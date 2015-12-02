@@ -46,6 +46,12 @@ class TestNewsletterUtils(TestCase):
                 title='Beginning Nihilism',
                 vendor_id='EXTORTING',
                 languages='en'),
+            Newsletter.objects.create(
+                slug='papers',
+                title='Just papers, personal papers',
+                vendor_id='CREEDENCE',
+                languages='en',
+                private=True),
         ]
         self.groupies = [
             NewsletterGroup.objects.create(
@@ -63,27 +69,30 @@ class TestNewsletterUtils(TestCase):
         ]
         self.groupies[0].newsletters.add(self.newsies[1], self.newsies[2])
 
+    def test_newseltter_private_slugs(self):
+        self.assertEqual(newsletters.newsletter_private_slugs(), ['papers'])
+
     def test_newsletter_slugs(self):
         self.assertEqual(set(newsletters.newsletter_slugs()),
-                         set(['bowling', 'surfing', 'extorting']))
+                         {'bowling', 'surfing', 'extorting', 'papers'})
 
     def test_newsletter_group_slugs(self):
         self.assertEqual(set(newsletters.newsletter_group_slugs()),
-                         set(['bowling', 'abiding']))
+                         {'bowling', 'abiding'})
 
     def test_newsletter_and_group_slugs(self):
         self.assertEqual(set(newsletters.newsletter_and_group_slugs()),
-                         set(['bowling', 'abiding', 'surfing', 'extorting']))
+                         {'bowling', 'abiding', 'surfing', 'extorting', 'papers'})
 
     def test_newsletter_group_newsletter_slugs(self):
         self.assertEqual(set(newsletters.newsletter_group_newsletter_slugs('bowling')),
-                         set(['extorting', 'surfing']))
+                         {'extorting', 'surfing'})
 
     def test_parse_newsletters_for_groups(self):
         """If newsletter slug is a group for SUBSCRIBE, expand to group's newsletters."""
         record = {}
         to_sub, to_unsub = utils.parse_newsletters(record, utils.SUBSCRIBE, ['bowling'], set())
-        self.assertEqual(set(to_sub), set(['surfing', 'extorting']))
+        self.assertEqual(set(to_sub), {'surfing', 'extorting'})
         self.assertEqual(record['SURFING_FLG'], 'Y')
         self.assertEqual(record['EXTORTING_FLG'], 'Y')
 
@@ -98,6 +107,6 @@ class TestNewsletterUtils(TestCase):
         """If newsletter slug is a group for SET mode, don't expand to group's newsletters."""
         record = {}
         to_sub, to_unsub = utils.parse_newsletters(record, utils.UNSUBSCRIBE, ['bowling'],
-                                                   set(['bowling', 'surfing', 'extorting']))
+                                                   {'bowling', 'surfing', 'extorting'})
         self.assertEqual(to_unsub, ['bowling'])
         self.assertEqual(record['BOWLING_FLG'], 'N')
