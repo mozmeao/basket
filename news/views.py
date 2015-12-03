@@ -15,7 +15,8 @@ from ratelimit.exceptions import Ratelimited
 from ratelimit.utils import is_ratelimited
 
 from news.models import Newsletter, Interest
-from news.newsletters import get_sms_messages, newsletter_slugs, newsletter_and_group_slugs
+from news.newsletters import get_sms_messages, newsletter_slugs, newsletter_and_group_slugs, \
+    newsletter_private_slugs
 from news.tasks import (
     add_fxa_activity,
     add_sms_user,
@@ -594,12 +595,13 @@ def lookup_user(request):
     return HttpResponseJSON(user_data, status_code)
 
 
+@require_GET
+@cache_control(max_age=300)
 def list_newsletters(request):
     """
     Public web page listing currently active newsletters.
     """
-
-    active_newsletters = Newsletter.objects.filter(active=True)
+    active_newsletters = Newsletter.objects.filter(active=True, private=False)
     return render(request, 'news/newsletters.html',
                   {'newsletters': active_newsletters})
 
@@ -614,17 +616,36 @@ def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
 
     newsletters = data.get('newsletters', None)
     if newsletters:
+        newsletters = [x.strip() for x in newsletters.split(',')]
         if api_call_type == SUBSCRIBE:
             all_newsletters = newsletter_and_group_slugs()
         else:
             all_newsletters = newsletter_slugs()
-        for nl in [x.strip() for x in newsletters.split(',')]:
+
+        private_newsletters = newsletter_private_slugs()
+
+        for nl in newsletters:
             if nl not in all_newsletters:
                 return HttpResponseJSON({
                     'status': 'error',
                     'desc': 'invalid newsletter',
                     'code': errors.BASKET_INVALID_NEWSLETTER,
                 }, 400)
+
+            if api_call_type != UNSUBSCRIBE and nl in private_newsletters:
+                if not request.is_secure():
+                    return HttpResponseJSON({
+                        'status': 'error',
+                        'desc': 'private newsletter subscription requires SSL',
+                        'code': errors.BASKET_SSL_REQUIRED,
+                    }, 401)
+
+                if not has_valid_api_key(request):
+                    return HttpResponseJSON({
+                        'status': 'error',
+                        'desc': 'private newsletter subscription requires a valid API key',
+                        'code': errors.BASKET_AUTH_ERROR,
+                    }, 401)
 
     if 'lang' in data:
         if not language_code_is_valid(data['lang']):

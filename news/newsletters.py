@@ -136,6 +136,11 @@ def newsletter_and_group_slugs():
     return list(set(newsletter_slugs()) | set(newsletter_group_slugs()))
 
 
+def newsletter_private_slugs():
+    """Return a list of private newsletter ids"""
+    return [nl.slug for nl in _newsletters()['by_name'].values() if nl.private]
+
+
 def slug_to_vendor_id(slug):
     """Given a newsletter's slug, return its vendor_id"""
     return _newsletters()['by_name'][slug].vendor_id
