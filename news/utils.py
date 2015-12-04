@@ -86,8 +86,9 @@ def has_valid_api_key(request):
     # The API key could be the query parameter 'api-key' or the
     # request header 'X-api-key'.
 
-    api_key = request.REQUEST.get('api-key', None) or\
-        request.META.get('HTTP_X_API_KEY', None)
+    api_key = (request.REQUEST.get('api-key', None) or
+               request.REQUEST.get('api_key', None) or
+               request.META.get('HTTP_X_API_KEY', None))
     return APIUser.is_valid(api_key)
 
 
