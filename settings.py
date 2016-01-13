@@ -1,4 +1,6 @@
 import os
+import socket
+import struct
 import sys
 
 import dj_database_url
@@ -167,9 +169,26 @@ CELERY_REDIS_MAX_CONNECTIONS = config('CELERY_REDIS_MAX_CONNECTIONS', 2, cast=in
 CELERY_DISABLE_RATE_LIMITS = True
 CELERY_IGNORE_RESULT = True
 
-STATSD_HOST = config('STATSD_HOST', 'localhost')
+
+# via http://stackoverflow.com/a/6556951/107114
+def get_default_gateway_linux():
+    """Read the default gateway directly from /proc."""
+    try:
+        with open("/proc/net/route") as fh:
+            for line in fh:
+                fields = line.strip().split()
+                if fields[1] != '00000000' or not int(fields[3], 16) & 2:
+                    continue
+
+                return socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
+    except IOError:
+        return 'localhost'
+
+
+STATSD_HOST = config('STATSD_HOST', get_default_gateway_linux())
 STATSD_PORT = config('STATSD_PORT', 8125, cast=int)
-STATSD_PREFIX = config('STATSD_PREFIX', None)
+STATSD_PREFIX = config('STATSD_PREFIX', config('DEIS_APP', None))
+STATSD_CLIENT = config('STATSD_CLIENT', 'django_statsd.clients.null')
 
 LOGGING = {
     'version': 1,
