@@ -123,14 +123,15 @@ class ETTask(Task):
         """
         statsd.incr(self.name + '.failure')
         log.error("Task failed: %s" % self.name, exc_info=einfo.exc_info)
-        FailedTask.objects.create(
-            task_id=task_id,
-            name=self.name,
-            args=args,
-            kwargs=kwargs,
-            exc=repr(exc),
-            einfo=str(einfo),  # str() gives more info than repr() on celery.datastructures.ExceptionInfo
-        )
+        if settings.STORE_TASK_FAILURES:
+            FailedTask.objects.create(
+                task_id=task_id,
+                name=self.name,
+                args=args,
+                kwargs=kwargs,
+                exc=repr(exc),
+                einfo=str(einfo),  # str() gives more info than repr() on celery.datastructures.ExceptionInfo
+            )
 
     def on_retry(self, exc, task_id, args, kwargs, einfo):
         """Retry handler.
