@@ -11,11 +11,11 @@ RUN apt-get update && \
         python-pip gettext postgresql-client libpq-dev
 
 # Install app
-COPY bin/peep.py bin/peep.py
-COPY requirements/base.txt requirements/prod.txt /app/requirements/
+ADD bin/peep.py bin/peep.py
+ADD requirements/base.txt requirements/prod.txt /app/requirements/
 RUN bin/peep.py install -r requirements/prod.txt
 
-COPY . /app
+ADD . /app
 
 # Change User
 RUN chown webdev.webdev -R .
