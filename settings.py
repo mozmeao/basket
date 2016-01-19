@@ -31,6 +31,8 @@ MANAGERS = ADMINS
 # avoids a warning from django
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 
+READ_ONLY_MODE = config('READ_ONLY_MODE', False, cast=bool)
+
 REDIS_URL = config('REDIS_URL', None)
 if REDIS_URL:
     REDIS_URL = REDIS_URL.rstrip('/0')
@@ -70,8 +72,10 @@ CACHES = {
 ALLOWED_HOSTS = config('ALLOWED_HOSTS',
                        default='.allizom.org, basket.mozilla.com, basket.mozilla.org',
                        cast=Csv())
-SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', True, cast=bool)
-CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', True, cast=bool)
+SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', not DEBUG, cast=bool)
+CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', not DEBUG, cast=bool)
+DISABLE_ADMIN = config('DISABLE_ADMIN', READ_ONLY_MODE, cast=bool)
+STORE_TASK_FAILURES = config('STORE_TASK_FAILURES', not READ_ONLY_MODE, cast=bool)
 
 TIME_ZONE = 'America/Los_Angeles'
 USE_TZ = True
@@ -103,7 +107,6 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 )
 
 MIDDLEWARE_CLASSES = (
-    'sslifyadmin.middleware.SSLifyAdminMiddleware',
     'django.middleware.common.CommonMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -114,6 +117,9 @@ MIDDLEWARE_CLASSES = (
     'django_statsd.middleware.GraphiteMiddleware',
     'ratelimit.middleware.RatelimitMiddleware',
 )
+
+if not DISABLE_ADMIN:
+    MIDDLEWARE_CLASSES = ('sslifyadmin.middleware.SSLifyAdminMiddleware',) + MIDDLEWARE_CLASSES
 
 ROOT_URLCONF = 'urls'
 
@@ -136,7 +142,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
 )
 
-SSLIFY_ADMIN_DISABLE = config('SSLIFY_ADMIN_DISABLE', DEBUG)
+SSLIFY_ADMIN_DISABLE = config('SSLIFY_ADMIN_DISABLE', DEBUG, cast=bool)
 if not SSLIFY_ADMIN_DISABLE:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
