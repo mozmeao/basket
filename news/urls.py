@@ -1,4 +1,4 @@
-from django.conf.urls import patterns, url
+from django.conf.urls import url
 
 from .views import (confirm, custom_unsub_reason, custom_update_phonebook,
                     custom_update_student_ambassadors, debug_user,
@@ -13,7 +13,7 @@ def token_url(url_prefix, *args, **kwargs):
     return url(url_re, *args, **kwargs)
 
 
-urlpatterns = patterns('',  # noqa
+urlpatterns = (
     url('^get-involved/$', get_involved),
     url('^fxa-register/$', fxa_register),
     url('^fxa-activity/$', fxa_activity),

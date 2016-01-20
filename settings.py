@@ -21,7 +21,6 @@ def path(*args):
 
 
 DEBUG = config('DEBUG', default=False, cast=bool)
-TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
     # ('Your Name', 'your_email@domain.com'),
@@ -94,17 +93,20 @@ except UndefinedValueError:
     raise UndefinedValueError('The SECRET_KEY environment varialbe is required. '
                               'Move env-dist to .env if you want the defaults.')
 
-# List of callables that know how to import templates from various sources.
-TEMPLATE_LOADERS = (
-    'django.template.loaders.filesystem.Loader',
-    'django.template.loaders.app_directories.Loader',
-)
-
-TEMPLATE_CONTEXT_PROCESSORS = (
-    'django.contrib.auth.context_processors.auth',
-    'django.core.context_processors.request',
-    'django.contrib.messages.context_processors.messages',
-)
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': ['templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.contrib.auth.context_processors.auth',
+                'django.template.context_processors.request',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
 
 MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
@@ -122,10 +124,6 @@ if not DISABLE_ADMIN:
     MIDDLEWARE_CLASSES = ('sslifyadmin.middleware.SSLifyAdminMiddleware',) + MIDDLEWARE_CLASSES
 
 ROOT_URLCONF = 'urls'
-
-TEMPLATE_DIRS = (
-    path('templates'),
-)
 
 INSTALLED_APPS = (
     'news',
