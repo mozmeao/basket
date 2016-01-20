@@ -19,6 +19,11 @@ openssl aes-256-cbc -K $encrypted_83630750896a_key -iv $encrypted_83630750896a_i
 chmod 600 .travis/id_rsa
 ssh-add .travis/id_rsa
 
-git remote add deis-$1-$2 ssh://git@deis.$2.moz.works:2222/basket-$1.git
-git checkout -b travis-deploy-$1-$2
-git push -f deis-$1-$2 travis-deploy-$1:master
+for region in us-west eu-west; do
+    DEPLOY_BRANCH="travis-deploy-${1}-${region}"
+    DEPLOY_REMOTE="deis-${1}-${region}"
+
+    git remote add $DEPLOY_REMOTE ssh://git@deis.${region}.moz.works:2222/basket-${1}.git
+    git checkout -b $DEPLOY_BRANCH
+    git push -f $DEPLOY_REMOTE ${DEPLOY_BRANCH}:master
+done
