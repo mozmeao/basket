@@ -23,17 +23,27 @@ notifications:
     use_notice: true
 deploy:
   - provider: script
-    script: bin/deploy-travis.sh dev
+    script: bin/deploy-travis.sh dev us-west
     on:
       branch: master
       repo: mozilla/basket
   - provider: script
-    script: bin/deploy-travis.sh stage
+    script: bin/deploy-travis.sh stage us-west
     on:
       branch: master
       repo: mozilla/basket
   - provider: script
-    script: bin/deploy-travis.sh prod
+    script: bin/deploy-travis.sh stage eu-west
+    on:
+      branch: master
+      repo: mozilla/basket
+  - provider: script
+    script: bin/deploy-travis.sh prod us-west
+    on:
+      tags: true
+      repo: mozilla/basket
+  - provider: script
+    script: bin/deploy-travis.sh prod eu-west
     on:
       tags: true
       repo: mozilla/basket
