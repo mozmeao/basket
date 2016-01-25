@@ -1,20 +1,15 @@
 -r base.txt
 
-# sha256: mtaymUWPfmv676iQX1JWABc2nYL7j7DtS0GtwEjb8Rw
-django-redis==4.2.0
-
-# sha256: pRec3pItK04EXuWxHocyPud9NjrkApT8glLyXWoOrwY
-gunicorn==19.3.0
-
-# sha256: pPs3sChg9rFhf2RpSHRx_Qht0tOLvOZAwgVYYrnEAZw
-redis==2.10.3
-
-# sha256: ypWOExKOSWdKpKlvAnRvXeWXPzm1cpe4TVn9RNMU1bU
-hiredis==0.2.0
-
-# sha256: v8xYHJ278HzC-VG68wwySaV-INy9YPfm_8Q6s8xhR5Q
-msgpack-python==0.4.6
-
-# sha256: GclSD80sHoOWHNx92wsN63uToa6nn1buDWxeJAP8qk0
-# sha256: wLZGoH80oy6PZjJqgZzu8PvBwjNW3IRFFgvHaGGw30w
-whitenoise==2.0.3
+django-redis==4.2.0 \
+    --hash=sha256:9ad6b299458f7e6bfaefa8905f52560017369d82fb8fb0ed4b41adc048dbf11c
+gunicorn==19.3.0 \
+    --hash=sha256:a5179cde922d2b4e045ee5b11e87323ee77d363ae40294fc8252f25d6a0eaf06
+redis==2.10.3 \
+    --hash=sha256:a4fb37b02860f6b1617f6469487471fd086dd2d38bbce640c2055862b9c4019c
+hiredis==0.2.0 \
+    --hash=sha256:ca958e13128e49674aa4a96f02746f5de5973f39b57297b84d59fd44d314d5b5
+msgpack-python==0.4.6 \
+    --hash=sha256:bfcc581c9dbbf07cc2f951baf30c3249a57e20dcbd60f7e6ffc43ab3cc614794
+whitenoise==2.0.3 \
+    --hash=sha256:19c9520fcd2c1e83961cdc7ddb0b0deb7b93a1aea79f56ee0d6c5e2403fcaa4d \
+    --hash=sha256:c0b646a07f34a32e8f66326a819ceef0fbc1c23356dc8445160bc76861b0df4c
