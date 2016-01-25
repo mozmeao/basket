@@ -1,29 +1,24 @@
 #!/bin/bash
 set -e
 
-# Workaround to ignore mtime until we upgrade to Docker 1.8
-# See https://github.com/docker/docker/pull/12031
-find . -newerat 20140101 -exec touch -t 201401010000 {} \;
+docker login -e "$DOCKER_EMAIL" -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+docker push ${DOCKER_REPOSITORY}:${TRAVIS_COMMIT}
+docker tag -f ${DOCKER_REPOSITORY}:${TRAVIS_COMMIT} ${DOCKER_REPOSITORY}:last_successful_build
+docker push ${DOCKER_REPOSITORY}:last_successful_build
 
-function setup_ssh_bin() {
-  echo '#!/bin/sh' >> ssh-bin
-  echo 'exec ssh -o StrictHostKeychecking=no -o CheckHostIP=no -o UserKnownHostsFile=/dev/null "$@"' >> ssh-bin
-  chmod 740 ssh-bin
-  export GIT_SSH="`pwd`/ssh-bin"
-}
+# Install deis client
+curl -sSL http://deis.io/deis-cli/install.sh | sh
 
-setup_ssh_bin
-
-eval "$(ssh-agent -s)"
-openssl aes-256-cbc -K $encrypted_83630750896a_key -iv $encrypted_83630750896a_iv -in .travis/id_rsa.enc -out .travis/id_rsa -d
-chmod 600 .travis/id_rsa
-ssh-add .travis/id_rsa
+DEIS_APP=$1
 
 for region in us-west eu-west; do
-    DEPLOY_BRANCH="travis-deploy-${1}-${region}"
-    DEPLOY_REMOTE="deis-${1}-${region}"
-
-    git remote add $DEPLOY_REMOTE ssh://git@deis.${region}.moz.works:2222/basket-${1}.git
-    git checkout -b $DEPLOY_BRANCH
-    git push -f $DEPLOY_REMOTE ${DEPLOY_BRANCH}:master
+    DEIS_CONTROLLER=https://deis.${region}.moz.works
+    NR_APP="${DEIS_APP}-${region}"
+    ./deis login $DEIS_CONTROLLER  --username $DEIS_USERNAME --password $DEIS_PASSWORD
+    ./deis pull ${DOCKER_REPOSITORY}:${TRAVIS_COMMIT} -a $DEIS_APP
+    curl -H "x-api-key:$NEWRELIC_API_KEY" \
+         -d "deployment[app_name]=$NR_APP" \
+         -d "deployment[revision]=$TRAVIS_COMMIT" \
+         -d "deployment[user]=Travis" \
+         https://api.newrelic.com/deployments.xml
 done

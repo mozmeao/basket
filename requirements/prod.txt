@@ -1,4 +1,4 @@
--r base.txt
+-r dev.txt
 
 django-redis==4.2.0 \
     --hash=sha256:9ad6b299458f7e6bfaefa8905f52560017369d82fb8fb0ed4b41adc048dbf11c

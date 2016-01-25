@@ -1,20 +1,45 @@
-sudo: false
+sudo: required
+services:
+  - docker
 language: python
-python:
-  - '2.7'
-before_script:
-  - flake8 news
-  - mysql -e 'create database basket;'
-  - python manage.py migrate --noinput
-script: py.test --cov news
 env:
-  - SECRET_KEY=FOO DEBUG=False ALLOWED_HOSTS=* DATABASE_URL=mysql://root@localhost/basket SUPERTOKEN='foo'
+  global:
+    # Deis
+    - DEIS_DEV_APPLICATION=basket-dev
+    - DEIS_STAGE_APPLICATION=basket-stage
+    - DEIS_PROD_APPLICATION=basket-prod
+    - DEIS_USERNAME=travis
+    # Docker
+    - DOCKER_REPOSITORY=mozorg/basket
+    - DOCKER_EMAIL="foo@example.com"
+    - DOCKER_USERNAME="mozjenkins"
+    # MySQL
+    - MYSQL_DATABASE=basket
+    - MYSQL_ALLOW_EMPTY_PASSWORD=1
+    # Django
+    - SECRET_KEY=ssssssssshhhhhhhhhhhhh
+    - SUPERTOKEN=im-super-thanks-for-asking
+    - DEBUG=False
+    - ALLOWED_HOSTS=*
+    - CELERY_ALWAYS_EAGER=True
+    - DATABASE_URL=mysql://root@db/basket
+before_install:
+  - docker --version
+  - echo "ENV GIT_SHA ${TRAVIS_COMMIT}" >> Dockerfile
+  - export DOCKER_IMAGE_TAG="${DOCKER_REPOSITORY}:${TRAVIS_COMMIT}"
 install:
-  - bin/pipstrap.py
-  - pip install --require-hashes -r requirements/travis.txt -r requirements/dev.txt
-after_success:
-  - pip install coveralls
-  - coveralls
+  # Take advantage of docker caching by pulling previously built images.
+  - docker pull ${DOCKER_REPOSITORY}:last_successful_build || true
+  - docker pull $DOCKER_IMAGE_TAG || true
+  - docker build -t $DOCKER_IMAGE_TAG --pull=true .
+before_script:
+  - env > .env
+script:
+  - docker run -d --name mysqlserver -e MYSQL_DATABASE -e MYSQL_ALLOW_EMPTY_PASSWORD mysql:5.6
+  - docker run $DOCKER_IMAGE_TAG flake8 news
+  # Give time to mysql to initialize.
+  - sleep 10s
+  - docker run --env-file .env --link mysqlserver:db $DOCKER_IMAGE_TAG bash -c "./manage.py migrate --noinput && py.test news"
 notifications:
   irc:
     channels:
@@ -24,17 +49,17 @@ notifications:
     use_notice: true
 deploy:
   - provider: script
-    script: bin/deploy-travis.sh dev
+    script: bin/deploy-travis.sh $DEIS_DEV_APPLICATION
     on:
       branch: master
       repo: mozilla/basket
   - provider: script
-    script: bin/deploy-travis.sh stage
+    script: bin/deploy-travis.sh $DEIS_STAGE_APPLICATION
     on:
       branch: master
       repo: mozilla/basket
   - provider: script
-    script: bin/deploy-travis.sh prod
+    script: bin/deploy-travis.sh $DEIS_PROD_APPLICATION
     on:
       tags: true
       repo: mozilla/basket
