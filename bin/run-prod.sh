@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# need to do this here because docker build has no env
-python manage.py collectstatic --noinput
-
 READ_ONLY_MODE=$(echo "$READ_ONLY_MODE" | tr '[:upper:]' '[:lower:]')
+
 if [[ "$READ_ONLY_MODE" != "true" ]]; then
     python manage.py migrate --noinput
 fi
