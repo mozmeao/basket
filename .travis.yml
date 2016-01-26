@@ -35,11 +35,11 @@ install:
 before_script:
   - env > .env
 script:
-  - docker run -d --name mysqlserver -e MYSQL_DATABASE -e MYSQL_ALLOW_EMPTY_PASSWORD mysql:5.6
   - docker run $DOCKER_IMAGE_TAG flake8 news
-  # Give time to mysql to initialize.
-  - sleep 10s
-  - docker run --env-file .env --link mysqlserver:db $DOCKER_IMAGE_TAG bash -c "./manage.py migrate --noinput && py.test news"
+  - docker run -d --name mysql -e MYSQL_DATABASE -e MYSQL_ALLOW_EMPTY_PASSWORD mysql:5.6
+  # block until mysql is ready
+  - docker run --link mysql:db -e CHECK_PORT=3306 -e CHECK_HOST=db giorgos/takis
+  - docker run --env-file .env --link mysql:db $DOCKER_IMAGE_TAG bash -c "./manage.py migrate --noinput && py.test news"
 notifications:
   irc:
     channels:
