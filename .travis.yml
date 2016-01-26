@@ -12,7 +12,7 @@ env:
     # Docker
     - DOCKER_REPOSITORY=mozorg/basket
     - DOCKER_EMAIL=foo@example.com
-    - DOCKER_USERNAME=mozjenkins
+    - DOCKER_USERNAME=moztravis
     # MySQL
     - MYSQL_DATABASE=basket
     - MYSQL_ALLOW_EMPTY_PASSWORD=1
