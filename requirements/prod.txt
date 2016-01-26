@@ -13,3 +13,5 @@ msgpack-python==0.4.6 \
 whitenoise==2.0.3 \
     --hash=sha256:19c9520fcd2c1e83961cdc7ddb0b0deb7b93a1aea79f56ee0d6c5e2403fcaa4d \
     --hash=sha256:c0b646a07f34a32e8f66326a819ceef0fbc1c23356dc8445160bc76861b0df4c
+newrelic==2.60.0.46 \
+    --hash=sha256:17d598fccca0845c0337e5276d40d65f951afea6adf9bd9172cff3a87f2ef294
