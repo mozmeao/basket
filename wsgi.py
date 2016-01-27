@@ -23,4 +23,4 @@ application = get_wsgi_application()
 application = DjangoWhiteNoise(application)
 
 if newrelic:
-    application = newrelic.agent.wsgi_application()(application)
+    application = newrelic.agent.WSGIApplicationWrapper(application)
