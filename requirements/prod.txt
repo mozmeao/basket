@@ -2,8 +2,9 @@
 
 django-redis==4.2.0 \
     --hash=sha256:9ad6b299458f7e6bfaefa8905f52560017369d82fb8fb0ed4b41adc048dbf11c
-gunicorn==19.3.0 \
-    --hash=sha256:a5179cde922d2b4e045ee5b11e87323ee77d363ae40294fc8252f25d6a0eaf06
+gunicorn==19.4.5 \
+    --hash=sha256:c57f1b005a4b90933303c8deed9bedeb509331aa6a0a990023a5796e52bd8988 \
+    --hash=sha256:53b58044764ad79d732af18c580b1a54b724adf4d290ec19c4ca78ab22a1ee0d
 redis==2.10.3 \
     --hash=sha256:a4fb37b02860f6b1617f6469487471fd086dd2d38bbce640c2055862b9c4019c
 hiredis==0.2.0 \

@@ -8,4 +8,4 @@ fi
 
 echo "$GIT_SHA" > static/revision.txt
 
-exec gunicorn wsgi:application -b 0.0.0.0:8000 -w 2 --log-file -
+exec gunicorn wsgi.app --config wsgi/config.py
