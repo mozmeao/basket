@@ -15,7 +15,7 @@ curl -sSL http://deis.io/deis-cli/install.sh | sh
 
 DEIS_APP=$1
 
-for region in us-west; do
+for region in us-west eu-west; do
     DEIS_CONTROLLER=https://deis.${region}.moz.works
     NR_APP="${DEIS_APP}-${region}"
     echo "Logging into the Deis Controller at ${DEIS_CONTROLLER}"
