@@ -146,7 +146,7 @@ class UpdateUserTaskTests(TestCase):
         and return an OK response without a token.
         """
         request = self.factory.post('/')
-        data = {'email': 'a@example.com'}
+        data = {'email': 'a@example.com', 'first_name': 'The', 'last_name': 'Dude'}
 
         response = update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)

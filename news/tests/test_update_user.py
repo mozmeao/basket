@@ -204,6 +204,39 @@ class UpdateUserTest(TestCase):
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
     @patch('news.tasks.get_user_data')
+    def test_update_first_last_names(self, get_user_data, send_message, apply_updates):
+        # sending name fields should result in names being passed to ET
+        get_user_data.return_value = None  # Does not exist yet
+        nl1 = models.Newsletter.objects.create(
+                slug='slug',
+                title='title',
+                active=True,
+                languages='en,fr',
+                welcome="WELCOME1",
+                vendor_id='VENDOR1',
+        )
+        data = {
+            'country': 'US',
+            'lang': 'en',
+            'format': 'H',
+            'newsletters': "%s" % nl1.slug,
+            'first_name': 'The',
+            'last_name': 'Dude',
+        }
+        rc = update_user(data=data,
+                         email=self.email,
+                         token=self.token,
+                         api_call_type=SUBSCRIBE,
+                         optin=True)
+        self.assertEqual(UU_EXEMPT_NEW, rc)
+        send_message.delay.assert_called()
+        record = apply_updates.call_args[0][1]
+        self.assertEqual(record['FIRST_NAME'], 'The')
+        self.assertEqual(record['LAST_NAME'], 'Dude')
+
+    @patch('news.tasks.apply_updates')
+    @patch('news.tasks.send_message')
+    @patch('news.tasks.get_user_data')
     def test_update_send_newsletters_welcome(self, get_user_data,
                                              send_message,
                                              apply_updates):

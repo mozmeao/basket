@@ -65,6 +65,10 @@ The following URLs are available (assuming "/news" is app url):
 
     ``lang`` is the language code for the subscriber (e.g. de, pt-BR)
 
+    ``first_name`` is the optional first name of the subscriber.
+
+    ``last_name`` is the optional last name of the subscriber.
+
     ``optin`` should be set to "Y" if the user should not go through the
     double-optin process (email verification). Setting this option requires
     an API key and the use of SSL. Defaults to "N".
