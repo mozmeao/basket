@@ -419,12 +419,14 @@ def update_user(data, email, token, api_call_type, optin):
         'country': 'COUNTRY_',
         'lang': 'LANGUAGE_ISO2',
         'source_url': 'SOURCE_URL',
+        'first_name': 'FIRST_NAME',
+        'last_name': 'LAST_NAME',
     }
 
     # Optionally add more fields
-    for field in extra_fields:
+    for field, et_id in extra_fields.items():
         if field in data:
-            record[extra_fields[field]] = data[field]
+            record[et_id] = data[field]
 
     lang = record.get('LANGUAGE_ISO2', '') or ''
 

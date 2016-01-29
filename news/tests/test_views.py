@@ -541,7 +541,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
     def test_success(self):
         """Test basic success case with no optin or sync."""
         request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
-                        'email': 'dude@example.com'}
+                        'email': 'dude@example.com', 'first_name': 'The', 'last_name': 'Dude'}
         request = self.factory.post('/', request_data)
 
         response = views.subscribe(request)
