@@ -13,19 +13,26 @@ docker push ${DOCKER_REPOSITORY}:last_successful_build
 echo "Installing Deis client"
 curl -sSL http://deis.io/deis-cli/install.sh | sh
 
-DEIS_APP=$1
+DEIS_REGIONS=( us-west eu-west )
+if [[ "$1" == "prod" ]]; then
+  DEIS_APPS=( $DEIS_PROD_APP )
+else
+  DEIS_APPS=( $DEIS_DEV_APP $DEIS_STAGE_APP )
+fi
 
-for region in us-west eu-west; do
-    DEIS_CONTROLLER=https://deis.${region}.moz.works
-    NR_APP="${DEIS_APP}-${region}"
-    echo "Logging into the Deis Controller at ${DEIS_CONTROLLER}"
-    ./deis login $DEIS_CONTROLLER  --username $DEIS_USERNAME --password $DEIS_PASSWORD
-    echo "Pulling ${DOCKER_IMAGE_TAG} into Deis app ${DEIS_APP} in ${region}"
-    ./deis pull ${DOCKER_IMAGE_TAG} -a $DEIS_APP
-    echo "Pinging New Relic about the deployment of ${NR_APP}"
+for region in "${DEIS_REGIONS[@]}"; do
+  DEIS_CONTROLLER=https://deis.${region}.moz.works
+  echo "Logging into the Deis Controller at $DEIS_CONTROLLER"
+  ./deis login "$DEIS_CONTROLLER" --username "$DEIS_USERNAME" --password "$DEIS_PASSWORD"
+  for appname in "${DEIS_APPS[@]}"; do
+    NR_APP="${appname}-${region}"
+    echo "Pulling $DOCKER_IMAGE_TAG into Deis app $appname in $region"
+    ./deis pull "$DOCKER_IMAGE_TAG" -a "$appname"
+    echo "Pinging New Relic about the deployment of $NR_APP"
     curl -H "x-api-key:$NEWRELIC_API_KEY" \
          -d "deployment[app_name]=$NR_APP" \
-         -d "deployment[revision]=$TRAVIS_COMMIT" \
-         -d "deployment[user]=Travis" \
+         -d "deployment[revision]=$CIRCLE_SHA1" \
+         -d "deployment[user]=CircleCI" \
          https://api.newrelic.com/deployments.xml
+  done
 done

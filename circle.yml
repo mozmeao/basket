@@ -3,9 +3,9 @@ machine:
     - docker
   environment:
     # Deis
-    DEIS_DEV_APPLICATION: basket-dev
-    DEIS_STAGE_APPLICATION: basket-stage
-    DEIS_PROD_APPLICATION: basket-prod
+    DEIS_DEV_APP: basket-dev
+    DEIS_STAGE_APP: basket-stage
+    DEIS_PROD_APP: basket-prod
     DEIS_USERNAME: travis
     # Docker
     DOCKER_REPOSITORY: mozorg/basket
@@ -45,18 +45,13 @@ test:
     - docker run --env-file .env --link db "$DOCKER_IMAGE_TAG" bin/run-tests.sh
 
 deployment:
-  dev:
-    branch: master
-    owner: mozilla
-    commands:
-      - bin/deploy.sh $DEIS_DEV_APPLICATION
   stage:
     branch: master
     owner: mozilla
     commands:
-      - bin/deploy.sh $DEIS_STAGE_APPLICATION
+      - bin/deploy.sh stage
   prod:
     tag: /\d{4}-\d{2}-\d{2}(\.\d)?/
     owner: mozilla
     commands:
-      - bin/deploy.sh $DEIS_PROD_APPLICATION
+      - bin/deploy.sh prod
