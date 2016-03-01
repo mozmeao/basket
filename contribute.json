@@ -4,7 +4,7 @@
     "repository": {
         "url": "https://github.com/mozilla/basket",
         "license": "MPL2",
-        "tests": "https://travis-ci.org/mozilla/basket/"
+        "tests": "https://circleci.com/gh/mozilla/basket/"
     },
     "participate": {
         "home": "https://github.com/mozilla/basket",
