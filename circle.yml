@@ -1,0 +1,62 @@
+machine:
+  services:
+    - docker
+  environment:
+    # Deis
+    DEIS_DEV_APPLICATION: basket-dev
+    DEIS_STAGE_APPLICATION: basket-stage
+    DEIS_PROD_APPLICATION: basket-prod
+    DEIS_USERNAME: travis
+    # Docker
+    DOCKER_REPOSITORY: mozorg/basket
+    DOCKER_IMAGE_TAG: "$DOCKER_REPOSITORY:$CIRCLE_SHA1"
+    DOCKER_EMAIL: foo@example.com
+    DOCKER_USERNAME: moztravis
+    # MySQL
+    MYSQL_DATABASE: basket
+    MYSQL_ALLOW_EMPTY_PASSWORD: 1
+    # Django
+    SECRET_KEY: ssssssssshhhhhhhhhhhhh
+    SUPERTOKEN: im-super-thanks-for-asking
+    DEBUG: False
+    ALLOWED_HOSTS: "*"
+    CELERY_ALWAYS_EAGER: True
+    DATABASE_URL: mysql://root@db/basket
+
+dependencies:
+  cache_directories:
+    - "~/docker"
+  override:
+    - docker --version
+    - docker info
+    - if [[ -e ~/docker/image.tar ]]; then docker load --input ~/docker/image.tar; fi
+    - echo "ENV GIT_SHA ${CIRCLE_SHA1}" >> Dockerfile
+    - docker pull ${DOCKER_REPOSITORY}:last_successful_build || true
+    - docker pull "$DOCKER_IMAGE_TAG" || true
+    - docker build -t "$DOCKER_IMAGE_TAG" --pull=true .
+    - mkdir -p ~/docker; docker save "$DOCKER_IMAGE_TAG" > ~/docker/image.tar
+
+test:
+  pre:
+    - env > .env
+  override:
+    - docker run -d --name db -e MYSQL_DATABASE -e MYSQL_ALLOW_EMPTY_PASSWORD mysql:5.6
+    - docker run "$DOCKER_IMAGE_TAG" flake8 news
+    - docker run --env-file .env --link db "$DOCKER_IMAGE_TAG" bin/run-tests.sh
+
+deployment:
+  dev:
+    branch: master
+    owner: mozilla
+    commands:
+      - bin/deploy.sh $DEIS_DEV_APPLICATION
+  stage:
+    branch: master
+    owner: mozilla
+    commands:
+      - bin/deploy.sh $DEIS_STAGE_APPLICATION
+  prod:
+    tag: /\d{4}-\d{2}-\d{2}(\.\d)?/
+    owner: mozilla
+    commands:
+      - bin/deploy.sh $DEIS_PROD_APPLICATION

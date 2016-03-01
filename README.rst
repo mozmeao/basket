@@ -4,10 +4,8 @@ Basket
 
 Interact with our email marketing provider via a nice simple HTTP API.
 
-.. image:: https://travis-ci.org/mozilla/basket.png?branch=master
-    :target: https://travis-ci.org/mozilla/basket
-.. image:: https://coveralls.io/repos/mozilla/basket/badge.png?branch=master
-    :target: https://coveralls.io/r/mozilla/basket
+.. image:: https://circleci.com/gh/mozilla/basket/tree/master.svg?style=svg
+    :target: https://circleci.com/gh/mozilla/basket/tree/master
 
 
 Docs
