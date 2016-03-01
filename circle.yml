@@ -31,18 +31,17 @@ dependencies:
     - docker info
     - if [[ -e ~/docker/image.tar ]]; then docker load --input ~/docker/image.tar; fi
     - echo "ENV GIT_SHA ${CIRCLE_SHA1}" >> Dockerfile
-    - docker pull ${DOCKER_REPOSITORY}:last_successful_build || true
-    - docker pull "$DOCKER_IMAGE_TAG" || true
     - docker build -t "$DOCKER_IMAGE_TAG" --pull=true .
     - mkdir -p ~/docker; docker save "$DOCKER_IMAGE_TAG" > ~/docker/image.tar
 
 test:
   pre:
     - env > .env
+    - mkdir -p "$CIRCLE_TEST_REPORTS/django"
   override:
     - docker run -d --name db -e MYSQL_DATABASE -e MYSQL_ALLOW_EMPTY_PASSWORD mysql:5.6
     - docker run "$DOCKER_IMAGE_TAG" flake8 news
-    - docker run --env-file .env --link db "$DOCKER_IMAGE_TAG" bin/run-tests.sh
+    - docker run --env-file .env --link db -v "$CIRCLE_TEST_REPORTS/django:/app/test-results" "$DOCKER_IMAGE_TAG" bin/run-tests.sh
 
 deployment:
   stage:
