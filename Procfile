@@ -1,2 +1,2 @@
 web: bin/run-prod.sh
-worker: celery -A news worker -l info -c 4
+worker: newrelic-admin run-program celery -A news worker -l info -c 4
