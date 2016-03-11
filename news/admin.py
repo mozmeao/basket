@@ -59,7 +59,7 @@ class TaskNameFilter(admin.SimpleListFilter):
     parameter_name = 'name'
 
     def lookups(self, request, model_admin):
-        qs = model_admin.queryset(request)
+        qs = model_admin.get_queryset(request)
         names = qs.values_list('name', flat=True).distinct().order_by('name')
         return [(name, name.rsplit('.', 1)[1].replace('_', ' ')) for name in names]
 
