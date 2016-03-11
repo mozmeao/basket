@@ -405,6 +405,7 @@ def update_user(data, email, token, api_call_type, optin):
         }
 
     token = user_data['token']
+    email = user_data['email']
 
     # Parse the parameters
     # `record` will contain the data we send to ET in the format they want.
