@@ -4,7 +4,6 @@ import logging
 from email.utils import formatdate
 from functools import wraps
 from time import mktime
-from urllib2 import URLError
 
 from django.conf import settings
 from django.core.cache import get_cache
@@ -161,9 +160,9 @@ def et_task(func):
         statsd.incr(wrapped.name + '.total')
         try:
             return func(*args, **kwargs)
-        except (URLError, NewsletterException) as e:
-            # URLError or NewsletterException could be a connection issue,
-            # so try again later.
+        except (IOError, NewsletterException) as e:
+            # IOError or NewsletterException could be a connection issue,
+            # so try again later. IOError covers URLError and SSLError.
             wrapped.retry(exc=e, countdown=(2 ** wrapped.request.retries) * 60)
 
     return wrapped
