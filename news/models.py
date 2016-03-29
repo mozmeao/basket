@@ -276,7 +276,7 @@ class Interest(models.Model):
             emails = self.default_steward_emails
         emails = emails.split(',')
 
-        send_mail('Inquiry about {0}'.format(self.title), email_body, 'basket@basket.mozilla.org',
+        send_mail('Inquiry about {0}'.format(self.title), email_body, 'contribute@mozilla.org',
                   emails)
 
     def __unicode__(self):
