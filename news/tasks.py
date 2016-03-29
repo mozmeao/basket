@@ -100,6 +100,7 @@ class ETTask(Task):
 
         """
         statsd.incr(self.name + '.success')
+        statsd.incr('news.tasks.success_total')
         log.info("Task succeeded: %s(args=%r, kwargs=%r)"
                  % (self.name, args, kwargs))
 
@@ -121,6 +122,7 @@ class ETTask(Task):
 
         """
         statsd.incr(self.name + '.failure')
+        statsd.incr('news.tasks.failure_total')
         log.error("Task failed: %s" % self.name, exc_info=einfo.exc_info)
         if settings.STORE_TASK_FAILURES:
             FailedTask.objects.create(
@@ -149,6 +151,7 @@ class ETTask(Task):
 
         """
         statsd.incr(self.name + '.retry')
+        statsd.incr('news.tasks.retry_total')
         log.warn("Task retrying: %s" % self.name, exc_info=einfo.exc_info)
 
 
@@ -158,6 +161,7 @@ def et_task(func):
     @wraps(func)
     def wrapped(*args, **kwargs):
         statsd.incr(wrapped.name + '.total')
+        statsd.incr('news.tasks.all_total')
         try:
             return func(*args, **kwargs)
         except (IOError, NewsletterException) as e:
