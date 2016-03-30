@@ -120,6 +120,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.template.context_processors.request',
                 'django.contrib.messages.context_processors.messages',
+                'news.context_processors.settings',
             ],
         },
     },
@@ -144,6 +145,7 @@ ROOT_URLCONF = 'urls'
 
 INSTALLED_APPS = (
     'news',
+    'saml',
 
     'corsheaders',
     'product_details',
@@ -249,3 +251,7 @@ SYNC_KEY = config('SYNC_KEY', None)
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run
     CELERY_ALWAYS_EAGER = True
+
+SAML_ENABLE = config('SAML_ENABLE', default=False, cast=bool)
+if SAML_ENABLE:
+    from saml.settings import *  # noqa
