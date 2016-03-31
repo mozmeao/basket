@@ -7,7 +7,7 @@ machine:
     DEIS_STAGE_APP: basket-stage
     DEIS_PROD_APP: basket-prod
     DEIS_ADMIN_APP: basket-admin
-    DEIS_USERNAME: travis
+    DEIS_USERNAME: circleci
     # Docker
     DOCKER_REPOSITORY: mozorg/basket
     DOCKER_IMAGE_TAG: "$DOCKER_REPOSITORY:$CIRCLE_SHA1"
