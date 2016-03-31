@@ -82,7 +82,7 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS',
-                       default='.allizom.org, .moz.works, '
+                       default='.allizom.org, .moz.works, basket.mozmar.org, '
                                'basket.mozilla.com, basket.mozilla.org',
                        cast=Csv())
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', not DEBUG, cast=bool)
