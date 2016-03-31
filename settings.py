@@ -30,7 +30,10 @@ MANAGERS = ADMINS
 # avoids a warning from django
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 
+# DB read-only, API can still read-write to Salesforce
 READ_ONLY_MODE = config('READ_ONLY_MODE', False, cast=bool)
+# Disables the API and changes redirects
+ADMIN_ONLY_MODE = config('ADMIN_ONLY_MODE', False, cast=bool)
 
 REDIS_URL = config('REDIS_URL', None)
 if REDIS_URL:
@@ -79,12 +82,16 @@ EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS',
-                       default='.allizom.org, basket.mozilla.com, basket.mozilla.org',
+                       default='.allizom.org, .moz.works, '
+                               'basket.mozilla.com, basket.mozilla.org',
                        cast=Csv())
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', not DEBUG, cast=bool)
 CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', not DEBUG, cast=bool)
 DISABLE_ADMIN = config('DISABLE_ADMIN', READ_ONLY_MODE, cast=bool)
 STORE_TASK_FAILURES = config('STORE_TASK_FAILURES', not READ_ONLY_MODE, cast=bool)
+# if DISABLE_ADMIN is True redirect /admin/ to this URL
+ADMIN_REDIRECT_URL = config('ADMIN_REDIRECT_URL',
+                            'https://basket-admin.us-west.moz.works/admin/')
 
 TIME_ZONE = 'America/Los_Angeles'
 USE_TZ = True

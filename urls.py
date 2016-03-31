@@ -1,15 +1,25 @@
 from django.conf import settings
 from django.conf.urls import include, url
 from django.contrib import admin
+from django.views.generic import RedirectView
 
 
-urlpatterns = (
-    url(r'^news/', include('news.urls')),
-)
+home_redirect = '/admin/' if settings.ADMIN_ONLY_MODE else 'https://www.mozilla.org/'
 
-if not settings.DISABLE_ADMIN:
+urlpatterns = [
+    url(r'^$', RedirectView.as_view(url=home_redirect))
+]
+
+if not settings.ADMIN_ONLY_MODE:
+    urlpatterns.append(url(r'^news/', include('news.urls')))
+
+if settings.DISABLE_ADMIN:
+    urlpatterns.append(
+        url(r'^admin/', RedirectView.as_view(url=settings.ADMIN_REDIRECT_URL))
+    )
+else:
     admin.autodiscover()
-    urlpatterns += (
+    urlpatterns.extend([
         url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
         url(r'^admin/', include(admin.site.urls)),
-    )
+    ])
