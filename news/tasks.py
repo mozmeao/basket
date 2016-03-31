@@ -167,7 +167,15 @@ def et_task(func):
         except (IOError, NewsletterException) as e:
             # IOError or NewsletterException could be a connection issue,
             # so try again later. IOError covers URLError and SSLError.
-            wrapped.retry(exc=e, countdown=(2 ** wrapped.request.retries) * 60)
+            try:
+                wrapped.retry(countdown=(2 ** wrapped.request.retries) * 60)
+            except wrapped.MaxRetriesExceededError:
+                statsd.incr(wrapped.name + '.retry_max')
+                statsd.incr('news.tasks.retry_max_total')
+                # don't bubble certain errors
+                exc_msg = str(e)
+                if 'There are no valid subscribers' not in exc_msg:
+                    raise e
 
     return wrapped
 
