@@ -39,7 +39,7 @@ test:
     - env > .env
     - mkdir -p "$CIRCLE_TEST_REPORTS/django"
   override:
-    - docker run -d --name db -e MYSQL_DATABASE -e MYSQL_ALLOW_EMPTY_PASSWORD mysql:5.6
+    - docker run -d --name db -e MYSQL_DATABASE -e MYSQL_ALLOW_EMPTY_PASSWORD mariadb:10.0
     - docker run "$DOCKER_IMAGE_TAG" flake8 news
     - docker run --env-file .env --link db -v "$CIRCLE_TEST_REPORTS/django:/app/test-results" "$DOCKER_IMAGE_TAG" bin/run-tests.sh
 
