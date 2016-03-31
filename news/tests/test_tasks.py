@@ -200,7 +200,7 @@ class ETTaskTests(TestCase):
         # have to use run() to make sure our request above is used
         myfunc.run()
 
-        myfunc.retry.assert_called_with(exc=error, countdown=16 * 60)
+        myfunc.retry.assert_called_with(countdown=16 * 60)
 
 
 class AddFxaActivityTests(TestCase):
