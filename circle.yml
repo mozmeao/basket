@@ -6,6 +6,7 @@ machine:
     DEIS_DEV_APP: basket-dev
     DEIS_STAGE_APP: basket-stage
     DEIS_PROD_APP: basket-prod
+    DEIS_ADMIN_APP: basket-admin
     DEIS_USERNAME: travis
     # Docker
     DOCKER_REPOSITORY: mozorg/basket
