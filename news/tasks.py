@@ -70,6 +70,16 @@ PHONEBOOK_GROUPS = (
 RECOVERY_MESSAGE_ID = 'recovery_message'
 FXACCOUNT_WELCOME = 'FxAccounts_Welcome'
 
+# don't propagate and don't retry if these are the error messages
+IGNORE_ERROR_MSGS = [
+    'InvalidEmailAddress',
+    'An invalid phone number was provided',
+]
+# don't propagate after max retries if these are the error messages
+IGNORE_ERROR_MSGS_POST_RETRY = [
+    'There are no valid subscribers',
+]
+
 
 class BasketError(Exception):
     """Tasks can raise this when an error happens that we should not retry.
@@ -164,18 +174,26 @@ def et_task(func):
         statsd.incr('news.tasks.all_total')
         try:
             return func(*args, **kwargs)
-        except (IOError, NewsletterException) as e:
-            # IOError or NewsletterException could be a connection issue,
-            # so try again later. IOError covers URLError and SSLError.
+        except (IOError, NewsletterException, ETRestError) as e:
+            # These could all be connection issues, so try again later.
+            # IOError covers URLError and SSLError.
+            exc_msg = str(e)
+            # but don't retry for certain error messages
+            for ignore_msg in IGNORE_ERROR_MSGS:
+                if ignore_msg in exc_msg:
+                    return
+
             try:
                 wrapped.retry(countdown=(2 ** wrapped.request.retries) * 60)
             except wrapped.MaxRetriesExceededError:
                 statsd.incr(wrapped.name + '.retry_max')
                 statsd.incr('news.tasks.retry_max_total')
                 # don't bubble certain errors
-                exc_msg = str(e)
-                if 'There are no valid subscribers' not in exc_msg:
-                    raise e
+                for ignore_msg in IGNORE_ERROR_MSGS_POST_RETRY:
+                    if ignore_msg in exc_msg:
+                        return
+
+                raise e
 
     return wrapped
 
