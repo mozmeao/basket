@@ -89,6 +89,7 @@ class RecoveryMessageTask(TestCase):
 
         self.assertFalse(mock_send.called)
 
+    @override_settings(RECOVER_MSG_LANGS=['fr'])
     def test_email_in_et(self, mock_look_for_user, mock_send):
         """Email not in basket but in ET"""
         # Should trigger message. We can follow the user's format and lang pref
@@ -105,6 +106,25 @@ class RecoveryMessageTask(TestCase):
         }
         send_recovery_message_task(self.email)
         message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
+        mock_send.delay.assert_called_with(message_id, self.email,
+                                           'USERTOKEN', format)
+
+    @override_settings(RECOVER_MSG_LANGS=['en'])
+    def test_lang_not_available(self, mock_look_for_user, mock_send):
+        """Language not available for recover message"""
+        # Should trigger message in english if not available in user lang
+        format = 'T'
+        mock_look_for_user.return_value = {
+            'status': 'ok',
+            'email': self.email,
+            'format': format,
+            'country': '',
+            'lang': 'fr',
+            'token': 'USERTOKEN',
+            'newsletters': [],
+        }
+        send_recovery_message_task(self.email)
+        message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, 'en', format)
         mock_send.delay.assert_called_with(message_id, self.email,
                                            'USERTOKEN', format)
 
