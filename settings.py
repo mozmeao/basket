@@ -242,6 +242,8 @@ LOGGING = {
 PROD_DETAILS_CACHE_NAME = 'product_details'
 PROD_DETAILS_CACHE_TIMEOUT = None
 
+RECOVER_MSG_LANGS = config('RECOVER_MSG_LANGS', 'en', cast=Csv())
+
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run
     CELERY_ALWAYS_EAGER = True
