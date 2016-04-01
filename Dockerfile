@@ -1,18 +1,12 @@
-FROM debian:jessie
+FROM alpine:edge
 
-RUN adduser --uid 1000 --disabled-password --gecos '' --no-create-home webdev
+RUN adduser -u 1000 -D -g '' -H webdev
 WORKDIR /app
 
 EXPOSE 8000
 CMD ["bin/run-prod.sh"]
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential python2.7 libpython2.7 python-dev \
-        python-pip gettext python-mysqldb
-
-# Get pip 8
-COPY bin/pipstrap.py bin/pipstrap.py
-RUN bin/pipstrap.py
+RUN apk --no-cache add bash gcc g++ libc-dev make python-dev py-pip py-mysqldb gettext
 
 # Install app
 COPY requirements /app/requirements
