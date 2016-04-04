@@ -3,6 +3,8 @@ from django.core.management import BaseCommand
 
 from synctool.functions import sync_data
 
+from news.newsletters import clear_newsletter_cache, clear_sms_cache
+
 
 DEFAULT_SYNC_DOMAIN = 'basket.mozilla.org'
 
@@ -22,3 +24,5 @@ class Command(BaseCommand):
         sync_data(url='https://{}/news/sync/'.format(options['domain']),
                   clean=options['clean'],
                   api_token=options['key'])
+        clear_newsletter_cache()
+        clear_sms_cache()
