@@ -13,8 +13,9 @@ from basket import errors
 from django_statsd.clients import statsd
 from ratelimit.exceptions import Ratelimited
 from ratelimit.utils import is_ratelimited
+from synctool.routing import Route
 
-from news.models import Newsletter, Interest
+from news.models import Newsletter, Interest, LocaleStewards, NewsletterGroup, SMSMessage
 from news.newsletters import get_sms_messages, newsletter_slugs, newsletter_and_group_slugs, \
     newsletter_private_slugs
 from news.tasks import (
@@ -51,6 +52,18 @@ from news.utils import (
 IP_RATE_LIMIT_EXTERNAL = getattr(settings, 'IP_RATE_LIMIT_EXTERNAL', '40/m')
 IP_RATE_LIMIT_INTERNAL = getattr(settings, 'IP_RATE_LIMIT_INTERNAL', '400/m')
 PHONE_NUMBER_RATE_LIMIT = getattr(settings, 'PHONE_NUMBER_RATE_LIMIT', '1/h')
+sync_route = Route(api_token=settings.SYNC_KEY)
+
+
+@sync_route.queryset('sync')
+def news_sync():
+    return [
+        Newsletter.objects.all(),
+        NewsletterGroup.objects.all(),
+        Interest.objects.all(),
+        LocaleStewards.objects.all(),
+        SMSMessage.objects.all(),
+    ]
 
 
 def ip_rate_limit_key(group, request):

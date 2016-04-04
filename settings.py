@@ -244,6 +244,8 @@ PROD_DETAILS_CACHE_TIMEOUT = None
 
 RECOVER_MSG_LANGS = config('RECOVER_MSG_LANGS', 'en', cast=Csv())
 
+SYNC_KEY = config('SYNC_KEY', None)
+
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run
     CELERY_ALWAYS_EAGER = True

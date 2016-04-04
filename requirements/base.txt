@@ -81,3 +81,5 @@ celery==3.1.23 \
 kombu==3.0.35 \
     --hash=sha256:2c59a5e087d5895675cdb4d6a38a0aa147f0411366e68330a76e480ba3b25727 \
     --hash=sha256:22ab336a17962717a5d9470547e5508d4bcf1b6ec10cd9486868daf4e5edb727
+https://github.com/pmclanahan/django-synctool/archive/master.tar.gz#egg=django-synctool==1.1.0 \
+    --hash=sha256:d0adfaeff36fd0e6bc07ae8b752815ee57c195ef8f4363ece88d7738f4955a91
