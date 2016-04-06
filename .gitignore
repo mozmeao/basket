@@ -17,3 +17,4 @@ build.py
 .noseids
 *.db
 static
+celerybeat-schedule

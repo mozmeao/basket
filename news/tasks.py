@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.cache import get_cache
 from django_statsd.clients import statsd
 
+import requests
 import user_agents
 from celery import Task
 
@@ -801,3 +802,8 @@ def send_recovery_message_task(email):
 
     message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
     send_message.delay(message_id, email, user_data['token'], format)
+
+
+@celery_app.task()
+def snitch(snitch_id):
+    requests.get('https://nosnch.in/{}'.format(snitch_id))
