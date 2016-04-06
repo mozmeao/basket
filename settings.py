@@ -2,6 +2,7 @@ import os
 import socket
 import struct
 import sys
+from datetime import timedelta
 
 import dj_database_url
 import django_cache_url
@@ -189,6 +190,17 @@ BROKER_URL = config('BROKER_URL', None)
 CELERY_REDIS_MAX_CONNECTIONS = config('CELERY_REDIS_MAX_CONNECTIONS', 2, cast=int)
 CELERY_DISABLE_RATE_LIMITS = True
 CELERY_IGNORE_RESULT = True
+
+SNITCH_ID = config('SNITCH_ID', None)
+
+CELERYBEAT_SCHEDULE = {}
+
+if SNITCH_ID:
+    CELERYBEAT_SCHEDULE['snitch'] = {
+        'task': 'news.tasks.snitch',
+        'schedule': timedelta(minutes=5),
+        'args': (SNITCH_ID,)
+    }
 
 
 # via http://stackoverflow.com/a/6556951/107114
