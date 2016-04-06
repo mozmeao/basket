@@ -6,7 +6,7 @@ from django.test import TestCase
 from django.test.client import RequestFactory
 
 from basket import errors
-from mock import patch
+from mock import patch, ANY
 
 from news.models import BlockedEmail
 from news.utils import (
@@ -103,7 +103,7 @@ class UpdateUserTaskTests(TestCase):
         response = update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
         self.update_user.delay.assert_called_with(after_data, 'dude@example.com',
-                                                  None, SUBSCRIBE, True)
+                                                  None, SUBSCRIBE, True, start_time=ANY)
 
     def test_invalid_accept_lang(self):
         """If accept_lang param is provided but invalid, return a 400."""
@@ -129,7 +129,8 @@ class UpdateUserTaskTests(TestCase):
         response = update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
         # basically asserts that the data['lang'] value wasn't changed.
-        self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True)
+        self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True,
+                                                  start_time=ANY)
 
     def test_missing_email(self):
         """
@@ -150,7 +151,8 @@ class UpdateUserTaskTests(TestCase):
 
         response = update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
-        self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True)
+        self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True,
+                                                  start_time=ANY)
         self.assertFalse(self.get_or_create_user_data.called)
 
     def test_success_with_valid_newsletters(self):
@@ -185,7 +187,8 @@ class UpdateUserTaskTests(TestCase):
         response = update_user_task(request, SUBSCRIBE, sync=False)
 
         self.assert_response_ok(response)
-        self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True)
+        self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True,
+                                                  start_time=ANY)
 
     def test_success_with_sync(self):
         """
@@ -201,7 +204,7 @@ class UpdateUserTaskTests(TestCase):
 
         self.assert_response_ok(response, token='mytoken', created=True)
         self.update_user.delay.assert_called_with(data, 'a@example.com', 'mytoken',
-                                                  SUBSCRIBE, True)
+                                                  SUBSCRIBE, True, start_time=ANY)
 
     @patch('news.views.newsletter_slugs')
     @patch('news.views.newsletter_private_slugs')
@@ -217,7 +220,7 @@ class UpdateUserTaskTests(TestCase):
 
         self.assert_response_ok(response)
         self.update_user.delay.assert_called_with(data, None, 'mytoken',
-                                                  UNSUBSCRIBE, True)
+                                                  UNSUBSCRIBE, True, start_time=ANY)
 
     @patch('news.views.newsletter_and_group_slugs')
     @patch('news.views.newsletter_private_slugs')

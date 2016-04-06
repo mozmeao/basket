@@ -3,7 +3,7 @@ import datetime
 import logging
 from email.utils import formatdate
 from functools import wraps
-from time import mktime
+from time import mktime, time
 
 from django.conf import settings
 from django.core.cache import get_cache
@@ -167,6 +167,10 @@ def et_task(func):
     @celery_app.task(base=ETTask)
     @wraps(func)
     def wrapped(*args, **kwargs):
+        start_time = kwargs.pop('start_time', None)
+        if start_time:
+            total_time = int((time() - start_time) * 1000)
+            statsd.timing(wrapped.name, total_time)
         statsd.incr(wrapped.name + '.total')
         statsd.incr('news.tasks.all_total')
         try:

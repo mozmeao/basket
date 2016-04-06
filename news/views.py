@@ -1,5 +1,6 @@
 import json
 import re
+from time import time
 
 from django.conf import settings
 from django.shortcuts import render
@@ -105,7 +106,7 @@ def ratelimited(request, e):
 @require_POST
 @csrf_exempt
 def confirm(request, token):
-    confirm_user.delay(token)
+    confirm_user.delay(token, start_time=time())
     return HttpResponseJSON({'status': 'ok'})
 
 
@@ -694,14 +695,16 @@ def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
         except NewsletterException as e:
             return newsletter_exception_response(e)
 
-        update_user.delay(data, user_data['email'], user_data['token'], api_call_type, optin)
+        update_user.delay(data, user_data['email'], user_data['token'], api_call_type, optin,
+                          start_time=time())
         return HttpResponseJSON({
             'status': 'ok',
             'token': user_data['token'],
             'created': created,
         })
     else:
-        update_user.delay(data, email, token, api_call_type, optin)
+        update_user.delay(data, email, token, api_call_type, optin,
+                          start_time=time())
         return HttpResponseJSON({
             'status': 'ok',
         })
