@@ -1,4 +1,5 @@
 import os
+import platform
 import socket
 import struct
 import sys
@@ -128,6 +129,7 @@ TEMPLATES = [
 ]
 
 MIDDLEWARE_CLASSES = (
+    'news.middleware.HostnameMiddleware',
     'django.middleware.common.CommonMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -220,9 +222,14 @@ def get_default_gateway_linux():
         return 'localhost'
 
 
+HOSTNAME = platform.node()
+DEIS_APP = config('DEIS_APP', default=None)
+DEIS_DOMAIN = config('DEIS_DOMAIN', default=None)
+DEIS_RELEASE = config('DEIS_RELEASE', default=None)
+
 STATSD_HOST = config('STATSD_HOST', get_default_gateway_linux())
 STATSD_PORT = config('STATSD_PORT', 8125, cast=int)
-STATSD_PREFIX = config('STATSD_PREFIX', config('DEIS_APP', None))
+STATSD_PREFIX = config('STATSD_PREFIX', DEIS_APP)
 STATSD_CLIENT = config('STATSD_CLIENT', 'django_statsd.clients.null')
 
 LOGGING = {
