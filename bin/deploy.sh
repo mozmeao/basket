@@ -17,7 +17,7 @@ DEIS_REGIONS=( us-west eu-west )
 if [[ "$1" == "prod" ]]; then
   DEIS_APPS=( $DEIS_PROD_APP $DEIS_ADMIN_APP )
 else
-  DEIS_APPS=( $DEIS_DEV_APP $DEIS_STAGE_APP )
+  DEIS_APPS=( $DEIS_DEV_APP $DEIS_STAGE_APP $DEIS_ADMIN_STAGE_APP )
 fi
 
 for region in "${DEIS_REGIONS[@]}"; do
@@ -25,8 +25,8 @@ for region in "${DEIS_REGIONS[@]}"; do
   echo "Logging into the Deis Controller at $DEIS_CONTROLLER"
   ./deis login "$DEIS_CONTROLLER" --username "$DEIS_USERNAME" --password "$DEIS_PASSWORD"
   for appname in "${DEIS_APPS[@]}"; do
-    # skip admin app in eu-west
-    if [[ "$region" == "eu-west" && "$appname" == "$DEIS_ADMIN_APP" ]]; then
+    # skip admin apps in eu-west
+    if [[ "$region" == "eu-west" && "$appname" == *admin* ]]; then
       continue
     fi
     NR_APP="${appname}-${region}"
