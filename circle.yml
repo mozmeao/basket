@@ -5,6 +5,7 @@ machine:
     # Deis
     DEIS_DEV_APP: basket-dev
     DEIS_STAGE_APP: basket-stage
+    DEIS_ADMIN_STAGE_APP: basket-admin-stage
     DEIS_PROD_APP: basket-prod
     DEIS_ADMIN_APP: basket-admin
     DEIS_USERNAME: circleci
