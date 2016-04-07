@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from django_statsd.clients import statsd
 from django_statsd.middleware import GraphiteRequestTimingMiddleware
 
@@ -14,3 +16,14 @@ class GraphiteViewHitCountMiddleware(GraphiteRequestTimingMiddleware):
             statsd.incr('view.count.{module}.{name}.{method}'.format(**data))
             statsd.incr('view.count.{module}.{method}'.format(**data))
             statsd.incr('view.count.{method}'.format(**data))
+
+
+class HostnameMiddleware(object):
+    def __init__(self):
+        values = [getattr(settings, x) for x in ['HOSTNAME', 'DEIS_APP',
+                                                 'DEIS_RELEASE', 'DEIS_DOMAIN']]
+        self.backend_server = '.'.join(x for x in values if x)
+
+    def process_response(self, request, response):
+        response['X-Backend-Server'] = self.backend_server
+        return response
