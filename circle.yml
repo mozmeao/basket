@@ -46,6 +46,11 @@ test:
     - docker run --env-file .env --link db -v "$CIRCLE_TEST_REPORTS/django:/app/test-results" "$DOCKER_IMAGE_TAG" bin/run-tests.sh
 
 deployment:
+  demo:
+    branch: /demo__.+/
+    owner: mozilla
+    commands:
+      - bin/deploy.sh demo
   stage:
     branch: master
     owner: mozilla
