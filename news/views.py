@@ -6,7 +6,7 @@ from django.shortcuts import render
 from django.utils.encoding import force_unicode
 from django.views.decorators.cache import cache_control, never_cache
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_POST, require_safe
 
 # Get error codes from basket-client so users see the same definitions
 from basket import errors
@@ -506,7 +506,7 @@ def custom_update_phonebook(request, token):
 
 
 # Get data about current newsletters
-@require_GET
+@require_safe
 @cache_control(max_age=300)
 def newsletters(request):
     # Get the newsletters as a dictionary of dictionaries that are
@@ -608,7 +608,7 @@ def lookup_user(request):
     return HttpResponseJSON(user_data, status_code)
 
 
-@require_GET
+@require_safe
 @cache_control(max_age=300)
 def list_newsletters(request):
     """
