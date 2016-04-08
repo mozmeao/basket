@@ -112,8 +112,6 @@ class ETTask(Task):
         """
         statsd.incr(self.name + '.success')
         statsd.incr('news.tasks.success_total')
-        log.info("Task succeeded: %s(args=%r, kwargs=%r)"
-                 % (self.name, args, kwargs))
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         """Error handler.
@@ -134,7 +132,6 @@ class ETTask(Task):
         """
         statsd.incr(self.name + '.failure')
         statsd.incr('news.tasks.failure_total')
-        log.error("Task failed: %s" % self.name, exc_info=einfo.exc_info)
         if settings.STORE_TASK_FAILURES:
             FailedTask.objects.create(
                 task_id=task_id,
@@ -163,7 +160,6 @@ class ETTask(Task):
         """
         statsd.incr(self.name + '.retry')
         statsd.incr('news.tasks.retry_total')
-        log.warn("Task retrying: %s" % self.name, exc_info=einfo.exc_info)
 
 
 def et_task(func):
@@ -693,7 +689,7 @@ def send_welcomes(user_data, newsletter_slugs, format):
     # Note: it's okay not to send a welcome if none of the newsletters
     # have one configured.
     for welcome in welcomes_to_send:
-        log.info("Sending welcome %s to user %s %s" %
+        log.debug("Sending welcome %s to user %s %s" %
                  (welcome, user_data['email'], user_data['token']))
         send_message.delay(welcome, user_data['email'], user_data['token'],
                            format)
@@ -721,7 +717,7 @@ def confirm_user(token, user_data=None):
             raise BasketError(MSG_USER_NOT_FOUND)
 
     if user_data['confirmed']:
-        log.info('In confirm_user, user with token %s '
+        log.debug('In confirm_user, user with token %s '
                  'is already confirmed' % token)
         return
 
@@ -790,7 +786,7 @@ def attempt_fix(ext_name, record, task, e):
 def send_recovery_message_task(email):
     user_data = get_user_data(email=email)
     if not user_data:
-        log.warn("In send_recovery_message_task, email not known: %s" % email)
+        log.debug("In send_recovery_message_task, email not known: %s" % email)
         return
 
     # make sure we have a language and format, no matter what ET returned
