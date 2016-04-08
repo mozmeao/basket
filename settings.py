@@ -4,6 +4,7 @@ import socket
 import struct
 import sys
 from datetime import timedelta
+from uuid import uuid4
 
 import dj_database_url
 import django_cache_url
@@ -179,7 +180,7 @@ EXACTTARGET_USER = config('EXACTTARGET_USER', None)
 EXACTTARGET_PASS = config('EXACTTARGET_PASS', None)
 EXACTTARGET_DATA = config('EXACTTARGET_DATA', None)
 EXACTTARGET_OPTIN_STAGE = config('EXACTTARGET_OPTIN_STAGE', None)
-SUPERTOKEN = config('SUPERTOKEN')
+SUPERTOKEN = config('SUPERTOKEN', str(uuid4()))
 ET_CLIENT_ID = config('ET_CLIENT_ID', None)
 ET_CLIENT_SECRET = config('ET_CLIENT_SECRET', None)
 
