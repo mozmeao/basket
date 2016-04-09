@@ -138,6 +138,7 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'news.middleware.GraphiteViewHitCountMiddleware',
+    'django_statsd.middleware.GraphiteRequestTimingMiddleware',
     'django_statsd.middleware.GraphiteMiddleware',
     'ratelimit.middleware.RatelimitMiddleware',
 )
