@@ -3,7 +3,7 @@ from urllib2 import URLError
 from django.test import TestCase
 from django.test.utils import override_settings
 
-from mock import Mock, patch
+from mock import ANY, Mock, patch
 
 from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
 from news.celery import app as celery_app
@@ -220,7 +220,7 @@ class ETTaskTests(TestCase):
         # have to use run() to make sure our request above is used
         myfunc.run()
 
-        myfunc.retry.assert_called_with(countdown=16 * 60)
+        myfunc.retry.assert_called_with(args=(), kwargs=ANY, countdown=16 * 60)
 
 
 class AddFxaActivityTests(TestCase):
