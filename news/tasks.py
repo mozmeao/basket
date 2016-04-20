@@ -185,7 +185,9 @@ def et_task(func):
                     return
 
             try:
-                wrapped.retry(countdown=(2 ** wrapped.request.retries) * 60)
+                kwargs['start_time'] = time()
+                wrapped.retry(args=args, kwargs=kwargs,
+                              countdown=(2 ** wrapped.request.retries) * 60)
             except wrapped.MaxRetriesExceededError:
                 statsd.incr(wrapped.name + '.retry_max')
                 statsd.incr('news.tasks.retry_max_total')
