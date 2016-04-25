@@ -307,7 +307,7 @@ class UpdateUserTest(TestCase):
                          api_call_type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         apply_updates.assert_called()
-        send_message.delay.assert_called()
+        send_message.delay.assert_not_called()
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
