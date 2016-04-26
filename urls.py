@@ -3,11 +3,14 @@ from django.conf.urls import include, url
 from django.contrib import admin
 from django.views.generic import RedirectView
 
+from news.views import healthz
+
 
 home_redirect = '/admin/' if settings.ADMIN_ONLY_MODE else 'https://www.mozilla.org/'
 
 urlpatterns = [
-    url(r'^$', RedirectView.as_view(url=home_redirect))
+    url(r'^$', RedirectView.as_view(url=home_redirect)),
+    url('^healthz/$', healthz, name='healthz'),
 ]
 
 if not settings.ADMIN_ONLY_MODE:
