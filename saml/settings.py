@@ -18,8 +18,8 @@ AUTHENTICATION_BACKENDS = (
 
 SAML_SSO_URL = config('SAML_SSO_URL')
 SAML_ENTITY_ID = config('SAML_ENTITY_ID')
-SAML_REMOTE_METADATA = os.path.join(
-    SAML_DIR, config('SAML_REMOTE_METADATA', default='remote_metadata.xml'))
+SAML_REMOTE_METADATA = os.path.join(SAML_DIR, 'metadata',
+                                    config('SAML_REMOTE_METADATA', default='prod.xml'))
 SAML_CREATE_UNKNOWN_USER = config('SAML_CREATE_USER', default=False, cast=bool)
 SAML_DJANGO_USER_MAIN_ATTRIBUTE = 'email'
 SAML_ATTRIBUTE_MAPPING = {
