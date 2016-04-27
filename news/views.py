@@ -3,9 +3,10 @@ import re
 from time import time
 
 from django.conf import settings
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.utils.encoding import force_unicode
-from django.views.decorators.cache import cache_control, never_cache
+from django.views.decorators.cache import cache_page, never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_safe
 
@@ -508,11 +509,10 @@ def custom_update_phonebook(request, token):
 
 # Get data about current newsletters
 @require_safe
-@cache_control(max_age=300)
+@cache_page(300)
 def newsletters(request):
     # Get the newsletters as a dictionary of dictionaries that are
     # easily jsonified
-
     result = {}
     for newsletter in Newsletter.objects.all().values():
         newsletter['languages'] = newsletter['languages'].split(",")
@@ -524,6 +524,15 @@ def newsletters(request):
         'status': 'ok',
         'newsletters': result,
     })
+
+
+@require_safe
+@cache_page(10)
+def healthz(request):
+    """for use with healthchecks. wrapped with `cache_page` to test redis cache."""
+    # here to make sure DB is working
+    assert Newsletter.objects.exists(), 'no newsletters exist'
+    return HttpResponse('OK')
 
 
 @never_cache
@@ -610,7 +619,7 @@ def lookup_user(request):
 
 
 @require_safe
-@cache_control(max_age=300)
+@cache_page(300)
 def list_newsletters(request):
     """
     Public web page listing currently active newsletters.
