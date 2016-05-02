@@ -3,12 +3,10 @@ import datetime
 from django.conf import settings
 from django.test import TestCase
 from django.test.client import RequestFactory
-from django.utils.unittest import skip
 
 from mock import patch, ANY
 
 from news import models
-from news.backends.common import NewsletterException
 from news.tasks import update_user, UU_EXEMPT_NEW, UU_ALREADY_CONFIRMED
 from news.utils import SET, SUBSCRIBE, UNSUBSCRIBE, generate_token
 
@@ -162,14 +160,12 @@ class UpdateUserTest(TestCase):
         self.assertFalse(send_message.called)
 
     @patch('news.tasks.get_user_data')
-    @patch('news.utils.ExactTargetDataExt')
-    @patch('news.tasks.ExactTarget')
-    def test_update_no_welcome_set(self, et_mock, etde_mock, get_user_data):
+    @patch('news.tasks.sfmc')
+    def test_update_no_welcome_set(self, sfmc_mock, get_user_data):
         """
         Update sends no welcome if newsletter has no welcome set,
         or it's a space.
         """
-        et = et_mock()
         # Newsletter with no defined welcome message
         nl1 = models.Newsletter.objects.create(
             slug='slug',
@@ -190,16 +186,16 @@ class UpdateUserTest(TestCase):
                          token=self.token,
                          api_call_type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
-        self.assertFalse(et.trigger_send.called)
+        self.assertFalse(sfmc_mock.send_mail.called)
 
         # welcome of ' ' is same as none
         nl1.welcome = ' '
-        et.trigger_send.reset_mock()
+        sfmc_mock.send_mail.reset_mock()
         rc = update_user(data=data, email=self.email,
                          token=self.token,
                          api_call_type=SUBSCRIBE, optin=True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
-        self.assertFalse(et.trigger_send.called)
+        self.assertFalse(sfmc_mock.send_mail.called)
 
     @patch('news.tasks.apply_updates')
     @patch('news.tasks.send_message')
@@ -347,8 +343,8 @@ class UpdateUserTest(TestCase):
     @patch('news.tasks.send_message')
     @patch('news.tasks.get_user_data')
     @patch('news.utils.newsletter_fields')
-    @patch('news.tasks.ExactTarget')
-    def test_update_user_set_works_if_no_newsletters(self, et_mock,
+    @patch('news.tasks.sfmc')
+    def test_update_user_set_works_if_no_newsletters(self, sfmc_mock,
                                                      newsletter_fields,
                                                      get_user_data,
                                                      send_message,
@@ -358,7 +354,6 @@ class UpdateUserTest(TestCase):
         that the person wishes to unsubscribe from all newsletters. This has
         caused exceptions because '' is not a valid newsletter name.
         """
-        et = et_mock()
         nl1 = models.Newsletter.objects.create(
             slug='slug',
             title='title',
@@ -384,7 +379,7 @@ class UpdateUserTest(TestCase):
                          SET, True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         # no welcome should be triggered for SET
-        self.assertFalse(et.trigger_send.called)
+        self.assertFalse(sfmc_mock.send_mail.called)
         # We should have looked up the user's data
         get_user_data.assert_called()
         # We'll specifically unsubscribe each newsletter the user is
@@ -405,9 +400,8 @@ class UpdateUserTest(TestCase):
     @patch('news.tasks.send_message')
     @patch('news.tasks.get_user_data')
     @patch('news.utils.newsletter_fields')
-    @patch('news.utils.ExactTargetDataExt')
-    @patch('news.tasks.ExactTarget')
-    def test_resubscribe_doesnt_update_newsletter(self, et_mock, etde_mock,
+    @patch('news.tasks.sfmc')
+    def test_resubscribe_doesnt_update_newsletter(self, sfmc_mock,
                                                   newsletter_fields,
                                                   get_user_data,
                                                   send_message,
@@ -417,8 +411,6 @@ class UpdateUserTest(TestCase):
         do not pass that newsletter's _FLG and _DATE to ET because we
         don't want that newsletter's _DATE to be updated for no reason.
         """
-        et_mock()
-        etde = etde_mock()
         nl1 = models.Newsletter.objects.create(
             slug='slug',
             title='title',
@@ -439,7 +431,7 @@ class UpdateUserTest(TestCase):
         newsletter_fields.return_value = [nl1.vendor_id]
 
         # Mock user data - we want our user subbed to our newsletter to start
-        etde.get_record.return_value = self.user_data
+        sfmc_mock.get_row.return_value = self.user_data
 
         rc = update_user(data, self.email, self.token,
                          SUBSCRIBE, True)
@@ -459,8 +451,8 @@ class UpdateUserTest(TestCase):
 
     @patch('news.tasks.get_user_data')
     @patch('news.utils.newsletter_fields')
-    @patch('news.tasks.ExactTarget')
-    def test_set_doesnt_update_newsletter(self, et_mock,
+    @patch('news.tasks.sfmc')
+    def test_set_doesnt_update_newsletter(self, sfmc_mock,
                                           newsletter_fields,
                                           get_user_data):
         """
@@ -468,7 +460,6 @@ class UpdateUserTest(TestCase):
         to, we do not pass that newsletter's _FLG and _DATE to ET because we
         don't want that newsletter's _DATE to be updated for no reason.
         """
-        et = et_mock()
         nl1 = models.Newsletter.objects.create(
             slug='slug',
             title='title',
@@ -494,114 +485,24 @@ class UpdateUserTest(TestCase):
         # We should have looked up the user's data
         self.assertTrue(get_user_data.called)
         # We should not have mentioned this newsletter in our call to ET
-        et.data_ext.return_value.add_record.assert_called_with(
-            ANY,
-            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
-             'TOKEN', 'MODIFIED_DATE_',
-             'EMAIL_PERMISSION_STATUS_', 'COUNTRY_'],
-            ['H', 'dude@example.com', 'en',
-             ANY, ANY,
-             'I', 'US'],
-        )
-
-    @skip("FIXME: What should we do if we can't talk to ET")  # FIXME
-    @patch('news.tasks.ExactTarget')
-    @patch('news.tasks.get_user_data')
-    def test_set_does_update_newsletter_on_error(self, get_user_mock, et_mock):
-        """
-        When setting the newsletters it should ensure that they're set right
-        if we can't get the user's data for some reason.
-        """
-        get_user_mock.return_value = {
-            'status': 'error',
-        }
-        et = et_mock()
-        models.Newsletter.objects.create(
-            slug='slug',
-            title='title',
-            active=True,
-            languages='en-US,fr',
-            vendor_id='TITLE_UNKNOWN',
-        )
-        # We're going to ask to subscribe to this one again
-        data = {
-            'lang': 'en',
-            'country': 'US',
-            'newsletters': 'slug',
-            'format': 'H',
-        }
-
-        update_user(data, self.email, self.token, SET, True)
-        # We should have mentioned this newsletter in our call to ET
-        et.data_ext.return_value.add_record.assert_called_with(
-            ANY,
-            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
-             'TITLE_UNKNOWN_FLG', 'TOKEN', 'MODIFIED_DATE_',
-             'EMAIL_PERMISSION_STATUS_', 'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
-            ['H', 'dude@example.com', 'en',
-             'Y', ANY, ANY,
-             'I', ANY, 'US'],
-        )
-
-    @skip("FIXME: What should we do if we can't talk to ET")  # FIXME
-    @patch('news.tasks.ExactTarget')
-    @patch('news.tasks.get_user_data')
-    def test_unsub_is_not_careful_on_error(self, get_user_mock, et_mock):
-        """
-        When unsubscribing, we unsubscribe from the requested lists if we can't
-        get user_data for some reason.
-        """
-        get_user_mock.return_value = {
-            'status': 'error',
-        }
-        et = et_mock()
-        models.Newsletter.objects.create(
-            slug='slug',
-            title='title',
-            active=True,
-            languages='en-US,fr',
-            vendor_id='TITLE_UNKNOWN',
-        )
-        models.Newsletter.objects.create(
-            slug='slug2',
-            title='title2',
-            active=True,
-            languages='en-US,fr',
-            vendor_id='TITLE2_UNKNOWN',
-        )
-        # We're going to ask to unsubscribe from both
-        data = {
-            'lang': 'en',
-            'country': 'US',
-            'newsletters': 'slug,slug2',
-            'format': 'H',
-        }
-
-        update_user(data, self.email, self.token, UNSUBSCRIBE,
-                    True)
-        # We should mention both TITLE_UNKNOWN, and TITLE2_UNKNOWN
-        et.data_ext.return_value.add_record.assert_called_with(
-            ANY,
-            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', u'TITLE2_UNKNOWN_FLG',
-             'LANGUAGE_ISO2', u'TITLE2_UNKNOWN_DATE', u'TITLE_UNKNOWN_FLG',
-             'TOKEN', 'MODIFIED_DATE_', 'EMAIL_PERMISSION_STATUS_',
-             u'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
-            ['H', 'dude@example.com', 'N', 'en', ANY, 'N', ANY, ANY, 'I',
-             ANY, 'US'],
-        )
+        sfmc_mock.upsert_row.assert_called_with(ANY, {
+            'EMAIL_FORMAT_': 'H',
+            'EMAIL_ADDRESS_': 'dude@example.com',
+            'LANGUAGE_ISO2': 'en',
+            'TOKEN': ANY,
+            'MODIFIED_DATE_': ANY,
+            'EMAIL_PERMISSION_STATUS_': 'I',
+            'COUNTRY_': 'US',
+        })
 
     @patch('news.tasks.get_user_data')
     @patch('news.utils.newsletter_fields')
-    @patch('news.utils.ExactTargetDataExt')
-    @patch('news.tasks.ExactTarget')
-    def test_unsub_is_careful(self, et_mock, etde_mock, newsletter_fields,
-                              get_user_data):
+    @patch('news.tasks.sfmc')
+    def test_unsub_is_careful(self, sfmc_mock, newsletter_fields, get_user_data):
         """
         When unsubscribing, we only unsubscribe things the user is
         currently subscribed to.
         """
-        et = et_mock()
-        etde = etde_mock()
         nl1 = models.Newsletter.objects.create(
             slug='slug',
             title='title',
@@ -628,70 +529,28 @@ class UpdateUserTest(TestCase):
         newsletter_fields.return_value = [nl1.vendor_id, nl2.vendor_id]
 
         # We're only subscribed to TITLE_UNKNOWN though, not the other one
-        etde.get_record.return_value = self.user_data
+        sfmc_mock.get_row.return_value = self.user_data
 
         rc = update_user(data, self.email, self.token, UNSUBSCRIBE, True)
         self.assertEqual(UU_ALREADY_CONFIRMED, rc)
         # We should have looked up the user's data
         self.assertTrue(get_user_data.called)
         # We should only mention TITLE_UNKNOWN, not TITLE2_UNKNOWN
-        et.data_ext.return_value.add_record.assert_called_with(
-            ANY,
-            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
-             u'TITLE_UNKNOWN_FLG', 'TOKEN', 'MODIFIED_DATE_',
-             'EMAIL_PERMISSION_STATUS_', u'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
-            ['H', 'dude@example.com', 'en',
-             'N', ANY, ANY,
-             'I', ANY, 'US'],
-        )
+        sfmc_mock.upsert_row.assert_called_with(ANY, {
+            'EMAIL_FORMAT_': 'H',
+            'EMAIL_ADDRESS_': 'dude@example.com',
+            'LANGUAGE_ISO2': 'en',
+            u'TITLE_UNKNOWN_FLG': 'N',
+            'TOKEN': ANY,
+            'MODIFIED_DATE_': ANY,
+            'EMAIL_PERMISSION_STATUS_': 'I',
+            u'TITLE_UNKNOWN_DATE': ANY,
+            'COUNTRY_': 'US',
+        })
 
-    @skip('Do not know what to do in this case')  # FIXME
-    @patch('news.tasks.ExactTarget')
+    @patch('news.tasks.sfmc')
     @patch('news.tasks.get_user_data')
-    def test_user_data_error(self, get_user_mock, et_mock):
-        """
-        Bug 871764: error from user data causing subscription to fail
-
-        FIXME: SO, if we can't talk to ET, what SHOULD we do?
-        """
-        get_user_mock.return_value = {
-            'status': 'error',
-            'desc': 'fake error for testing',
-        }
-        et = et_mock()
-        models.Newsletter.objects.create(
-            slug='slug',
-            title='title',
-            active=True,
-            languages='en-US,fr',
-            vendor_id='TITLE_UNKNOWN',
-        )
-        # We're going to ask to subscribe to this one again
-        data = {
-            'lang': 'en',
-            'country': 'US',
-            'newsletters': 'slug',
-            'format': 'H',
-        }
-
-        with self.assertRaises(NewsletterException):
-            update_user(data, self.email, self.token, SUBSCRIBE, True)
-        # We should have mentioned this newsletter in our call to ET
-        et.data_ext.return_value.add_record.assert_called_with(
-            ANY,
-            ['EMAIL_FORMAT_', 'EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
-             'TITLE_UNKNOWN_FLG', 'TOKEN', 'MODIFIED_DATE_',
-             'EMAIL_PERMISSION_STATUS_', 'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
-            ['H', 'dude@example.com', 'en',
-             'Y', ANY, ANY,
-             'I', ANY, 'US'],
-        )
-
-    @patch('news.tasks.ExactTarget')
-    @patch('news.tasks.get_user_data')
-    def test_update_user_without_format_doesnt_send_format(self,
-                                                           get_user_mock,
-                                                           et_mock):
+    def test_update_user_without_format_doesnt_send_format(self, get_user_mock, sfmc_mock):
         """
         ET format not changed if update_user call doesn't specify.
 
@@ -718,7 +577,6 @@ class UpdateUserTest(TestCase):
             'email': 'dude@example.com',
             'token': 'foo-token',
         }
-        et = et_mock()
         data = {
             'lang': 'en',
             'country': 'US',
@@ -726,29 +584,23 @@ class UpdateUserTest(TestCase):
         }
         update_user(data, self.email, self.token, SUBSCRIBE, True)
         # We'll pass no format to ET
-        et.data_ext.return_value.add_record.assert_called_with(
-            ANY,
-            ['EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
-             'TITLE_UNKNOWN_FLG', 'TOKEN', 'MODIFIED_DATE_',
-             'EMAIL_PERMISSION_STATUS_', 'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
-            ['dude@example.com', 'en',
-             'Y', ANY, ANY,
-             'I', ANY, 'US'],
-        )
+        sfmc_mock.upsert_row.assert_called_with(ANY, {
+            'EMAIL_ADDRESS_': 'dude@example.com',
+            'LANGUAGE_ISO2': 'en',
+            'TITLE_UNKNOWN_FLG': 'Y',
+            'TOKEN': ANY,
+            'MODIFIED_DATE_': ANY,
+            'EMAIL_PERMISSION_STATUS_': 'I',
+            'TITLE_UNKNOWN_DATE': ANY,
+            'COUNTRY_': 'US'
+        })
         # We'll send their welcome in T format because that is the
         # user's preference in ET
-        et.trigger_send.assert_called_with(
-            'en_39_T',
-            {'EMAIL_FORMAT_': 'T',
-             'EMAIL_ADDRESS_': 'dude@example.com',
-             'TOKEN': ANY}
-        )
+        sfmc_mock.send_mail.assert_called_with('en_39_T', 'dude@example.com', ANY, 'T')
 
-    @patch('news.tasks.ExactTarget')
+    @patch('news.tasks.sfmc')
     @patch('news.tasks.get_user_data')
-    def test_update_user_wo_format_or_pref(self,
-                                           get_user_mock,
-                                           et_mock):
+    def test_update_user_wo_format_or_pref(self, get_user_mock, sfmc_mock):
         """
         ET format not changed if update_user call doesn't specify.
 
@@ -774,7 +626,6 @@ class UpdateUserTest(TestCase):
             'email': 'dude@example.com',
             'token': 'foo-token',
         }
-        et = et_mock()
         data = {
             'lang': 'en',
             'country': 'US',
@@ -782,20 +633,16 @@ class UpdateUserTest(TestCase):
         }
         update_user(data, self.email, self.token, SUBSCRIBE, True)
         # We'll pass no format to ET
-        et.data_ext.return_value.add_record.assert_called_with(
-            ANY,
-            ['EMAIL_ADDRESS_', 'LANGUAGE_ISO2',
-             'TITLE_UNKNOWN_FLG', 'TOKEN', 'MODIFIED_DATE_',
-             'EMAIL_PERMISSION_STATUS_', 'TITLE_UNKNOWN_DATE', 'COUNTRY_'],
-            ['dude@example.com', 'en',
-             'Y', ANY, ANY,
-             'I', ANY, 'US'],
-        )
+        sfmc_mock.upsert_row.assert_called_with(ANY, {
+            'COUNTRY_': 'US',
+            'EMAIL_ADDRESS_': 'dude@example.com',
+            'EMAIL_PERMISSION_STATUS_': 'I',
+            'LANGUAGE_ISO2': 'en',
+            'MODIFIED_DATE_': ANY,
+            'TITLE_UNKNOWN_DATE': ANY,
+            'TITLE_UNKNOWN_FLG': 'Y',
+            'TOKEN': ANY
+        })
         # We'll send their welcome in H format because that is the
         # default when we have no other preference known.
-        et.trigger_send.assert_called_with(
-            'en_39',
-            {'EMAIL_FORMAT_': 'H',
-             'EMAIL_ADDRESS_': 'dude@example.com',
-             'TOKEN': ANY}
-        )
+        sfmc_mock.send_mail.assert_called_with('en_39', 'dude@example.com', ANY, 'H')

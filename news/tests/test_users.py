@@ -275,9 +275,8 @@ class TestLookForUser(TestCase):
         Newsletter.objects.create(slug='n1', vendor_id='NEWSLETTER1')
         Newsletter.objects.create(slug='n2', vendor_id='NEWSLETTER2')
         fields = ['NEWSLETTER1_FLG', 'NEWSLETTER2_FLG']
-        with patch('news.utils.ExactTargetDataExt') as et_ext:
-            data_ext = et_ext()
-            data_ext.get_record.return_value = {
+        with patch('news.utils.sfmc') as sfmc_mock:
+            sfmc_mock.get_row.return_value = {
                 'EMAIL_ADDRESS_': 'dude@example.com',
                 'EMAIL_FORMAT_': 'HTML',
                 'COUNTRY_': 'us',
@@ -309,9 +308,8 @@ class TestLookForUser(TestCase):
         Newsletter.objects.create(slug='n1', vendor_id='NEWSLETTER1')
         Newsletter.objects.create(slug='n2', vendor_id='NEWSLETTER2')
         fields = ['NEWSLETTER1_FLG', 'NEWSLETTER2_FLG']
-        with patch('news.utils.ExactTargetDataExt') as et_ext:
-            data_ext = et_ext()
-            data_ext.get_record.return_value = {
+        with patch('news.utils.sfmc') as sfmc_mock:
+            sfmc_mock.get_row.return_value = {
                 'EMAIL_ADDRESS_': 'dude@example.com',
                 'EMAIL_FORMAT_': 'HTML',
                 'COUNTRY_': 'us',
@@ -453,11 +451,10 @@ class UserTest(TestCase):
         self.assertEqual(data['status'], 'error')
         self.assertEqual(data['desc'], 'invalid language')
 
-    @patch('news.utils.ExactTargetDataExt')
-    def test_user_not_in_et(self, et_ext):
+    @patch('news.utils.sfmc')
+    def test_user_not_in_et(self, sfmc_mock):
         """A user not found in ET should produce an error response."""
-        data_ext = et_ext()
-        data_ext.get_record.side_effect = NewsletterException('DANGER!')
+        sfmc_mock.get_row.side_effect = NewsletterException('DANGER!')
         token = generate_token()
         resp = self.client.get('/news/user/{}/'.format(token))
         self.assertEqual(resp.status_code, 400)
