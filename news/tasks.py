@@ -806,5 +806,9 @@ def send_recovery_message_task(email):
 
 
 @celery_app.task()
-def snitch(snitch_id):
-    requests.get('https://nosnch.in/{}'.format(snitch_id))
+def snitch(snitch_id, start_time):
+    totalms = int((time() - start_time) * 1000)
+    statsd.timing('news.tasks.snitch.timing', totalms)
+    requests.post('https://nosnch.in/{}'.format(snitch_id), data={
+        'm': totalms,
+    })

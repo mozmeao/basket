@@ -4,7 +4,10 @@ import socket
 import struct
 import sys
 from datetime import timedelta
+from time import time
 from uuid import uuid4
+
+from django.utils.functional import lazy
 
 import dj_database_url
 import django_cache_url
@@ -204,8 +207,8 @@ CELERYBEAT_SCHEDULE = {}
 if SNITCH_ID:
     CELERYBEAT_SCHEDULE['snitch'] = {
         'task': 'news.tasks.snitch',
-        'schedule': timedelta(minutes=5),
-        'args': (SNITCH_ID,)
+        'schedule': timedelta(minutes=10),
+        'args': (SNITCH_ID, lazy(time, float)())
     }
 
 
