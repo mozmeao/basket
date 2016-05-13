@@ -1,0 +1,39 @@
+db:
+  image: mariadb
+  environment:
+    - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+    - MYSQL_DATABASE=basket
+
+redis:
+  image: redis
+
+app:
+  build: .
+  volumes:
+    - .:/app
+  environment:
+    - PYTHONDONTWRITEBYTECODE=1
+    - DATABASE_URL=mysql://root@db/basket
+    - DEBUG=True
+    - ALLOWED_HOSTS=localhost,127.0.0.1,
+    - REDIS_URL=redis://redis:6379
+    - CELERY_ALWAYS_EAGER=False
+  env_file: .env
+
+web:
+  extends: app
+  ports:
+    - "8000:8000"
+  links:
+    - db
+    - redis
+  command:
+    ./bin/run-dev.sh
+
+worker:
+  extends: app
+  links:
+    - db
+    - redis
+  command:
+    ./bin/run-worker.sh

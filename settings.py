@@ -15,7 +15,7 @@ from pathlib import Path
 VERSION = (0, 1)
 
 # ROOT path of the project. A pathlib.Path object.
-ROOT_PATH = Path(__file__).parent
+ROOT_PATH = Path(__file__).resolve().parent
 ROOT = str(ROOT_PATH)
 
 
@@ -184,6 +184,22 @@ EXACTTARGET_OPTIN_STAGE = config('EXACTTARGET_OPTIN_STAGE', None)
 SUPERTOKEN = config('SUPERTOKEN', str(uuid4()))
 ET_CLIENT_ID = config('ET_CLIENT_ID', None)
 ET_CLIENT_SECRET = config('ET_CLIENT_SECRET', None)
+
+if EXACTTARGET_USE_SANDBOX:
+    auth_url = 'https://auth-test.exacttargetapis.com/v1/requestToken?legacy=1'
+    wsdl_loc = 'etframework.test.wsdl'
+else:
+    auth_url = 'https://auth.exacttargetapis.com/v1/requestToken?legacy=1'
+    wsdl_loc = 'etframework.wsdl'
+
+SFMC_DEBUG = config('SFMC_DEBUG', DEBUG, cast=bool)
+SFMC_SETTINGS = {
+    'authenticationurl': auth_url,
+    'wsdl_file_local_loc': path('news', 'backends', wsdl_loc),
+}
+if ET_CLIENT_ID and ET_CLIENT_SECRET:
+    SFMC_SETTINGS['clientid'] = ET_CLIENT_ID
+    SFMC_SETTINGS['clientsecret'] = ET_CLIENT_SECRET
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_URLS_REGEX = r'^/news/.*$'

@@ -28,18 +28,15 @@ class UpdateStudentAmbassadorsTest(TestCase):
         self.client.post(self.url, self.data)
         pb_mock.assert_called_with(self.data, self.token)
 
-    @patch('news.tasks.ExactTarget')
+    @patch('news.tasks.sfmc')
     @patch('news.tasks.get_user_data')
-    def test_update_phonebook_task(self, user_data_mock, et_mock):
+    def test_update_phonebook_task(self, user_data_mock, sfmc_mock):
         """
         Should call Exact Target only with the approved information.
         """
-        et = et_mock()
         record = self.data.copy()
         record.update({'EMAIL_ADDRESS': 'dude@example.com',
                        'TOKEN': self.token})
         user_data_mock.return_value = {'email': 'dude@example.com'}
         self.client.post(self.url, self.data)
-        et.data_ext().add_record.assert_called_with('Student_Ambassadors',
-                                                    record.keys(),
-                                                    record.values())
+        sfmc_mock.update_row.assert_called_with('Student_Ambassadors', record)

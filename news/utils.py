@@ -16,9 +16,12 @@ from django.utils.translation.trans_real import parse_accept_lang_header
 # Get error codes from basket-client so users see the same definitions
 from basket import errors
 
-from news.backends.common import NewsletterNoResultsException
-from news.backends.exacttarget import (ExactTargetDataExt, NewsletterException,
-                                       UnauthorizedException)
+from news.backends.common import (
+    NewsletterException,
+    NewsletterNoResultsException,
+    UnauthorizedException,
+)
+from news.backends.sfmc import sfmc
 from news.models import APIUser, BlockedEmail
 from news.newsletters import (
     newsletter_field,
@@ -189,13 +192,8 @@ def look_for_user(database, email, token, fields):
     Any other exception just propagates and needs to be handled
     by the caller.
     """
-    ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
-                             settings.EXACTTARGET_PASS)
     try:
-        user = ext.get_record(database,
-                              email or token,
-                              fields,
-                              'EMAIL_ADDRESS_' if email else 'TOKEN')
+        user = sfmc.get_row(database, fields, token, email)
     except NewsletterNoResultsException:
         return None
     if database == settings.EXACTTARGET_CONFIRMATION:

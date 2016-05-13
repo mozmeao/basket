@@ -83,3 +83,10 @@ kombu==3.0.35 \
     --hash=sha256:22ab336a17962717a5d9470547e5508d4bcf1b6ec10cd9486868daf4e5edb727
 https://github.com/pmclanahan/django-synctool/archive/master.tar.gz#egg=django-synctool==1.1.0 \
     --hash=sha256:d0adfaeff36fd0e6bc07ae8b752815ee57c195ef8f4363ece88d7738f4955a91
+https://github.com/pmclanahan/FuelSDK-Python/archive/14d3ba0bd572fbd4a428321d71e7d63acc2281bb.tar.gz#egg=FuelSDK==0.9.4.1-mozfork \
+    --hash=sha256:8397854a199d551b61fc94939a600aaa178255d365b889669b45b4beedc1d9bc
+pyjwt==0.1.9 \
+    --hash=sha256:f3805a255fc4eefa09066bb3d97d552db5eea18ee8a34d2823987f1e051a0bca \
+    --hash=sha256:ae72c56f8f660958d32c3f93186df8c6b52fb617dc687ff67d255303a577e609 \
+    --hash=sha256:d335622bb6febe010b4989d2b74d7797745f70f4a6093ccc4584913bc5d77d5b \
+    --hash=sha256:608605a08d267a7de26a4f4c588c7e663ee07db386fc40acded20a6fcfc110ed

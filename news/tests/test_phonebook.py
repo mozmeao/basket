@@ -24,13 +24,12 @@ class UpdatePhonebookTest(TestCase):
         self.client.post(self.url, data)
         pb_mock.delay.assert_called_with(data, self.token)
 
-    @patch('news.tasks.ExactTarget')
+    @patch('news.tasks.sfmc')
     @patch('news.tasks.get_user_data')
-    def test_update_phonebook_task(self, user_data_mock, et_mock):
+    def test_update_phonebook_task(self, user_data_mock, sfmc_mock):
         """
         Should call Exact Target only with the approved information.
         """
-        et = et_mock()
         data = {
             'city': 'Durham',
             'country': 'US',
@@ -46,6 +45,4 @@ class UpdatePhonebookTest(TestCase):
         }
         user_data_mock.return_value = {'email': 'dude@example.com'}
         self.client.post(self.url, data)
-        et.data_ext().add_record.assert_called_with('PHONEBOOK',
-                                                    record.keys(),
-                                                    record.values())
+        sfmc_mock.update_row.assert_called_with('PHONEBOOK', record)

@@ -8,23 +8,18 @@ from news.tasks import confirm_user, mogrify_message_id, send_message
 
 
 class TestSendMessage(TestCase):
-    @patch('news.tasks.ExactTarget')
-    def test_caching_bad_message_ids(self, mock_ExactTarget):
+    @patch('news.tasks.sfmc')
+    def test_caching_bad_message_ids(self, mock_sfmc):
         """Bad message IDs are cached so we don't try to send to them again"""
-        mock_et = mock_ExactTarget()
         exc = NewsletterException()
         exc.message = 'Invalid Customer Key'
-        mock_et.trigger_send.side_effect = exc
+        mock_sfmc.send_mail.side_effect = exc
 
         message_id = "MESSAGE_ID"
         for i in range(10):
             send_message(message_id, 'email', 'token', 'format')
 
-        mock_et.trigger_send.assert_called_once_with('MESSAGE_ID', {
-            'EMAIL_ADDRESS_': 'email',
-            'TOKEN': 'token',
-            'EMAIL_FORMAT_': 'format',
-        })
+        mock_sfmc.send_mail.assert_called_once_with(message_id, 'email', 'token', 'format')
 
 
 class TestSendWelcomes(TestCase):

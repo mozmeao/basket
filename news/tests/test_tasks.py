@@ -190,17 +190,13 @@ class AddSMSUserTests(TestCase):
         If optin is True, add a Mobile_Subscribers record for the
         number.
         """
-        with patch('news.tasks.ExactTargetDataExt') as ExactTargetDataExt:
-            with self.settings(EXACTTARGET_USER='user', EXACTTARGET_PASS='asdf'):
-                add_sms_user('foo', '8675309', True)
+        with patch('news.tasks.sfmc') as sfmc_mock:
+            add_sms_user('foo', '8675309', True)
 
-            ExactTargetDataExt.assert_called_with('user', 'asdf')
-            data_ext = ExactTargetDataExt.return_value
-            call_args = data_ext.add_record.call_args
-
-            self.assertEqual(call_args[0][0], 'Mobile_Subscribers')
-            self.assertEqual(set(['Phone', 'SubscriberKey']), set(call_args[0][1]))
-            self.assertEqual(['8675309', '8675309'], call_args[0][2])
+            sfmc_mock.add_row.assert_called_with('Mobile_Subscribers', {
+                'Phone': '8675309',
+                'SubscriberKey': '8675309',
+            })
 
 
 class ETTaskTests(TestCase):

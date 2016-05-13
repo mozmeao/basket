@@ -14,8 +14,8 @@ import user_agents
 from celery import Task
 
 from news.backends.common import NewsletterException, NewsletterNoResultsException
-from news.backends.exacttarget import ExactTarget, ExactTargetDataExt
 from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
+from news.backends.sfmc import sfmc
 from news.celery import app as celery_app
 from news.models import FailedTask, Newsletter, Interest
 from news.newsletters import get_sms_messages, is_supported_newsletter_language
@@ -215,11 +215,8 @@ def get_external_user_data(email=None, token=None, fields=None, database=None):
         'LANGUAGE_ISO2',
         'TOKEN',
     ]
-    ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
-                             settings.EXACTTARGET_PASS)
     try:
-        user = ext.get_record(database, token or email, fields,
-                              'TOKEN' if token else 'EMAIL_ADDRESS_')
+        user = sfmc.get_row(database, fields, token, email)
     except NewsletterNoResultsException:
         return None
 
@@ -373,8 +370,7 @@ def update_phonebook(data, token):
 
     record.update((k, v) for k, v in data.items() if k in PHONEBOOK_GROUPS)
 
-    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-    et.data_ext().add_record('PHONEBOOK', record.keys(), record.values())
+    sfmc.update_row('PHONEBOOK', record)
 
 
 @et_task
@@ -386,8 +382,7 @@ def update_student_ambassadors(data, token):
 
     data['EMAIL_ADDRESS'] = user_data['email']
     data['TOKEN'] = token
-    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-    et.data_ext().add_record('Student_Ambassadors', data.keys(), data.values())
+    sfmc.update_row('Student_Ambassadors', data)
 
 
 # Return codes for update_user
@@ -553,16 +548,15 @@ def update_user(data, email, token, api_call_type, optin):
     return return_code
 
 
-def apply_updates(target_et, record):
+def apply_updates(database, record):
     """Send the record data to ET to update the database named
     target_et.
 
-    :param str target_et: Target database, e.g. settings.EXACTTARGET_DATA
+    :param str database: Target database, e.g. settings.EXACTTARGET_DATA
         or settings.EXACTTARGET_CONFIRMATION.
     :param dict record: Data to send
     """
-    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-    et.data_ext().add_record(target_et, record.keys(), record.values())
+    sfmc.upsert_row(database, record)
 
 
 @et_task
@@ -584,16 +578,8 @@ def send_message(message_id, email, token, format):
         return
     log.debug("Sending message %s to %s %s in %s" %
               (message_id, email, token, format))
-    et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
     try:
-        et.trigger_send(
-            message_id,
-            {
-                'EMAIL_ADDRESS_': email,
-                'TOKEN': token,
-                'EMAIL_FORMAT_': format,
-            }
-        )
+        sfmc.send_mail(message_id, email, token, format)
     except NewsletterException as e:
         # Better error messages for some cases. Also there's no point in
         # retrying these
@@ -758,21 +744,19 @@ def add_sms_user(send_name, mobile_number, optin):
 @et_task
 def add_sms_user_optin(mobile_number):
     record = {'Phone': mobile_number, 'SubscriberKey': mobile_number}
-    data_ext = ExactTargetDataExt(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
-    data_ext.add_record('Mobile_Subscribers', record.keys(), record.values())
+    sfmc.add_row('Mobile_Subscribers', record)
 
 
 @et_task
 def update_custom_unsub(token, reason):
     """Record a user's custom unsubscribe reason."""
-    ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
-                             settings.EXACTTARGET_PASS)
-    ext.add_record(settings.EXACTTARGET_DATA,
-                   ['TOKEN', 'UNSUBSCRIBE_REASON'],
-                   [token, reason])
+    sfmc.update_row(settings.EXACTTARGET_DATA, {
+        'TOKEN': token,
+        'UNSUBSCRIBE_REASON': reason,
+    })
 
 
-def attempt_fix(ext_name, record, task, e):
+def attempt_fix(database, record, task, e):
     # Sometimes a user is in basket's database but not in
     # ExactTarget because the API failed or something. If that's
     # the case, any future API call will error because basket
@@ -780,9 +764,7 @@ def attempt_fix(ext_name, record, task, e):
     # with it here.
     if e.message.find('CREATED_DATE_') != -1:
         record['CREATED_DATE_'] = gmttime()
-        ext = ExactTargetDataExt(settings.EXACTTARGET_USER,
-                                 settings.EXACTTARGET_PASS)
-        ext.add_record(ext_name, record.keys(), record.values())
+        sfmc.add_row(database, record)
     else:
         raise e
 
