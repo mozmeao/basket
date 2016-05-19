@@ -379,12 +379,6 @@ def update_phonebook(data, token):
 
 @et_task
 def update_student_ambassadors(data, token):
-    user_data = get_user_data(token=token)
-    if not user_data:
-        # no user with that token
-        return
-
-    data['EMAIL_ADDRESS'] = user_data['email']
     data['TOKEN'] = token
     et = ExactTarget(settings.EXACTTARGET_USER, settings.EXACTTARGET_PASS)
     et.data_ext().add_record('Student_Ambassadors', data.keys(), data.values())
