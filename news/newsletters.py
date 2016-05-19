@@ -8,7 +8,7 @@ from django.db.models.signals import post_save
 from django.db.models.signals import post_delete
 from django.core.cache import cache
 
-from news.models import Newsletter, NewsletterGroup, SMSMessage
+from news.models import Newsletter, NewsletterGroup, SMSMessage, TransactionalEmailMessage
 
 
 __all__ = ('clear_newsletter_cache', 'get_sms_messages', 'newsletter_field',
@@ -17,11 +17,24 @@ __all__ = ('clear_newsletter_cache', 'get_sms_messages', 'newsletter_field',
 
 CACHE_KEY = "newsletters_cache_data"
 SMS_CACHE_KEY = "sms_messages_cache_data"
+TRANSACTIONAL_CACHE_KEY = "transactional_messages_cache_data"
 # TODO remove after initial deployment. These values should be added to
 #   to the DB. This is so we don't miss any submissions.
 SMS_MESSAGES = {
     'SMS_Android': 'MTo3ODow',
 }
+
+
+def get_transactional_message_ids():
+    """
+    Returns a list of transactional message IDs that basket clients send.
+    """
+    data = cache.get(TRANSACTIONAL_CACHE_KEY)
+    if data is None:
+        data = [tx.message_id for tx in TransactionalEmailMessage.objects.all()]
+        cache.set(TRANSACTIONAL_CACHE_KEY, data)
+
+    return data
 
 
 def get_sms_messages():
@@ -59,7 +72,7 @@ def _newsletters():
                 'NEWSLETTER_ID_2': another Newsletter object,
             },
             'groups': {
-                'group_slug': a NewsletterGroup object,
+                'group_slug': a list of newsletter slugs,
                 ...
             }
         }
@@ -88,6 +101,15 @@ def _get_newsletters_data():
         'by_name': by_name,
         'by_vendor_id': by_vendor_id,
     }
+
+
+def newsletter_map():
+    by_name = _newsletters()['by_name']
+    return {name: nl.vendor_id for name, nl in by_name.iteritems()}
+
+
+def newsletter_inv_map():
+    return {v: k for k, v in newsletter_map().iteritems()}
 
 
 def newsletter_field(name):

@@ -1,10 +1,9 @@
 import json
 import re
-from datetime import date
 from itertools import chain
 from uuid import uuid4
 
-from django.conf import settings
+import requests
 from django.core.cache import get_cache
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email as dj_validate_email
@@ -12,25 +11,14 @@ from django.http import HttpResponse
 from django.utils.encoding import force_unicode
 from django.utils.translation.trans_real import parse_accept_lang_header
 
-
+import simple_salesforce as sfapi
 # Get error codes from basket-client so users see the same definitions
 from basket import errors
 
-from news.backends.common import (
-    NewsletterException,
-    NewsletterNoResultsException,
-    UnauthorizedException,
-)
-from news.backends.sfmc import sfmc
+from news.backends.common import NewsletterException
+from news.backends.sfdc import sfdc
 from news.models import APIUser, BlockedEmail
-from news.newsletters import (
-    newsletter_field,
-    newsletter_fields,
-    newsletter_group_newsletter_slugs,
-    newsletter_languages,
-    newsletter_slugs,
-    slug_to_vendor_id,
-)
+from news.newsletters import newsletter_group_newsletter_slugs, newsletter_languages
 
 
 # Error messages
@@ -183,59 +171,29 @@ def language_code_is_valid(code):
         return bool(LANG_RE.match(code))
 
 
-def look_for_user(database, email, token, fields):
-    """Try to get the user's data from the specified ET database.
-    If found and the database is not the 'Confirmed' database,
-    return it (a dictionary, see get_user_data).
-    If found and it's the 'Confirmed' database, just return True.
-    If not found, return None.
-    Any other exception just propagates and needs to be handled
-    by the caller.
-    """
-    try:
-        user = sfmc.get_row(database, fields, token, email)
-    except NewsletterNoResultsException:
-        return None
-    if database == settings.EXACTTARGET_CONFIRMATION:
-        return True
-    newsletters = []
-    for slug in newsletter_slugs():
-        vendor_id = slug_to_vendor_id(slug)
-        flag = "%s_FLG" % vendor_id
-        if user.get(flag, 'N') == 'Y':
-            newsletters.append(slug)
-    user_data = {
-        'status': 'ok',
-        'email': user['EMAIL_ADDRESS_'],
-        'format': user['EMAIL_FORMAT_'] or 'H',
-        'country': user['COUNTRY_'] or '',
-        'lang': user['LANGUAGE_ISO2'] or '',  # Never None
-        'token': user['TOKEN'],
-        'created-date': user['CREATED_DATE_'],
-        'newsletters': newsletters,
-    }
-    return user_data
+IGNORE_USER_FIELDS = [
+    'id',
+    'reason',
+    'source_url',
+    'fsa_school',
+    'fsa_grad_year',
+    'fsa_major',
+    'fsa_city',
+    'fsa_current_status',
+    'fsa_allow_share',
+]
 
 
-def get_user_data(token=None, email=None):
+def get_user_data(token=None, email=None, extra_fields=None):
     """Return a dictionary of the user's data from Exact Target.
     Look them up by their email if given, otherwise by the token.
 
-    Look first for the user in the master subscribers database, then in the
-    optin database.
-
-    If they're not in the master subscribers database but are in the
-    optin database, then check the confirmation database too.  If we
-    find them in either the master subscribers or confirmation database,
-    add 'confirmed': True to their data; otherwise, 'confirmed': False.
-    Also, ['pending'] is True if they are in the double-opt-in database
-    and not in the confirmed or master databases.
-
     If the user was not found, return None instead of a dictionary.
 
-    If there was an error, result['status'] == 'error'
-    and result['desc'] has more info;
-    otherwise, result['status'] == 'ok'
+    Some data fields are not returned by default. Those fields are listed
+    in the IGNORE_USER_FIELDS list. If you need one of those fields then
+    call this function with said field name in a list passed in
+    the `extra_fields` argument.
 
     Review of results:
 
@@ -258,71 +216,27 @@ def get_user_data(token=None, email=None):
         'pending': True if we're waiting for user to confirm subscription
         'master': True if we found them in the master subscribers table
     }
-
-
     """
-    newsletters = newsletter_fields()
-
-    fields = [
-        'EMAIL_ADDRESS_',
-        'EMAIL_FORMAT_',
-        'COUNTRY_',
-        'LANGUAGE_ISO2',
-        'TOKEN',
-        'CREATED_DATE_',
-    ]
-
-    for nl in newsletters:
-        fields.append('%s_FLG' % nl)
-
-    confirmed = True
-    pending = False
-    master = True
     try:
-        # Look first in the master subscribers database for the user
-        user_data = look_for_user(settings.EXACTTARGET_DATA,
-                                  email, token, fields)
-        # If we get back a user, then they have already confirmed.
-
-        # If not, look for them in the database of unconfirmed users.
-        if user_data is None:
-            master = False
-            confirmed = False
-            user_data = look_for_user(settings.EXACTTARGET_OPTIN_STAGE,
-                                      email, token, fields)
-            if user_data is None:
-                # No such user, as far as we can tell - if they're in
-                # neither the master subscribers nor optin database,
-                # we don't know them.
-                return None
-
-            # We found them in the optin database. But actually, they
-            # might have confirmed but the batch job hasn't
-            # yet run to move their data to the master subscribers
-            # database; catch that case here by looking for them in the
-            # Confirmed database.  Do it simply; the confirmed database
-            # doesn't have most of the user's data, just their token.
-            if look_for_user(settings.EXACTTARGET_CONFIRMATION,
-                             None, user_data['token'], ['Token']):
-                # Ah-ha, they're in the Confirmed DB so they did confirm
-                confirmed = True
-            else:
-                # They're in the optin db, but not confirmed, so we wait
-                pending = True
-
-        user_data['confirmed'] = confirmed
-        user_data['pending'] = pending
-        user_data['master'] = master
-    except NewsletterException as e:
+        user = sfdc.get(token, email)
+    except sfapi.SalesforceResourceNotFound:
+        return None
+    except requests.exceptions.RequestException as e:
         raise NewsletterException(str(e),
                                   error_code=errors.BASKET_NETWORK_FAILURE,
                                   status_code=400)
-    except UnauthorizedException:
+    except sfapi.SalesforceAuthenticationFailed:
         raise NewsletterException('Email service provider auth failure',
                                   error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
                                   status_code=500)
 
-    return user_data
+    # don't send some of the returned data
+    for fn in IGNORE_USER_FIELDS:
+        if extra_fields and fn not in extra_fields:
+            user.pop(fn, None)
+
+    user['status'] = 'ok'
+    return user
 
 
 def get_user(token=None, email=None):
@@ -421,7 +335,18 @@ def validate_email(email):
     return None
 
 
-def parse_newsletters(record, api_call_type, newsletters, cur_newsletters):
+def parse_newsletters_csv(newsletters):
+    """Return a list of newsletter names from a comma separated string"""
+    if isinstance(newsletters, (list, tuple)):
+        return newsletters
+
+    if not isinstance(newsletters, basestring):
+        return []
+
+    return [x.strip() for x in newsletters.split(',') if x.strip()]
+
+
+def parse_newsletters(api_call_type, newsletters, cur_newsletters):
     """Utility function to take a list of newsletters and according
     the type of action (subscribe, unsubscribe, and set) set the
     appropriate flags in `record` which is a dict of parameters that
@@ -431,7 +356,6 @@ def parse_newsletters(record, api_call_type, newsletters, cur_newsletters):
     status needs to change, so that we don't unnecessarily update the
     last modification timestamp of newsletters.
 
-    :param dict record: Parameters that will be sent to ET
     :param integer api_call_type: SUBSCRIBE means add these newsletters to the
         user's subscriptions if not already there, UNSUBSCRIBE means remove
         these newsletters from the user's subscriptions if there, and SET
@@ -439,15 +363,16 @@ def parse_newsletters(record, api_call_type, newsletters, cur_newsletters):
         newsletters.
     :param list newsletters: List of the slugs of the newsletters to be
         subscribed, unsubscribed, or set.
-    :param set cur_newsletters: Set of the slugs of the newsletters that
+    :param list cur_newsletters: List of the slugs of the newsletters that
         the user is currently subscribed to. None if there was an error.
-    :returns: (to_subscribe, to_unsubscribe) - lists of slugs of the
-        newsletters that we will request new subscriptions to, or request
-        unsubscription from, respectively.
+    :returns: dict of slugs of the newsletters with boolean values: True for subscriptions,
+        and False for unsubscription.
     """
-
-    to_subscribe = []
-    to_unsubscribe = []
+    newsletter_map = {}
+    if cur_newsletters is None:
+        cur_newsletters = set()
+    else:
+        cur_newsletters = set(cur_newsletters)
 
     if api_call_type == SUBSCRIBE:
         grouped_newsletters = set()
@@ -463,12 +388,7 @@ def parse_newsletters(record, api_call_type, newsletters, cur_newsletters):
     if api_call_type == SUBSCRIBE or api_call_type == SET:
         # Subscribe the user to these newsletters if not already
         for nl in newsletters:
-            name = newsletter_field(nl)
-            if name and (cur_newsletters is None or
-                                 nl not in cur_newsletters):
-                record['%s_FLG' % name] = 'Y'
-                record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
-                to_subscribe.append(nl)
+            newsletter_map[nl] = True
 
     if api_call_type == UNSUBSCRIBE or api_call_type == SET:
         # Unsubscribe the user to these newsletters
@@ -476,21 +396,15 @@ def parse_newsletters(record, api_call_type, newsletters, cur_newsletters):
         if api_call_type == SET:
             # Unsubscribe from the newsletters currently subscribed to
             # but not in the new list
-            if cur_newsletters is not None:
+            if cur_newsletters:
                 unsubs = cur_newsletters - set(newsletters)
             else:
-                subs = set(newsletters)
-                all = set(newsletter_slugs())
-                unsubs = all - subs
+                unsubs = []
         else:  # type == UNSUBSCRIBE
             # unsubscribe from the specified newsletters
             unsubs = newsletters
 
         for nl in unsubs:
-            # Unsubscribe from any unsubs that the user is currently subbed to
-            name = newsletter_field(nl)
-            if name and (cur_newsletters is None or nl in cur_newsletters):
-                record['%s_FLG' % name] = 'N'
-                record['%s_DATE' % name] = date.today().strftime('%Y-%m-%d')
-                to_unsubscribe.append(nl)
-    return to_subscribe, to_unsubscribe
+            newsletter_map[nl] = False
+
+    return newsletter_map

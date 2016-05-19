@@ -90,23 +90,17 @@ class TestNewsletterUtils(TestCase):
 
     def test_parse_newsletters_for_groups(self):
         """If newsletter slug is a group for SUBSCRIBE, expand to group's newsletters."""
-        record = {}
-        to_sub, to_unsub = utils.parse_newsletters(record, utils.SUBSCRIBE, ['bowling'], set())
-        self.assertEqual(set(to_sub), {'surfing', 'extorting'})
-        self.assertEqual(record['SURFING_FLG'], 'Y')
-        self.assertEqual(record['EXTORTING_FLG'], 'Y')
+        subs = utils.parse_newsletters(utils.SUBSCRIBE, ['bowling'], list())
+        self.assertTrue(subs['surfing'])
+        self.assertTrue(subs['extorting'])
 
     def test_parse_newsletters_not_groups_set(self):
         """If newsletter slug is a group for SET mode, don't expand to group's newsletters."""
-        record = {}
-        to_sub, to_unsub = utils.parse_newsletters(record, utils.SET, ['bowling'], set())
-        self.assertEqual(to_sub, ['bowling'])
-        self.assertEqual(record['BOWLING_FLG'], 'Y')
+        subs = utils.parse_newsletters(utils.SET, ['bowling'], list())
+        self.assertDictEqual(subs, {'bowling': True})
 
     def test_parse_newsletters_not_groups_unsubscribe(self):
         """If newsletter slug is a group for SET mode, don't expand to group's newsletters."""
-        record = {}
-        to_sub, to_unsub = utils.parse_newsletters(record, utils.UNSUBSCRIBE, ['bowling'],
-                                                   {'bowling', 'surfing', 'extorting'})
-        self.assertEqual(to_unsub, ['bowling'])
-        self.assertEqual(record['BOWLING_FLG'], 'N')
+        subs = utils.parse_newsletters(utils.UNSUBSCRIBE, ['bowling'],
+                                       ['bowling', 'surfing', 'extorting'])
+        self.assertDictEqual(subs, {'bowling': False})

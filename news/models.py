@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 from uuid import uuid4
 
-from django.conf import settings
 from django.core.mail import send_mail
 from django.db import models
 from django.template.loader import render_to_string
@@ -53,15 +52,6 @@ class Newsletter(models.Model):
         help_text="Whether this newsletter is private. Private newsletters "
                   "require the subscribe requests to use an API key.",
     )
-    # Note: use .welcome_id property to get this field or the default
-    welcome = models.CharField(
-        max_length=64,
-        help_text="The ID of the welcome message sent for this newsletter. "
-                  "This is the HTML version of the message; append _T to this "
-                  "ID to get the ID of the text-only version.  If blank, "
-                  "no welcome is sent",
-        blank=True,
-    )
     vendor_id = models.CharField(
         max_length=128,
         help_text="The backend vendor's identifier for this newsletter",
@@ -81,14 +71,6 @@ class Newsletter(models.Model):
         help_text="Order to display the newsletters on the web site. "
                   "Newsletters with lower order numbers will display first."
     )
-    confirm_message = models.CharField(
-        max_length=64,
-        help_text="The ID of the confirm message sent for this newsletter."
-                  "That's the one that says 'please click here to confirm'."
-                  "If blank, a default message based on the user's language "
-                  "is sent.",
-        blank=True,
-    )
 
     def __unicode__(self):
         return self.title
@@ -98,21 +80,13 @@ class Newsletter(models.Model):
 
     def save(self, *args, **kwargs):
         # Strip whitespace from langs before save
-        # Also confirm_message or welcome
         self.languages = self.languages.replace(" ", "")
-        self.welcome = self.welcome.strip()
-        self.confirm_message = self.confirm_message.strip()
         super(Newsletter, self).save(*args, **kwargs)
-
-    @property
-    def welcome_id(self):
-        """Return newsletter's welcome message ID, or the default one"""
-        return self.welcome or settings.DEFAULT_WELCOME_MESSAGE_ID
 
     @property
     def language_list(self):
         """Return language codes for this newsletter as a list"""
-        return [x.strip() for x in self.languages.split(",")]
+        return [x.strip() for x in self.languages.split(',') if x.strip()]
 
 
 class NewsletterGroup(models.Model):
@@ -176,8 +150,8 @@ def _is_query_dict(arg):
 class QueuedTask(models.Model):
     when = models.DateTimeField(editable=False, default=now)
     name = models.CharField(max_length=255)
-    args = JSONField(null=False, default=[])
-    kwargs = JSONField(null=False, default={})
+    args = JSONField(null=False, default=list)
+    kwargs = JSONField(null=False, default=dict)
 
     class Meta:
         ordering = ['pk']
@@ -190,10 +164,10 @@ class QueuedTask(models.Model):
 
 class FailedTask(models.Model):
     when = models.DateTimeField(editable=False, default=now)
-    task_id = models.CharField(max_length=255, unique=True)
+    task_id = models.CharField(max_length=255)
     name = models.CharField(max_length=255)
-    args = JSONField(null=False, default=[])
-    kwargs = JSONField(null=False, default={})
+    args = JSONField(null=False, default=list)
+    kwargs = JSONField(null=False, default=dict)
     exc = models.TextField(null=True, default=None, help_text=u"repr(exception)")
     einfo = models.TextField(null=True, default=None, help_text=u"repr(einfo)")
 
@@ -337,3 +311,28 @@ class SMSMessage(models.Model):
 
     class Meta:
         verbose_name = "SMS message"
+
+
+class TransactionalEmailMessage(models.Model):
+    message_id = models.SlugField(
+        primary_key=True,
+        help_text='The ID for the message that will be used by clients',
+    )
+    vendor_id = models.CharField(
+        max_length=50,
+        help_text="The backend vendor's identifier for this message",
+    )
+    description = models.CharField(
+        max_length=200, blank=True,
+        help_text='Optional short description of this message'
+    )
+    languages = models.CharField(
+        max_length=200,
+        help_text="Comma-separated list of the language codes that this "
+                  "newsletter supports",
+    )
+
+    @property
+    def language_list(self):
+        """Return language codes for this newsletter as a list"""
+        return [x.strip() for x in self.languages.split(',') if x.strip()]
