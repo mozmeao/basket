@@ -1,7 +1,8 @@
+from django.conf import settings
 from django.contrib import admin, messages
 
 from news.models import (APIUser, BlockedEmail, FailedTask, Interest, LocaleStewards, Newsletter,
-                         NewsletterGroup, SMSMessage)
+                         NewsletterGroup, QueuedTask, SMSMessage)
 
 
 class SMSMessageAdmin(admin.ModelAdmin):
@@ -70,6 +71,27 @@ class TaskNameFilter(admin.SimpleListFilter):
         return queryset
 
 
+class QueuedTaskAdmin(admin.ModelAdmin):
+    list_display = ('when', 'name')
+    list_filter = (TaskNameFilter,)
+    search_fields = ('name',)
+    date_hierarchy = 'when'
+    actions = ['retry_task_action']
+
+    def retry_task_action(self, request, queryset):
+        """Admin action to retry some tasks that were queued for maintenance"""
+        if settings.MAINTENANCE_MODE:
+            messages.error(request, 'Maintenance mode enabled. Tasks not processed.')
+            return
+
+        count = 0
+        for old_task in queryset:
+            old_task.retry()
+            count += 1
+        messages.info(request, 'Queued %d task%s to process' % (count, '' if count == 1 else 's'))
+    retry_task_action.short_description = u'Process task(s)'
+
+
 class FailedTaskAdmin(admin.ModelAdmin):
     list_display = ('when', 'name', 'formatted_call', 'exc')
     list_filter = (TaskNameFilter,)
@@ -83,14 +105,15 @@ class FailedTaskAdmin(admin.ModelAdmin):
         for old_task in queryset:
             old_task.retry()
             count += 1
-        messages.info(request, "Queued %d task%s to try again" % (count, '' if count == 1 else 's'))
-    retry_task_action.short_description = u"Retry task(s)"
+        messages.info(request, 'Queued %d task%s to try again' % (count, '' if count == 1 else 's'))
+    retry_task_action.short_description = u'Retry task(s)'
 
 
 admin.site.register(SMSMessage, SMSMessageAdmin)
 admin.site.register(APIUser, APIUserAdmin)
 admin.site.register(BlockedEmail, BlockedEmailAdmin)
 admin.site.register(FailedTask, FailedTaskAdmin)
+admin.site.register(QueuedTask, QueuedTaskAdmin)
 admin.site.register(Interest, InterestAdmin)
 admin.site.register(Newsletter, NewsletterAdmin)
 admin.site.register(NewsletterGroup, NewsletterGroupAdmin)

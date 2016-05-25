@@ -290,6 +290,9 @@ RECOVER_MSG_LANGS = config('RECOVER_MSG_LANGS', 'en', cast=Csv())
 
 SYNC_KEY = config('SYNC_KEY', None)
 
+MAINTENANCE_MODE = config('MAINTENANCE_MODE', False, cast=bool)
+QUEUE_BATCH_SIZE = config('QUEUE_BATCH_SIZE', 500, cast=int)
+
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run
     CELERY_ALWAYS_EAGER = True

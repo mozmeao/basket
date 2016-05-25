@@ -173,6 +173,21 @@ def _is_query_dict(arg):
     return all(isinstance(i, list) for i in arg.values())
 
 
+class QueuedTask(models.Model):
+    when = models.DateTimeField(editable=False, default=now)
+    name = models.CharField(max_length=255)
+    args = JSONField(null=False, default=[])
+    kwargs = JSONField(null=False, default={})
+
+    class Meta:
+        ordering = ['pk']
+
+    def retry(self):
+        celery_app.send_task(self.name, args=self.args, kwargs=self.kwargs)
+        # Forget the old task
+        self.delete()
+
+
 class FailedTask(models.Model):
     when = models.DateTimeField(editable=False, default=now)
     task_id = models.CharField(max_length=255, unique=True)
