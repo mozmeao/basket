@@ -62,7 +62,7 @@ class SFMC(object):
     def _get_row_obj(self, de_name, props):
         row = ET_DataExtension_Row()
         row.auth_stub = self.client
-        row.CustomerKey = de_name
+        row.CustomerKey = row.Name = de_name
         row.props = props
         return row
 
