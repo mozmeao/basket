@@ -14,6 +14,7 @@ RUN apt-get update && \
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV DJANGO_SETTINGS_MODULE=settings
 
 # Get pip8
 COPY bin/pipstrap.py bin/pipstrap.py
