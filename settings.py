@@ -154,6 +154,7 @@ INSTALLED_APPS = (
 
     'corsheaders',
     'product_details',
+    'raven.contrib.django.raven_compat',
 
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -167,6 +168,11 @@ INSTALLED_APPS = (
 SSLIFY_ADMIN_DISABLE = config('SSLIFY_ADMIN_DISABLE', DEBUG, cast=bool)
 if not SSLIFY_ADMIN_DISABLE:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+RAVEN_CONFIG = {
+    'dsn': config('SENTRY_DSN', None),
+    'release': config('GIT_SHA', None),
+}
 
 # Default newsletter welcome message ID for HTML format.
 # There must also exist a text-format message with the same
