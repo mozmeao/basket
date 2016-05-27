@@ -17,7 +17,7 @@ from news.backends.common import NewsletterException, NewsletterNoResultsExcepti
 from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
 from news.backends.sfmc import sfmc
 from news.celery import app as celery_app
-from news.models import FailedTask, Newsletter, Interest
+from news.models import FailedTask, Newsletter, Interest, QueuedTask
 from news.newsletters import get_sms_messages, is_supported_newsletter_language
 from news.utils import (generate_token, get_user_data, MSG_USER_NOT_FOUND,
                         parse_newsletters, SUBSCRIBE)
@@ -79,6 +79,13 @@ IGNORE_ERROR_MSGS = [
 # don't propagate after max retries if these are the error messages
 IGNORE_ERROR_MSGS_POST_RETRY = [
     'There are no valid subscribers',
+]
+# tasks exempt from maintenance mode queuing
+MAINTENANCE_EXEMPT = [
+    'news.tasks.add_fxa_activity',
+    'news.tasks.update_student_ambassadors',
+    'news.tasks.add_sms_user',
+    'news.tasks.add_sms_user_optin',
 ]
 
 
@@ -173,6 +180,16 @@ def et_task(func):
             statsd.timing(wrapped.name + '.timing', total_time)
         statsd.incr(wrapped.name + '.total')
         statsd.incr('news.tasks.all_total')
+        if settings.MAINTENANCE_MODE and wrapped.name not in MAINTENANCE_EXEMPT:
+            # record task for later
+            QueuedTask.objects.create(
+                name=wrapped.name,
+                args=args,
+                kwargs=kwargs,
+            )
+            statsd.incr(wrapped.name + '.queued')
+            return
+
         try:
             return func(*args, **kwargs)
         except (IOError, NewsletterException, ETRestError) as e:
