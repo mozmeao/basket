@@ -10,8 +10,19 @@ from FuelSDK import ET_Client, ET_DataExtension_Row, ET_TriggeredSend
 from news.backends.common import NewsletterException, NewsletterNoResultsException
 
 
-class ETRestError(Exception):
-    pass
+class ETRefreshClient(ET_Client):
+    def refresh_token(self, force_refresh=False):
+        try:
+            return super(ETRefreshClient, self).refresh_token(force_refresh)
+        except Exception:
+            # if it failed it was likely due to an expired token and refresh key.
+            # try again as if we'd never logged in.
+            self.refreshKey = self.authToken = None
+            try:
+                return super(ETRefreshClient, self).refresh_token(force_refresh)
+            except Exception as e:
+                # client only throws Exception :( Raise something more useful
+                raise NewsletterException(str(e))
 
 
 def assert_response(resp):
@@ -63,7 +74,7 @@ class SFMC(object):
 
     def __init__(self):
         if 'clientid' in settings.SFMC_SETTINGS:
-            self.client = ET_Client(False, settings.SFMC_DEBUG, settings.SFMC_SETTINGS)
+            self.client = ETRefreshClient(False, settings.SFMC_DEBUG, settings.SFMC_SETTINGS)
 
     @property
     def auth_header(self):
@@ -205,9 +216,9 @@ class SFMC(object):
         }
         url = self.sms_api_url.format(message_id)
         response = requests.post(url, json=data, headers=self.auth_header)
-        if response.status_code == 400:
+        if response.status_code >= 400:
             errors = response.json()['errors']
-            raise ETRestError(errors)
+            raise NewsletterException(errors, status_code=response.status_code)
 
 
 sfmc = SFMC()

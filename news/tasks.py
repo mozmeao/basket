@@ -14,7 +14,7 @@ import user_agents
 from celery import Task
 
 from news.backends.common import NewsletterException, NewsletterNoResultsException
-from news.backends.sfmc import ETRestError, sfmc
+from news.backends.sfmc import sfmc
 from news.celery import app as celery_app
 from news.models import FailedTask, Newsletter, Interest, QueuedTask
 from news.newsletters import get_sms_messages, is_supported_newsletter_language
@@ -191,7 +191,7 @@ def et_task(func):
 
         try:
             return func(*args, **kwargs)
-        except (IOError, NewsletterException, ETRestError) as e:
+        except (IOError, NewsletterException) as e:
             # These could all be connection issues, so try again later.
             # IOError covers URLError and SSLError.
             exc_msg = str(e)
