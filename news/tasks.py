@@ -14,8 +14,7 @@ import user_agents
 from celery import Task
 
 from news.backends.common import NewsletterException, NewsletterNoResultsException
-from news.backends.exacttarget_rest import ETRestError, ExactTargetRest
-from news.backends.sfmc import sfmc
+from news.backends.sfmc import ETRestError, sfmc
 from news.celery import app as celery_app
 from news.models import FailedTask, Newsletter, Interest, QueuedTask
 from news.newsletters import get_sms_messages, is_supported_newsletter_language
@@ -741,13 +740,8 @@ def add_sms_user(send_name, mobile_number, optin):
     messages = get_sms_messages()
     if send_name not in messages:
         return
-    et = ExactTargetRest()
 
-    try:
-        et.send_sms([mobile_number], messages[send_name])
-    except ETRestError as error:
-        return add_sms_user.retry(exc=error)
-
+    sfmc.send_sms([mobile_number], messages[send_name])
     if optin:
         add_sms_user_optin.delay(mobile_number)
 

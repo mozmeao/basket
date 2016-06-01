@@ -3,10 +3,15 @@ from time import time
 
 from django.conf import settings
 
+import requests
 from django_statsd.clients import statsd
 from FuelSDK import ET_Client, ET_DataExtension_Row, ET_TriggeredSend
 
 from news.backends.common import NewsletterException, NewsletterNoResultsException
+
+
+class ETRestError(Exception):
+    pass
 
 
 def assert_response(resp):
@@ -54,10 +59,16 @@ def time_request(f):
 
 class SFMC(object):
     client = None
+    sms_api_url = 'https://www.exacttargetapis.com/sms/v1/messageContact/{}/send'
 
     def __init__(self):
         if 'clientid' in settings.SFMC_SETTINGS:
             self.client = ET_Client(False, settings.SFMC_DEBUG, settings.SFMC_SETTINGS)
+
+    @property
+    def auth_header(self):
+        self.client.refresh_token()
+        return {'Authorization': 'Bearer {0}'.format(self.client.authToken)}
 
     def _get_row_obj(self, de_name, props):
         row = ET_DataExtension_Row()
@@ -183,6 +194,20 @@ class SFMC(object):
         }]
         resp = ts.send()
         assert_response(resp)
+
+    @time_request
+    def send_sms(self, phone_numbers, message_id):
+        data = {
+            'mobileNumbers': phone_numbers,
+            'Subscribe': True,
+            'Resubscribe': True,
+            'keyword': 'FFDROID',  # TODO: Set keyword in arguments.
+        }
+        url = self.sms_api_url.format(message_id)
+        response = requests.post(url, json=data, headers=self.auth_header)
+        if response.status_code == 400:
+            errors = response.json()['errors']
+            raise ETRestError(errors)
 
 
 sfmc = SFMC()
