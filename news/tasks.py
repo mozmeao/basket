@@ -392,7 +392,7 @@ def update_phonebook(data, token):
 @et_task
 def update_student_ambassadors(data, token):
     data['TOKEN'] = token
-    sfmc.update_row('Student_Ambassadors', data)
+    sfmc.upsert_row('Student_Ambassadors', data)
 
 
 # Return codes for update_user
