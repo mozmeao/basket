@@ -368,6 +368,7 @@ def parse_newsletters(api_call_type, newsletters, cur_newsletters):
         and False for unsubscription.
     """
     newsletter_map = {}
+    newsletters = set(newsletters)
     if cur_newsletters is None:
         cur_newsletters = set()
     else:
@@ -385,11 +386,12 @@ def parse_newsletters(api_call_type, newsletters, cur_newsletters):
             else:
                 grouped_newsletters.add(nl)
 
-        newsletters = list(grouped_newsletters)
+        newsletters = grouped_newsletters
 
     if api_call_type == SUBSCRIBE or api_call_type == SET:
         # Subscribe the user to these newsletters if not already
-        for nl in newsletters:
+        subs = newsletters - cur_newsletters
+        for nl in subs:
             newsletter_map[nl] = True
 
     if api_call_type == UNSUBSCRIBE or api_call_type == SET:
@@ -399,12 +401,17 @@ def parse_newsletters(api_call_type, newsletters, cur_newsletters):
             # Unsubscribe from the newsletters currently subscribed to
             # but not in the new list
             if cur_newsletters:
-                unsubs = cur_newsletters - set(newsletters)
+                unsubs = cur_newsletters - newsletters
             else:
                 unsubs = []
         else:  # type == UNSUBSCRIBE
             # unsubscribe from the specified newsletters
-            unsubs = newsletters
+            if cur_newsletters:
+                unsubs = newsletters & cur_newsletters
+            else:
+                # we might not be subscribed to anything,
+                # or just didn't get user data. default to everything.
+                unsubs = newsletters
 
         for nl in unsubs:
             newsletter_map[nl] = False
