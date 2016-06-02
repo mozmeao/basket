@@ -37,4 +37,4 @@ class UpdateStudentAmbassadorsTest(TestCase):
         record = self.data.copy()
         record['TOKEN'] = self.token
         self.client.post(self.url, self.data)
-        sfmc_mock.update_row.assert_called_with('Student_Ambassadors', record)
+        sfmc_mock.upsert_row.assert_called_with('Student_Ambassadors', record)
