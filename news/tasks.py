@@ -82,7 +82,6 @@ IGNORE_ERROR_MSGS_POST_RETRY = [
 # tasks exempt from maintenance mode queuing
 MAINTENANCE_EXEMPT = [
     'news.tasks.add_fxa_activity',
-    'news.tasks.update_student_ambassadors',
     'news.tasks.add_sms_user',
     'news.tasks.add_sms_user_optin',
 ]
