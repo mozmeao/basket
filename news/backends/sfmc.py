@@ -1,7 +1,9 @@
 from functools import wraps
+from random import randint
 from time import time
 
 from django.conf import settings
+from django.core.cache import cache
 
 import requests
 from django_statsd.clients import statsd
@@ -10,19 +12,100 @@ from FuelSDK import ET_Client, ET_DataExtension_Row, ET_TriggeredSend
 from news.backends.common import NewsletterException, NewsletterNoResultsException
 
 
+HERD_TIMEOUT = 60
+AUTH_BUFFER = 300  # 5 min
+MAX_BUFFER = HERD_TIMEOUT + AUTH_BUFFER
+
+
 class ETRefreshClient(ET_Client):
+    token_cache_key = 'backends:sfmc:auth:tokens'
+    authTokenExpiresIn = None
+    token_property_names = [
+        'authToken',
+        'authTokenExpiration',
+        'internalAuthToken',
+        'refreshKey',
+    ]
+    _old_authToken = None
+
+    def token_is_expired(self):
+        """Report token is expired between 5 and 6 minutes early
+
+        Having the expiration be random helps prevent multiple basket
+        instances simultaneously requesting a new token from SFMC,
+        a.k.a. the Thundering Herd problem.
+        """
+        if self.authTokenExpiration is None:
+            return True
+
+        time_buffer = randint(1, HERD_TIMEOUT) + AUTH_BUFFER
+        return time() + time_buffer > self.authTokenExpiration
+
+    def refresh_auth_tokens_from_cache(self):
+        """Refresh the auth token and other values from cache"""
+        if self.authToken is not None and time() + MAX_BUFFER < self.authTokenExpiration:
+            # no need to refresh if the current tokens are still good
+            return
+
+        tokens = cache.get(self.token_cache_key)
+        if tokens:
+            for prop, value in tokens.items():
+                if prop in self.token_property_names:
+                    setattr(self, prop, value)
+
+            # set the value so we can detect if it changed later
+            self._old_authToken = self.authToken
+            self.build_soap_client()
+
+    def cache_auth_tokens(self):
+        if self.authToken is not None and self.authToken != self._old_authToken:
+            new_tokens = {prop: getattr(self, prop) for prop in self.token_property_names}
+            # 10 min longer than expiration so that refreshKey can be used
+            cache.set(self.token_cache_key, new_tokens, self.authTokenExpiresIn + 600)
+
+    def request_token(self, payload):
+        r = requests.post(self.auth_url, json=payload)
+        token_response = r.json()
+
+        if 'accessToken' in token_response:
+            return token_response
+
+        # try again without refreshToken
+        if 'refreshToken' in payload:
+            # not strictly required, makes testing easier
+            payload = payload.copy()
+            del payload['refreshToken']
+            return self.request_token(payload)
+
+        raise NewsletterException('Unable to validate auth keys: ' + repr(token_response),
+                                  status_code=r.status_code)
+
     def refresh_token(self, force_refresh=False):
-        try:
-            return super(ETRefreshClient, self).refresh_token(force_refresh)
-        except Exception:
-            # if it failed it was likely due to an expired token and refresh key.
-            # try again as if we'd never logged in.
-            self.refreshKey = self.authToken = None
-            try:
-                return super(ETRefreshClient, self).refresh_token(force_refresh)
-            except Exception as e:
-                # client only throws Exception :( Raise something more useful
-                raise NewsletterException(str(e))
+        """
+        Called from many different places right before executing a SOAP call
+        """
+        # If we don't already have a token or the token expires within 5 min(300 seconds), get one
+        self.refresh_auth_tokens_from_cache()
+        if force_refresh or self.authToken is None or self.token_is_expired():
+            payload = {
+                'clientId': self.client_id,
+                'clientSecret': self.client_secret,
+                'accessType': 'offline',
+            }
+            if self.refreshKey:
+                payload['refreshToken'] = self.refreshKey
+
+            token_response = self.request_token(payload)
+            statsd.incr('news.backends.sfmc.auth_token_refresh')
+            self.authToken = token_response['accessToken']
+            self.authTokenExpiresIn = token_response['expiresIn']
+            self.authTokenExpiration = time() + self.authTokenExpiresIn
+            self.internalAuthToken = token_response['legacyToken']
+            if 'refreshToken' in token_response:
+                self.refreshKey = token_response['refreshToken']
+
+            self.build_soap_client()
+            self.cache_auth_tokens()
 
 
 def assert_response(resp):

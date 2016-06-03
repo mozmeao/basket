@@ -43,7 +43,7 @@ if REDIS_URL:
     REDIS_URL = REDIS_URL.rstrip('/0')
     # use redis for celery and cache
     os.environ['BROKER_URL'] = REDIS_URL + '/' + config('REDIS_CELERY_DB', '0')
-    os.environ['CACHE_URL'] = 'hi' + REDIS_URL + '/' + config('REDIS_CACHE_DB', '1')
+    os.environ['CACHE_URL'] = REDIS_URL + '/' + config('REDIS_CACHE_DB', '1')
 
 # Production uses MySQL, but Sqlite should be sufficient for local development.
 # Our CI server tests against MySQL. See travis.py in this directory
@@ -73,6 +73,12 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     },
 }
+
+if CACHES['default']['BACKEND'].startswith('django_redis'):
+    # enable Thundering Herd protection
+    options = CACHES['default'].setdefault('OPTIONS', {})
+    options['CLIENT_CLASS'] = 'django_redis.client.HerdClient'
+    options['PARSER_CLASS'] = 'redis.connection.HiredisParser'
 
 default_email_backend = ('django.core.mail.backends.console.EmailBackend' if DEBUG else
                          'django.core.mail.backends.smtp.EmailBackend')
@@ -296,6 +302,8 @@ QUEUE_BATCH_SIZE = config('QUEUE_BATCH_SIZE', 500, cast=int)
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run
     CELERY_ALWAYS_EAGER = True
+    SFMC_SETTINGS.pop('clientid', None)
+    SFMC_SETTINGS.pop('clientsecret', None)
 
 SAML_ENABLE = config('SAML_ENABLE', default=False, cast=bool)
 if SAML_ENABLE:
