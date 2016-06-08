@@ -18,4 +18,3 @@ build.py
 *.db
 static
 celerybeat-schedule
-*.wsdl
