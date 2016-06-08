@@ -49,6 +49,11 @@ class ETRefreshClient(ET_Client):
 
         tokens = cache.get(self.token_cache_key)
         if tokens:
+            if not isinstance(tokens, dict):
+                # something wrong was cached
+                cache.delete(self.token_cache_key)
+                return
+
             for prop, value in tokens.items():
                 if prop in self.token_property_names:
                     setattr(self, prop, value)
