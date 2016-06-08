@@ -75,9 +75,7 @@ CACHES = {
 }
 
 if CACHES['default']['BACKEND'].startswith('django_redis'):
-    # enable Thundering Herd protection
     options = CACHES['default'].setdefault('OPTIONS', {})
-    options['CLIENT_CLASS'] = 'django_redis.client.HerdClient'
     options['PARSER_CLASS'] = 'redis.connection.HiredisParser'
 
 default_email_backend = ('django.core.mail.backends.console.EmailBackend' if DEBUG else
