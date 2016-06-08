@@ -627,7 +627,6 @@ def send_confirm_notice(email, token, lang, format, newsletter_slugs):
     :param lang: language code to use
     :param format: format to use ('T' or 'H')
     :param newsletter_slugs: slugs of newsletters involved
-    :raises: BasketError
     """
 
     if not lang:
@@ -635,8 +634,8 @@ def send_confirm_notice(email, token, lang, format, newsletter_slugs):
 
     # Is the language supported?
     if not is_supported_newsletter_language(lang):
-        msg = "Cannot send confirmation in unsupported language '%s'." % lang
-        raise BasketError(msg)
+        log.debug('Cannot send confirmation in unsupported language "%s".' % lang)
+        return
 
     # See if any newsletters have a custom confirmation message
     # We only need to find one; if so, we'll use the first we find.
