@@ -3,7 +3,7 @@ from django.test import TestCase
 from mock import patch
 
 from news.models import Newsletter
-from news.tasks import CONFIRMATION_MESSAGE, BasketError, mogrify_message_id, send_confirm_notice
+from news.tasks import CONFIRMATION_MESSAGE, mogrify_message_id, send_confirm_notice
 
 
 @patch('news.tasks.send_message', autospec=True)
@@ -78,17 +78,15 @@ class TestSendConfirmNotice(TestCase):
 
     def test_default_confirm_notice_bad_lang_H(self, send_message):
         """Test when there's no default confirm notice for a language"""
-        with self.assertRaises(BasketError):
-            send_confirm_notice(self.email, self.token, "fr", "H", ['slug2'])
-        with self.assertRaises(BasketError):
-            send_confirm_notice(self.email, self.token, "zz-Z", "H", ['slug2'])
+        send_confirm_notice(self.email, self.token, "fr", "H", ['slug2'])
+        send_confirm_notice(self.email, self.token, "zz-Z", "H", ['slug2'])
+        self.assertFalse(send_message.called)
 
     def test_default_confirm_notice_bad_lang_T(self, send_message):
         """Test when newsletter uses default notice and the lang is unknown"""
-        with self.assertRaises(BasketError):
-            send_confirm_notice(self.email, self.token, "fr", "T", ['slug2'])
-        with self.assertRaises(BasketError):
-            send_confirm_notice(self.email, self.token, "zz-Z", "T", ['slug2'])
+        send_confirm_notice(self.email, self.token, "fr", "T", ['slug2'])
+        send_confirm_notice(self.email, self.token, "zz-Z", "T", ['slug2'])
+        self.assertFalse(send_message.called)
 
     # explicit (custom) confirmation notice for newsletter
     ### known short lang
@@ -135,14 +133,12 @@ class TestSendConfirmNotice(TestCase):
 
     def test_explicit_confirm_notice_bad_lang_H(self, send_message):
         """Test when newsletter uses explicit notice and the lang is unknown"""
-        with self.assertRaises(BasketError):
-            send_confirm_notice(self.email, self.token, "zz", "H", ['slug1'])
-        with self.assertRaises(BasketError):
-            send_confirm_notice(self.email, self.token, "zz-Z", "H", ['slug1'])
+        send_confirm_notice(self.email, self.token, "zz", "H", ['slug1'])
+        send_confirm_notice(self.email, self.token, "zz-Z", "H", ['slug1'])
+        self.assertFalse(send_message.called)
 
     def test_explicit_confirm_notice_bad_lang_T(self, send_message):
         """Test when newsletter uses explicit notice and the lang is unknown"""
-        with self.assertRaises(BasketError):
-            send_confirm_notice(self.email, self.token, "zz", "T", ['slug1'])
-        with self.assertRaises(BasketError):
-            send_confirm_notice(self.email, self.token, "zz-Z", "T", ['slug1'])
+        send_confirm_notice(self.email, self.token, "zz", "T", ['slug1'])
+        send_confirm_notice(self.email, self.token, "zz-Z", "T", ['slug1'])
+        self.assertFalse(send_message.called)
