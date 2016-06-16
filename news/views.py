@@ -17,7 +17,8 @@ from ratelimit.exceptions import Ratelimited
 from ratelimit.utils import is_ratelimited
 from synctool.routing import Route
 
-from news.models import Newsletter, Interest, LocaleStewards, NewsletterGroup, SMSMessage
+from news.models import Newsletter, Interest, LocaleStewards, NewsletterGroup, SMSMessage, \
+    TransactionalEmailMessage
 from news.newsletters import get_sms_messages, newsletter_slugs, newsletter_and_group_slugs, \
     newsletter_private_slugs, get_transactional_message_ids
 from news.tasks import (
@@ -67,6 +68,7 @@ def news_sync():
         Interest.objects.all(),
         LocaleStewards.objects.all(),
         SMSMessage.objects.all(),
+        TransactionalEmailMessage.objects.all(),
     ]
 
 
