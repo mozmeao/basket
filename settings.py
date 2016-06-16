@@ -159,6 +159,7 @@ INSTALLED_APPS = (
     'corsheaders',
     'product_details',
     'raven.contrib.django.raven_compat',
+    'django_extensions',
 
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -210,6 +211,14 @@ SFMC_SETTINGS = {
 if ET_CLIENT_ID and ET_CLIENT_SECRET:
     SFMC_SETTINGS['clientid'] = ET_CLIENT_ID
     SFMC_SETTINGS['clientsecret'] = ET_CLIENT_SECRET
+
+# Salesforce.com
+SFDC_SETTINGS = {
+    'username': config('SFDC_USERNAME', None),
+    'password': config('SFDC_PASSWORD', None),
+    'security_token': config('SFDC_SEC_TOKEN', None),
+    'sandbox': config('SFDC_USE_SANDBOX', EXACTTARGET_USE_SANDBOX, cast=bool),
+}
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_URLS_REGEX = r'^/news/.*$'
@@ -300,6 +309,8 @@ QUEUE_BATCH_SIZE = config('QUEUE_BATCH_SIZE', 500, cast=int)
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run
     CELERY_ALWAYS_EAGER = True
+    SFDC_SETTINGS.pop('username', None)
+    SFDC_SETTINGS.pop('password', None)
     SFMC_SETTINGS.pop('clientid', None)
     SFMC_SETTINGS.pop('clientsecret', None)
 

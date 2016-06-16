@@ -18,9 +18,20 @@ from news.utils import (
     get_best_language,
     get_email_block_list,
     language_code_is_valid,
+    parse_newsletters_csv,
     validate_email,
 )
 from news.views import update_user_task
+
+
+class ParseNewslettersCSVTests(TestCase):
+    def test_values(self):
+        self.assertEqual(parse_newsletters_csv('dude,walter'), ['dude', 'walter'])
+        self.assertEqual(parse_newsletters_csv(' dude,  walter  '), ['dude', 'walter'])
+        self.assertEqual(parse_newsletters_csv(', dude, ,walter, '), ['dude', 'walter'])
+        self.assertEqual(parse_newsletters_csv(False), [])
+        self.assertEqual(parse_newsletters_csv(None), [])
+        self.assertEqual(parse_newsletters_csv(['dude', 'donny']), ['dude', 'donny'])
 
 
 class EmailIsBlockedTests(TestCase):
@@ -50,12 +61,12 @@ class UpdateUserTaskTests(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
-        patcher = patch('news.views.get_or_create_user_data')
-        self.get_or_create_user_data = patcher.start()
+        patcher = patch('news.views.upsert_contact')
+        self.upsert_contact = patcher.start()
         self.addCleanup(patcher.stop)
 
-        patcher = patch('news.views.update_user')
-        self.update_user = patcher.start()
+        patcher = patch('news.views.upsert_user')
+        self.upsert_user = patcher.start()
         self.addCleanup(patcher.stop)
 
     def assert_response_error(self, response, status_code, basket_code):
@@ -81,17 +92,6 @@ class UpdateUserTaskTests(TestCase):
 
             self.assert_response_error(response, 400, errors.BASKET_INVALID_NEWSLETTER)
 
-    def test_invalid_lang(self):
-        """If the given lang is invalid, return a 400 error."""
-        request = self.factory.post('/')
-
-        with patch('news.views.language_code_is_valid') as mock_language_code_is_valid:
-            mock_language_code_is_valid.return_value = False
-            response = update_user_task(request, SUBSCRIBE, {'lang': 'pt-BR'})
-
-            self.assert_response_error(response, 400, errors.BASKET_INVALID_LANGUAGE)
-            mock_language_code_is_valid.assert_called_with('pt-BR')
-
     @patch('news.views.get_best_language')
     def test_accept_lang(self, get_best_language_mock):
         """If accept_lang param is provided, should set the lang in data."""
@@ -102,17 +102,7 @@ class UpdateUserTaskTests(TestCase):
 
         response = update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
-        self.update_user.delay.assert_called_with(after_data, 'dude@example.com',
-                                                  None, SUBSCRIBE, True, start_time=ANY)
-
-    def test_invalid_accept_lang(self):
-        """If accept_lang param is provided but invalid, return a 400."""
-        request = self.factory.post('/')
-        data = {'email': 'dude@example.com', 'accept_lang': 'the dude minds, man'}
-
-        response = update_user_task(request, SUBSCRIBE, data, sync=False)
-        self.assert_response_error(response, 400, errors.BASKET_INVALID_LANGUAGE)
-        self.assertFalse(self.update_user.delay.called)
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data, start_time=ANY)
 
     @patch('news.utils.get_best_language')
     def test_lang_overrides_accept_lang(self, get_best_language_mock):
@@ -129,8 +119,7 @@ class UpdateUserTaskTests(TestCase):
         response = update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
         # basically asserts that the data['lang'] value wasn't changed.
-        self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True,
-                                                  start_time=ANY)
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, data, start_time=ANY)
 
     def test_missing_email(self):
         """
@@ -151,9 +140,8 @@ class UpdateUserTaskTests(TestCase):
 
         response = update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
-        self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True,
-                                                  start_time=ANY)
-        self.assertFalse(self.get_or_create_user_data.called)
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, data, start_time=ANY)
+        self.assertFalse(self.upsert_contact.called)
 
     def test_success_with_valid_newsletters(self):
         """
@@ -187,24 +175,23 @@ class UpdateUserTaskTests(TestCase):
         response = update_user_task(request, SUBSCRIBE, sync=False)
 
         self.assert_response_ok(response)
-        self.update_user.delay.assert_called_with(data, 'a@example.com', None, SUBSCRIBE, True,
-                                                  start_time=ANY)
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, data, start_time=ANY)
 
-    def test_success_with_sync(self):
+    @patch('news.views.get_user_data')
+    def test_success_with_sync(self, gud_mock):
         """
         If sync is True look up the user with get_or_create_user_data and
         return an OK response with the token and created from the fetched subscriber.
         """
         request = self.factory.post('/')
         data = {'email': 'a@example.com'}
-        self.get_or_create_user_data.return_value = {'token': 'mytoken',
-                                                     'email': 'a@example.com'}, True
+        gud_mock.return_value = {'token': 'mytoken', 'email': 'a@example.com'}
+        self.upsert_contact.return_value = 'mytoken', True
 
         response = update_user_task(request, SUBSCRIBE, data, sync=True)
 
         self.assert_response_ok(response, token='mytoken', created=True)
-        self.update_user.delay.assert_called_with(data, 'a@example.com', 'mytoken',
-                                                  SUBSCRIBE, True, start_time=ANY)
+        self.upsert_contact.assert_called_with(SUBSCRIBE, data, gud_mock.return_value)
 
     @patch('news.views.newsletter_slugs')
     @patch('news.views.newsletter_private_slugs')
@@ -219,8 +206,7 @@ class UpdateUserTaskTests(TestCase):
         response = update_user_task(request, UNSUBSCRIBE, data)
 
         self.assert_response_ok(response)
-        self.update_user.delay.assert_called_with(data, None, 'mytoken',
-                                                  UNSUBSCRIBE, True, start_time=ANY)
+        self.upsert_user.delay.assert_called_with(UNSUBSCRIBE, data, start_time=ANY)
 
     @patch('news.views.newsletter_and_group_slugs')
     @patch('news.views.newsletter_private_slugs')

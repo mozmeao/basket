@@ -16,8 +16,8 @@ from news.tasks import (
     NewsletterException,
     RECOVERY_MESSAGE_ID,
     send_recovery_message_task,
+    send_message,
     SUBSCRIBE,
-    update_phonebook,
     update_user,
 )
 
@@ -25,16 +25,16 @@ from news.tasks import (
 class FailedTaskTest(TestCase):
     """Test that failed tasks are logged in our FailedTask table"""
 
-    @patch('news.tasks.get_user_data')
-    def test_failed_task_logging(self, mock_get_user_data):
+    @patch('news.tasks.sfmc')
+    def test_failed_task_logging(self, mock_sfmc):
         """Failed task is logged in FailedTask table"""
-        mock_get_user_data.side_effect = Exception("Test exception")
+        mock_sfmc.send_mail.side_effect = Exception("Test exception")
         self.assertEqual(0, FailedTask.objects.count())
-        args = [{'arg1': 1, 'arg2': 2}]
+        args = ['msg_id', 'you@example.com', 'SFDCID']
         kwargs = {'token': 3}
-        result = update_phonebook.apply(args=args, kwargs=kwargs)
+        result = send_message.apply(args=args, kwargs=kwargs)
         fail = FailedTask.objects.get()
-        self.assertEqual('news.tasks.update_phonebook', fail.name)
+        self.assertEqual('news.tasks.send_message', fail.name)
         self.assertEqual(result.task_id, fail.task_id)
         self.assertEqual(args, fail.args)
         self.assertEqual(kwargs, fail.kwargs)
@@ -67,7 +67,7 @@ class RetryTaskTest(TestCase):
 
 
 @patch('news.tasks.send_message', autospec=True)
-@patch('news.utils.look_for_user', autospec=True)
+@patch('news.tasks.get_user_data', autospec=True)
 class RecoveryMessageTask(TestCase):
     def setUp(self):
         self.email = "dude@example.com"
@@ -95,6 +95,7 @@ class RecoveryMessageTask(TestCase):
         format = 'T'
         lang = 'fr'
         mock_look_for_user.return_value = {
+            'id': 'SFDCID',
             'status': 'ok',
             'email': self.email,
             'format': format,
@@ -105,8 +106,8 @@ class RecoveryMessageTask(TestCase):
         }
         send_recovery_message_task(self.email)
         message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
-        mock_send.delay.assert_called_with(message_id, self.email,
-                                           'USERTOKEN', format)
+        mock_send.delay.assert_called_with(message_id, self.email, 'SFDCID',
+                                           token='USERTOKEN')
 
     @override_settings(RECOVER_MSG_LANGS=['en'])
     def test_lang_not_available(self, mock_look_for_user, mock_send):
@@ -114,6 +115,7 @@ class RecoveryMessageTask(TestCase):
         # Should trigger message in english if not available in user lang
         format = 'T'
         mock_look_for_user.return_value = {
+            'id': 'SFDCID',
             'status': 'ok',
             'email': self.email,
             'format': format,
@@ -124,8 +126,8 @@ class RecoveryMessageTask(TestCase):
         }
         send_recovery_message_task(self.email)
         message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, 'en', format)
-        mock_send.delay.assert_called_with(message_id, self.email,
-                                           'USERTOKEN', format)
+        mock_send.delay.assert_called_with(message_id, self.email, 'SFDCID',
+                                           token='USERTOKEN')
 
 
 class UpdateUserTests(TestCase):

@@ -2,7 +2,12 @@ from django.conf import settings
 from django.contrib import admin, messages
 
 from news.models import (APIUser, BlockedEmail, FailedTask, Interest, LocaleStewards, Newsletter,
-                         NewsletterGroup, QueuedTask, SMSMessage)
+                         NewsletterGroup, QueuedTask, SMSMessage, TransactionalEmailMessage)
+
+
+class TransactionalEmailAdmin(admin.ModelAdmin):
+    fields = ('message_id', 'vendor_id', 'languages', 'description')
+    list_display = ('message_id', 'vendor_id', 'languages', 'description')
 
 
 class SMSMessageAdmin(admin.ModelAdmin):
@@ -41,11 +46,9 @@ class APIUserAdmin(admin.ModelAdmin):
 
 
 class NewsletterAdmin(admin.ModelAdmin):
-    fields = ('title', 'slug', 'vendor_id', 'welcome', 'confirm_message',
-              'description', 'languages', 'show', 'order', 'active',
-              'requires_double_optin', 'private')
-    list_display = ('order', 'title', 'slug', 'vendor_id', 'welcome',
-                    'confirm_message', 'languages', 'show', 'active',
+    fields = ('title', 'slug', 'vendor_id', 'description', 'languages',
+              'show', 'order', 'active', 'requires_double_optin', 'private')
+    list_display = ('order', 'title', 'slug', 'vendor_id', 'languages', 'show', 'active',
                     'requires_double_optin', 'private')
     list_display_links = ('title', 'slug')
     list_editable = ('order', 'show', 'active', 'requires_double_optin', 'private')
@@ -109,6 +112,7 @@ class FailedTaskAdmin(admin.ModelAdmin):
     retry_task_action.short_description = u'Retry task(s)'
 
 
+admin.site.register(TransactionalEmailMessage, TransactionalEmailAdmin)
 admin.site.register(SMSMessage, SMSMessageAdmin)
 admin.site.register(APIUser, APIUserAdmin)
 admin.site.register(BlockedEmail, BlockedEmailAdmin)

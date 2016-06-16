@@ -1,6 +1,6 @@
 from django.conf.urls import url
 
-from .views import (confirm, custom_unsub_reason, custom_update_phonebook,
+from .views import (confirm, custom_unsub_reason,
                     custom_update_student_ambassadors, debug_user,
                     fxa_activity, fxa_register, get_involved, list_newsletters, lookup_user,
                     newsletters, send_recovery_message, subscribe, subscribe_sms, sync_route,
@@ -28,7 +28,6 @@ urlpatterns = (
 
     url('^custom_unsub_reason/$', custom_unsub_reason),
     token_url('custom_update_student_ambassadors', custom_update_student_ambassadors),
-    token_url('custom_update_phonebook', custom_update_phonebook),
 
     url('^newsletters/$', newsletters, name='newsletters_api'),
     url('^$', list_newsletters),

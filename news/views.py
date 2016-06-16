@@ -19,7 +19,7 @@ from synctool.routing import Route
 
 from news.models import Newsletter, Interest, LocaleStewards, NewsletterGroup, SMSMessage
 from news.newsletters import get_sms_messages, newsletter_slugs, newsletter_and_group_slugs, \
-    newsletter_private_slugs
+    newsletter_private_slugs, get_transactional_message_ids
 from news.tasks import (
     add_fxa_activity,
     add_sms_user,
@@ -28,9 +28,10 @@ from news.tasks import (
     update_custom_unsub,
     update_fxa_info,
     update_get_involved,
-    update_phonebook,
     update_student_ambassadors,
-    update_user)
+    upsert_contact,
+    upsert_user,
+)
 from news.utils import (
     SET,
     SUBSCRIBE,
@@ -48,7 +49,8 @@ from news.utils import (
     language_code_is_valid,
     NewsletterException,
     validate_email,
-    newsletter_exception_response, get_or_create_user_data)
+    newsletter_exception_response,
+    parse_newsletters_csv)
 
 
 IP_RATE_LIMIT_EXTERNAL = getattr(settings, 'IP_RATE_LIMIT_EXTERNAL', '40/m')
@@ -183,15 +185,7 @@ def fxa_register(request):
             'code': errors.BASKET_INVALID_LANGUAGE,
         }, 400)
 
-    args = [data['email'], lang, data['fxa_id']]
-    kwargs = {}
-    if 'source_url' in data:
-        kwargs['source_url'] = data['source_url']
-
-    if data.get('skip_welcome', False):
-        kwargs['skip_welcome'] = True
-
-    update_fxa_info.delay(*args, **kwargs)
+    update_fxa_info.delay(data['email'], lang, data['fxa_id'])
     return HttpResponseJSON({'status': 'ok'})
 
 
@@ -304,8 +298,8 @@ def subscribe(request):
         # don't let on there's a problem
         return HttpResponseJSON({'status': 'ok'})
 
-    optin = data.get('optin', 'N').upper() == 'Y'
-    sync = data.get('sync', 'N').upper() == 'Y'
+    optin = data.pop('optin', 'N').upper() == 'Y'
+    sync = data.pop('sync', 'N').upper() == 'Y'
 
     if optin and (not request.is_secure() or not has_valid_api_key(request)):
         # for backward compat we just ignore the optin if
@@ -395,6 +389,7 @@ def unsubscribe(request, token):
     data['token'] = token
 
     if data.get('optout', 'N') == 'Y':
+        data['optout'] = True
         data['newsletters'] = ','.join(newsletter_slugs())
 
     return update_user_task(request, UNSUBSCRIBE, data)
@@ -406,7 +401,7 @@ def user(request, token):
     if request.method == 'POST':
         data = request.POST.dict()
         data['token'] = token
-        return update_user_task(request, SET, data=data)
+        return update_user_task(request, SET, data)
 
     return get_user(token)
 
@@ -497,13 +492,6 @@ def custom_unsub_reason(request):
 @csrf_exempt
 def custom_update_student_ambassadors(request, token):
     update_student_ambassadors.delay(request.POST.dict(), token)
-    return HttpResponseJSON({'status': 'ok'})
-
-
-@require_POST
-@csrf_exempt
-def custom_update_phonebook(request, token):
-    update_phonebook.delay(request.POST.dict(), token)
     return HttpResponseJSON({'status': 'ok'})
 
 
@@ -629,7 +617,7 @@ def list_newsletters(request):
                   {'newsletters': active_newsletters})
 
 
-def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
+def update_user_task(request, api_call_type, data=None, optin=False, sync=False):
     """Call the update_user task async with the right parameters.
 
     If sync==True, be sure to include the token in the response.
@@ -637,11 +625,10 @@ def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
     """
     data = data or request.POST.dict()
 
-    newsletters = data.get('newsletters', None)
+    newsletters = parse_newsletters_csv(data.get('newsletters'))
     if newsletters:
-        newsletters = [x.strip() for x in newsletters.split(',')]
         if api_call_type == SUBSCRIBE:
-            all_newsletters = newsletter_and_group_slugs()
+            all_newsletters = newsletter_and_group_slugs() + get_transactional_message_ids()
         else:
             all_newsletters = newsletter_slugs()
 
@@ -672,22 +659,14 @@ def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
 
     if 'lang' in data:
         if not language_code_is_valid(data['lang']):
-            return HttpResponseJSON({
-                'status': 'error',
-                'desc': 'invalid language',
-                'code': errors.BASKET_INVALID_LANGUAGE,
-            }, 400)
+            data['lang'] = 'en'
     elif 'accept_lang' in data:
         lang = get_best_language(get_accept_languages(data['accept_lang']))
         if lang:
             data['lang'] = lang
             del data['accept_lang']
         else:
-            return HttpResponseJSON({
-                'status': 'error',
-                'desc': 'invalid language',
-                'code': errors.BASKET_INVALID_LANGUAGE,
-            }, 400)
+            data['lang'] = 'en'
 
     email = data.get('email')
     token = data.get('token')
@@ -698,22 +677,32 @@ def update_user_task(request, api_call_type, data=None, optin=True, sync=False):
             'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
+    if optin:
+        data['optin'] = True
+
     if sync:
         try:
-            user_data, created = get_or_create_user_data(email=email, token=token)
+            user_data = get_user_data(email=email, token=token)
         except NewsletterException as e:
             return newsletter_exception_response(e)
 
-        update_user.delay(data, user_data['email'], user_data['token'], api_call_type, optin,
-                          start_time=time())
+        if not user_data:
+            if not email:
+                # must have email to create a user
+                return HttpResponseJSON({
+                    'status': 'error',
+                    'desc': MSG_EMAIL_OR_TOKEN_REQUIRED,
+                    'code': errors.BASKET_USAGE_ERROR,
+                }, 400)
+
+        token, created = upsert_contact(api_call_type, data, user_data)
         return HttpResponseJSON({
             'status': 'ok',
-            'token': user_data['token'],
+            'token': token,
             'created': created,
         })
     else:
-        update_user.delay(data, email, token, api_call_type, optin,
-                          start_time=time())
+        upsert_user.delay(api_call_type, data, start_time=time())
         return HttpResponseJSON({
             'status': 'ok',
         })

@@ -1,4 +1,7 @@
-from functools import wraps
+"""
+API Client Library for Salesforce Marketing Cloud (SFMC)
+Formerly ExactTarget
+"""
 from random import randint
 from time import time
 
@@ -9,7 +12,11 @@ import requests
 from django_statsd.clients import statsd
 from FuelSDK import ET_Client, ET_DataExtension_Row, ET_TriggeredSend
 
-from news.backends.common import NewsletterException, NewsletterNoResultsException
+from news.backends.common import get_timer_decorator, NewsletterException, \
+                                 NewsletterNoResultsException
+
+
+time_request = get_timer_decorator('news.backends.sfmc')
 
 
 HERD_TIMEOUT = 60
@@ -128,34 +135,6 @@ def build_attributes(data):
     return [{'Name': key, 'Value': value} for key, value in data.items()]
 
 
-def time_request(f):
-    """
-    Decorator for timing and counting requests to the API
-    """
-    @wraps(f)
-    def wrapped(*args, **kwargs):
-        starttime = time()
-        e = None
-        try:
-            resp = f(*args, **kwargs)
-        except NewsletterException as e:
-            pass
-        except Exception:
-            raise
-
-        totaltime = int((time() - starttime) * 1000)
-        statsd.timing('news.backends.sfmc.timing', totaltime)
-        statsd.timing('news.backends.sfmc.{}.timing'.format(f.__name__), totaltime)
-        statsd.incr('news.backends.sfmc.count')
-        statsd.incr('news.backends.sfmc.{}.count'.format(f.__name__))
-        if e:
-            raise
-        else:
-            return resp
-
-    return wrapped
-
-
 class SFMC(object):
     client = None
     sms_api_url = 'https://www.exacttargetapis.com/sms/v1/messageContact/{}/send'
@@ -270,27 +249,30 @@ class SFMC(object):
         assert_response(resp)
 
     @time_request
-    def send_mail(self, ts_name, email, token, format):
+    def send_mail(self, ts_name, email, subscriber_key, token=None):
         """
         Send an email message to a user (Triggered Send).
 
         @param ts_name: the name of the message to send
         @param email: the email address of the user
+        @param subscriber_key: the key for the user in SFMC
+        @param format: T or H for Text or HTML
+        @param token: optional token if a recovery message
         @return: None
         """
         ts = ET_TriggeredSend()
         ts.auth_stub = self.client
         ts.props = {'CustomerKey': ts_name}
-        ts.attributes = build_attributes({
-            'TOKEN': token,
-            'EMAIL_FORMAT_': format,
-        })
-        ts.subscribers = [{
+        subscriber = {
             'EmailAddress': email,
-            'SubscriberKey': token,
-            'EmailTypePreference': 'HTML' if format == 'H' else 'Text',
-            'Attributes': ts.attributes,
-        }]
+            'SubscriberKey': subscriber_key,
+        }
+        if token:
+            ts.attributes = build_attributes({
+                'TOKEN': token,
+            })
+            subscriber['Attributes'] = ts.attributes
+        ts.subscribers = [subscriber]
         resp = ts.send()
         assert_response(resp)
 

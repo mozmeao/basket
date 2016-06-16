@@ -234,32 +234,13 @@ class FxAccountsTest(TestCase):
             'fxa_id': 'the dude has a Fx account.',
             'api-key': auth.api_key,
             'accept_lang': 'de',
-            'source_url': 'https://el-dudarino.org',
         }
         resp = self.ssl_post('/news/fxa-register/', request_data)
         self.assertEqual(resp.status_code, 200, resp.content)
         data = json.loads(resp.content)
         self.assertEqual('ok', data['status'])
         fxa_mock.delay.assert_called_once_with(request_data['email'], 'de',
-                                               request_data['fxa_id'],
-                                               source_url='https://el-dudarino.org')
-
-    def test_skip_welcome(self, fxa_mock):
-        """Should pass skip_welcome to the task."""
-        auth = APIUser.objects.create(name="test")
-        request_data = {
-            'email': 'dude@example.com',
-            'fxa_id': 'the dude has a Fx account.',
-            'api-key': auth.api_key,
-            'accept_lang': 'de',
-            'skip_welcome': 'y',
-        }
-        resp = self.ssl_post('/news/fxa-register/', request_data)
-        self.assertEqual(resp.status_code, 200, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual('ok', data['status'])
-        fxa_mock.delay.assert_called_once_with(request_data['email'], 'de',
-                                               request_data['fxa_id'], skip_welcome=True)
+                                               request_data['fxa_id'])
 
 
 @patch.dict('news.newsletters.SMS_MESSAGES', {'SMS_Android': 'My_Sherona'})
@@ -463,13 +444,15 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         If optin is 'Y' but the request isn't HTTPS, disable optin.
         """
         request_data = {'newsletters': 'asdf', 'optin': 'Y', 'email': 'dude@example.com'}
+        update_data = request_data.copy()
+        del update_data['optin']
         request = self.factory.post('/', request_data)
         request.is_secure = lambda: False
         self.has_valid_api_key.return_value = True
 
         response = views.subscribe(request)
         self.assertEqual(response, self.update_user_task.return_value)
-        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
+        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
                                                  optin=False, sync=False)
 
     def test_optin_valid_api_key_required(self):
@@ -477,13 +460,15 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         If optin is 'Y' but the API key isn't valid, disable optin.
         """
         request_data = {'newsletters': 'asdf', 'optin': 'Y', 'email': 'dude@example.com'}
+        update_data = request_data.copy()
+        del update_data['optin']
         request = self.factory.post('/', request_data)
         request.is_secure = lambda: True
         self.has_valid_api_key.return_value = False
 
         response = views.subscribe(request)
         self.assertEqual(response, self.update_user_task.return_value)
-        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
+        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
                                                  optin=False, sync=False)
 
     def test_sync_ssl_required(self):
@@ -542,19 +527,25 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         """Test basic success case with no optin or sync."""
         request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
                         'email': 'dude@example.com', 'first_name': 'The', 'last_name': 'Dude'}
+        update_data = request_data.copy()
+        del update_data['optin']
+        del update_data['sync']
         request = self.factory.post('/', request_data)
 
         response = views.subscribe(request)
 
         self.assertEqual(response, self.update_user_task.return_value)
         self.validate_email.assert_called_with(request_data['email'])
-        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
+        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
                                                  optin=False, sync=False)
 
     def test_success_sync_optin(self):
         """Test success case with optin and sync."""
         request_data = {'newsletters': 'news,lets', 'optin': 'Y', 'sync': 'Y',
                         'email': 'dude@example.com'}
+        update_data = request_data.copy()
+        del update_data['optin']
+        del update_data['sync']
         request = self.factory.post('/', request_data)
         request.is_secure = lambda: True
         self.has_valid_api_key.return_value = True
@@ -564,13 +555,16 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         self.has_valid_api_key.assert_called_with(request)
         self.assertEqual(response, self.update_user_task.return_value)
         self.validate_email.assert_called_with('dude@example.com')
-        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
+        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
                                                      optin=True, sync=True)
 
     def test_success_sync_optin_lowercase(self):
         """Test success case with optin and sync, using lowercase y."""
         request_data = {'newsletters': 'news,lets', 'optin': 'y', 'sync': 'y',
                         'email': 'dude@example.com'}
+        update_data = request_data.copy()
+        del update_data['optin']
+        del update_data['sync']
         request = self.factory.post('/', request_data)
         request.is_secure = lambda: True
 
@@ -581,7 +575,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
 
             self.assertEqual(response, self.update_user_task.return_value)
             self.validate_email.assert_called_with('dude@example.com')
-            self.update_user_task.assert_called_with(request, SUBSCRIBE, data=request_data,
+            self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
                                                      optin=True, sync=True)
 
 
