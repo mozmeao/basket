@@ -147,13 +147,17 @@ def et_task(func):
         statsd.incr(wrapped.name + '.total')
         statsd.incr('news.tasks.all_total')
         if settings.MAINTENANCE_MODE and wrapped.name not in MAINTENANCE_EXEMPT:
-            # record task for later
-            QueuedTask.objects.create(
-                name=wrapped.name,
-                args=args,
-                kwargs=kwargs,
-            )
-            statsd.incr(wrapped.name + '.queued')
+            if not settings.READ_ONLY_MODE:
+                # record task for later
+                QueuedTask.objects.create(
+                    name=wrapped.name,
+                    args=args,
+                    kwargs=kwargs,
+                )
+                statsd.incr(wrapped.name + '.queued')
+            else:
+                statsd.incr(wrapped.name + '.not_queued')
+
             return
 
         try:
