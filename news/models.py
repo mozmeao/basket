@@ -23,24 +23,6 @@ class BlockedEmail(models.Model):
 
 
 class Newsletter(models.Model):
-    # fields to be removed after deployment
-    welcome = models.CharField(
-        max_length=64,
-        help_text="The ID of the welcome message sent for this newsletter. "
-                  "This is the HTML version of the message; append _T to this "
-                  "ID to get the ID of the text-only version.  If blank, "
-                  "no welcome is sent",
-        blank=True,
-    )
-    confirm_message = models.CharField(
-        max_length=64,
-        help_text="The ID of the confirm message sent for this newsletter."
-                  "That's the one that says 'please click here to confirm'."
-                  "If blank, a default message based on the user's language "
-                  "is sent.",
-        blank=True,
-    )
-    # end fields to remove
     slug = models.SlugField(
         unique=True,
         help_text="The ID for the newsletter that will be used by clients",
