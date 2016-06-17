@@ -18,7 +18,7 @@ from basket import errors
 from news.backends.common import NewsletterException
 from news.backends.sfdc import sfdc
 from news.models import APIUser, BlockedEmail
-from news.newsletters import inactive_newsletter_slugs, newsletter_group_newsletter_slugs, \
+from news.newsletters import newsletter_inactive_slugs, newsletter_group_newsletter_slugs, \
     newsletter_languages
 
 
@@ -376,7 +376,7 @@ def parse_newsletters(api_call_type, newsletters, cur_newsletters):
         cur_newsletters = set(cur_newsletters)
         if api_call_type == SET:
             # don't mess with inactive newsletters on a full update
-            cur_newsletters -= set(inactive_newsletter_slugs())
+            cur_newsletters -= set(newsletter_inactive_slugs())
 
     if api_call_type == SUBSCRIBE:
         grouped_newsletters = set()

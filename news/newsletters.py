@@ -94,17 +94,13 @@ def _get_newsletter_groups_data():
 def _get_newsletters_data():
     by_name = {}
     by_vendor_id = {}
-    inactive = []
     for nl in Newsletter.objects.all():
         by_name[nl.slug] = nl
         by_vendor_id[nl.vendor_id] = nl
-        if not nl.active:
-            inactive.append(nl.slug)
 
     return {
         'by_name': by_name,
         'by_vendor_id': by_vendor_id,
-        'inactive': inactive,
     }
 
 
@@ -115,10 +111,6 @@ def newsletter_map():
 
 def newsletter_inv_map():
     return {v: k for k, v in newsletter_map().iteritems()}
-
-
-def inactive_newsletter_slugs():
-    return _newsletters().get('inactive', [])
 
 
 def newsletter_field(name):
@@ -170,6 +162,10 @@ def newsletter_and_group_slugs():
 def newsletter_private_slugs():
     """Return a list of private newsletter ids"""
     return [nl.slug for nl in _newsletters()['by_name'].values() if nl.private]
+
+
+def newsletter_inactive_slugs():
+    return [nl.slug for nl in _newsletters()['by_name'].values() if not nl.active]
 
 
 def slug_to_vendor_id(slug):

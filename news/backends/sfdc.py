@@ -209,6 +209,10 @@ class SFDC(object):
         else:
             raise KeyError('id, token, or email required')
 
+        # source_url should only be added if user doesn't already have one
+        if record.get('source_url') and 'source_url' in data:
+            del data['source_url']
+
         self.contact.update(contact_id, to_vendor(data))
 
     @time_request
