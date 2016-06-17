@@ -429,6 +429,10 @@ def upsert_contact(api_call_type, data, user_data):
     else:
         token = update_data['token'] = generate_token()
 
+    # source_url should only be added if user doesn't already have one
+    if user_data and user_data.get('source_url') and 'source_url' in update_data:
+        del update_data['source_url']
+
     sfdc.update(user_data, update_data)
     return token, False
 
