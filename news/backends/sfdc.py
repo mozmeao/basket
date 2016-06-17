@@ -12,7 +12,7 @@ from news.newsletters import newsletter_map, newsletter_inv_map
 
 
 time_request = get_timer_decorator('news.backends.sfdc')
-LAST_NAME_DEFAULT_VALUE = '_'
+LAST_NAME_DEFAULT_VALUE = ','
 FIELD_MAP = {
     'id': 'Id',
     'email': 'Email',
