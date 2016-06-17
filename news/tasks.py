@@ -322,7 +322,8 @@ def update_user(data, email, token, api_call_type, optin):
     if optin is not None:
         data['optin'] = optin
 
-    upsert_contact(api_call_type, data, get_user_data(email=email, token=token))
+    upsert_contact(api_call_type, data, get_user_data(email=email, token=token,
+                                                      extra_fields=['id']))
 
 
 @et_task
@@ -336,7 +337,8 @@ def upsert_user(api_call_type, data):
     @return:
     """
     upsert_contact(api_call_type, data,
-                   get_user_data(data.get('token'), data.get('email')))
+                   get_user_data(data.get('token'), data.get('email'),
+                                 extra_fields=['id']))
 
 
 def upsert_contact(api_call_type, data, user_data):
@@ -372,7 +374,7 @@ def upsert_contact(api_call_type, data, user_data):
         transactionals = newsletters_set & all_transactionals
         if transactionals:
             newsletters = list(newsletters_set - transactionals)
-            send_transactional_messages(update_data, list(transactionals))
+            send_transactional_messages(update_data, user_data, list(transactionals))
             if not newsletters:
                 # no regular newsletters
                 return None, None
@@ -431,10 +433,15 @@ def upsert_contact(api_call_type, data, user_data):
     return token, False
 
 
-def send_transactional_messages(data, transactionals):
+def send_transactional_messages(data, user_data, transactionals):
     email = data['email']
     lang_code = data.get('lang', 'en')[:2].lower()
     msgs = TransactionalEmailMessage.objects.filter(message_id__in=transactionals)
+    if user_data and 'id' in user_data:
+        sfdc_id = user_data['id']
+    else:
+        sfdc_id = None
+
     for tm in msgs:
         languages = [lang[:2].lower() for lang in tm.language_list]
         if lang_code not in languages:
@@ -444,7 +451,7 @@ def send_transactional_messages(data, transactionals):
             lang_code = 'en'
 
         msg_id = mogrify_message_id(tm.vendor_id, lang_code, 'H')
-        send_message.delay(msg_id, email, email)
+        send_message.delay(msg_id, email, sfdc_id or email)
 
 
 def apply_updates(database, record):
