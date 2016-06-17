@@ -403,9 +403,9 @@ def upsert_contact(api_call_type, data, user_data):
         try:
             sfdc.add(update_data)
             return update_data['token'], True
-        except sfapi.SalesforceMalformedRequest:
+        except sfapi.SalesforceMalformedRequest as e:  # noqa
             # possibly a duplicate email. try the update below.
-            user_data = sfdc.get(email=data['email'])
+            user_data = get_user_data(email=data['email'], extra_fields=['id'])
             if user_data:
                 # we have a user, delete generated token
                 # and continue with an update
