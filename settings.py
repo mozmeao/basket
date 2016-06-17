@@ -239,7 +239,7 @@ CELERYBEAT_SCHEDULE = {}
 if SNITCH_ID:
     CELERYBEAT_SCHEDULE['snitch'] = {
         'task': 'news.tasks.snitch',
-        'schedule': timedelta(minutes=10),
+        'schedule': timedelta(minutes=5),
     }
 
 
