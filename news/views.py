@@ -683,6 +683,13 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
         data['optin'] = True
 
     if sync:
+        if settings.MAINTENANCE_MODE:
+            return HttpResponseJSON({
+                'status': 'error',
+                'desc': 'sync is not available in maintenance mode',
+                'code': errors.BASKET_UNKNOWN_ERROR,
+            }, 400)
+
         try:
             user_data = get_user_data(email=email, token=token)
         except NewsletterException as e:
