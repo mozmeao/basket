@@ -175,7 +175,6 @@ def language_code_is_valid(code):
 IGNORE_USER_FIELDS = [
     'id',
     'reason',
-    'source_url',
     'fsa_school',
     'fsa_grad_year',
     'fsa_major',
