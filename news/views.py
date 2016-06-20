@@ -684,6 +684,9 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
 
     if sync:
         if settings.MAINTENANCE_MODE:
+            # save what we can
+            upsert_user.delay(api_call_type, data, start_time=time())
+            # have to error since we can't return a token
             return HttpResponseJSON({
                 'status': 'error',
                 'desc': 'sync is not available in maintenance mode',
