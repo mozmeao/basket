@@ -4,6 +4,7 @@ from itertools import chain
 from uuid import uuid4
 
 import requests
+from django.conf import settings
 from django.core.cache import get_cache
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email as dj_validate_email
@@ -240,6 +241,14 @@ def get_user_data(token=None, email=None, extra_fields=None):
 
 
 def get_user(token=None, email=None):
+    if settings.MAINTENANCE_MODE:
+        # can't return user data during maintenance
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'user data is not available in maintenance mode',
+            'code': errors.BASKET_NETWORK_FAILURE,
+        }, 400)
+
     try:
         user_data = get_user_data(token, email)
         status_code = 200

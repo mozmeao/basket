@@ -448,6 +448,14 @@ def send_recovery_message(request):
 
 @never_cache
 def debug_user(request):
+    if settings.MAINTENANCE_MODE:
+        # can't return user data during maintenance
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'user data is not available in maintenance mode',
+            'code': errors.BASKET_NETWORK_FAILURE,
+        }, 400)
+
     if 'email' not in request.GET or 'supertoken' not in request.GET:
         return HttpResponseJSON({
             'status': 'error',
@@ -564,6 +572,13 @@ def lookup_user(request):
     more times, it can be slower than some other Basket APIs, and will
     fail if ET is down.
     """
+    if settings.MAINTENANCE_MODE:
+        # can't return user data during maintenance
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'user data is not available in maintenance mode',
+            'code': errors.BASKET_NETWORK_FAILURE,
+        }, 400)
 
     if not request.is_secure():
         return HttpResponseJSON({
@@ -690,7 +705,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
             return HttpResponseJSON({
                 'status': 'error',
                 'desc': 'sync is not available in maintenance mode',
-                'code': errors.BASKET_UNKNOWN_ERROR,
+                'code': errors.BASKET_NETWORK_FAILURE,
             }, 400)
 
         try:

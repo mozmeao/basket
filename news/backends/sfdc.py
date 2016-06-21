@@ -127,6 +127,7 @@ def from_vendor(contact):
 
 
 def get_sf_session():
+    statsd.incr('news.backends.sfdc.get_sf_session')
     return sfapi.SalesforceLogin(**settings.SFDC_SETTINGS)
 
 
