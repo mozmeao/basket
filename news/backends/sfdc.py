@@ -1,7 +1,12 @@
 """
 API Client Library for Salesforce.com (SFDC)
 """
+from random import randint
+from time import time
+
+import requests
 from django.conf import settings
+from django.core.cache import cache
 
 import simple_salesforce as sfapi
 from django_statsd.clients import statsd
@@ -32,6 +37,9 @@ def cast_lower(value):
 
 time_request = get_timer_decorator('news.backends.sfdc')
 LAST_NAME_DEFAULT_VALUE = '_'
+SFDC_SESSION_CACHE_KEY = 'backends:sfdc:auth:sessionid'
+AUTH_BUFFER = 300  # 5 min
+HERD_TIMEOUT = 60
 FIELD_MAP = {
     'id': 'Id',
     'email': 'Email',
@@ -179,21 +187,75 @@ def from_vendor(contact):
     return data
 
 
-def get_sf_session():
-    statsd.incr('news.backends.sfdc.get_sf_session')
-    return sfapi.SalesforceLogin(**settings.SFDC_SETTINGS)
+def get_sf_session(force=False):
+    if force:
+        session_info = None
+    else:
+        session_info = cache.get(SFDC_SESSION_CACHE_KEY)
+
+    if session_info is None:
+        statsd.incr('news.backends.sfdc.session_refresh')
+        session_id, sf_instance = sfapi.SalesforceLogin(**settings.SFDC_SETTINGS)
+        session_info = {
+            'id': session_id,
+            'instance': sf_instance,
+            'expires': time() + settings.SFDC_SESSION_TIMEOUT,
+        }
+        cache.set(SFDC_SESSION_CACHE_KEY, session_info, settings.SFDC_SESSION_TIMEOUT)
+
+    return session_info
 
 
-class RefreshingSFType(sfapi.SFType):
+class RefreshingContact(sfapi.SFType):
+    session_id = None
+    session_expires = None
+    sf_instance = None
+
+    def __init__(self):
+        self.sf_version = DEFAULT_API_VERSION
+        self.name = 'Contact'
+        self.request = requests.Session()
+        self.refresh_session()
+
+    def _base_url(self):
+        return (u'https://{instance}/services/data/'
+                u'v{version}/sobjects/{name}/').format(instance=self.sf_instance,
+                                                       name=self.name,
+                                                       version=self.sf_version)
+
+    def refresh_session(self):
+        sf_session = get_sf_session()
+        if sf_session['id'] == self.session_id:
+            # no other instance has set a new one yet
+            sf_session = get_sf_session(force=True)
+
+        self.session_id = sf_session['id']
+        self.session_expires = sf_session['expires']
+        self.sf_instance = sf_session['instance']
+        self.base_url = self._base_url()
+
+    def session_is_expired(self):
+        """Report session as expired between 5 and 6 minutes early
+
+        Having the expiration be random helps prevent multiple basket
+        instances simultaneously requesting a new token from SFMC,
+        a.k.a. the Thundering Herd problem.
+        """
+        time_buffer = randint(1, HERD_TIMEOUT) + AUTH_BUFFER
+        return time() + time_buffer > self.session_expires
+
     def _call_salesforce(self, method, url, **kwargs):
+        if self.session_is_expired():
+            self.refresh_session()
+
         try:
             statsd.incr('news.backends.sfdc.call_salesforce')
-            resp = super(RefreshingSFType, self)._call_salesforce(method, url, **kwargs)
+            resp = super(RefreshingContact, self)._call_salesforce(method, url, **kwargs)
         except sfapi.SalesforceExpiredSession:
             statsd.incr('news.backends.sfdc.call_salesforce')
             statsd.incr('news.backends.sfdc.session_expired')
-            self.session_id, _ = get_sf_session()
-            resp = super(RefreshingSFType, self)._call_salesforce(method, url, **kwargs)
+            self.refresh_session()
+            resp = super(RefreshingContact, self)._call_salesforce(method, url, **kwargs)
 
         if 'sforce-limit-info' in resp.headers:
             try:
@@ -216,9 +278,7 @@ class SFDC(object):
     @property
     def contact(self):
         if self._contact is None and settings.SFDC_SETTINGS.get('username'):
-            session_id, sf_instance = get_sf_session()
-            self._contact = RefreshingSFType('Contact', session_id, sf_instance,
-                                             DEFAULT_API_VERSION)
+            self._contact = RefreshingContact()
 
         return self._contact
 
