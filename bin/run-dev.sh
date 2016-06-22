@@ -3,6 +3,5 @@
 set -ex
 
 urlwait
-bin/run-common.sh
-
+bin/post-deploy.sh
 ./manage.py runserver 0.0.0.0:8000

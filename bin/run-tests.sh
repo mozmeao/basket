@@ -1,5 +1,5 @@
 #!/bin/bash
 
 urlwait
-bin/run-common.sh
+bin/post-deploy.sh
 py.test --junitxml=test-results/test-results.xml news
