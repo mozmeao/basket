@@ -211,19 +211,29 @@ class ETTaskTests(TestCase):
 
 
 class AddFxaActivityTests(TestCase):
-    def _base_test(self, user_agent=None, fxa_id='123', first_device=True):
-        if not user_agent:
+    def _base_test(self, user_agent=False, fxa_id='123', first_device=True):
+        if user_agent is not None and not user_agent:
             user_agent = 'Mozilla/5.0 (Windows NT 6.1; rv:10.0) Gecko/20100101 Firefox/10.0'
 
         data = {
             'fxa_id': fxa_id,
             'first_device': first_device,
-            'user_agent': user_agent
-            }
+        }
+        if user_agent:
+            data['user_agent'] = user_agent
+
         with patch('news.tasks.apply_updates') as apply_updates_mock:
             add_fxa_activity(data)
         record = apply_updates_mock.call_args[0][1]
         return record
+
+    def test_no_user_agent(self):
+        record = self._base_test(None)
+        self.assertDictEqual(record, {
+            'FXA_ID': '123',
+            'FIRST_DEVICE': 'y',
+            'LOGIN_DATE': ANY,
+        })
 
     def test_login_date(self):
         with patch('news.tasks.gmttime') as gmttime_mock:
