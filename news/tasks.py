@@ -15,7 +15,7 @@ import simple_salesforce as sfapi
 from celery import Task
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
-from news.backends.common import NewsletterException, NewsletterNoResultsException
+from news.backends.common import NewsletterException
 from news.backends.sfdc import sfdc
 from news.backends.sfmc import sfmc
 from news.celery import app as celery_app
@@ -193,30 +193,6 @@ def gmttime():
     d = datetime.datetime.now() + datetime.timedelta(minutes=10)
     stamp = mktime(d.timetuple())
     return formatdate(timeval=stamp, localtime=False, usegmt=True)
-
-
-def get_external_user_data(email=None, token=None, fields=None, database=None):
-    database = database or settings.EXACTTARGET_DATA
-    fields = fields or [
-        'EMAIL_ADDRESS_',
-        'EMAIL_FORMAT_',
-        'COUNTRY_',
-        'LANGUAGE_ISO2',
-        'TOKEN',
-    ]
-    try:
-        user = sfmc.get_row(database, fields, token, email)
-    except NewsletterNoResultsException:
-        return None
-
-    user_data = {
-        'email': user['EMAIL_ADDRESS_'],
-        'format': user['EMAIL_FORMAT_'] or 'H',
-        'country': user['COUNTRY_'] or '',
-        'lang': user['LANGUAGE_ISO2'] or '',  # Never None
-        'token': user['TOKEN'],
-    }
-    return user_data
 
 
 @et_task
@@ -495,8 +471,7 @@ def apply_updates(database, record):
     """Send the record data to ET to update the database named
     target_et.
 
-    :param str database: Target database, e.g. settings.EXACTTARGET_DATA
-        or settings.EXACTTARGET_CONFIRMATION.
+    :param str database: Target database, e.g. 'Firefox_Account_ID'
     :param dict record: Data to send
     """
     sfmc.upsert_row(database, record)

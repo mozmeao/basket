@@ -179,24 +179,14 @@ RAVEN_CONFIG = {
     'release': config('GIT_SHA', None),
 }
 
-# Default newsletter welcome message ID for HTML format.
-# There must also exist a text-format message with the same
-# ID with "_T" appended, e.g. "39_T"
-DEFAULT_WELCOME_MESSAGE_ID = '39'
-
-# Name of the database where we put someone's token when they confirm
-EXACTTARGET_CONFIRMATION = config('EXACTTARGET_CONFIRMATION', None)
-EXACTTARGET_INTERESTS = config('EXACTTARGET_INTERESTS', None)
+# legacy name
 EXACTTARGET_USE_SANDBOX = config('EXACTTARGET_USE_SANDBOX', False, cast=bool)
-EXACTTARGET_USER = config('EXACTTARGET_USER', None)
-EXACTTARGET_PASS = config('EXACTTARGET_PASS', None)
-EXACTTARGET_DATA = config('EXACTTARGET_DATA', None)
-EXACTTARGET_OPTIN_STAGE = config('EXACTTARGET_OPTIN_STAGE', None)
+USE_SANDBOX_BACKEND = config('USE_SANDBOX_BACKEND', EXACTTARGET_USE_SANDBOX, cast=bool)
 SUPERTOKEN = config('SUPERTOKEN', str(uuid4()))
 ET_CLIENT_ID = config('ET_CLIENT_ID', None)
 ET_CLIENT_SECRET = config('ET_CLIENT_SECRET', None)
 
-if EXACTTARGET_USE_SANDBOX:
+if USE_SANDBOX_BACKEND:
     auth_url = 'https://auth-test.exacttargetapis.com/v1/requestToken?legacy=1'
     wsdl_loc = 'etframework.test.wsdl'
 else:
@@ -217,7 +207,7 @@ SFDC_SETTINGS = {
     'username': config('SFDC_USERNAME', None),
     'password': config('SFDC_PASSWORD', None),
     'security_token': config('SFDC_SEC_TOKEN', None),
-    'sandbox': config('SFDC_USE_SANDBOX', EXACTTARGET_USE_SANDBOX, cast=bool),
+    'sandbox': config('SFDC_USE_SANDBOX', USE_SANDBOX_BACKEND, cast=bool),
 }
 
 CORS_ORIGIN_ALLOW_ALL = True
