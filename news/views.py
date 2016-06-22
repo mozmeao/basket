@@ -698,6 +698,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
         data['optin'] = True
 
     if sync:
+        statsd.incr('news.views.subscribe.sync')
         if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
             # save what we can
             upsert_user.delay(api_call_type, data, start_time=time())
