@@ -404,7 +404,11 @@ def upsert_contact(api_call_type, data, user_data):
         # no user found. create new one.
         update_data['token'] = generate_token()
         try:
-            sfdc.add(update_data)
+            if settings.MAINTENANCE_MODE:
+                sfdc_add_update.delay(update_data)
+            else:
+                sfdc.add(update_data)
+
             return update_data['token'], True
         except sfapi.SalesforceMalformedRequest as e:  # noqa
             # possibly a duplicate email. try the update below.
@@ -415,7 +419,11 @@ def upsert_contact(api_call_type, data, user_data):
                 del update_data['token']
             else:
                 # still no user, try the add one more time
-                sfdc.add(update_data)
+                if settings.MAINTENANCE_MODE:
+                    sfdc_add_update.delay(update_data)
+                else:
+                    sfdc.add(update_data)
+
                 return update_data['token'], True
 
     if forced_optin and not user_data.get('optin'):
@@ -432,8 +440,34 @@ def upsert_contact(api_call_type, data, user_data):
     else:
         token = update_data['token'] = generate_token()
 
-    sfdc.update(user_data, update_data)
+    if settings.MAINTENANCE_MODE:
+        sfdc_add_update.delay(update_data, user_data)
+    else:
+        sfdc.update(user_data, update_data)
+
     return token, False
+
+
+@et_task
+def sfdc_add_update(update_data, user_data=None):
+    # for use with maintenance mode only
+    # TODO remove after maintenance is over and queue is processed
+    if user_data:
+        sfdc.update(user_data, update_data)
+    else:
+        try:
+            sfdc.add(update_data)
+        except sfapi.SalesforceMalformedRequest as e:  # noqa
+            # possibly a duplicate email. try the update below.
+            user_data = get_user_data(email=update_data['email'], extra_fields=['id'])
+            if user_data:
+                # we have a user, delete generated token
+                # and continue with an update
+                update_data.pop('token', None)
+                sfdc.update(user_data, update_data)
+            else:
+                # still no user, try the add one more time
+                sfdc.add(update_data)
 
 
 def send_transactional_messages(data, user_data, transactionals):
