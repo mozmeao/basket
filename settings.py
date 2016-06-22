@@ -305,6 +305,8 @@ SYNC_KEY = config('SYNC_KEY', None)
 
 MAINTENANCE_MODE = config('MAINTENANCE_MODE', False, cast=bool)
 QUEUE_BATCH_SIZE = config('QUEUE_BATCH_SIZE', 500, cast=int)
+# can we read user data in maintenance mode
+MAINTENANCE_READ_ONLY = config('MAINTENANCE_READ_ONLY', False, cast=bool)
 
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run

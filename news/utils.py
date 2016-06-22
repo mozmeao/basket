@@ -241,7 +241,7 @@ def get_user_data(token=None, email=None, extra_fields=None):
 
 
 def get_user(token=None, email=None):
-    if settings.MAINTENANCE_MODE:
+    if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
         # can't return user data during maintenance
         return HttpResponseJSON({
             'status': 'error',

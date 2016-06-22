@@ -448,7 +448,7 @@ def send_recovery_message(request):
 
 @never_cache
 def debug_user(request):
-    if settings.MAINTENANCE_MODE:
+    if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
         # can't return user data during maintenance
         return HttpResponseJSON({
             'status': 'error',
@@ -572,7 +572,7 @@ def lookup_user(request):
     more times, it can be slower than some other Basket APIs, and will
     fail if ET is down.
     """
-    if settings.MAINTENANCE_MODE:
+    if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
         # can't return user data during maintenance
         return HttpResponseJSON({
             'status': 'error',
