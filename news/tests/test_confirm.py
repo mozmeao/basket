@@ -3,7 +3,7 @@ from django.test import TestCase
 from mock import patch, Mock
 
 from news.backends.common import NewsletterException
-from news.tasks import BasketError, confirm_user
+from news.tasks import confirm_user
 
 
 @patch('news.tasks.sfdc')
@@ -42,10 +42,13 @@ class TestConfirmTask(TestCase):
         confirm_user(token)
         self.assertFalse(sfdc_mock.update.called)
 
-    def test_user_not_found(self, get_user_data, sfdc_mock):
-        """If we can't find the user, raise exception"""
+    @patch('news.tasks.get_sfmc_doi_user')
+    def test_user_not_found(self, doi_mock, get_user_data, sfdc_mock):
+        """If we can't find the user, try SFMC"""
         get_user_data.return_value = None
+        doi_mock.return_value = None
         token = "TOKEN"
-        with self.assertRaises(BasketError):
-            confirm_user(token)
+        confirm_user(token)
+        doi_mock.assert_called_with(token)
+        self.assertFalse(sfdc_mock.add.called)
         self.assertFalse(sfdc_mock.update.called)
