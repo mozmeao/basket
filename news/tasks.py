@@ -155,7 +155,8 @@ def et_task(func):
         start_time = kwargs.pop('start_time', None)
         if start_time:
             total_time = int((time() - start_time) * 1000)
-            statsd.timing(wrapped.name + '.timing', total_time)
+            if total_time < 10800000:  # over 3 hours it's probably from a queued task
+                statsd.timing(wrapped.name + '.timing', total_time)
         statsd.incr(wrapped.name + '.total')
         statsd.incr('news.tasks.all_total')
         if settings.MAINTENANCE_MODE and wrapped.name not in MAINTENANCE_EXEMPT:
