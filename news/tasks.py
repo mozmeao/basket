@@ -335,7 +335,10 @@ def upsert_contact(api_call_type, data, user_data):
     if 'format' in data:
         update_data['format'] = 'T' if data['format'].upper().startswith('T') else 'H'
 
-    if 'lang' in data and not is_supported_newsletter_language(data['lang']):
+    lang = data.get('lang', 'en')[:2].lower()
+    if is_supported_newsletter_language(lang):
+        update_data['lang'] = lang
+    else:
         # use our default language (English) if we don't support the language
         update_data['lang'] = 'en'
 
