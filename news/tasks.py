@@ -591,6 +591,7 @@ def get_sfmc_doi_user(token):
             record[fid] = val
 
     record['newsletters'] = newsletters
+    record['token'] = token
 
     return record
 
