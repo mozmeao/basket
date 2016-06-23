@@ -21,7 +21,7 @@ FIELD_MAP = {
     'MOZFEST': 'Sub_Mozilla_Festival__c',
     'MOZILLA_AND_YOU': 'Sub_Firefox_And_You__c',
     'MOZILLA_GENERAL': 'Interest_Mozilla__c',
-    'MOZILLA_PHONE': 'Sub_Mozillans__c',
+    'MOZILLA_PHONE': 'Sub_Mozillians__c',
     'MOZ_LEARN': 'Sub_Mozilla_Learning_Network__c',
     'SHAPE_WEB': 'Sub_Shape_Of_The_Web__c',
     'STUDENT_AMBASSADORS': 'Sub_Student_Ambassador__c',
