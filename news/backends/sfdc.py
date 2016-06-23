@@ -8,6 +8,7 @@ from django_statsd.clients import statsd
 from simple_salesforce.api import DEFAULT_API_VERSION
 
 from news.backends.common import get_timer_decorator
+from news.country_codes import convert_country_3_to_2
 from news.newsletters import newsletter_map, newsletter_inv_map
 
 
@@ -69,6 +70,12 @@ def to_vendor(data):
         # True for every contact moving through basket
         'Subscriber__c': True,
     }
+    if 'country' in data:
+        if len(data['country']) == 3:
+            new_country = convert_country_3_to_2(data['country'])
+            if new_country:
+                data['country'] = new_country.lower()
+
     for k, v in data.iteritems():
         if k in FIELD_MAP:
             contact[FIELD_MAP[k]] = v
