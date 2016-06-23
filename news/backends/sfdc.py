@@ -134,11 +134,13 @@ def get_sf_session():
 class RefreshingSFType(sfapi.SFType):
     def _call_salesforce(self, method, url, **kwargs):
         try:
+            statsd.incr('news.backends.sfdc.call_salesforce')
             resp = super(RefreshingSFType, self)._call_salesforce(method, url, **kwargs)
         except sfapi.SalesforceExpiredSession:
+            statsd.incr('news.backends.sfdc.call_salesforce')
+            statsd.incr('news.backends.sfdc.session_expired')
             self.session_id, _ = get_sf_session()
             resp = super(RefreshingSFType, self)._call_salesforce(method, url, **kwargs)
-            statsd.incr('news.backends.sfdc.session_expired')
 
         if 'sforce-limit-info' in resp.headers:
             try:
@@ -147,6 +149,8 @@ class RefreshingSFType(sfapi.SFType):
                 usage = limit = None
 
             if usage:
+                statsd.gauge('news.backends.sfdc.daily_api_used', usage, rate=0.5)
+                statsd.gauge('news.backends.sfdc.daily_api_limit', limit, rate=0.5)
                 percentage = float(usage) / float(limit) * 100
                 statsd.gauge('news.backends.sfdc.percent_daily_api_used', percentage, rate=0.5)
 
