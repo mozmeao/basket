@@ -55,6 +55,18 @@ MAINTENANCE_EXEMPT = [
 ]
 
 
+def ignore_error(msg, to_ignore=IGNORE_ERROR_MSGS):
+    for ignore_msg in to_ignore:
+        if ignore_msg in msg:
+            return True
+
+    return False
+
+
+def ignore_error_post_retry(msg):
+    return ignore_error(msg, IGNORE_ERROR_MSGS_POST_RETRY)
+
+
 class BasketError(Exception):
     """Tasks can raise this when an error happens that we should not retry.
     E.g. if the error indicates we're passing bad parameters.
@@ -168,21 +180,20 @@ def et_task(func):
             # IOError covers URLError and SSLError.
             exc_msg = str(e)
             # but don't retry for certain error messages
-            for ignore_msg in IGNORE_ERROR_MSGS:
-                if ignore_msg in exc_msg:
-                    return
+            if ignore_error(exc_msg):
+                return
 
             try:
-                sentry_client.captureException(tags={'action': 'retried'})
+                if not ignore_error_post_retry(exc_msg):
+                    sentry_client.captureException(tags={'action': 'retried'})
                 wrapped.retry(args=args, kwargs=kwargs,
                               countdown=(2 ** wrapped.request.retries) * 60)
             except wrapped.MaxRetriesExceededError:
                 statsd.incr(wrapped.name + '.retry_max')
                 statsd.incr('news.tasks.retry_max_total')
                 # don't bubble certain errors
-                for ignore_msg in IGNORE_ERROR_MSGS_POST_RETRY:
-                    if ignore_msg in exc_msg:
-                        return
+                if ignore_error_post_retry(exc_msg):
+                    return
 
                 raise e
 
