@@ -629,7 +629,11 @@ def confirm_user(token):
         user = get_sfmc_doi_user(token)
         if user:
             user['optin'] = True
-            sfdc.add(user)
+            try:
+                sfdc.add(user)
+            except sfapi.SalesforceMalformedRequest:
+                # probably already know the email address
+                sfdc.update({'email': user['email']}, user)
             statsd.incr('news.tasks.confirm_user.moved_from_sfmc')
         else:
             statsd.incr('news.tasks.confirm_user.confirm_user_not_found')
@@ -666,7 +670,18 @@ def add_sms_user_optin(mobile_number):
 @et_task
 def update_custom_unsub(token, reason):
     """Record a user's custom unsubscribe reason."""
-    sfdc.update({'token': token}, {'reason': reason})
+    try:
+        sfdc.update({'token': token}, {'reason': reason})
+    except sfapi.SalesforceMalformedRequest:
+        # likely the record can't be found. try the DoI DE.
+        user = get_sfmc_doi_user(token)
+        if user:
+            user['reason'] = reason
+            try:
+                sfdc.add(user)
+            except sfapi.SalesforceMalformedRequest:
+                # probably already know the email address
+                sfdc.update({'email': user['email']}, user)
 
 
 def attempt_fix(database, record, task, e):

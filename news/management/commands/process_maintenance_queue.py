@@ -17,7 +17,7 @@ class Command(BaseCommand):
             raise CommandError('Command unavailable in maintenance mode')
 
         count = 0
-        for task in QueuedTask.objects.all()[:settings.QUEUE_BATCH_SIZE]:
+        for task in QueuedTask.objects.all()[:options['num_tasks']]:
             task.retry()
             count += 1
 
