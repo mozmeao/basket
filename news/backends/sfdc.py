@@ -5,6 +5,7 @@ from django.conf import settings
 
 import simple_salesforce as sfapi
 from django_statsd.clients import statsd
+from product_details import product_details
 from simple_salesforce.api import DEFAULT_API_VERSION
 
 from news.backends.common import get_timer_decorator
@@ -72,10 +73,16 @@ def to_vendor(data):
     }
 
     if 'country' in data:
+        data['country'] = data['country'].lower()
         if len(data['country']) == 3:
             new_country = convert_country_3_to_2(data['country'])
             if new_country:
-                data['country'] = new_country.lower()
+                data['country'] = new_country
+
+        all_countries = product_details.get_regions('en-US').keys()
+        if data['country'] not in all_countries:
+            # just don't set the country
+            del data['country']
 
     lang = data.get('lang')
     if lang:
