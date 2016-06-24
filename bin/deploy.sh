@@ -75,13 +75,28 @@ for region in "${DEIS_REGIONS[@]}"; do
 
     if [[ "$1" != "demo" ]]; then
       echo "Pinging New Relic about the deployment of $NR_APP"
-      nr_desc="CircleCI built $DOCKER_IMAGE_TAG and deployed it to Deis in $region"
+      nr_desc="CircleCI built $DOCKER_IMAGE_TAG and deployed it as Deis app $appname in $region"
       curl -H "x-api-key:$NEWRELIC_API_KEY" \
            -d "deployment[app_name]=$NR_APP" \
            -d "deployment[revision]=$CIRCLE_SHA1" \
            -d "deployment[user]=CircleCI" \
            -d "deployment[description]=$nr_desc" \
-           https://api.newrelic.com/deployments.xml > /dev/null
+           https://api.newrelic.com/deployments.xml > /dev/null 2>&1
+
+      echo "Pinging DataDog about the deployment of $NR_APP"
+      dd_data=$(cat << EOF
+        {
+          "title": "Deployment of $NR_APP",
+          "text": "$nr_desc",
+          "tags": ["region:$region", "environment:$1", "appname:$appname"],
+          "aggregation_key": "$NR_APP",
+          "source_type_name": "deployment",
+          "alert_type": "info"
+        }
+EOF
+      )
+      curl -H "Content-type: application/json" -d "$dd_data" \
+           "https://app.datadoghq.com/api/v1/events?api_key=$DATADOG_API_KEY" > /dev/null 2>&1
     fi
   done
 done
