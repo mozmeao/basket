@@ -38,7 +38,7 @@ class SFDCTests(TestCase):
             'Signup_Source_URL__c': 'https://www.example.com',
             'Token__c': 'totally-token-man',
             'Email': 'dude@example.com',
-            'MailingCountryCode': 'US',
+            'MailingCountryCode': 'us',
             'Sub_Chillin__c': True,
             'Sub_Bowlin__c': True,
             'Sub_Caucasians__c': True,
