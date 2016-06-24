@@ -186,7 +186,7 @@ def et_task(func):
         try:
             return func(*args, **kwargs)
         except (IOError, NewsletterException, requests.RequestException,
-                sfapi.SalesforceError) as e:
+                sfapi.SalesforceError, RetryTask) as e:
             # These could all be connection issues, so try again later.
             # IOError covers URLError and SSLError.
             if ignore_error(e):
@@ -195,6 +195,7 @@ def et_task(func):
             try:
                 if not ignore_error_post_retry(e):
                     sentry_client.captureException(tags={'action': 'retried'})
+
                 wrapped.retry(args=args, kwargs=kwargs,
                               countdown=(2 ** wrapped.request.retries) * 60)
             except wrapped.MaxRetriesExceededError:
@@ -284,7 +285,11 @@ FSA_FIELDS = {
 
 @et_task
 def update_student_ambassadors(data, token):
-    user_data = {'token': token}
+    user_data = get_user_data(token=token)
+    if not user_data:
+        # try again later after user has been added
+        raise RetryTask
+
     update_data = {}
     for k, fn in FSA_FIELDS.items():
         if k in data:

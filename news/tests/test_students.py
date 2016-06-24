@@ -2,6 +2,7 @@ from django.test import TestCase
 
 from mock import patch
 
+from news.tasks import update_student_ambassadors, RetryTask
 from news.utils import generate_token
 
 
@@ -43,10 +44,25 @@ class UpdateStudentAmbassadorsTest(TestCase):
         self.client.post(self.url, self.data)
         usa_mock.assert_called_with(self.data, self.token)
 
+    @patch('news.tasks.get_user_data')
     @patch('news.tasks.sfdc')
-    def test_update_student_ambassadors_task(self, sfdc_mock):
+    def test_update_student_ambassadors_task(self, sfdc_mock, gud_mock):
         """
         Should call Exact Target only with the approved information.
         """
+        user_data = {'token': self.token}
+        gud_mock.return_value = user_data
         self.client.post(self.url, self.data)
-        sfdc_mock.update.assert_called_with({'token': self.token}, self.submitted_data)
+        sfdc_mock.update.assert_called_with(user_data, self.submitted_data)
+
+    @patch('news.tasks.get_user_data')
+    @patch('news.tasks.sfdc')
+    def test_update_student_ambassadors_task_retry(self, sfdc_mock, gud_mock):
+        """
+        Should retry if no user data
+        """
+        gud_mock.return_value = None
+        with self.assertRaises(RetryTask):
+            update_student_ambassadors(self.data, self.token)
+
+        sfdc_mock.assert_not_called()
