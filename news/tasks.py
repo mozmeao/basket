@@ -20,8 +20,7 @@ from news.backends.sfdc import sfdc
 from news.backends.sfmc import sfmc
 from news.celery import app as celery_app
 from news.models import FailedTask, Newsletter, Interest, QueuedTask, TransactionalEmailMessage
-from news.newsletters import (get_sms_messages, get_transactional_message_ids,
-                              is_supported_newsletter_language)
+from news.newsletters import get_sms_messages, get_transactional_message_ids
 from news.utils import (generate_token, get_user_data,
                         parse_newsletters, parse_newsletters_csv, SUBSCRIBE, UNSUBSCRIBE)
 
@@ -346,14 +345,6 @@ def upsert_contact(api_call_type, data, user_data):
     forced_optin = data.pop('optin', False)
     if 'format' in data:
         update_data['format'] = 'T' if data['format'].upper().startswith('T') else 'H'
-
-    lang = data.get('lang')
-    if lang:
-        if is_supported_newsletter_language(lang):
-            update_data['lang'] = lang[:2].lower()
-        else:
-            # use our default language (English) if we don't support the language
-            update_data['lang'] = 'en'
 
     newsletters = parse_newsletters_csv(data.get('newsletters'))
 
