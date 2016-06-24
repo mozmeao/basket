@@ -1,18 +1,20 @@
 from __future__ import absolute_import
+
 import datetime
 import logging
 from email.utils import formatdate
 from functools import wraps
+from hashlib import sha256
 from time import mktime, time
 
 from django.conf import settings
-from django.core.cache import get_cache
-from django_statsd.clients import statsd
+from django.core.cache import cache, get_cache
 
 import requests
-import user_agents
 import simple_salesforce as sfapi
+import user_agents
 from celery import Task
+from django_statsd.clients import statsd
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
 from news.backends.common import NewsletterException, NewsletterNoResultsException
@@ -23,6 +25,10 @@ from news.models import FailedTask, Newsletter, Interest, QueuedTask, Transactio
 from news.newsletters import get_sms_messages, get_transactional_message_ids
 from news.utils import (generate_token, get_user_data,
                         parse_newsletters, parse_newsletters_csv, SUBSCRIBE, UNSUBSCRIBE)
+
+
+class RetryTask(Exception):
+    """an exception to raise within a task if you just want to retry"""
 
 
 log = logging.getLogger(__name__)
@@ -52,9 +58,14 @@ MAINTENANCE_EXEMPT = [
     'news.tasks.add_sms_user',
     'news.tasks.add_sms_user_optin',
 ]
+if hasattr(cache, 'lock'):
+    DO_LOCKING = True
+else:
+    DO_LOCKING = False
 
 
-def ignore_error(msg, to_ignore=IGNORE_ERROR_MSGS):
+def ignore_error(exc, to_ignore=IGNORE_ERROR_MSGS):
+    msg = str(exc)
     for ignore_msg in to_ignore:
         if ignore_msg in msg:
             return True
@@ -62,8 +73,8 @@ def ignore_error(msg, to_ignore=IGNORE_ERROR_MSGS):
     return False
 
 
-def ignore_error_post_retry(msg):
-    return ignore_error(msg, IGNORE_ERROR_MSGS_POST_RETRY)
+def ignore_error_post_retry(exc):
+    return isinstance(exc, RetryTask) or ignore_error(exc, IGNORE_ERROR_MSGS_POST_RETRY)
 
 
 class BasketError(Exception):
@@ -175,24 +186,23 @@ def et_task(func):
         try:
             return func(*args, **kwargs)
         except (IOError, NewsletterException, requests.RequestException,
-                sfapi.SalesforceError) as e:
+                sfapi.SalesforceError, RetryTask) as e:
             # These could all be connection issues, so try again later.
             # IOError covers URLError and SSLError.
-            exc_msg = str(e)
-            # but don't retry for certain error messages
-            if ignore_error(exc_msg):
+            if ignore_error(e):
                 return
 
             try:
-                if not ignore_error_post_retry(exc_msg):
+                if not ignore_error_post_retry(e):
                     sentry_client.captureException(tags={'action': 'retried'})
+
                 wrapped.retry(args=args, kwargs=kwargs,
                               countdown=(2 ** wrapped.request.retries) * 60)
             except wrapped.MaxRetriesExceededError:
                 statsd.incr(wrapped.name + '.retry_max')
                 statsd.incr('news.tasks.retry_max_total')
                 # don't bubble certain errors
-                if ignore_error_post_retry(exc_msg):
+                if ignore_error_post_retry(e):
                     return
 
                 raise e
@@ -275,7 +285,11 @@ FSA_FIELDS = {
 
 @et_task
 def update_student_ambassadors(data, token):
-    user_data = {'token': token}
+    user_data = get_user_data(token=token)
+    if not user_data:
+        # try again later after user has been added
+        raise RetryTask
+
     update_data = {}
     for k, fn in FSA_FIELDS.items():
         if k in data:
@@ -312,8 +326,7 @@ def update_user(data, email, token, api_call_type, optin):
     if optin is not None:
         data['optin'] = optin
 
-    upsert_contact(api_call_type, data, get_user_data(email=email, token=token,
-                                                      extra_fields=['id']))
+    upsert_user(api_call_type, data)
 
 
 @et_task
@@ -326,9 +339,24 @@ def upsert_user(api_call_type, data):
     @param dict data: POST data from the form submission
     @return:
     """
-    upsert_contact(api_call_type, data,
-                   get_user_data(data.get('token'), data.get('email'),
-                                 extra_fields=['id']))
+    if DO_LOCKING:
+        lock_key = data.get('email') or data.get('token')
+        lock_key = sha256(lock_key).hexdigest()
+        lock = cache.lock(lock_key, timout=5)
+        if lock.acquire(blocking=False):
+            try:
+                upsert_contact(api_call_type, data,
+                               get_user_data(data.get('token'), data.get('email'),
+                                             extra_fields=['id']))
+            finally:
+                lock.release()
+        else:
+            raise RetryTask
+
+    else:
+        upsert_contact(api_call_type, data,
+                       get_user_data(data.get('token'), data.get('email'),
+                                     extra_fields=['id']))
 
 
 def upsert_contact(api_call_type, data, user_data):
