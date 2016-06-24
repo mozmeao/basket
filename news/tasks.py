@@ -342,7 +342,7 @@ def upsert_user(api_call_type, data):
     if DO_LOCKING:
         lock_key = data.get('email') or data.get('token')
         lock_key = sha256(lock_key).hexdigest()
-        lock = cache.lock(lock_key, timout=5)
+        lock = cache.lock(lock_key, timeout=5)
         if lock.acquire(blocking=False):
             try:
                 upsert_contact(api_call_type, data,
