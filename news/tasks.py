@@ -16,6 +16,7 @@ import user_agents
 from celery import Task
 from django_statsd.clients import statsd
 from raven.contrib.django.raven_compat.models import client as sentry_client
+from redis.exceptions import LockError
 
 from news.backends.common import NewsletterException, NewsletterNoResultsException
 from news.backends.sfdc import sfdc
@@ -342,14 +343,17 @@ def upsert_user(api_call_type, data):
     if DO_LOCKING:
         lock_key = data.get('email') or data.get('token')
         lock_key = sha256(lock_key).hexdigest()
-        lock = cache.lock(lock_key, timeout=5)
+        lock = cache.lock(lock_key, timeout=60)
         if lock.acquire(blocking=False):
             try:
                 upsert_contact(api_call_type, data,
                                get_user_data(data.get('token'), data.get('email'),
                                              extra_fields=['id']))
             finally:
-                lock.release()
+                try:
+                    lock.release()
+                except LockError:
+                    pass
         else:
             raise RetryTask
 
