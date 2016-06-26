@@ -355,6 +355,7 @@ def upsert_user(api_call_type, data):
                 except LockError:
                     pass
         else:
+            statsd.incr('news.tasks.upsert_user.no_lock_retry')
             raise RetryTask
 
     else:
