@@ -25,8 +25,6 @@ MAX_BUFFER = HERD_TIMEOUT + AUTH_BUFFER
 
 
 class ETRefreshClient(ET_Client):
-    # setting this manually as it has thrown errors and doesn't change
-    endpoint = 'https://webservice.s4.exacttarget.com/Service.asmx'
     token_cache_key = 'backends:sfmc:auth:tokens'
     authTokenExpiresIn = None
     token_property_names = [
@@ -36,6 +34,15 @@ class ETRefreshClient(ET_Client):
         'refreshKey',
     ]
     _old_authToken = None
+
+    def __init__(self, get_server_wsdl=False, debug=False, params=None):
+        # setting this manually as it has thrown errors and doesn't change
+        if settings.USE_SANDBOX_BACKEND:
+            self.endpoint = 'https://webservice.test.exacttarget.com/Service.asmx'
+        else:
+            self.endpoint = 'https://webservice.s4.exacttarget.com/Service.asmx'
+
+        super(ETRefreshClient, self).__init__(get_server_wsdl, debug, params)
 
     def token_is_expired(self):
         """Report token is expired between 5 and 6 minutes early
