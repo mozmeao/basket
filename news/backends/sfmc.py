@@ -136,12 +136,15 @@ def build_attributes(data):
 
 
 class SFMC(object):
-    client = None
+    _client = None
     sms_api_url = 'https://www.exacttargetapis.com/sms/v1/messageContact/{}/send'
 
-    def __init__(self):
-        if 'clientid' in settings.SFMC_SETTINGS:
-            self.client = ETRefreshClient(False, settings.SFMC_DEBUG, settings.SFMC_SETTINGS)
+    @property
+    def client(self):
+        if self._client is None and 'clientid' in settings.SFMC_SETTINGS:
+            self._client = ETRefreshClient(False, settings.SFMC_DEBUG, settings.SFMC_SETTINGS)
+
+        return self._client
 
     @property
     def auth_header(self):

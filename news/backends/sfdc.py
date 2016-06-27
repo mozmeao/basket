@@ -181,15 +181,16 @@ class RefreshingSFType(sfapi.SFType):
 
 
 class SFDC(object):
-    contact = None
+    _contact = None
 
-    def __init__(self):
-        if not settings.SFDC_SETTINGS.get('username'):
-            return
+    @property
+    def contact(self):
+        if self._contact is None and settings.SFDC_SETTINGS.get('username'):
+            session_id, sf_instance = get_sf_session()
+            self._contact = RefreshingSFType('Contact', session_id, sf_instance,
+                                             DEFAULT_API_VERSION)
 
-        session_id, sf_instance = get_sf_session()
-        self.contact = RefreshingSFType('Contact', session_id, sf_instance,
-                                        DEFAULT_API_VERSION)
+        return self._contact
 
     @time_request
     def get(self, token=None, email=None):
