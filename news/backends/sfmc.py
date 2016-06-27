@@ -25,6 +25,8 @@ MAX_BUFFER = HERD_TIMEOUT + AUTH_BUFFER
 
 
 class ETRefreshClient(ET_Client):
+    # setting this manually as it has thrown errors and doesn't change
+    endpoint = 'https://webservice.s4.exacttarget.com/Service.asmx'
     token_cache_key = 'backends:sfmc:auth:tokens'
     authTokenExpiresIn = None
     token_property_names = [
