@@ -86,7 +86,11 @@ class ETRefreshClient(ET_Client):
 
     def request_token(self, payload):
         r = requests.post(self.auth_url, json=payload)
-        token_response = r.json()
+        try:
+            token_response = r.json()
+        except ValueError:
+            raise NewsletterException('SFMC Error During Auth: ' + r.content,
+                                      status_code=r.status_code)
 
         if 'accessToken' in token_response:
             return token_response
@@ -98,7 +102,7 @@ class ETRefreshClient(ET_Client):
             del payload['refreshToken']
             return self.request_token(payload)
 
-        raise NewsletterException('Unable to validate auth keys: ' + repr(token_response),
+        raise NewsletterException('SFMC Error During Auth: ' + r.content,
                                   status_code=r.status_code)
 
     def refresh_token(self, force_refresh=False):
@@ -298,6 +302,10 @@ class SFMC(object):
         }
         url = self.sms_api_url.format(message_id)
         response = requests.post(url, json=data, headers=self.auth_header)
+        if response.status_code >= 500:
+            raise NewsletterException('SFMC Server Error: {}'.format(response.content),
+                                      status_code=response.status_code)
+
         if response.status_code >= 400:
             errors = response.json()['errors']
             raise NewsletterException(errors, status_code=response.status_code)
