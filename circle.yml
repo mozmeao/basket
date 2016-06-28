@@ -19,7 +19,6 @@ machine:
     MYSQL_ALLOW_EMPTY_PASSWORD: 1
     # Django
     SECRET_KEY: ssssssssshhhhhhhhhhhhh
-    SUPERTOKEN: im-super-thanks-for-asking
     DEBUG: False
     ALLOWED_HOSTS: "*"
     CELERY_ALWAYS_EAGER: True

@@ -448,35 +448,11 @@ def send_recovery_message(request):
 
 @never_cache
 def debug_user(request):
-    if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
-        # can't return user data during maintenance
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': 'user data is not available in maintenance mode',
-            'code': errors.BASKET_NETWORK_FAILURE,
-        }, 400)
-
-    if 'email' not in request.GET or 'supertoken' not in request.GET:
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': 'Using debug_user, you need to pass the '
-                    '`email` and `supertoken` GET parameters',
-            'code': errors.BASKET_USAGE_ERROR,
-        }, 400)
-
-    if request.GET['supertoken'] != settings.SUPERTOKEN:
-        return HttpResponseJSON({'status': 'error',
-                                 'desc': 'Bad supertoken',
-                                 'code': errors.BASKET_AUTH_ERROR},
-                                401)
-
-    email = request.GET['email']
-    try:
-        user_data = get_user_data(email=email)
-    except NewsletterException as e:
-        return newsletter_exception_response(e)
-
-    return HttpResponseJSON(user_data, 200)
+    return HttpResponseJSON({
+        'status': 'error',
+        'desc': 'method removed. use lookup-user and an API key.',
+        'code': errors.BASKET_USAGE_ERROR,
+    }, 404)
 
 
 # Custom update methods
