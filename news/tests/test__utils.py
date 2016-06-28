@@ -13,13 +13,12 @@ from news.utils import (
     SUBSCRIBE, UNSUBSCRIBE, SET,
     email_block_list_cache,
     email_is_blocked,
-    EmailValidationError,
     get_accept_languages,
     get_best_language,
     get_email_block_list,
     language_code_is_valid,
     parse_newsletters_csv,
-    validate_email,
+    process_email,
 )
 from news.views import update_user_task
 
@@ -419,25 +418,25 @@ class TestLanguageCodeIsValid(TestCase):
         self.assertFalse(language_code_is_valid('az_BY'))
 
 
-class TestValidateEmail(TestCase):
+class TestProcessEmail(TestCase):
     def test_non_ascii_email_domain(self):
-        """Should not raise exception, and should validate for non-ascii domains."""
-        self.assertIsNone(validate_email(u'dude@黒川.日本'))
-        self.assertIsNone(validate_email('dude@黒川.日本'))
+        """Should return IDNA version of domain"""
+        self.assertEqual(process_email(u'dude@黒川.日本'), u'dude@xn--5rtw95l.xn--wgv71a')
+        self.assertEqual(process_email('dude@黒川.日本'), u'dude@xn--5rtw95l.xn--wgv71a')
+
+    def test_non_ascii_email_username(self):
+        """Should return none as SFDC does not support non-ascii characters in emails"""
+        self.assertIsNone(process_email(u'düde@黒川.日本'))
+        self.assertIsNone(process_email(u'düde@example.com'))
 
     def test_valid_email(self):
-        """Should return None for valid email."""
-        self.assertIsNone(validate_email('dude@example.com'))
-        self.assertIsNone(validate_email('dude@example.coop'))
-        self.assertIsNone(validate_email('dude@example.biz'))
+        """Should not return None for valid email."""
+        self.assertEqual(process_email('dude@example.com'), 'dude@example.com')
+        self.assertEqual(process_email('dude@example.coop'), 'dude@example.coop')
+        self.assertEqual(process_email('dude@example.biz'), 'dude@example.biz')
 
     def test_invalid_email(self):
-        """Should raise exception for invalid email."""
-        with self.assertRaises(EmailValidationError):
-            validate_email('dude@home@example.com')
-
-        with self.assertRaises(EmailValidationError):
-            validate_email('')
-
-        with self.assertRaises(EmailValidationError):
-            validate_email(None)
+        """Should return None for invalid email."""
+        self.assertIsNone(process_email('dude@home@example.com'))
+        self.assertIsNone(process_email(''))
+        self.assertIsNone(process_email(None))

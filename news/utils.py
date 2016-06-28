@@ -3,18 +3,17 @@ import re
 from itertools import chain
 from uuid import uuid4
 
-import requests
 from django.conf import settings
 from django.core.cache import get_cache
-from django.core.exceptions import ValidationError
-from django.core.validators import validate_email as dj_validate_email
 from django.http import HttpResponse
 from django.utils.encoding import force_unicode
 from django.utils.translation.trans_real import parse_accept_lang_header
 
+import requests
 import simple_salesforce as sfapi
 # Get error codes from basket-client so users see the same definitions
 from basket import errors
+from email_validator import validate_email, EmailNotValidError
 
 from news.backends.common import NewsletterException
 from news.backends.sfdc import sfdc
@@ -47,12 +46,6 @@ class HttpResponseJSON(HttpResponse):
         super(HttpResponseJSON, self).__init__(content=json.dumps(data),
                                                content_type='application/json',
                                                status=status)
-
-
-class EmailValidationError(ValidationError):
-    def __init__(self, message, suggestion=None):
-        super(EmailValidationError, self).__init__(message)
-        self.suggestion = suggestion
 
 
 def get_email_block_list():
@@ -321,27 +314,24 @@ def get_best_language(languages):
     return languages[0]
 
 
-def validate_email(email):
+def process_email(email):
     """Validates that the email is valid.
 
-    Returns None on success and raises a ValidationError if
-    invalid. The exception will have a 'suggestion' parameter
-    that will contain the suggested email address or None.
-
-    @param email: unicode string, email address hopefully
-    @return: None if email address in the 'email' key is valid
-    @raise: EmailValidationError if 'email' key is invalid
+    Return email ascii encoded if valid, None if not.
     """
-    # disabling this for now and falling back to dumb regex validation.
-    # Bug 1066762.
-    # TODO: Find a more robust solution
-    #       Possibly ET's email validation API.
-    try:
-        dj_validate_email(force_unicode(email))
-    except ValidationError:
-        raise EmailValidationError('Invalid email address')
+    if not email:
+        return None
 
-    return None
+    email = force_unicode(email)
+    try:
+        # NOTE SFDC doesn't support SMPTUTF8, so we cannot enable support
+        #      here until they do or we switch providers
+        info = validate_email(email, allow_smtputf8=False,
+                              check_deliverability=False)
+    except EmailNotValidError:
+        return None
+
+    return info.get('email_ascii', None)
 
 
 def parse_newsletters_csv(newsletters):

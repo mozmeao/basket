@@ -3,12 +3,12 @@
 import json
 
 from django.core.cache import cache
-from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 from django.test.client import RequestFactory
 
 from basket import errors
+from email_validator import EmailSyntaxError
 from mock import Mock, patch
 
 from news import models, views, utils
@@ -35,9 +35,9 @@ class GetInvolvedTests(TestCase):
             'format': 'T',
         }
 
-        patcher = patch('news.views.validate_email')
+        patcher = patch('news.views.process_email')
         self.addCleanup(patcher.stop)
-        self.validate_email = patcher.start()
+        self.process_email = patcher.start()
 
         patcher = patch('news.views.update_get_involved')
         self.addCleanup(patcher.stop)
@@ -52,8 +52,9 @@ class GetInvolvedTests(TestCase):
         return json.loads(resp.content)
 
     def test_successful_submission(self):
+        self.process_email.return_value = self.base_data['email']
         resp = self._request(self.base_data)
-        self.validate_email.assert_called_with(self.base_data['email'])
+        self.process_email.assert_called_with(self.base_data['email'])
         self.assertEqual(resp['status'], 'ok', resp)
         self.update_get_involved.delay.assert_called_with('bowling', 'en', 'The Dude',
                                                           'dude@example.com', 'us', 'T',
@@ -82,11 +83,11 @@ class GetInvolvedTests(TestCase):
 
     def test_requires_valid_email(self):
         """Should only submit successfully with a valid email."""
-        self.validate_email.side_effect = views.EmailValidationError('invalid email')
+        self.process_email.return_value = None
         resp = self._request(self.base_data)
         self.assertEqual(resp['status'], 'error', resp)
         self.assertEqual(resp['code'], errors.BASKET_INVALID_EMAIL, resp)
-        self.validate_email.assert_called_with(self.base_data['email'])
+        self.process_email.assert_called_with(self.base_data['email'])
         self.assertFalse(self.update_get_involved.called)
 
         del self.base_data['email']
@@ -132,6 +133,7 @@ class GetInvolvedTests(TestCase):
             'message': 'I like bowling',
             'source_url': 'https://arewebowlingyet.com/',
         })
+        self.process_email.return_value = self.base_data['email']
 
         resp = self._request(self.base_data)
         self.assertEqual(resp['status'], 'ok', resp)
@@ -298,7 +300,6 @@ class SubscribeSMSTests(TestCase):
         self.assertFalse(self.add_sms_user.delay.called)
 
 
-@patch('news.views.validate_email', none_mock)
 @patch('news.views.update_user_task')
 class FxOSMalformedPOSTTest(TestCase):
     """Bug 962225"""
@@ -335,10 +336,10 @@ class SubscribeEmailValidationTest(TestCase):
     def setUp(self):
         self.rf = RequestFactory()
 
-    @patch('news.views.validate_email')
+    @patch('news.views.process_email')
     def test_invalid_email(self, mock_validate):
         """Should return proper error for invalid email."""
-        mock_validate.side_effect = utils.EmailValidationError('Invalid email')
+        mock_validate.return_value = None
         view = getattr(views, self.view)
         resp = view(self.rf.post('/', self.data))
         resp_data = json.loads(resp.content)
@@ -346,21 +347,6 @@ class SubscribeEmailValidationTest(TestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(resp_data['status'], 'error')
         self.assertEqual(resp_data['code'], errors.BASKET_INVALID_EMAIL)
-        self.assertNotIn('suggestion', resp_data)
-
-    @patch('news.views.validate_email')
-    def test_invalid_email_suggestion(self, mock_validate):
-        """Should return proper error for invalid email."""
-        mock_validate.side_effect = utils.EmailValidationError('Invalid email',
-                                                               'walter@example.com')
-        view = getattr(views, self.view)
-        resp = view(self.rf.post('/', self.data))
-        resp_data = json.loads(resp.content)
-        mock_validate.assert_called_with(self.email)
-        self.assertEqual(resp.status_code, 400)
-        self.assertEqual(resp_data['status'], 'error')
-        self.assertEqual(resp_data['code'], errors.BASKET_INVALID_EMAIL)
-        self.assertEqual(resp_data['suggestion'], 'walter@example.com')
 
     @patch('news.views.update_user_task')
     def test_non_ascii_email_fxos_malformed_post(self, update_user_mock):
@@ -370,7 +356,7 @@ class SubscribeEmailValidationTest(TestCase):
                               content_type='text/plain; charset=UTF-8')
         views.subscribe(req)
         update_user_mock.assert_called_with(req, views.SUBSCRIBE, data={
-            'email': u'dude@黒川.日本',
+            'email': u'dude@xn--5rtw95l.xn--wgv71a',
             'newsletters': 'firefox-os',
         }, optin=False, sync=False)
 
@@ -381,7 +367,7 @@ class SubscribeEmailValidationTest(TestCase):
                                                      'newsletters': 'firefox-os'})
         views.subscribe(req)
         update_user_mock.assert_called_with(req, views.SUBSCRIBE, data={
-            'email': u'dude@黒川.日本',
+            'email': u'dude@xn--5rtw95l.xn--wgv71a',
             'newsletters': 'firefox-os',
         }, optin=False, sync=False)
 
@@ -421,7 +407,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         self.factory = RequestFactory()
 
         self._patch_views('update_user_task')
-        self._patch_views('validate_email')
+        self._patch_views('process_email')
         self._patch_views('has_valid_api_key')
 
     def tearDown(self):
@@ -446,6 +432,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         request_data = {'newsletters': 'asdf', 'optin': 'Y', 'email': 'dude@example.com'}
         update_data = request_data.copy()
         del update_data['optin']
+        self.process_email.return_value = update_data['email']
         request = self.factory.post('/', request_data)
         request.is_secure = lambda: False
         self.has_valid_api_key.return_value = True
@@ -462,6 +449,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         request_data = {'newsletters': 'asdf', 'optin': 'Y', 'email': 'dude@example.com'}
         update_data = request_data.copy()
         del update_data['optin']
+        self.process_email.return_value = update_data['email']
         request = self.factory.post('/', request_data)
         request.is_secure = lambda: True
         self.has_valid_api_key.return_value = False
@@ -497,19 +485,18 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
 
     def test_email_validation_error(self):
         """
-        If validate_email raises an EmailValidationError, return an
+        If process_email returns None, return an
         invalid email response.
         """
         request_data = {'newsletters': 'asdf', 'email': 'dude@example.com'}
         request = self.factory.post('/', request_data)
-        error = utils.EmailValidationError('blah')
-        self.validate_email.side_effect = error
+        self.process_email.return_value = None
 
         with patch('news.views.invalid_email_response') as invalid_email_response:
             response = views.subscribe(request)
             self.assertEqual(response, invalid_email_response.return_value)
-            self.validate_email.assert_called_with(request_data['email'])
-            invalid_email_response.assert_called_with(error)
+            self.process_email.assert_called_with(request_data['email'])
+            invalid_email_response.assert_called()
 
     @patch('news.utils.get_email_block_list')
     def test_blocked_email(self, get_block_list_mock):
@@ -530,12 +517,13 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         update_data = request_data.copy()
         del update_data['optin']
         del update_data['sync']
+        self.process_email.return_value = update_data['email']
         request = self.factory.post('/', request_data)
 
         response = views.subscribe(request)
 
         self.assertEqual(response, self.update_user_task.return_value)
-        self.validate_email.assert_called_with(request_data['email'])
+        self.process_email.assert_called_with(request_data['email'])
         self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
                                                  optin=False, sync=False)
 
@@ -549,14 +537,15 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         request = self.factory.post('/', request_data)
         request.is_secure = lambda: True
         self.has_valid_api_key.return_value = True
+        self.process_email.return_value = update_data['email']
 
         response = views.subscribe(request)
 
         self.has_valid_api_key.assert_called_with(request)
         self.assertEqual(response, self.update_user_task.return_value)
-        self.validate_email.assert_called_with('dude@example.com')
+        self.process_email.assert_called_with('dude@example.com')
         self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
-                                                     optin=True, sync=True)
+                                                 optin=True, sync=True)
 
     def test_success_sync_optin_lowercase(self):
         """Test success case with optin and sync, using lowercase y."""
@@ -567,6 +556,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         del update_data['sync']
         request = self.factory.post('/', request_data)
         request.is_secure = lambda: True
+        self.process_email.return_value = update_data['email']
 
         with patch('news.views.has_valid_api_key') as has_valid_api_key:
             has_valid_api_key.return_value = True
@@ -574,7 +564,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             has_valid_api_key.assert_called_with(request)
 
             self.assertEqual(response, self.update_user_task.return_value)
-            self.validate_email.assert_called_with('dude@example.com')
+            self.process_email.assert_called_with('dude@example.com')
             self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
                                                      optin=True, sync=True)
 
@@ -765,7 +755,7 @@ class RecoveryViewTest(TestCase):
         resp = self.client.post(self.url, {'email': 'not_an_email'})
         self.assertEqual(400, resp.status_code)
 
-    @patch('news.views.validate_email', none_mock)
+    @patch('news.views.process_email', Mock(return_value='dude@example.com'))
     @patch('news.views.get_user_data', autospec=True)
     def test_unknown_email(self, mock_get_user_data):
         """Unknown email should return 404"""
@@ -786,7 +776,7 @@ class RecoveryViewTest(TestCase):
         self.assertEqual(200, resp.status_code)
         self.assertFalse(mock_send_recovery_message_task.called)
 
-    @patch('news.views.validate_email', none_mock)
+    @patch('news.views.process_email', Mock(return_value='dude@example.com'))
     @patch('news.views.get_user_data', autospec=True)
     @patch('news.views.send_recovery_message_task.delay', autospec=True)
     def test_known_email(self, mock_send_recovery_message_task,
@@ -805,11 +795,10 @@ class TestValidateEmail(TestCase):
 
     def test_valid_email(self):
         """Should return without raising an exception for a valid email."""
-        self.assertIsNone(utils.validate_email(self.email))
+        self.assertEqual(utils.process_email(self.email), self.email)
 
-    @patch('news.utils.dj_validate_email')
-    def test_invalid_email(self, dj_validate_email):
-        """Should raise an exception for an invalid email."""
-        dj_validate_email.side_effect = ValidationError('Invalid email')
-        with self.assertRaises(utils.EmailValidationError):
-            utils.validate_email(self.email)
+    @patch.object(utils, 'validate_email')
+    def test_invalid_email(self, ve_mock):
+        """Should return None for an invalid email."""
+        ve_mock.side_effect = EmailSyntaxError
+        self.assertIsNone(utils.process_email(self.email))

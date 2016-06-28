@@ -5,7 +5,6 @@ from time import time
 from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import render
-from django.utils.encoding import force_unicode
 from django.views.decorators.cache import cache_page, never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_safe
@@ -39,7 +38,6 @@ from news.utils import (
     UNSUBSCRIBE,
     MSG_EMAIL_OR_TOKEN_REQUIRED,
     MSG_USER_NOT_FOUND,
-    EmailValidationError,
     email_is_blocked,
     get_accept_languages,
     get_best_language,
@@ -49,7 +47,7 @@ from news.utils import (
     HttpResponseJSON,
     language_code_is_valid,
     NewsletterException,
-    validate_email,
+    process_email,
     newsletter_exception_response,
     parse_newsletters_csv)
 
@@ -166,6 +164,11 @@ def fxa_register(request):
             'desc': 'fxa-register requires an email address',
             'code': errors.BASKET_USAGE_ERROR,
         }, 401)
+
+    email = process_email(data['email'])
+    if not email:
+        return invalid_email_response()
+
     if 'fxa_id' not in data:
         return HttpResponseJSON({
             'status': 'error',
@@ -187,7 +190,7 @@ def fxa_register(request):
             'code': errors.BASKET_INVALID_LANGUAGE,
         }, 400)
 
-    update_fxa_info.delay(data['email'], lang, data['fxa_id'])
+    update_fxa_info.delay(email, lang, data['fxa_id'])
     return HttpResponseJSON({'status': 'ok'})
 
 
@@ -245,16 +248,15 @@ def get_involved(request):
             'code': errors.BASKET_USAGE_ERROR,
         }, 401)
 
-    try:
-        validate_email(data.get('email'))
-    except EmailValidationError as e:
-        return invalid_email_response(e)
+    email = process_email(data.get('email'))
+    if not email:
+        return invalid_email_response()
 
     update_get_involved.delay(
         data['interest_id'],
         data['lang'],
         data['name'],
-        data['email'],
+        email,
         data['country'],
         data.get('format', 'H'),
         data.get('subscribe', False),
@@ -278,10 +280,7 @@ def subscribe(request):
             # Can't use QueryDict since the string is not url-encoded.
             # It will convert '+' to ' ' for example.
             data = dict(pair.split('=') for pair in raw_request.split('&'))
-            email = data.get('email')
-            if email:
-                data['email'] = force_unicode(email)
-            statsd.incr('subscribe-fxos-workaround')
+            statsd.incr('news.views.subscribe.fxos-workaround')
         else:
             return HttpResponseJSON({
                 'status': 'error',
@@ -295,6 +294,12 @@ def subscribe(request):
             'desc': 'email is required',
             'code': errors.BASKET_USAGE_ERROR,
         }, 401)
+
+    email = process_email(data['email'])
+    if not email:
+        return invalid_email_response()
+
+    data['email'] = email
 
     if email_is_blocked(data['email']):
         # don't let on there's a problem
@@ -323,22 +328,15 @@ def subscribe(request):
                 'code': errors.BASKET_AUTH_ERROR,
             }, 401)
 
-    try:
-        validate_email(data.get('email'))
-    except EmailValidationError as e:
-        return invalid_email_response(e)
-
     return update_user_task(request, SUBSCRIBE, data=data, optin=optin, sync=sync)
 
 
-def invalid_email_response(e):
+def invalid_email_response():
     resp_data = {
         'status': 'error',
         'code': errors.BASKET_INVALID_EMAIL,
-        'desc': e.messages[0],
+        'desc': 'Invalid email address',
     }
-    if e.suggestion:
-        resp_data['suggestion'] = e.suggestion
     return HttpResponseJSON(resp_data, 400)
 
 
@@ -403,6 +401,12 @@ def user(request, token):
     if request.method == 'POST':
         data = request.POST.dict()
         data['token'] = token
+        if 'email' in data:
+            email = process_email(data['email'])
+            if not email:
+                return invalid_email_response()
+
+            data['email'] = email
         return update_user_task(request, SET, data)
 
     return get_user(token)
@@ -420,12 +424,10 @@ def send_recovery_message(request):
     If email not known, returns 404.
     Otherwise, queues a task to send the message and returns 200.
     """
-    try:
-        validate_email(request.POST.get('email'))
-    except EmailValidationError as e:
-        return invalid_email_response(e)
+    email = process_email(request.POST.get('email'))
+    if not email:
+        return invalid_email_response()
 
-    email = request.POST.get('email')
     if email_is_blocked(email):
         # don't let on there's a problem
         return HttpResponseJSON({'status': 'ok'})
@@ -477,7 +479,16 @@ def custom_unsub_reason(request):
 @require_POST
 @csrf_exempt
 def custom_update_student_ambassadors(request, token):
-    update_student_ambassadors.delay(request.POST.dict(), token)
+    data = request.POST.dict()
+    if 'EMAIL_ADDRESS' in data:
+        # need to validate here since validation also ascii converts
+        email = process_email(data['EMAIL_ADDRESS'])
+        if not email:
+            return invalid_email_response()
+
+        data['EMAIL_ADDRESS'] = email
+
+    update_student_ambassadors.delay(data, token)
     return HttpResponseJSON({'status': 'ok'})
 
 
@@ -580,6 +591,11 @@ def lookup_user(request):
                     'valid `api-key` GET parameter or X-api-key header',
             'code': errors.BASKET_AUTH_ERROR,
         }, 401)
+
+    if email:
+        email = process_email(email)
+        if not email:
+            return invalid_email_response()
 
     try:
         user_data = get_user_data(token=token, email=email)
