@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import datetime
 import logging
@@ -16,7 +16,6 @@ import user_agents
 from celery import Task
 from django_statsd.clients import statsd
 from raven.contrib.django.raven_compat.models import client as sentry_client
-from redis.exceptions import LockError
 
 from news.backends.common import NewsletterException, NewsletterNoResultsException
 from news.backends.sfdc import sfdc
@@ -26,10 +25,6 @@ from news.models import FailedTask, Newsletter, Interest, QueuedTask, Transactio
 from news.newsletters import get_sms_messages, get_transactional_message_ids
 from news.utils import (generate_token, get_user_data,
                         parse_newsletters, parse_newsletters_csv, SUBSCRIBE, UNSUBSCRIBE)
-
-
-class RetryTask(Exception):
-    """an exception to raise within a task if you just want to retry"""
 
 
 log = logging.getLogger(__name__)
@@ -59,10 +54,6 @@ MAINTENANCE_EXEMPT = [
     'news.tasks.add_sms_user',
     'news.tasks.add_sms_user_optin',
 ]
-if hasattr(cache, 'lock'):
-    DO_LOCKING = True
-else:
-    DO_LOCKING = False
 
 
 def ignore_error(exc, to_ignore=IGNORE_ERROR_MSGS):
@@ -78,6 +69,28 @@ def ignore_error_post_retry(exc):
     return isinstance(exc, RetryTask) or ignore_error(exc, IGNORE_ERROR_MSGS_POST_RETRY)
 
 
+def get_lock(key, prefix='task'):
+    """Get a lock for a specific key (usually email address)
+
+    Needs to be done with a timeout because SFDC needs some time to populate its
+    indexes before the duplicate protection works and queries will return results.
+    Releasing the lock right after the task was run still allowed dupes.
+
+    Does nothing if you get the lock, and raises RetryTask if not.
+    """
+    if not settings.TASK_LOCKING_ENABLE:
+        return
+
+    lock_key = 'basket-{}-{}'.format(prefix, key)
+    lock_key = sha256(lock_key).hexdigest()
+    is_locked = cache.get(lock_key)
+    if is_locked:
+        statsd.incr('news.tasks.get_lock.no_lock_retry')
+        raise RetryTask('Could not acquire lock')
+
+    cache.set(lock_key, True, settings.TASK_LOCK_TIMEOUT)
+
+
 class BasketError(Exception):
     """Tasks can raise this when an error happens that we should not retry.
     E.g. if the error indicates we're passing bad parameters.
@@ -86,6 +99,10 @@ class BasketError(Exception):
     """
     def __init__(self, msg):
         super(BasketError, self).__init__(msg)
+
+
+class RetryTask(Exception):
+    """an exception to raise within a task if you just want to retry"""
 
 
 class ETTask(Task):
@@ -245,9 +262,7 @@ def add_fxa_activity(data):
 
 
 @et_task
-def update_fxa_info(email, lang, fxa_id, **kwargs):
-    # TODO can remove kwargs after deployment. only here for backward compat
-    #      with tasks that may be on the queue when first deployed.
+def update_fxa_info(email, lang, fxa_id):
     apply_updates('Firefox_Account_ID', {
         'EMAIL_ADDRESS_': email,
         'CREATED_DATE_': gmttime(),
@@ -286,10 +301,12 @@ FSA_FIELDS = {
 
 @et_task
 def update_student_ambassadors(data, token):
+    key = data.get('EMAIL_ADDRESS') or token
+    get_lock(key)
     user_data = get_user_data(token=token)
     if not user_data:
         # try again later after user has been added
-        raise RetryTask
+        raise RetryTask('User not found')
 
     update_data = {}
     for k, fn in FSA_FIELDS.items():
@@ -340,28 +357,11 @@ def upsert_user(api_call_type, data):
     @param dict data: POST data from the form submission
     @return:
     """
-    if DO_LOCKING:
-        lock_key = data.get('email') or data.get('token')
-        lock_key = sha256(lock_key).hexdigest()
-        lock = cache.lock(lock_key, timeout=60)
-        if lock.acquire(blocking=False):
-            try:
-                upsert_contact(api_call_type, data,
-                               get_user_data(data.get('token'), data.get('email'),
-                                             extra_fields=['id']))
-            finally:
-                try:
-                    lock.release()
-                except LockError:
-                    pass
-        else:
-            statsd.incr('news.tasks.upsert_user.no_lock_retry')
-            raise RetryTask
-
-    else:
-        upsert_contact(api_call_type, data,
-                       get_user_data(data.get('token'), data.get('email'),
-                                     extra_fields=['id']))
+    key = data.get('email') or data.get('token')
+    get_lock(key)
+    upsert_contact(api_call_type, data,
+                   get_user_data(data.get('token'), data.get('email'),
+                                 extra_fields=['id']))
 
 
 def upsert_contact(api_call_type, data, user_data):
@@ -706,19 +706,6 @@ def update_custom_unsub(token, reason):
             except sfapi.SalesforceMalformedRequest:
                 # probably already know the email address
                 sfdc.update({'email': user['email']}, user)
-
-
-def attempt_fix(database, record, task, e):
-    # Sometimes a user is in basket's database but not in
-    # ExactTarget because the API failed or something. If that's
-    # the case, any future API call will error because basket
-    # won't add the required CREATED_DATE field. Try to add them
-    # with it here.
-    if e.message.find('CREATED_DATE_') != -1:
-        record['CREATED_DATE_'] = gmttime()
-        sfmc.add_row(database, record)
-    else:
-        raise e
 
 
 @et_task
