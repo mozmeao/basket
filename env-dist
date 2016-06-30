@@ -3,9 +3,6 @@ DEBUG=1
 # change this to something secret when deployed
 SECRET_KEY=sssssssshhhhhhhhhh
 
-# should be a UUID and be secret
-SUPERTOKEN='2A26AB68-74D8-4C27-BF1A-2A6B61AE52F2'
-
 # this is so you don't need a real queue for development
 CELERY_ALWAYS_EAGER=1
 

@@ -178,13 +178,7 @@ The following URLs are available (assuming "/news" is app url):
 /news/debug-user
 ----------------
 
-    This is the same as a GET request to /user, except that you must
-    pass in the email and a supertoken as GET params. The supertoken is
-    a special token that should never be made public and lets devs debug
-    users to make sure they were entered into the system correctly::
-
-        method: GET
-        fields: email, supertoken
+    REMOVED. Will return a 404. Use the newer and better ``lookup-user`` method.
 
 /news/lookup-user
 -----------------

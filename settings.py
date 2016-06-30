@@ -4,7 +4,6 @@ import socket
 import struct
 import sys
 from datetime import timedelta
-from uuid import uuid4
 
 import dj_database_url
 import django_cache_url
@@ -182,7 +181,6 @@ RAVEN_CONFIG = {
 # legacy name
 EXACTTARGET_USE_SANDBOX = config('EXACTTARGET_USE_SANDBOX', False, cast=bool)
 USE_SANDBOX_BACKEND = config('USE_SANDBOX_BACKEND', EXACTTARGET_USE_SANDBOX, cast=bool)
-SUPERTOKEN = config('SUPERTOKEN', str(uuid4()))
 ET_CLIENT_ID = config('ET_CLIENT_ID', None)
 ET_CLIENT_SECRET = config('ET_CLIENT_SECRET', None)
 
