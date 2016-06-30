@@ -337,6 +337,7 @@ def invalid_email_response():
         'code': errors.BASKET_INVALID_EMAIL,
         'desc': 'Invalid email address',
     }
+    statsd.incr('news.views.invalid_email_response')
     return HttpResponseJSON(resp_data, 400)
 
 
