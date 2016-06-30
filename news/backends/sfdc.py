@@ -94,6 +94,10 @@ def to_vendor(data):
         # True for every contact moving through basket
         'Subscriber__c': True,
     }
+    if 'email' in data:
+        for domain in settings.TESTING_EMAIL_DOMAINS:
+            if data['email'].endswith(u'@{}'.format(domain)):
+                contact['UAT_Test_Data__c'] = True
 
     if 'country' in data:
         data['country'] = data['country'].lower()

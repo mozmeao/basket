@@ -291,6 +291,7 @@ PROD_DETAILS_CACHE_TIMEOUT = None
 RECOVER_MSG_LANGS = config('RECOVER_MSG_LANGS', 'en', cast=Csv())
 
 SYNC_KEY = config('SYNC_KEY', None)
+TESTING_EMAIL_DOMAINS = config('TESTING_EMAIL_DOMAINS', 'restmail.net,example.com', cast=Csv())
 
 MAINTENANCE_MODE = config('MAINTENANCE_MODE', False, cast=bool)
 QUEUE_BATCH_SIZE = config('QUEUE_BATCH_SIZE', 500, cast=int)
@@ -304,6 +305,7 @@ if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'tes
     SFDC_SETTINGS.pop('password', None)
     SFMC_SETTINGS.pop('clientid', None)
     SFMC_SETTINGS.pop('clientsecret', None)
+    TESTING_EMAIL_DOMAINS = []
 
 SAML_ENABLE = config('SAML_ENABLE', default=False, cast=bool)
 if SAML_ENABLE:
