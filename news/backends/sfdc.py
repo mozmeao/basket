@@ -12,6 +12,24 @@ from news.backends.common import get_timer_decorator
 from news.country_codes import convert_country_3_to_2
 from news.newsletters import newsletter_map, newsletter_inv_map, is_supported_newsletter_language
 
+
+_BOOLEANS = {'1': True, 'y': True, 'yes': True, 'true': True, 'on': True,
+             '0': False, 'n': False, 'no': False, 'false': False, 'off': False}
+
+
+def cast_boolean(value):
+    # mostly borrowed from python-decouple
+    value = str(value).lower()
+    if value not in _BOOLEANS:
+        raise ValueError('Not a boolean: %s' % value)
+
+    return _BOOLEANS[value]
+
+
+def cast_lower(value):
+    return value.lower()
+
+
 time_request = get_timer_decorator('news.backends.sfdc')
 LAST_NAME_DEFAULT_VALUE = '_'
 FIELD_MAP = {
@@ -42,9 +60,14 @@ FIELD_DEFAULTS = {
     'country': '',
     'lang': '',
 }
-FIELD_PROCESSORS = {
-    'country': lambda x: x.lower(),
-    'lang': lambda x: x.lower(),
+PROCESSORS_TO_VENDOR = {
+    'optin': cast_boolean,
+    'optout': cast_boolean,
+    'fsa_allow_share': cast_boolean,
+}
+PROCESSORS_FROM_VENDOR = {
+    'country': cast_lower,
+    'lang': cast_lower,
 }
 FIELD_MAX_LENGTHS = {
     'FirstName': 40,
@@ -94,6 +117,9 @@ def to_vendor(data):
 
     for k, v in data.iteritems():
         if k in FIELD_MAP:
+            if k in PROCESSORS_TO_VENDOR:
+                v = PROCESSORS_TO_VENDOR[k](v)
+
             contact[FIELD_MAP[k]] = v
 
     news_map = newsletter_map()
@@ -138,10 +164,10 @@ def from_vendor(contact):
             data_name = INV_FIELD_MAP[fn]
             if data_name in FIELD_DEFAULTS:
                 fv = fv or FIELD_DEFAULTS[data_name]
-            if data_name in FIELD_PROCESSORS:
-                data[data_name] = FIELD_PROCESSORS[data_name](fv)
-            else:
-                data[data_name] = fv
+            if data_name in PROCESSORS_FROM_VENDOR:
+                fv = PROCESSORS_FROM_VENDOR[data_name](fv)
+
+            data[data_name] = fv
         elif fn in news_map and fv:
             newsletters.append(news_map[fn])
 
