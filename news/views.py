@@ -136,6 +136,12 @@ def fxa_activity(request):
             'desc': 'fxa-activity requires a Firefox Account ID',
             'code': errors.BASKET_USAGE_ERROR,
         }, 401)
+    if 'user_agent' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'fxa-activity requires a device user-agent',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
 
     add_fxa_activity.delay(data)
     return HttpResponseJSON({'status': 'ok'})

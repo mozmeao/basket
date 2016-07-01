@@ -234,29 +234,24 @@ def gmttime():
 
 @et_task
 def add_fxa_activity(data):
-    record = {
+    user_agent = user_agents.parse(data['user_agent'])
+    device_type = 'D'
+    if user_agent.is_mobile:
+        device_type = 'M'
+    elif user_agent.is_tablet:
+        device_type = 'T'
+
+    apply_updates('Sync_Device_Logins', {
         'FXA_ID': data['fxa_id'],
         'LOGIN_DATE': gmttime(),
         'FIRST_DEVICE': 'y' if data.get('first_device') else 'n',
-    }
-    if 'user_agent' in data:
-        user_agent = user_agents.parse(data['user_agent'])
-        device_type = 'D'
-        if user_agent.is_mobile:
-            device_type = 'M'
-        elif user_agent.is_tablet:
-            device_type = 'T'
-
-        record.update({
-            'OS': user_agent.os.family,
-            'OS_VERSION': user_agent.os.version_string,
-            'BROWSER': '{0} {1}'.format(user_agent.browser.family,
-                                        user_agent.browser.version_string),
-            'DEVICE_NAME': user_agent.device.family,
-            'DEVICE_TYPE': device_type,
-        })
-
-    apply_updates('Sync_Device_Logins', record)
+        'OS': user_agent.os.family,
+        'OS_VERSION': user_agent.os.version_string,
+        'BROWSER': '{0} {1}'.format(user_agent.browser.family,
+                                    user_agent.browser.version_string),
+        'DEVICE_NAME': user_agent.device.family,
+        'DEVICE_TYPE': device_type,
+    })
 
 
 @et_task
