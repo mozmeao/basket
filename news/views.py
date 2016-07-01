@@ -279,7 +279,7 @@ def subscribe(request):
             # malformed request from FxOS
             # Can't use QueryDict since the string is not url-encoded.
             # It will convert '+' to ' ' for example.
-            data = dict(pair.split('=') for pair in raw_request.split('&'))
+            data = dict(pair.split('=') for pair in raw_request.split('&') if '=' in pair)
             statsd.incr('news.views.subscribe.fxos-workaround')
         else:
             return HttpResponseJSON({

@@ -510,6 +510,40 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(self.update_user_task.called)
 
+    @patch('news.views.update_user_task')
+    def test_email_fxos_malformed_post_bad_data(self, update_user_mock):
+        """Should be able to parse data from the raw request body even with bad data."""
+        # example from real error with PII details changed
+        self.process_email.return_value = 'dude@example.com'
+        req = self.factory.generic('POST', '/news/subscribe/',
+                                   data='newsletters=mozilla-foundation&'
+                                        'source_url=https%3A%2F%2Fadvocacy.mozilla.org%2Fencrypt'
+                                        '&lang=en&email=dude@example.com'
+                                        '&country=DE&first_name=Dude&Walter',
+                                   content_type='text/plain; charset=UTF-8')
+        views.subscribe(req)
+        update_user_mock.assert_called_with(req, views.SUBSCRIBE, data={
+            'email': 'dude@example.com',
+            'newsletters': 'mozilla-foundation',
+            'source_url': 'https%3A%2F%2Fadvocacy.mozilla.org%2Fencrypt',
+            'lang': 'en',
+            'country': 'DE',
+            'first_name': 'Dude',
+        }, optin=False, sync=False)
+
+    @patch('news.views.update_user_task')
+    def test_email_fxos_malformed_post(self, update_user_mock):
+        """Should be able to parse data from the raw request body."""
+        self.process_email.return_value = 'dude@example.com'
+        req = self.factory.generic('POST', '/news/subscribe/',
+                                   data='email=dude@example.com&newsletters=firefox-os',
+                                   content_type='text/plain; charset=UTF-8')
+        views.subscribe(req)
+        update_user_mock.assert_called_with(req, views.SUBSCRIBE, data={
+            'email': 'dude@example.com',
+            'newsletters': 'firefox-os',
+        }, optin=False, sync=False)
+
     def test_success(self):
         """Test basic success case with no optin or sync."""
         request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
