@@ -19,7 +19,34 @@ from news.tasks import (
     send_message,
     SUBSCRIBE,
     update_user,
+    get_lock,
+    RetryTask,
 )
+
+
+@override_settings(TASK_LOCKING_ENABLE=True)
+class TaskDuplicationLockingTests(TestCase):
+    def test_locks_work(self):
+        """Calling get_lock more than once quickly with the same key should be locked"""
+        get_lock('dude@example.com')
+        with self.assertRaises(RetryTask):
+            get_lock('dude@example.com')
+
+    def test_lock_prefix_works(self):
+        """Should allow same key to not lock other prefixes"""
+        get_lock('dude@example.com', prefix='malibu')
+        get_lock('dude@example.com', prefix='in-n-out')
+        with self.assertRaises(RetryTask):
+            get_lock('dude@example.com', prefix='malibu')
+
+    @patch('news.tasks.cache')
+    def test_locks_do_not_leak_info(self, cache_mock):
+        """Should not use plaintext key in lock name"""
+        email = 'donny@example.com'
+        cache_mock.get.return_value = None
+        get_lock(email)
+        key = cache_mock.get.call_args[0][0]
+        self.assertNotIn(email, key)
 
 
 class FailedTaskTest(TestCase):

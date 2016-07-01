@@ -298,6 +298,9 @@ QUEUE_BATCH_SIZE = config('QUEUE_BATCH_SIZE', 500, cast=int)
 # can we read user data in maintenance mode
 MAINTENANCE_READ_ONLY = config('MAINTENANCE_READ_ONLY', False, cast=bool)
 
+TASK_LOCK_TIMEOUT = config('TASK_LOCK_TIMEOUT', 60, cast=int)
+TASK_LOCKING_ENABLE = config('TASK_LOCKING_ENABLE', False, cast=bool)
+
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run
     CELERY_ALWAYS_EAGER = True
