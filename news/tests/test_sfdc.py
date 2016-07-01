@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.test.utils import override_settings
 
 from mock import patch, Mock
 
@@ -42,6 +43,47 @@ class SFDCTests(TestCase):
             'Sub_Chillin__c': True,
             'Sub_Bowlin__c': True,
             'Sub_Caucasians__c': True,
+        }
+        self.assertDictEqual(to_vendor(data), contact)
+
+    @override_settings(TESTING_EMAIL_DOMAINS=['example.com'])
+    @patch('news.backends.sfdc.newsletter_map')
+    def test_to_vendor_test_domain(self, nm_mock):
+        """Same as main test but should flip UAT_Test_Data__c switch"""
+        nm_mock.return_value = {
+            'chillin': 'Sub_Chillin__c',
+            'bowlin': 'Sub_Bowlin__c',
+            'white-russian-recipes': 'Sub_Caucasians__c',
+        }
+        data = {
+            'email': 'dude@example.com',
+            'token': 'totally-token-man',
+            'format': 'H',
+            'country': 'US',
+            'lang': 'en',
+            'source_url': 'https://www.example.com',
+            'first_name': 'The',
+            'last_name': 'Dude',
+            'newsletters': [
+                'chillin',
+                'bowlin',
+                'white-russian-recipes',
+            ]
+        }
+        contact = {
+            'Email_Format__c': 'H',
+            'FirstName': 'The',
+            'LastName': 'Dude',
+            'Subscriber__c': True,
+            'Email_Language__c': 'en',
+            'Signup_Source_URL__c': 'https://www.example.com',
+            'Token__c': 'totally-token-man',
+            'Email': 'dude@example.com',
+            'MailingCountryCode': 'us',
+            'Sub_Chillin__c': True,
+            'Sub_Bowlin__c': True,
+            'Sub_Caucasians__c': True,
+            'UAT_Test_Data__c': True,
         }
         self.assertDictEqual(to_vendor(data), contact)
 
@@ -123,3 +165,33 @@ class SFDCTests(TestCase):
             'Sub_Fightin__c': False,
         }
         self.assertDictEqual(from_vendor(contact), data)
+
+    def test_to_vendor_boolean_casting(self):
+        data = {
+            'email': 'dude@example.com',
+            'token': 'totally-token-man',
+            'format': 'H',
+            'country': 'US',
+            'lang': 'en',
+            'source_url': 'https://www.example.com',
+            'first_name': 'The',
+            'last_name': 'Dude',
+            'fsa_allow_share': 'y',
+            'optout': 'no',
+            'optin': 'true',
+        }
+        contact = {
+            'Email_Format__c': 'H',
+            'FirstName': 'The',
+            'LastName': 'Dude',
+            'Subscriber__c': True,
+            'Email_Language__c': 'en',
+            'Signup_Source_URL__c': 'https://www.example.com',
+            'Token__c': 'totally-token-man',
+            'Email': 'dude@example.com',
+            'MailingCountryCode': 'us',
+            'FSA_Allow_Info_Shared__c': True,
+            'HasOptedOutOfEmail': False,
+            'Double_Opt_In__c': True,
+        }
+        self.assertDictEqual(to_vendor(data), contact)
