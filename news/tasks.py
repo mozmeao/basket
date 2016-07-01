@@ -83,12 +83,10 @@ def get_lock(key, prefix='task'):
 
     lock_key = 'basket-{}-{}'.format(prefix, key)
     lock_key = sha256(lock_key).hexdigest()
-    is_locked = cache.get(lock_key)
-    if is_locked:
+    got_lock = cache.add(lock_key, True, settings.TASK_LOCK_TIMEOUT)
+    if not got_lock:
         statsd.incr('news.tasks.get_lock.no_lock_retry')
         raise RetryTask('Could not acquire lock')
-
-    cache.set(lock_key, True, settings.TASK_LOCK_TIMEOUT)
 
 
 class BasketError(Exception):

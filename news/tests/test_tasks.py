@@ -43,9 +43,9 @@ class TaskDuplicationLockingTests(TestCase):
     def test_locks_do_not_leak_info(self, cache_mock):
         """Should not use plaintext key in lock name"""
         email = 'donny@example.com'
-        cache_mock.get.return_value = None
+        cache_mock.add.return_value = True
         get_lock(email)
-        key = cache_mock.get.call_args[0][0]
+        key = cache_mock.add.call_args[0][0]
         self.assertNotIn(email, key)
 
 
