@@ -384,28 +384,13 @@ def upsert_contact(api_call_type, data, user_data):
     if user_data is None:
         # no user found. create new one.
         update_data['token'] = generate_token()
-        try:
-            if settings.MAINTENANCE_MODE:
-                sfdc_add_update.delay(update_data)
-            else:
-                sfdc.add(update_data)
+        if settings.MAINTENANCE_MODE:
+            sfdc_add_update.delay(update_data)
+        else:
+            # don't catch exceptions here. SalesforceError subclasses will retry.
+            sfdc.add(update_data)
 
-            return update_data['token'], True
-        except sfapi.SalesforceMalformedRequest as e:  # noqa
-            # possibly a duplicate email. try the update below.
-            user_data = get_user_data(email=data['email'], extra_fields=['id'])
-            if user_data:
-                # we have a user, delete generated token
-                # and continue with an update
-                del update_data['token']
-            else:
-                # still no user, try the add one more time
-                if settings.MAINTENANCE_MODE:
-                    sfdc_add_update.delay(update_data)
-                else:
-                    sfdc.add(update_data)
-
-                return update_data['token'], True
+        return update_data['token'], True
 
     if forced_optin and not user_data.get('optin'):
         update_data['optin'] = True
