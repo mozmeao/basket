@@ -54,7 +54,10 @@ from news.utils import (
 
 IP_RATE_LIMIT_EXTERNAL = getattr(settings, 'IP_RATE_LIMIT_EXTERNAL', '40/m')
 IP_RATE_LIMIT_INTERNAL = getattr(settings, 'IP_RATE_LIMIT_INTERNAL', '400/m')
-PHONE_NUMBER_RATE_LIMIT = getattr(settings, 'PHONE_NUMBER_RATE_LIMIT', '1/h')
+# one submission for a specific message per phone number per 10 minutes
+PHONE_NUMBER_RATE_LIMIT = getattr(settings, 'PHONE_NUMBER_RATE_LIMIT', '1/10m')
+# one submission for a set of newsletters per email address per 10 minutes
+EMAIL_SUBSCRIBE_RATE_LIMIT = getattr(settings, 'EMAIL_SUBSCRIBE_RATE_LIMIT', '1/10m')
 sync_route = Route(api_token=settings.SYNC_KEY)
 
 
@@ -695,6 +698,13 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
 
     if optin:
         data['optin'] = True
+
+    if api_call_type == SUBSCRIBE and email and data.get('newsletters'):
+        # only rate limit here so we don't rate limit errors.
+        if is_ratelimited(request, group='news.views.subscribe',
+                          key=lambda x, y: '%s-%s' % (data['newsletters'], email),
+                          rate=EMAIL_SUBSCRIBE_RATE_LIMIT, increment=True):
+            raise Ratelimited()
 
     if sync:
         statsd.incr('news.views.subscribe.sync')
