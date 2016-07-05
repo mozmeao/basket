@@ -313,34 +313,6 @@ def update_student_ambassadors(data, token):
 
 
 @et_task
-def update_user(data, email, token, api_call_type, optin):
-    """Legacy Task for updating user's preferences and newsletters.
-
-    @param dict data: POST data from the form submission
-    @param string email: User's email address
-    @param string token: User's token. If None, the token will be
-        looked up, and if no token is found, one will be created for the
-        given email.
-    @param int api_call_type: What kind of API call it was. Could be
-        SUBSCRIBE, UNSUBSCRIBE, or SET.
-    @param boolean optin: legacy option. it is now included in data. may be removed after
-        initial deployment (required so that existing tasks in the queue won't fail for having
-        too many arguments).
-
-    @returns: None
-    @raises: NewsletterException if there are any errors that would be
-        worth retrying. Our task wrapper will retry in that case.
-
-    TODO remove after initial deployment
-    """
-    # backward compat with existing items on the queue when deployed.
-    if optin is not None:
-        data['optin'] = optin
-
-    upsert_user(api_call_type, data)
-
-
-@et_task
 def upsert_user(api_call_type, data):
     """
     Update or insert (upsert) a contact record in SFDC
@@ -640,11 +612,13 @@ def confirm_user(token):
     :raises: BasketError for fatal errors, NewsletterException for retryable
         errors.
     """
+    get_lock(token)
     user_data = get_user_data(token=token)
 
     if user_data is None:
         user = get_sfmc_doi_user(token)
-        if user:
+        if user and user.get('email'):
+            get_lock(user['email'])
             user['optin'] = True
             try:
                 sfdc.add(user)
@@ -687,12 +661,14 @@ def add_sms_user_optin(mobile_number):
 @et_task
 def update_custom_unsub(token, reason):
     """Record a user's custom unsubscribe reason."""
+    get_lock(token)
     try:
         sfdc.update({'token': token}, {'reason': reason})
     except sfapi.SalesforceMalformedRequest:
         # likely the record can't be found. try the DoI DE.
         user = get_sfmc_doi_user(token)
-        if user:
+        if user and user.get('email'):
+            get_lock(user['email'])
             user['reason'] = reason
             try:
                 sfdc.add(user)
