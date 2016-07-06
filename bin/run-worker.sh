@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ex
 
 exec newrelic-admin run-program celery -A news worker \
                                        -P "${CELERY_POOL:-prefork}" \

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -ex
 
 READ_ONLY_MODE=$(echo "$READ_ONLY_MODE" | tr '[:upper:]' '[:lower:]')
 
