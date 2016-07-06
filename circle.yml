@@ -47,16 +47,16 @@ test:
 deployment:
   demo:
     branch: /demo__.+/
-    owner: mozilla
+    owner: mozmar
     commands:
       - bin/deploy.sh demo
   stage:
     branch: master
-    owner: mozilla
+    owner: mozmar
     commands:
       - bin/deploy.sh stage
   prod:
     tag: /\d{4}-\d{2}-\d{2}(\.\d)?/
-    owner: mozilla
+    owner: mozmar
     commands:
       - bin/deploy.sh prod
