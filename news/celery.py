@@ -2,14 +2,14 @@ from __future__ import absolute_import
 
 import os
 
-import celery
-from raven.contrib.celery import register_signal, register_logger_signal
-from raven.contrib.django.raven_compat.models import client
-
 # set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
 
 from django.conf import settings
+
+import celery
+from raven.contrib.celery import register_signal, register_logger_signal
+from raven.contrib.django.raven_compat.models import client
 
 
 class Celery(celery.Celery):
