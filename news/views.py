@@ -101,7 +101,8 @@ def source_ip_rate_limit_rate(group, request):
 
 
 def ratelimited(request, e):
-    statsd.incr('.'.join(request.path.split('/') + ['ratelimited']))
+    parts = [x.strip() for x in request.path.split('/') if x.strip()]
+    statsd.incr('.'.join(parts + ['ratelimited']))
     return HttpResponseJSON({
         'status': 'error',
         'desc': 'rate limit reached',
