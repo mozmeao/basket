@@ -18,7 +18,7 @@ docker push ${DOCKER_REPOSITORY}:last_successful_build
 
 # Install deis client
 echo "Installing Deis client"
-curl -sSL http://deis.io/deis-cli/install.sh | sh
+bin/deis-cli-install.sh
 
 DEIS_REGIONS=( us-west )
 # region where the read-write master database lives
