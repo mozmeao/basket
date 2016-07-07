@@ -66,7 +66,7 @@ def ignore_error(exc, to_ignore=IGNORE_ERROR_MSGS):
 
 
 def ignore_error_post_retry(exc):
-    return isinstance(exc, RetryTask) or ignore_error(exc, IGNORE_ERROR_MSGS_POST_RETRY)
+    return ignore_error(exc, IGNORE_ERROR_MSGS_POST_RETRY)
 
 
 def get_lock(key, prefix='task'):
@@ -209,7 +209,7 @@ def et_task(func):
                 return
 
             try:
-                if not ignore_error_post_retry(e):
+                if not (isinstance(e, RetryTask) or ignore_error_post_retry(e)):
                     sentry_client.captureException(tags={'action': 'retried'})
 
                 wrapped.retry(args=args, kwargs=kwargs,
@@ -256,12 +256,16 @@ def add_fxa_activity(data):
 
 @et_task
 def update_fxa_info(email, lang, fxa_id):
-    apply_updates('Firefox_Account_ID', {
-        'EMAIL_ADDRESS_': email,
-        'CREATED_DATE_': gmttime(),
-        'FXA_ID': fxa_id,
-        'FXA_LANGUAGE_ISO2': lang,
-    })
+    try:
+        apply_updates('Firefox_Account_ID', {
+            'EMAIL_ADDRESS_': email,
+            'CREATED_DATE_': gmttime(),
+            'FXA_ID': fxa_id,
+            'FXA_LANGUAGE_ISO2': lang,
+        })
+    except NewsletterException as e:
+        # don't report these errors to sentry until retries exhausted
+        raise RetryTask(str(e))
 
 
 @et_task
