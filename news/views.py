@@ -28,7 +28,6 @@ from news.tasks import (
     update_custom_unsub,
     update_fxa_info,
     update_get_involved,
-    update_student_ambassadors,
     upsert_contact,
     upsert_user,
 )
@@ -484,22 +483,6 @@ def custom_unsub_reason(request):
         }, 400)
 
     update_custom_unsub.delay(request.POST['token'], request.POST['reason'])
-    return HttpResponseJSON({'status': 'ok'})
-
-
-@require_POST
-@csrf_exempt
-def custom_update_student_ambassadors(request, token):
-    data = request.POST.dict()
-    if 'EMAIL_ADDRESS' in data:
-        # need to validate here since validation also ascii converts
-        email = process_email(data['EMAIL_ADDRESS'])
-        if not email:
-            return invalid_email_response()
-
-        data['EMAIL_ADDRESS'] = email
-
-    update_student_ambassadors.delay(data, token)
     return HttpResponseJSON({'status': 'ok'})
 
 
