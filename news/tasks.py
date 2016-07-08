@@ -13,7 +13,7 @@ from django.core.cache import cache, get_cache
 import requests
 import simple_salesforce as sfapi
 import user_agents
-from celery import Task
+from celery.signals import task_failure, task_retry, task_success
 from django_statsd.clients import statsd
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
@@ -103,99 +103,62 @@ class RetryTask(Exception):
     """an exception to raise within a task if you just want to retry"""
 
 
-class ETTask(Task):
-    abstract = True
-    default_retry_delay = 60 * 5  # 5 minutes
-    max_retries = 8  # ~ 30 min
-
-    def on_success(self, retval, task_id, args, kwargs):
-        """Success handler.
-
-        Run by the worker if the task executes successfully.
-
-        :param retval: The return value of the task.
-        :param task_id: Unique id of the executed task.
-        :param args: Original arguments for the executed task.
-        :param kwargs: Original keyword arguments for the executed task.
-
-        The return value of this handler is ignored.
-
-        """
-        statsd.incr(self.name + '.success')
-        statsd.incr('news.tasks.success_total')
-
-    def on_failure(self, exc, task_id, args, kwargs, einfo):
-        """Error handler.
-
-        This is run by the worker when the task fails.
-
-        :param exc: The exception raised by the task.
-        :param task_id: Unique id of the failed task.
-        :param args: Original arguments for the task that failed.
-        :param kwargs: Original keyword arguments for the task
-                       that failed.
-
-        :keyword einfo: :class:`~celery.datastructures.ExceptionInfo`
-                        instance, containing the traceback.
-
-        The return value of this handler is ignored.
-
-        """
-        statsd.incr(self.name + '.failure')
+@task_failure.connect
+def on_task_failure(sender, task_id, exception, einfo, args, kwargs, **skwargs):
+    statsd.incr(sender.name + '.failure')
+    if not sender.name.endswith('snitch'):
         statsd.incr('news.tasks.failure_total')
         if settings.STORE_TASK_FAILURES:
             FailedTask.objects.create(
                 task_id=task_id,
-                name=self.name,
+                name=sender.name,
                 args=args,
                 kwargs=kwargs,
-                exc=repr(exc),
-                einfo=str(einfo),  # str() gives more info than repr() on celery.datastructures.ExceptionInfo
+                exc=repr(exception),
+                # str() gives more info than repr() on celery.datastructures.ExceptionInfo
+                einfo=str(einfo),
             )
 
-    def on_retry(self, exc, task_id, args, kwargs, einfo):
-        """Retry handler.
 
-        This is run by the worker when the task is to be retried.
-
-        :param exc: The exception sent to :meth:`retry`.
-        :param task_id: Unique id of the retried task.
-        :param args: Original arguments for the retried task.
-        :param kwargs: Original keyword arguments for the retried task.
-
-        :keyword einfo: :class:`~celery.datastructures.ExceptionInfo`
-                        instance, containing the traceback.
-
-        The return value of this handler is ignored.
-
-        """
-        statsd.incr(self.name + '.retry')
+@task_retry.connect
+def on_task_retry(sender, **kwargs):
+    statsd.incr(sender.name + '.retry')
+    if not sender.name.endswith('snitch'):
         statsd.incr('news.tasks.retry_total')
+
+
+@task_success.connect
+def on_task_success(sender, **kwargs):
+    statsd.incr(sender.name + '.success')
+    if not sender.name.endswith('snitch'):
+        statsd.incr('news.tasks.success_total')
 
 
 def et_task(func):
     """Decorator to standardize ET Celery tasks."""
-    @celery_app.task(base=ETTask)
+    @celery_app.task(bind=True,
+                     default_retry_delay=300,  # 5 min
+                     max_retries=8)
     @wraps(func)
-    def wrapped(*args, **kwargs):
+    def wrapped(self, *args, **kwargs):
         start_time = kwargs.pop('start_time', None)
         if start_time:
             total_time = int((time() - start_time) * 1000)
             if total_time < 10800000:  # over 3 hours it's probably from a queued task
-                statsd.timing(wrapped.name + '.timing', total_time)
-        statsd.incr(wrapped.name + '.total')
+                statsd.timing(self.name + '.timing', total_time)
+        statsd.incr(self.name + '.total')
         statsd.incr('news.tasks.all_total')
-        if settings.MAINTENANCE_MODE and wrapped.name not in MAINTENANCE_EXEMPT:
+        if settings.MAINTENANCE_MODE and self.name not in MAINTENANCE_EXEMPT:
             if not settings.READ_ONLY_MODE:
                 # record task for later
                 QueuedTask.objects.create(
-                    name=wrapped.name,
+                    name=self.name,
                     args=args,
                     kwargs=kwargs,
                 )
-                statsd.incr(wrapped.name + '.queued')
+                statsd.incr(self.name + '.queued')
             else:
-                statsd.incr(wrapped.name + '.not_queued')
+                statsd.incr(self.name + '.not_queued')
 
             return
 
@@ -212,10 +175,9 @@ def et_task(func):
                 if not (isinstance(e, RetryTask) or ignore_error_post_retry(e)):
                     sentry_client.captureException(tags={'action': 'retried'})
 
-                wrapped.retry(args=args, kwargs=kwargs,
-                              countdown=(2 ** wrapped.request.retries) * 60)
-            except wrapped.MaxRetriesExceededError:
-                statsd.incr(wrapped.name + '.retry_max')
+                raise self.retry(countdown=2 ** (self.request.retries + 1) * 60)
+            except self.MaxRetriesExceededError:
+                statsd.incr(self.name + '.retry_max')
                 statsd.incr('news.tasks.retry_max_total')
                 # don't bubble certain errors
                 if ignore_error_post_retry(e):
