@@ -142,10 +142,9 @@ def et_task(func):
     @wraps(func)
     def wrapped(self, *args, **kwargs):
         start_time = kwargs.pop('start_time', None)
-        if start_time:
+        if start_time and not self.request.retries:
             total_time = int((time() - start_time) * 1000)
-            if total_time < 10800000:  # over 3 hours it's probably from a queued task
-                statsd.timing(self.name + '.timing', total_time)
+            statsd.timing(self.name + '.timing', total_time)
         statsd.incr(self.name + '.total')
         statsd.incr('news.tasks.all_total')
         if settings.MAINTENANCE_MODE and self.name not in MAINTENANCE_EXEMPT:
