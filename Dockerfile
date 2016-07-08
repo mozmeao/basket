@@ -1,4 +1,4 @@
-FROM quay.io/mozmar/ubuntu-slim-python
+FROM quay.io/mozmar/ubuntu-slim-python:latest
 
 RUN adduser --uid 1000 --disabled-password --gecos '' --no-create-home webdev
 WORKDIR /app

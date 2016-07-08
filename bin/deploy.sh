@@ -9,7 +9,7 @@ elementIn () {
 }
 
 echo "Logging into the Docker Hub"
-docker login -e "$DOCKER_EMAIL" -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
+docker login -e "$DOCKER_EMAIL" -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD" quay.io
 echo "Pushing ${DOCKER_IMAGE_TAG} to Docker hub"
 docker push ${DOCKER_IMAGE_TAG}
 docker tag -f ${DOCKER_IMAGE_TAG} ${DOCKER_REPOSITORY}:last_successful_build

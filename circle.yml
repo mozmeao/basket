@@ -10,10 +10,10 @@ machine:
     DEIS_ADMIN_APP: basket-admin
     DEIS_USERNAME: circleci
     # Docker
-    DOCKER_REPOSITORY: mozorg/basket
-    DOCKER_IMAGE_TAG: "$DOCKER_REPOSITORY:$CIRCLE_SHA1"
-    DOCKER_EMAIL: foo@example.com
-    DOCKER_USERNAME: moztravis
+    DOCKER_REPOSITORY: quay.io/mozmar/basket
+    DOCKER_IMAGE_TAG: "${DOCKER_REPOSITORY}:${CIRCLE_SHA1}"
+    DOCKER_EMAIL: mozmar@example.com
+    DOCKER_USERNAME: mozmar+circleci
     # MySQL
     MYSQL_DATABASE: basket
     MYSQL_ALLOW_EMPTY_PASSWORD: 1
@@ -33,7 +33,8 @@ dependencies:
     - if [[ -e ~/docker/image.tar ]]; then docker load --input ~/docker/image.tar; fi
     - echo "ENV GIT_SHA ${CIRCLE_SHA1}" >> Dockerfile
     - docker build -t "$DOCKER_IMAGE_TAG" --pull=true .
-    - mkdir -p ~/docker; docker save "$DOCKER_IMAGE_TAG" > ~/docker/image.tar
+    - docker pull mariadb:10.0
+    - mkdir -p ~/docker; docker save -o ~/docker/image.tar "$DOCKER_REPOSITORY" quay.io/mozmar/ubuntu-slim-python mariadb
     - bin/deis-cli-install.sh
 
 test:
