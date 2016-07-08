@@ -3,7 +3,17 @@
 # included in the repo because it's only available over http from deis.io
 
 # install current version unless overridden by first command-line argument
+cd ~/docker
+
 VERSION=${1:-1.13.2}
+
+if [[ -x ./deis ]]; then
+  if [[ "$VERSION" == $(./deis version) ]]; then
+    exit 0
+  else
+    rm ./deis
+  fi
+fi
 
 # catch errors from here on out
 set -e

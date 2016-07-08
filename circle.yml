@@ -34,6 +34,7 @@ dependencies:
     - echo "ENV GIT_SHA ${CIRCLE_SHA1}" >> Dockerfile
     - docker build -t "$DOCKER_IMAGE_TAG" --pull=true .
     - mkdir -p ~/docker; docker save "$DOCKER_IMAGE_TAG" > ~/docker/image.tar
+    - bin/deis-cli-install.sh
 
 test:
   pre:

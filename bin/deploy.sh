@@ -16,10 +16,6 @@ docker tag -f ${DOCKER_IMAGE_TAG} ${DOCKER_REPOSITORY}:last_successful_build
 echo "Tagging as last_successful_build"
 docker push ${DOCKER_REPOSITORY}:last_successful_build
 
-# Install deis client
-echo "Installing Deis client"
-bin/deis-cli-install.sh
-
 DEIS_REGIONS=( us-west )
 # region where the read-write master database lives
 DB_RW_REGION="us-west"
@@ -47,16 +43,16 @@ esac
 for region in "${DEIS_REGIONS[@]}"; do
   DEIS_CONTROLLER="https://deis.${region}.moz.works"
   echo "Logging into the Deis Controller at $DEIS_CONTROLLER"
-  ./deis login "$DEIS_CONTROLLER" --username "$DEIS_USERNAME" --password "$DEIS_PASSWORD"
+  ~/docker/deis login "$DEIS_CONTROLLER" --username "$DEIS_USERNAME" --password "$DEIS_PASSWORD"
   for appname in "${DEIS_APPS[@]}"; do
     # attempt to create the app for demo deploys
     if [[ "$1" == "demo" ]]; then
       echo "Creating the demo app $appname"
-      if ./deis apps:create "$appname" --no-remote; then
+      if ~/docker/deis apps:create "$appname" --no-remote; then
         echo "Giving github user $CIRCLE_USERNAME perms for the app"
-        ./deis perms:create "$CIRCLE_USERNAME" -a "$appname" || true
+        ~/docker/deis perms:create "$CIRCLE_USERNAME" -a "$appname" || true
         echo "Configuring the new demo app"
-        ./deis config:push -a "$appname" -p .demo_env
+        ~/docker/deis config:push -a "$appname" -p .demo_env
       fi
     fi
 
@@ -66,11 +62,11 @@ for region in "${DEIS_REGIONS[@]}"; do
     fi
     NR_APP="${appname}-${region}"
     echo "Pulling $DOCKER_IMAGE_TAG into Deis app $appname in $region"
-    ./deis pull "$DOCKER_IMAGE_TAG" -a "$appname"
+    ~/docker/deis pull "$DOCKER_IMAGE_TAG" -a "$appname"
 
     if [[ "$region" == "$DB_RW_REGION" ]] && elementIn "$appname" "${DEIS_POST_DEPLOY_APPS[@]}"; then
       echo "Running post-deploy tasks for $appname in $region"
-      ./deis run -a "$appname" -- bin/post-deploy.sh
+      ~/docker/deis run -a "$appname" -- bin/post-deploy.sh
     fi
 
     if [[ "$1" != "demo" ]]; then
