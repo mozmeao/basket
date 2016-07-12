@@ -113,6 +113,10 @@ def ratelimited(request, e):
 @require_POST
 @csrf_exempt
 def confirm(request, token):
+    if is_ratelimited(request, group='news.views.confirm',
+                      key=lambda x, y: token,
+                      rate=EMAIL_SUBSCRIBE_RATE_LIMIT, increment=True):
+        raise Ratelimited()
     confirm_user.delay(token, start_time=time())
     return HttpResponseJSON({'status': 'ok'})
 
