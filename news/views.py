@@ -316,6 +316,7 @@ def subscribe(request):
     data['email'] = email
 
     if email_is_blocked(data['email']):
+        statsd.incr('news.views.subscribe.email_blocked')
         # don't let on there's a problem
         return HttpResponseJSON({'status': 'ok'})
 

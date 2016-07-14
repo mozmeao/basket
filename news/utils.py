@@ -13,6 +13,7 @@ import requests
 import simple_salesforce as sfapi
 # Get error codes from basket-client so users see the same definitions
 from basket import errors
+from django_statsd.clients import statsd
 from email_validator import validate_email, EmailNotValidError
 
 from news.backends.common import NewsletterException
@@ -63,6 +64,7 @@ def email_is_blocked(email):
     """Check an email and return True if blocked."""
     for blocked in get_email_block_list():
         if email.endswith(blocked):
+            statsd.incr('news.utils.email_blocked.' + blocked)
             return True
 
     return False
