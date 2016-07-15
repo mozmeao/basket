@@ -9,7 +9,7 @@ from news.views import healthz
 home_redirect = '/admin/' if settings.ADMIN_ONLY_MODE else 'https://www.mozilla.org/'
 
 urlpatterns = [
-    url(r'^$', RedirectView.as_view(url=home_redirect)),
+    url(r'^$', RedirectView.as_view(url=home_redirect, permanent=True)),
     url('^healthz/$', healthz, name='healthz'),
 ]
 
@@ -18,7 +18,7 @@ if not settings.ADMIN_ONLY_MODE:
 
 if settings.DISABLE_ADMIN:
     urlpatterns.append(
-        url(r'^admin/', RedirectView.as_view(url=settings.ADMIN_REDIRECT_URL))
+        url(r'^admin/', RedirectView.as_view(url=settings.ADMIN_REDIRECT_URL, permanent=True))
     )
 else:
     if settings.SAML_ENABLE:
