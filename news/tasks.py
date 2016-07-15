@@ -8,7 +8,7 @@ from hashlib import sha256
 from time import mktime, time
 
 from django.conf import settings
-from django.core.cache import cache, get_cache
+from django.core.cache import cache, caches
 
 import requests
 import simple_salesforce as sfapi
@@ -29,7 +29,7 @@ from news.utils import (generate_token, get_user_data,
 
 log = logging.getLogger(__name__)
 
-BAD_MESSAGE_ID_CACHE = get_cache('bad_message_ids')
+BAD_MESSAGE_ID_CACHE = caches['bad_message_ids']
 
 # Base message ID for confirmation email
 CONFIRMATION_MESSAGE = "confirmation_email"

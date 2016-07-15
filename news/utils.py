@@ -4,7 +4,7 @@ from itertools import chain
 from uuid import uuid4
 
 from django.conf import settings
-from django.core.cache import get_cache
+from django.core.cache import caches
 from django.http import HttpResponse
 from django.utils.encoding import force_unicode
 from django.utils.translation.trans_real import parse_accept_lang_header
@@ -35,7 +35,7 @@ SUBSCRIBE = 'SUBSCRIBE'
 UNSUBSCRIBE = 'UNSUBSCRIBE'
 SET = 'SET'
 
-email_block_list_cache = get_cache('email_block_list')
+email_block_list_cache = caches['email_block_list']
 
 
 def generate_token():
