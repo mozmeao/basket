@@ -260,9 +260,9 @@ STATSD_CLIENT = config('STATSD_CLIENT', 'django_statsd.clients.null')
 
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': True,
+    'disable_existing_loggers': False,
     'root': {
-        'level': 'WARNING',
+        'level': config('DJANGO_LOG_LEVEL', default='WARNING'),
         'handlers': ['console'],
     },
     'formatters': {
