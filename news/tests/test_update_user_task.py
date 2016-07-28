@@ -267,3 +267,15 @@ class UpdateUserTaskTests(TestCase):
             self.assert_response_ok(response)
             with self.assertRaises(Ratelimited):
                 update_user_task(request, SUBSCRIBE, data, sync=False)
+
+    def test_rate_limit_user_update(self):
+        """Should raise Ratelimited if token attempts to update same newsletters quickly"""
+        request = self.factory.post('/')
+        data = {'token': 'a@example.com', 'newsletters': 'foo,bar'}
+
+        with patch('news.views.newsletter_slugs') as newsletter_slugs:
+            newsletter_slugs.return_value = ['foo', 'bar']
+            response = update_user_task(request, SET, data, sync=False)
+            self.assert_response_ok(response)
+            with self.assertRaises(Ratelimited):
+                update_user_task(request, SET, data, sync=False)
