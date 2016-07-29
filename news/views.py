@@ -707,8 +707,15 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
 
     if api_call_type == SUBSCRIBE and email and data.get('newsletters'):
         # only rate limit here so we don't rate limit errors.
-        if is_ratelimited(request, group='news.views.subscribe',
+        if is_ratelimited(request, group='news.views.update_user_task.subscribe',
                           key=lambda x, y: '%s-%s' % (data['newsletters'], email),
+                          rate=EMAIL_SUBSCRIBE_RATE_LIMIT, increment=True):
+            raise Ratelimited()
+
+    if api_call_type == SET and token and data.get('newsletters'):
+        # only rate limit here so we don't rate limit errors.
+        if is_ratelimited(request, group='news.views.update_user_task.set',
+                          key=lambda x, y: '%s-%s' % (data['newsletters'], token),
                           rate=EMAIL_SUBSCRIBE_RATE_LIMIT, increment=True):
             raise Ratelimited()
 
