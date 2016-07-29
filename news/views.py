@@ -52,6 +52,7 @@ from news.utils import (
     parse_newsletters_csv)
 
 
+TOKEN_RE = re.compile(r'^[0-9a-f-]{36}$', flags=re.IGNORECASE)
 IP_RATE_LIMIT_EXTERNAL = getattr(settings, 'IP_RATE_LIMIT_EXTERNAL', '40/m')
 IP_RATE_LIMIT_INTERNAL = getattr(settings, 'IP_RATE_LIMIT_INTERNAL', '400/m')
 # one submission for a specific message per phone number per 10 minutes
@@ -59,6 +60,10 @@ PHONE_NUMBER_RATE_LIMIT = getattr(settings, 'PHONE_NUMBER_RATE_LIMIT', '1/10m')
 # one submission for a set of newsletters per email address per 10 minutes
 EMAIL_SUBSCRIBE_RATE_LIMIT = getattr(settings, 'EMAIL_SUBSCRIBE_RATE_LIMIT', '1/10m')
 sync_route = Route(api_token=settings.SYNC_KEY)
+
+
+def is_token(word):
+    return bool(TOKEN_RE.match(word))
 
 
 @sync_route.queryset('sync')
@@ -102,6 +107,8 @@ def source_ip_rate_limit_rate(group, request):
 
 def ratelimited(request, e):
     parts = [x.strip() for x in request.path.split('/') if x.strip()]
+    # strip out tokens in the urls
+    parts = [x for x in parts if not is_token(x)]
     statsd.incr('.'.join(parts + ['ratelimited']))
     return HttpResponseJSON({
         'status': 'error',

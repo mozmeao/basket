@@ -21,6 +21,17 @@ from news.utils import email_block_list_cache
 none_mock = Mock(return_value=None)
 
 
+class TestIsToken(TestCase):
+    def test_invalid_tokens(self):
+        self.assertFalse(views.is_token('the dude'))
+        self.assertFalse(views.is_token('abcdef-1234'))
+        self.assertFalse(views.is_token('abcdef-abcdef-abcdef-deadbeef_123456'))
+
+    def test_valid_tokens(self):
+        self.assertTrue(views.is_token('abcdef-abcdef-abcdef-deadbeef-123456'))
+        self.assertTrue(views.is_token(utils.generate_token()))
+
+
 class GetInvolvedTests(TestCase):
     def setUp(self):
         self.interest = models.Interest.objects.create(title='Bowling',
