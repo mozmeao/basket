@@ -242,41 +242,6 @@ def update_get_involved(interest_id, lang, name, email, country, email_format,
     interest.notify_stewards(name, email, lang, message)
 
 
-FSA_FIELDS = {
-    'EMAIL_ADDRESS': 'email',
-    'TOKEN': 'token',
-    'FIRST_NAME': 'first_name',
-    'LAST_NAME': 'last_name',
-    'COUNTRY_': 'country',
-    'STUDENTS_SCHOOL': 'fsa_school',
-    'STUDENTS_GRAD_YEAR': 'fsa_grad_year',
-    'STUDENTS_MAJOR': 'fsa_major',
-    'STUDENTS_CITY': 'fsa_city',
-    'STUDENTS_CURRENT_STATUS': 'fsa_current_status',
-    'STUDENTS_ALLOW_SHARE': 'fsa_allow_share',
-}
-
-
-@et_task
-def update_student_ambassadors(data, token):
-    key = data.get('EMAIL_ADDRESS') or token
-    get_lock(key)
-    user_data = get_user_data(token=token)
-    if not user_data:
-        # try again later after user has been added
-        raise RetryTask('User not found')
-
-    update_data = {}
-    for k, fn in FSA_FIELDS.items():
-        if k in data:
-            update_data[fn] = data[k]
-            if k == 'STUDENTS_ALLOW_SHARE':
-                # convert to boolean
-                update_data[fn] = update_data[fn].lower().startswith('y')
-
-    sfdc.update(user_data, update_data)
-
-
 @et_task
 def upsert_user(api_call_type, data):
     """
