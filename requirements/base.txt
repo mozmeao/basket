@@ -81,8 +81,8 @@ celery==3.1.23 \
 kombu==3.0.35 \
     --hash=sha256:2c59a5e087d5895675cdb4d6a38a0aa147f0411366e68330a76e480ba3b25727 \
     --hash=sha256:22ab336a17962717a5d9470547e5508d4bcf1b6ec10cd9486868daf4e5edb727
-https://github.com/pmclanahan/django-synctool/archive/master.tar.gz#egg=django-synctool==1.1.0 \
-    --hash=sha256:d0adfaeff36fd0e6bc07ae8b752815ee57c195ef8f4363ece88d7738f4955a91
+https://github.com/pmclanahan/django-synctool/archive/5f7cf9bad741e60bd9df32aa90e71425d98e437c.tar.gz#egg=django-synctool==1.1.1 \
+    --hash=sha256:2dd290c5339769e3c40d644b5248236bec7c558eaccb922badd7c39c5fd5e095
 https://github.com/pmac/FuelSDK-Python/archive/65eee0876a47c9e76b58011c3587fd053f63c4fe.tar.gz#egg=FuelSDK==0.9.4.1-mozfork \
     --hash=sha256:9a617b24dd28d71dbfb72acb8d0d2b770a2b1c01aaca48acdc8e9f3cc9e4cb2c
 pyjwt==0.1.9 \

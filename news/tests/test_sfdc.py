@@ -7,7 +7,7 @@ from news.backends.sfdc import to_vendor, from_vendor
 
 
 @patch('news.backends.sfdc.is_supported_newsletter_language', Mock(return_value=True))
-class SFDCTests(TestCase):
+class VendorConversionTests(TestCase):
     @patch('news.backends.sfdc.newsletter_map')
     def test_to_vendor(self, nm_mock):
         nm_mock.return_value = {
