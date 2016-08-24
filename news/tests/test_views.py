@@ -555,6 +555,44 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             'newsletters': 'firefox-os',
         }, optin=False, sync=False)
 
+    def test_no_source_url_referrer(self):
+        """Test referrer used when no source_url."""
+        request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
+                        'email': 'dude@example.com', 'first_name': 'The', 'last_name': 'Dude'}
+        update_data = request_data.copy()
+        del update_data['optin']
+        del update_data['sync']
+        update_data['source_url'] = 'https://example.com/newsletter'
+        self.process_email.return_value = update_data['email']
+        request = self.factory.post('/', request_data,
+                                    HTTP_REFERER=update_data['source_url'])
+
+        response = views.subscribe(request)
+
+        self.assertEqual(response, self.update_user_task.return_value)
+        self.process_email.assert_called_with(request_data['email'])
+        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
+                                                 optin=False, sync=False)
+
+    def test_source_url_overrides_referrer(self):
+        """Test source_url used when referrer also provided."""
+        request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',
+                        'email': 'dude@example.com', 'first_name': 'The', 'last_name': 'Dude',
+                        'source_url': 'https://example.com/thedude'}
+        update_data = request_data.copy()
+        del update_data['optin']
+        del update_data['sync']
+        self.process_email.return_value = update_data['email']
+        request = self.factory.post('/', request_data,
+                                    HTTP_REFERER='https://example.com/donnie')
+
+        response = views.subscribe(request)
+
+        self.assertEqual(response, self.update_user_task.return_value)
+        self.process_email.assert_called_with(request_data['email'])
+        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
+                                                 optin=False, sync=False)
+
     def test_success(self):
         """Test basic success case with no optin or sync."""
         request_data = {'newsletters': 'news,lets', 'optin': 'N', 'sync': 'N',

@@ -349,6 +349,13 @@ def subscribe(request):
                 'code': errors.BASKET_AUTH_ERROR,
             }, 401)
 
+    # NOTE this is not a typo; Referrer is misspelled in the HTTP spec
+    # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
+    if not data.get('source_url') and request.META.get('HTTP_REFERER'):
+        # try to get it from referrer
+        statsd.incr('news.views.subscribe.use_referrer')
+        data['source_url'] = request.META['HTTP_REFERER']
+
     return update_user_task(request, SUBSCRIBE, data=data, optin=optin, sync=sync)
 
 
