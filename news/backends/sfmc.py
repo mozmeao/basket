@@ -285,7 +285,7 @@ class SFMC(object):
         }
         if token:
             ts.attributes = build_attributes({
-                'TOKEN': token,
+                'Token__c': token,
             })
             subscriber['Attributes'] = ts.attributes
         ts.subscribers = [subscriber]
