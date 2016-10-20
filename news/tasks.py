@@ -22,7 +22,7 @@ from news.backends.sfdc import sfdc
 from news.backends.sfmc import sfmc
 from news.celery import app as celery_app
 from news.models import FailedTask, Newsletter, Interest, QueuedTask, TransactionalEmailMessage
-from news.newsletters import get_sms_messages, get_transactional_message_ids
+from news.newsletters import get_sms_messages, get_transactional_message_ids, newsletter_map
 from news.utils import (generate_token, get_user_data,
                         parse_newsletters, parse_newsletters_csv, SUBSCRIBE, UNSUBSCRIBE)
 
@@ -310,6 +310,13 @@ def upsert_contact(api_call_type, data, user_data):
                 .exists()
             if exempt_from_confirmation:
                 update_data['optin'] = True
+
+    if api_call_type == SUBSCRIBE and 'source_url' in update_data:
+        nl_map = newsletter_map()
+        for nlid, subscribing in update_data['newsletters'].items():
+            if subscribing:
+                record_source_url.delay(update_data['email'], update_data['source_url'],
+                                        nl_map[nlid])
 
     if user_data is None:
         # no user found. create new one.
@@ -608,6 +615,16 @@ def send_recovery_message_task(email):
 
     message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
     send_message.delay(message_id, email, user_data['id'], token=user_data['token'])
+
+
+@et_task
+def record_source_url(email, source_url, newsletter_id):
+    sfmc.add_row('NEWSLETTER_SOURCE_URLS', {
+        'Email': email,
+        'Signup_Source_URL__c': source_url[:1000],
+        'Newsletter_Field_Name': newsletter_id,
+        'Newsletter_Date': gmttime(),
+    })
 
 
 @celery_app.task()

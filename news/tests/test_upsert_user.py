@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from mock import patch, ANY
+from mock import patch, ANY, call
 
 from news import models
 from news.tasks import upsert_user
@@ -50,6 +50,47 @@ class UpsertUserTests(TestCase):
         sfdc_data['newsletters'] = {'slug': True}
         sfdc_data['token'] = ANY
         sfdc_mock.add.assert_called_with(sfdc_data)
+
+    @patch('news.tasks.record_source_url')
+    @patch('news.tasks.sfdc')
+    @patch('news.tasks.send_message')
+    @patch('news.tasks.get_user_data')
+    def test_update_source_url_de(self, get_user_data, send_message, sfdc_mock,
+                                     source_url_mock):
+        """Subscription including a source_url should be recorded in SFMC"""
+        get_user_data.return_value = None  # Does not exist yet
+        models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=True,
+            languages='en,fr',
+            vendor_id='VENDOR1',
+            requires_double_optin=True,
+        )
+        models.Newsletter.objects.create(
+            slug='slug2',
+            title='title2',
+            active=True,
+            languages='en,fr',
+            vendor_id='VENDOR2',
+            requires_double_optin=True,
+        )
+        source_url = 'https://www.mozilla.org/en-US/newsletter/?utm_tracking_you=totally'
+        data = {
+            'country': 'US',
+            'lang': 'en',
+            'format': 'H',
+            'newsletters': 'slug,slug2',
+            'first_name': 'The',
+            'last_name': 'Dude',
+            'email': self.email,
+            'source_url': source_url,
+        }
+        upsert_user(SUBSCRIBE, data)
+        source_url_mock.delay.assert_has_calls([
+            call(self.email, source_url, 'VENDOR1'),
+            call(self.email, source_url, 'VENDOR2'),
+        ], any_order=True)
 
     @patch('news.tasks.sfdc')
     @patch('news.tasks.get_user_data')
