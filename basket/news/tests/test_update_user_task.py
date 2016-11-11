@@ -61,6 +61,18 @@ class UpdateUserTaskTests(TestCase):
         self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data, start_time=ANY)
 
     @patch('basket.news.utils.get_best_language')
+    def test_accept_lang_header(self, get_best_language_mock):
+        """If accept-language header is provided, should set the lang in data."""
+        get_best_language_mock.return_value = 'pt'
+        request = self.factory.post('/', HTTP_ACCEPT_LANGUAGE='pt-pt,fr;q=0.8')
+        data = {'email': 'dude@example.com'}
+        after_data = {'email': 'dude@example.com', 'lang': 'pt'}
+
+        response = update_user_task(request, SUBSCRIBE, data, sync=False)
+        self.assert_response_ok(response)
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data, start_time=ANY)
+
+    @patch('basket.news.utils.get_best_language')
     def test_lang_overrides_accept_lang(self, get_best_language_mock):
         """
         If lang is provided it was from the user, and accept_lang isn't as reliable, so we should
@@ -126,7 +138,7 @@ class UpdateUserTaskTests(TestCase):
         If no data is provided, fall back to using the POST data from
         the request.
         """
-        data = {'email': 'a@example.com'}
+        data = {'email': 'a@example.com', 'lang': 'en'}
         request = self.factory.post('/', data)
         response = update_user_task(request, SUBSCRIBE, sync=False)
 

@@ -3,6 +3,7 @@ import re
 from time import time
 
 from django.conf import settings
+from django.core.exceptions import NON_FIELD_ERRORS
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.cache import cache_page, never_cache
@@ -16,6 +17,7 @@ from ratelimit.exceptions import Ratelimited
 from ratelimit.utils import is_ratelimited
 from synctool.routing import Route
 
+from basket.news.forms import SubscribeForm
 from basket.news.models import Newsletter, Interest, LocaleStewards, NewsletterGroup, SMSMessage, \
     TransactionalEmailMessage
 from basket.news.newsletters import get_sms_messages, newsletter_slugs, newsletter_and_group_slugs, \
@@ -48,7 +50,7 @@ from basket.news.utils import (
     NewsletterException,
     process_email,
     newsletter_exception_response,
-    parse_newsletters_csv)
+    parse_newsletters_csv, get_best_request_lang)
 
 
 TOKEN_RE = re.compile(r'^[0-9a-f-]{36}$', flags=re.IGNORECASE)
@@ -272,6 +274,114 @@ def get_involved(request):
         data.get('source_url', None),
     )
     return HttpResponseJSON({'status': 'ok'})
+
+
+def respond_ok(request, data, template_name='news/thankyou.html'):
+    """
+    Return either a JSON or HTML success response
+
+    @param request: the request
+    @param data: the incoming request data
+    @param template_name: the template name in case of HTML response
+    @return: HttpResponse object
+    """
+    if request.is_ajax():
+        return HttpResponseJSON({'status': 'ok'})
+    else:
+        return render(request, template_name, data)
+
+
+def respond_error(request, form, message, code, template_name='news/formerror.html'):
+    """
+    Return either a JSON or HTML error response
+
+    @param request: the request
+    @param form: the bound form object
+    @param message: the error message
+    @param code: the HTTP status code
+    @param template_name: the template name in case of HTML response
+    @return: HttpResponse object
+    """
+    if request.is_ajax():
+        return HttpResponseJSON({
+            'status': 'error',
+            'errors': [message],
+            'errors_by_field': {NON_FIELD_ERRORS: [message]}
+        }, code)
+    else:
+        form.add_error(None, message)
+        return render(request, template_name, {'form': form}, status=code)
+
+
+def format_form_errors(errors):
+    """Convert a dict of form errors into a list"""
+    error_list = []
+    for fname, ferrors in errors.items():
+        for err in ferrors:
+            error_list.append('{}: {}'.format(fname, err))
+
+    return error_list
+
+
+@require_POST
+@csrf_exempt
+def subscribe_main(request):
+    """Subscription view for use with client side JS"""
+    if not request.is_secure() and not settings.DEBUG:
+        return HttpResponseJSON({
+            'status': 'error',
+            'errors': ['Secure request is required'],
+            'errors_by_field': {NON_FIELD_ERRORS: ['Secure request is required']}
+        }, 403)
+
+    form = SubscribeForm(request.POST)
+    if form.is_valid():
+        data = form.cleaned_data
+
+        if email_is_blocked(data['email']):
+            statsd.incr('news.views.subscribe_main.email_blocked')
+            # don't let on there's a problem
+            return respond_ok(request, data)
+
+        data['format'] = data.pop('fmt') or 'H'
+
+        if data['lang']:
+            if not language_code_is_valid(data['lang']):
+                data['lang'] = 'en'
+        # if lang not provided get the best one from the accept-language header
+        else:
+            data['lang'] = get_best_request_lang(request) or 'en'
+
+        # if source_url not provided we should store the referrer header
+        # NOTE this is not a typo; Referrer is misspelled in the HTTP spec
+        # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
+        if not data['source_url'] and request.META.get('HTTP_REFERER'):
+            statsd.incr('news.views.subscribe_main.use_referrer')
+            data['source_url'] = request.META['HTTP_REFERER']
+
+        if is_ratelimited(request, group='news.views.subscribe_main',
+                          key=lambda x, y: '%s-%s' % (':'.join(data['newsletters']), data['email']),
+                          rate=EMAIL_SUBSCRIBE_RATE_LIMIT, increment=True):
+            statsd.incr('subscribe.ratelimited')
+            return respond_error(request, form, 'Rate limit reached', 429)
+
+        try:
+            upsert_user.delay(SUBSCRIBE, data, start_time=time())
+        except Exception:
+            return respond_error(request, form, 'Unknown error', 500)
+
+        return respond_ok(request, data)
+
+    else:
+        # form is invalid
+        if request.is_ajax():
+            return HttpResponseJSON({
+                'status': 'error',
+                'errors': format_form_errors(form.errors),
+                'errors_by_field': form.errors,
+            }, 400)
+        else:
+            return render(request, 'news/formerror.html', {'form': form}, status=400)
 
 
 @require_POST
@@ -657,6 +767,9 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
             del data['accept_lang']
         else:
             data['lang'] = 'en'
+    # if lang not provided get the best one from the accept-language header
+    else:
+        data['lang'] = get_best_request_lang(request) or 'en'
 
     email = data.get('email')
     token = data.get('token')
