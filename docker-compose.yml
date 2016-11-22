@@ -1,39 +1,56 @@
-db:
-  image: mariadb
-  environment:
-    - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-    - MYSQL_DATABASE=basket
+version: "2"
+services:
+  db:
+    image: mariadb
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_DATABASE=basket
 
-redis:
-  image: redis
+  redis:
+    image: redis
 
-app:
-  build: .
-  volumes:
-    - .:/app
-  environment:
-    - DATABASE_URL=mysql://root@db/basket
-    - DEBUG=True
-    - ALLOWED_HOSTS=localhost,127.0.0.1,
-    - REDIS_URL=redis://redis:6379
-    - CELERY_ALWAYS_EAGER=False
-    - DJANGO_LOG_LEVEL=DEBUG
-  env_file: .env
+  app:
+    build: .
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=mysql://root@db/basket
+      - DEBUG=True
+      - ALLOWED_HOSTS=localhost,127.0.0.1,
+      - REDIS_URL=redis://redis:6379
+      - CELERY_ALWAYS_EAGER=False
+      - DJANGO_LOG_LEVEL=DEBUG
+    env_file: .env
 
-web:
-  extends: app
-  ports:
-    - "8000:8000"
-  links:
-    - db
-    - redis
-  command:
-    ./bin/run-dev.sh
+  web:
+    extends: app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    links:
+      - db
+      - redis
+    command:
+      ./bin/run-dev.sh
 
-worker:
-  extends: app
-  links:
-    - db
-    - redis
-  command:
-    ./bin/run-worker.sh
+  worker:
+    extends: app
+    depends_on:
+      - web
+    links:
+      - db
+      - redis
+    command:
+      ./bin/run-worker.sh
+
+  donate-worker:
+    extends: app
+    depends_on:
+      - web
+    links:
+      - db
+      - redis
+    command:
+      ./bin/run-donate-worker.sh

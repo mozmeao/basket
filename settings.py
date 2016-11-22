@@ -305,6 +305,15 @@ MAINTENANCE_READ_ONLY = config('MAINTENANCE_READ_ONLY', False, cast=bool)
 TASK_LOCK_TIMEOUT = config('TASK_LOCK_TIMEOUT', 60, cast=int)
 TASK_LOCKING_ENABLE = config('TASK_LOCKING_ENABLE', False, cast=bool)
 
+DONATE_ACCESS_KEY_ID = config('DONATE_ACCESS_KEY_ID', default='')
+DONATE_SECRET_ACCESS_KEY = config('DONATE_SECRET_ACCESS_KEY', default='')
+DONATE_QUEUE_REGION = config('DONATE_QUEUE_REGION', default='')
+DONATE_QUEUE_URL = config('DONATE_QUEUE_URL', default='')
+DONATE_QUEUE_WAIT_TIME = config('DONATE_QUEUE_WAIT_TIME', cast=int, default=10)
+DONATE_OPP_RECORD_TYPE = config('DONATE_OPP_RECORD_TYPE', default='')
+DONATE_CONTACT_RECORD_TYPE = config('DONATE_CONTACT_RECORD_TYPE', default='')
+DONATE_SNITCH_ID = config('DONATE_SNITCH_ID', default='')
+
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run
     CELERY_ALWAYS_EAGER = True

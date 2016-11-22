@@ -42,6 +42,7 @@ AUTH_BUFFER = 300  # 5 min
 HERD_TIMEOUT = 60
 FIELD_MAP = {
     'id': 'Id',
+    'record_type': 'RecordTypeId',
     'email': 'Email',
     'first_name': 'FirstName',
     'last_name': 'LastName',
@@ -98,10 +99,10 @@ def to_vendor(data):
     @return:
     """
     data = data.copy()
-    contact = {
-        # True for every contact moving through basket
-        'Subscriber__c': True,
-    }
+    contact = {}
+    if data.pop('_set_subscriber', True):
+        contact['Subscriber__c'] = True
+
     if 'email' in data:
         for domain in settings.TESTING_EMAIL_DOMAINS:
             if data['email'].endswith(u'@{}'.format(domain)):
@@ -206,14 +207,14 @@ def get_sf_session(force=False):
     return session_info
 
 
-class RefreshingContact(sfapi.SFType):
+class RefreshingSFType(sfapi.SFType):
     session_id = None
     session_expires = None
     sf_instance = None
 
-    def __init__(self):
+    def __init__(self, name='Contact'):
         self.sf_version = DEFAULT_API_VERSION
-        self.name = 'Contact'
+        self.name = name
         self.request = requests.Session()
         self.refresh_session()
 
@@ -250,12 +251,12 @@ class RefreshingContact(sfapi.SFType):
 
         try:
             statsd.incr('news.backends.sfdc.call_salesforce')
-            resp = super(RefreshingContact, self)._call_salesforce(method, url, **kwargs)
+            resp = super(RefreshingSFType, self)._call_salesforce(method, url, **kwargs)
         except sfapi.SalesforceExpiredSession:
             statsd.incr('news.backends.sfdc.call_salesforce')
             statsd.incr('news.backends.sfdc.session_expired')
             self.refresh_session()
-            resp = super(RefreshingContact, self)._call_salesforce(method, url, **kwargs)
+            resp = super(RefreshingSFType, self)._call_salesforce(method, url, **kwargs)
 
         if 'sforce-limit-info' in resp.headers:
             try:
@@ -274,13 +275,21 @@ class RefreshingContact(sfapi.SFType):
 
 class SFDC(object):
     _contact = None
+    _opportunity = None
 
     @property
     def contact(self):
         if self._contact is None and settings.SFDC_SETTINGS.get('username'):
-            self._contact = RefreshingContact()
+            self._contact = RefreshingSFType()
 
         return self._contact
+
+    @property
+    def opportunity(self):
+        if self._opportunity is None and settings.SFDC_SETTINGS.get('username'):
+            self._opportunity = RefreshingSFType('Opportunity')
+
+        return self._opportunity
 
     @time_request
     def get(self, token=None, email=None):
