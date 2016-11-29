@@ -1,9 +1,11 @@
+from copy import deepcopy
 from urllib2 import URLError
 
+from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
 
-from mock import Mock, patch
+from mock import ANY, Mock, patch
 
 from news.celery import app as celery_app
 from news.models import FailedTask
@@ -14,6 +16,7 @@ from news.tasks import (
     et_task,
     mogrify_message_id,
     NewsletterException,
+    process_donation,
     RECOVERY_MESSAGE_ID,
     send_recovery_message_task,
     send_message,
@@ -22,8 +25,97 @@ from news.tasks import (
 )
 
 
+@override_settings(TASK_LOCKING_ENABLE=False)
+@patch('news.tasks.get_user_data')
+@patch('news.tasks.sfdc')
+class ProcessDonationTests(TestCase):
+    donate_data = {
+        'timestamp': u'2016-11-21T16:46:49.327Z',
+        'data': {
+            'created': 1479746809327,
+            'currency': u'USD',
+            'donation_amount': u'75.00',
+            'email': u'dude@example.com',
+            'first_name': u'Jeffery',
+            'last_name': u'Lebowski',
+            'project': u'mozillafoundation',
+            'source_url': 'https://example.com/donate',
+            'recurring': True,
+            'service': u'paypal',
+            'transaction_id': u'NLEKFRBED3BQ614797468093.25',
+        },
+    }
+
+    def test_name_splitting(self, sfdc_mock, gud_mock):
+        data = deepcopy(self.donate_data)
+        gud_mock.return_value = None
+        del data['data']['first_name']
+        data['data']['last_name'] = 'Theodore Donald Kerabatsos'
+        with self.assertRaises(RetryTask):
+            # raises retry b/c the 2nd call to get_user_data returns None
+            process_donation(data)
+        sfdc_mock.add.assert_called_with({
+            '_set_subscriber': False,
+            'token': ANY,
+            'record_type': ANY,
+            'email': 'dude@example.com',
+            'first_name': 'Theodore Donald',
+            'last_name': 'Kerabatsos',
+        })
+
+    def test_only_update_contact_if_modified(self, sfdc_mock, gud_mock):
+        data = deepcopy(self.donate_data)
+        gud_mock.return_value = {
+            'id': '1234',
+            'first_name': '',
+            'last_name': '_',
+        }
+        process_donation(data)
+        sfdc_mock.update.assert_called_with(gud_mock(), {
+            '_set_subscriber': False,
+            'first_name': 'Jeffery',
+            'last_name': 'Lebowski',
+        })
+
+        sfdc_mock.reset_mock()
+        data = deepcopy(self.donate_data)
+        gud_mock.return_value = {
+            'id': '1234',
+            'first_name': 'Jeffery',
+            'last_name': 'Lebowski',
+        }
+        process_donation(data)
+        sfdc_mock.update.assert_not_called()
+
+    def test_donation_data(self, sfdc_mock, gud_mock):
+        data = deepcopy(self.donate_data)
+        gud_mock.return_value = {
+            'id': '1234',
+            'first_name': 'Jeffery',
+            'last_name': 'Lebowski',
+        }
+        process_donation(data)
+        sfdc_mock.opportunity.create.assert_called_with({
+            'RecordTypeId': ANY,
+            'Name': 'Foundation Donation',
+            'Donation_Contact__c': '1234',
+            'StageName': 'Closed Won',
+            'CloseDate': data['timestamp'],
+            'Amount': float(data['data']['donation_amount']),
+            'Currency__c': 'USD',
+            'Payment_Source__c': 'paypal',
+            'PMT_Transaction_ID__c': data['data']['transaction_id'],
+            'Payment_Type__c': 'Recurring',
+            'SourceURL__c': data['data']['source_url'],
+            'Project__c': data['data']['project'],
+        })
+
+
 @override_settings(TASK_LOCKING_ENABLE=True)
 class TaskDuplicationLockingTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
     def test_locks_work(self):
         """Calling get_lock more than once quickly with the same key should be locked"""
         get_lock('dude@example.com')

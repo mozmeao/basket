@@ -627,6 +627,75 @@ def record_source_url(email, source_url, newsletter_id):
     })
 
 
+DONATION_OPTIONAL_FIELDS = {
+    'SourceURL__c': 'source_url',
+    'Project__c': 'project',
+}
+
+
+@et_task
+def process_donation(data):
+    timestamp = data['timestamp']
+    data = data['data']
+    get_lock(data['email'])
+    # tells the backend to leave the "subscriber" flag alone
+    contact_data = {'_set_subscriber': False}
+    if 'first_name' in data:
+        if data.get('first_name'):
+            contact_data['first_name'] = data['first_name']
+        if data.get('last_name'):
+            contact_data['last_name'] = data['last_name']
+    elif data.get('last_name'):
+        names = data['last_name'].rsplit(None, 1)
+        if len(names) == 2:
+            first, last = names
+        else:
+            first, last = '', names[0]
+        if first:
+            contact_data['first_name'] = first
+        if last:
+            contact_data['last_name'] = last
+
+    user_data = get_user_data(email=data['email'],
+                              extra_fields=['id'])
+    if user_data:
+        if contact_data and (contact_data['first_name'] != user_data['first_name'] or
+                             contact_data['last_name'] != user_data['last_name']):
+            sfdc.update(user_data, contact_data)
+    else:
+        contact_data['token'] = generate_token()
+        contact_data['email'] = data['email']
+        contact_data['record_type'] = settings.DONATE_CONTACT_RECORD_TYPE
+
+        sfdc.add(contact_data)
+        # fetch again to get ID
+        user_data = get_user_data(email=data.get('email'),
+                                  extra_fields=['id'])
+        if not user_data:
+            # retry here to make sure we associate the donation data with the proper account
+            raise RetryTask('User not yet available')
+
+    # add opportunity
+    donation = {
+        'RecordTypeId': settings.DONATE_OPP_RECORD_TYPE,
+        'Name': 'Foundation Donation',
+        'Donation_Contact__c': user_data['id'],
+        'StageName': 'Closed Won',
+        'CloseDate': timestamp,
+        'Amount': float(data['donation_amount']),
+        'Currency__c': data['currency'].upper(),
+        'Payment_Source__c': data['service'],
+        'PMT_Transaction_ID__c': data['transaction_id'],
+        'Payment_Type__c': 'Recurring' if data['recurring'] else 'One-Time',
+    }
+    for dest_name, source_name in DONATION_OPTIONAL_FIELDS.items():
+        value = data.get(source_name)
+        if value:
+            donation[dest_name] = value
+
+    sfdc.opportunity.create(donation)
+
+
 @celery_app.task()
 def snitch(start_time=None):
     if start_time is None:
