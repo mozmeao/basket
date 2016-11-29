@@ -659,8 +659,9 @@ def process_donation(data):
     user_data = get_user_data(email=data['email'],
                               extra_fields=['id'])
     if user_data:
-        if contact_data and (contact_data['first_name'] != user_data['first_name'] or
-                             contact_data['last_name'] != user_data['last_name']):
+        if contact_data and (
+                ('first_name' in contact_data and contact_data['first_name'] != user_data['first_name']) or
+                ('last_name' in contact_data and contact_data['last_name'] != user_data['last_name'])):
             sfdc.update(user_data, contact_data)
     else:
         contact_data['token'] = generate_token()

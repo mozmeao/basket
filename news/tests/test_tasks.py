@@ -46,6 +46,21 @@ class ProcessDonationTests(TestCase):
         },
     }
 
+    def test_one_name(self, sfdc_mock, gud_mock):
+        data = deepcopy(self.donate_data)
+        gud_mock.return_value = {
+            'id': '1234',
+            'first_name': '',
+            'last_name': '_',
+        }
+        del data['data']['first_name']
+        data['data']['last_name'] = 'Donnie'
+        process_donation(data)
+        sfdc_mock.update.assert_called_with(gud_mock(), {
+            '_set_subscriber': False,
+            'last_name': 'Donnie',
+        })
+
     def test_name_splitting(self, sfdc_mock, gud_mock):
         data = deepcopy(self.donate_data)
         gud_mock.return_value = None
