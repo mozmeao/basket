@@ -293,6 +293,9 @@ PROD_DETAILS_CACHE_NAME = 'product_details'
 PROD_DETAILS_CACHE_TIMEOUT = None
 
 RECOVER_MSG_LANGS = config('RECOVER_MSG_LANGS', 'en', cast=Csv())
+# language codes that we support and send through to SFDC
+# regardless of their existence in the DB
+EXTRA_SUPPORTED_LANGS = config('EXTRA_SUPPORTED_LANGS', '', cast=Csv())
 
 SYNC_KEY = config('SYNC_KEY', None)
 TESTING_EMAIL_DOMAINS = config('TESTING_EMAIL_DOMAINS', 'restmail.net,example.com', cast=Csv())
