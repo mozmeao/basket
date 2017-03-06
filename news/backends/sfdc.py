@@ -122,7 +122,9 @@ def to_vendor(data):
 
     lang = data.get('lang')
     if lang:
-        if is_supported_newsletter_language(lang):
+        if lang.lower() in settings.EXTRA_SUPPORTED_LANGS:
+            pass
+        elif is_supported_newsletter_language(lang):
             data['lang'] = lang[:2].lower()
         else:
             # use our default language (English) if we don't support the language
