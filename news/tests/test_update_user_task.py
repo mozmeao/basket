@@ -263,6 +263,7 @@ class UpdateUserTaskTests(TestCase):
 
         with patch('news.views.newsletter_and_group_slugs') as newsletter_slugs:
             newsletter_slugs.return_value = ['foo', 'bar']
+            update_user_task(request, SUBSCRIBE, data, sync=False)
             response = update_user_task(request, SUBSCRIBE, data, sync=False)
             self.assert_response_ok(response)
             with self.assertRaises(Ratelimited):
@@ -275,6 +276,7 @@ class UpdateUserTaskTests(TestCase):
 
         with patch('news.views.newsletter_slugs') as newsletter_slugs:
             newsletter_slugs.return_value = ['foo', 'bar']
+            update_user_task(request, SET, data, sync=False)
             response = update_user_task(request, SET, data, sync=False)
             self.assert_response_ok(response)
             with self.assertRaises(Ratelimited):

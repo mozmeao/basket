@@ -299,6 +299,7 @@ class SubscribeSMSTests(TestCase):
     def test_phone_number_rate_limit(self):
         self.client.post('/news/subscribe_sms/', {'mobile_number': '9198675309'})
         self.add_sms_user.delay.assert_called_with('SMS_Android', '19198675309', False)
+        self.client.post('/news/subscribe_sms/', {'mobile_number': '9198675309'})
         self.add_sms_user.reset_mock()
 
         resp = self.client.post('/news/subscribe_sms/', {'mobile_number': '9198675309'})
