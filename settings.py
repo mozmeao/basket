@@ -8,7 +8,7 @@ from datetime import timedelta
 import dj_database_url
 import django_cache_url
 from decouple import config, Csv, UndefinedValueError
-from pathlib import Path
+from pathlib2 import Path
 
 # Application version.
 VERSION = (0, 1)
@@ -316,6 +316,12 @@ DONATE_QUEUE_WAIT_TIME = config('DONATE_QUEUE_WAIT_TIME', cast=int, default=10)
 DONATE_OPP_RECORD_TYPE = config('DONATE_OPP_RECORD_TYPE', default='')
 DONATE_CONTACT_RECORD_TYPE = config('DONATE_CONTACT_RECORD_TYPE', default='')
 DONATE_SNITCH_ID = config('DONATE_SNITCH_ID', default='')
+
+FXA_ACCESS_KEY_ID = config('FXA_ACCESS_KEY_ID', default='')
+FXA_SECRET_ACCESS_KEY = config('FXA_SECRET_ACCESS_KEY', default='')
+FXA_S3_BUCKET = config('FXA_S3_BUCKET', default='')
+FXA_SFMC_DE = config('FXA_SFMC_DE', default='FXA_Logins')
+FXA_SNITCH_URL = config('FXA_SNITCH_URL', default='')
 
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run
