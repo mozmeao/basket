@@ -315,7 +315,8 @@ class SFDC(object):
         @param data: user data to add as a new contact.
         @return: None
         """
-        data.setdefault('last_name', LAST_NAME_DEFAULT_VALUE)
+        if not data.get('last_name', '').strip():
+            data['last_name'] = LAST_NAME_DEFAULT_VALUE
         self.contact.create(to_vendor(data))
 
     @time_request
