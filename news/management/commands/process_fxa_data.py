@@ -138,7 +138,7 @@ def get_fxa_data():
     return all_fxa_times
 
 
-@schedule.scheduled_job('cron', id='process_fxa_data', hour=1, minute=0, max_instances=1)
+@schedule.scheduled_job('interval', id='process_fxa_data', days=1, max_instances=1)
 @babis.decorator(ping_before=settings.FXA_SNITCH_URL, fail_silenty=True)
 def main():
     download_fxa_files()
@@ -156,8 +156,7 @@ class Command(BaseCommand):
                                                         'FXA_S3_BUCKET']):
             raise CommandError('FXA S3 Bucket access not configured')
 
+        main()
         if options['cron']:
             print('cron schedule starting')
             schedule.start()
-        else:
-            main()
