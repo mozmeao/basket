@@ -166,6 +166,34 @@ class VendorConversionTests(TestCase):
         }
         self.assertDictEqual(from_vendor(contact), data)
 
+    def test_to_vendor_blank_values(self):
+        data = {
+            'email': 'dude@example.com',
+            'token': 'totally-token-man',
+            'format': 'H',
+            'country': 'US',
+            'lang': 'en',
+            'source_url': 'https://www.example.com',
+            'first_name': '',
+            'last_name': '',
+            'fsa_allow_share': 'y',
+            'optout': 'no',
+            'optin': 'true',
+        }
+        contact = {
+            'Email_Format__c': 'H',
+            'Subscriber__c': True,
+            'Email_Language__c': 'en',
+            'Signup_Source_URL__c': 'https://www.example.com',
+            'Token__c': 'totally-token-man',
+            'Email': 'dude@example.com',
+            'MailingCountryCode': 'us',
+            'FSA_Allow_Info_Shared__c': True,
+            'HasOptedOutOfEmail': False,
+            'Double_Opt_In__c': True,
+        }
+        self.assertDictEqual(to_vendor(data), contact)
+
     def test_to_vendor_boolean_casting(self):
         data = {
             'email': 'dude@example.com',
