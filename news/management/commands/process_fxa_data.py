@@ -1,6 +1,7 @@
 from __future__ import print_function, unicode_literals
 
 from email.utils import formatdate
+from time import time
 
 from django.conf import settings
 from django.core.cache import cache
@@ -153,8 +154,11 @@ def get_fxa_data():
 @schedule.scheduled_job('interval', id='process_fxa_data', days=1, max_instances=1)
 @babis.decorator(ping_before=settings.FXA_SNITCH_URL, fail_silenty=True)
 def main():
+    start_time = time()
     download_fxa_files()
     update_fxa_data(get_fxa_data())
+    total_time = time() - start_time
+    print('fxa_data: finished import in %s minutes' % int(total_time / 60))
 
 
 class Command(BaseCommand):
