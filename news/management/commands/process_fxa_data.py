@@ -73,12 +73,17 @@ def set_in_process_files_done():
 def update_fxa_data(current_timestamps):
     """Store the updated timestamps in a local dict, the cache, and SFMC."""
     update_count = 0
-    print('attempting to update %s fxa timestamps' % len(current_timestamps))
+    total_count = len(current_timestamps)
+    print('attempting to update %s fxa timestamps' % total_count)
     for fxaid, timestamp in current_timestamps.iteritems():
         curr_ts = get_fxa_time(fxaid)
         if timestamp > curr_ts:
             update_count += 1
             set_fxa_time(fxaid, timestamp)
+
+        # print progress every 1,000,000
+        if update_count % 1000000 == 0:
+            print('fxa_data: updated %s of %s records' % (update_count, total_count))
 
     print('updated %s fxa timestamps' % update_count)
     set_in_process_files_done()
