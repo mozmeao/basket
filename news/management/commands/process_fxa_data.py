@@ -28,6 +28,10 @@ TWO_WEEKS = 60 * 60 * 24 * 14
 schedule = BlockingScheduler(timezone=utc)
 
 
+def log(message):
+    print('process_fxa_data: %s' % message)
+
+
 def _fxa_id_key(fxa_id):
     return 'fxa_activity:%s' % fxa_id
 
@@ -58,12 +62,17 @@ def set_fxa_time(fxa_id, fxa_time):
 
 
 def file_is_done(pathobj):
-    return bool(cache.get(FILE_DONE_KEY % pathobj.name))
+    is_done = bool(cache.get(FILE_DONE_KEY % pathobj.name))
+    if is_done:
+        log('%s is already done' % pathobj.name)
+
+    return is_done
 
 
 def set_file_done(pathobj):
     # cache done state for 2 weeks. files stay in s3 bucket for 1 week
     cache.set(FILE_DONE_KEY % pathobj.name, 1, timeout=TWO_WEEKS)
+    log('set %s as done' % pathobj.name)
 
 
 def set_in_process_files_done():
@@ -75,18 +84,18 @@ def update_fxa_data(current_timestamps):
     """Store the updated timestamps in a local dict, the cache, and SFMC."""
     update_count = 0
     total_count = len(current_timestamps)
-    print('attempting to update %s fxa timestamps' % total_count)
+    log('attempting to update %s fxa timestamps' % total_count)
     for fxaid, timestamp in current_timestamps.iteritems():
         curr_ts = get_fxa_time(fxaid)
         if timestamp > curr_ts:
             update_count += 1
             set_fxa_time(fxaid, timestamp)
 
-        # print progress every 1,000,000
-        if update_count % 1000000 == 0:
-            print('fxa_data: updated %s of %s records' % (update_count, total_count))
+        # print progress every 100,000
+        if update_count % 100000 == 0:
+            log('updated %s of %s records' % (update_count, total_count))
 
-    print('updated %s fxa timestamps' % update_count)
+    log('updated %s fxa timestamps' % update_count)
     set_in_process_files_done()
     statsd.gauge('process_fxa_data.updates', update_count)
 
@@ -97,7 +106,7 @@ def download_fxa_files():
                         aws_secret_access_key=settings.FXA_SECRET_ACCESS_KEY)
     bucket = s3.Bucket(settings.FXA_S3_BUCKET)
     for obj in bucket.objects.filter(Prefix=BUCKET_DIR):
-        print('found %s in s3 bucket' % obj.key)
+        log('found %s in s3 bucket' % obj.key)
         tmp_path = TMP.joinpath(obj.key)
         if not tmp_path.name.endswith('.csv'):
             continue
@@ -106,15 +115,15 @@ def download_fxa_files():
             continue
 
         if not tmp_path.exists():
-            print('getting ' + obj.key)
-            print('size is %s' % obj.size)
+            log('getting ' + obj.key)
+            log('size is %s' % obj.size)
             tmp_path.parent.mkdir(parents=True, exist_ok=True)
             try:
                 bucket.download_file(obj.key, str(tmp_path))
-                print('downloaded %s' % tmp_path)
+                log('downloaded %s' % tmp_path)
             except Exception:
                 # something went wrong, delete file
-                print('bad things happened. deleting %s' % tmp_path)
+                log('bad things happened. deleting %s' % tmp_path)
                 tmp_path.unlink()
 
 
@@ -125,7 +134,7 @@ def get_fxa_data():
         if file_is_done(tmp_path):
             continue
 
-        print('loading data from %s' % tmp_path)
+        log('loading data from %s' % tmp_path)
         # collect all of the latest timestamps from all files in a dict first
         # to ensure that we have the minimum data set to compare against SFMC
         with tmp_path.open() as fxafile:
@@ -141,7 +150,7 @@ def get_fxa_data():
             if file_count < 1000000:
                 # if there were fewer than 1M rows we probably got a truncated file
                 # try again later (typically they contain 20M)
-                print('possibly truncated file: %s' % tmp_path)
+                log('possibly truncated file: %s' % tmp_path)
             else:
                 FILES_IN_PROCESS.append(tmp_path)
 
@@ -158,7 +167,7 @@ def main():
     download_fxa_files()
     update_fxa_data(get_fxa_data())
     total_time = time() - start_time
-    print('fxa_data: finished import in %s minutes' % int(total_time / 60))
+    log('finished import in %s minutes' % int(total_time / 60))
 
 
 class Command(BaseCommand):
@@ -174,5 +183,5 @@ class Command(BaseCommand):
 
         main()
         if options['cron']:
-            print('cron schedule starting')
+            log('cron schedule starting')
             schedule.start()
