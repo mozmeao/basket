@@ -22,6 +22,7 @@ BUCKET_DIR = 'fxa-last-active-timestamp/data'
 DATA_PATH = TMP.joinpath(BUCKET_DIR)
 FXA_IDS = {}
 FILE_DONE_KEY = 'fxa_activity:completed:%s'
+FILES_IN_PROCESS = []
 TWO_WEEKS = 60 * 60 * 24 * 14
 schedule = BlockingScheduler(timezone=utc)
 
@@ -64,6 +65,11 @@ def set_file_done(pathobj):
     cache.set(FILE_DONE_KEY % pathobj.name, 1, timeout=TWO_WEEKS)
 
 
+def set_in_process_files_done():
+    for i in range(len(FILES_IN_PROCESS)):
+        set_file_done(FILES_IN_PROCESS.pop())
+
+
 def update_fxa_data(current_timestamps):
     """Store the updated timestamps in a local dict, the cache, and SFMC."""
     update_count = 0
@@ -75,6 +81,7 @@ def update_fxa_data(current_timestamps):
             set_fxa_time(fxaid, timestamp)
 
     print('updated %s fxa timestamps' % update_count)
+    set_in_process_files_done()
     statsd.gauge('process_fxa_data.updates', update_count)
 
 
@@ -130,7 +137,7 @@ def get_fxa_data():
                 # try again later (typically they contain 20M)
                 print('possibly truncated file: %s' % tmp_path)
             else:
-                set_file_done(tmp_path)
+                FILES_IN_PROCESS.append(tmp_path)
 
             # done with file either way
             tmp_path.unlink()
