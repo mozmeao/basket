@@ -1,6 +1,7 @@
 from __future__ import print_function, unicode_literals
 
 from email.utils import formatdate
+from multiprocessing.dummy import Pool as ThreadPool
 from time import time
 
 from django.conf import settings
@@ -25,6 +26,7 @@ FXA_IDS = {}
 FILE_DONE_KEY = 'fxa_activity:completed:%s'
 FILES_IN_PROCESS = []
 TWO_WEEKS = 60 * 60 * 24 * 14
+UPDATE_COUNT = 0
 schedule = BlockingScheduler(timezone=utc)
 
 
@@ -80,24 +82,32 @@ def set_in_process_files_done():
         set_file_done(FILES_IN_PROCESS.pop())
 
 
+def update_fxa_record(timestamp_tup):
+    global UPDATE_COUNT
+    fxaid, timestamp = timestamp_tup
+    curr_ts = get_fxa_time(fxaid)
+    if timestamp > curr_ts:
+        UPDATE_COUNT += 1
+        set_fxa_time(fxaid, timestamp)
+
+        # print progress every 100,000
+        if UPDATE_COUNT % 100000 == 0:
+            log('updated %s records' % UPDATE_COUNT)
+
+
 def update_fxa_data(current_timestamps):
     """Store the updated timestamps in a local dict, the cache, and SFMC."""
-    update_count = 0
+    global UPDATE_COUNT
+    UPDATE_COUNT = 0
     total_count = len(current_timestamps)
     log('attempting to update %s fxa timestamps' % total_count)
-    for fxaid, timestamp in current_timestamps.iteritems():
-        curr_ts = get_fxa_time(fxaid)
-        if timestamp > curr_ts:
-            update_count += 1
-            set_fxa_time(fxaid, timestamp)
-
-            # print progress every 100,000
-            if update_count % 100000 == 0:
-                log('updated %s of %s records' % (update_count, total_count))
-
-    log('updated %s fxa timestamps' % update_count)
+    pool = ThreadPool(8)
+    pool.map(update_fxa_record, current_timestamps.iteritems())
+    pool.close()
+    pool.join()
+    log('updated %s fxa timestamps' % UPDATE_COUNT)
     set_in_process_files_done()
-    statsd.gauge('process_fxa_data.updates', update_count)
+    statsd.gauge('process_fxa_data.updates', UPDATE_COUNT)
 
 
 def download_fxa_files():
