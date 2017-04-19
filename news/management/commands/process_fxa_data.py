@@ -91,9 +91,9 @@ def update_fxa_data(current_timestamps):
             update_count += 1
             set_fxa_time(fxaid, timestamp)
 
-        # print progress every 100,000
-        if update_count % 100000 == 0:
-            log('updated %s of %s records' % (update_count, total_count))
+            # print progress every 100,000
+            if update_count % 100000 == 0:
+                log('updated %s of %s records' % (update_count, total_count))
 
     log('updated %s fxa timestamps' % update_count)
     set_in_process_files_done()
