@@ -16,7 +16,7 @@ from pathlib2 import Path
 from pytz import utc
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
-from news.backends.sfmc import sfmc, NewsletterException
+from news.backends.sfmc import sfmc
 
 
 TMP = Path('/tmp')
@@ -54,7 +54,7 @@ def set_fxa_time(fxa_id, fxa_time):
             'FXA_ID': fxa_id,
             'Timestamp': formatdate(timeval=fxa_time, usegmt=True),
         })
-    except NewsletterException:
+    except Exception:
         sentry_client.captureException()
         # try again later
         return
