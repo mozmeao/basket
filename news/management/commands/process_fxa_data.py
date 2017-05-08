@@ -28,6 +28,7 @@ FILES_IN_PROCESS = []
 TWO_WEEKS = 60 * 60 * 24 * 14
 UPDATE_COUNT = 0
 schedule = BlockingScheduler(timezone=utc)
+DMS = babis.decorator(fail_silenty=True)
 
 
 def log(message):
@@ -93,6 +94,7 @@ def update_fxa_record(timestamp_tup):
         # print progress every 100,000
         if UPDATE_COUNT % 100000 == 0:
             log('updated %s records' % UPDATE_COUNT)
+            DMS.ping_url(settings.FXA_SNITCH_URL)
 
 
 def update_fxa_data(current_timestamps):
@@ -171,7 +173,6 @@ def get_fxa_data():
 
 
 @schedule.scheduled_job('interval', id='process_fxa_data', days=1, max_instances=1)
-@babis.decorator(ping_before=settings.FXA_SNITCH_URL, fail_silenty=True)
 def main():
     start_time = time()
     download_fxa_files()
