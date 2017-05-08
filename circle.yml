@@ -34,7 +34,7 @@ dependencies:
     - echo "ENV GIT_SHA ${CIRCLE_SHA1}" >> Dockerfile
     - docker build -t "$DOCKER_IMAGE_TAG" --pull=true .
     - docker pull mariadb:10.0
-    - mkdir -p ~/docker; docker save -o ~/docker/image.tar "$DOCKER_REPOSITORY" quay.io/mozmar/ubuntu-slim-python mariadb
+    - mkdir -p ~/docker; docker save -o ~/docker/image.tar "$DOCKER_REPOSITORY" mozmeao/base:python-2.7-alpine mariadb
     - bin/deis-cli-install.sh
 
 test:
