@@ -1,10 +1,20 @@
 #!/bin/sh
 
+cd ~/docker
+
 # included in the repo because it's only available over http from deis.io
 # http://deis.io/deis-cli/install.sh
 
 # install current version unless overridden by first command-line argument
 VERSION=${1:-1.13.3}
+
+if [[ -x ./deis ]]; then
+  if [[ "$VERSION" == $(./deis version) ]]; then
+    exit 0
+  else
+    rm ./deis
+  fi
+fi
 
 # catch errors from here on out
 set -e
