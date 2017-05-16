@@ -297,26 +297,33 @@ def upsert_contact(api_call_type, data, user_data):
     # current subscriptions.
     update_data['newsletters'] = parse_newsletters(api_call_type, newsletters, cur_newsletters)
 
-    if api_call_type != UNSUBSCRIBE and not (forced_optin or
-                                             (user_data and user_data.get('optin'))):
+    if api_call_type != UNSUBSCRIBE:
         # Are they subscribing to any newsletters that don't require confirmation?
         # When including any newsletter that does not
         # require confirmation, user gets a pass on confirming and goes straight
         # to confirmed.
         to_subscribe = [nl for nl, sub in update_data['newsletters'].iteritems() if sub]
-        if to_subscribe:
+        if to_subscribe and not (forced_optin or
+                                 (user_data and user_data.get('optin'))):
             exempt_from_confirmation = Newsletter.objects \
                 .filter(slug__in=to_subscribe, requires_double_optin=False) \
                 .exists()
             if exempt_from_confirmation:
                 update_data['optin'] = True
 
-    if api_call_type == SUBSCRIBE and 'source_url' in update_data:
+        # record source URL
         nl_map = newsletter_map()
-        for nlid, subscribing in update_data['newsletters'].items():
-            if subscribing:
-                record_source_url.delay(update_data['email'], update_data['source_url'],
-                                        nl_map[nlid])
+        source_url = update_data.get('source_url')
+        if api_call_type == SUBSCRIBE:
+            # send all newsletters whether already subscribed or not
+            # bug 1308971
+            for nlid in newsletters:
+                record_source_url.delay(update_data['email'], source_url, nl_map[nlid])
+        else:
+            # api_call_type == SET
+            # this is pref center, so only send new subscriptions
+            for nlid in to_subscribe:
+                record_source_url.delay(update_data['email'], source_url, nl_map[nlid])
 
     if user_data is None:
         # no user found. create new one.
@@ -619,9 +626,14 @@ def send_recovery_message_task(email):
 
 @et_task
 def record_source_url(email, source_url, newsletter_id):
+    if not source_url:
+        source_url = '__NONE__'
+    else:
+        source_url = source_url[:1000]
+
     sfmc.add_row('NEWSLETTER_SOURCE_URLS', {
         'Email': email,
-        'Signup_Source_URL__c': source_url[:1000],
+        'Signup_Source_URL__c': source_url,
         'Newsletter_Field_Name': newsletter_id,
         'Newsletter_Date': gmttime(),
     })
