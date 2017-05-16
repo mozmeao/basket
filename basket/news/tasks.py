@@ -201,6 +201,11 @@ def gmttime():
 
 
 @et_task
+def fxa_delete(data):
+    sfmc.upsert_row('FXA_Deleted', {'FXA_ID': data['uid']})
+
+
+@et_task
 def add_fxa_activity(data):
     user_agent = user_agents.parse(data['user_agent'])
     device_type = 'D'
