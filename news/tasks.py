@@ -314,16 +314,17 @@ def upsert_contact(api_call_type, data, user_data):
         # record source URL
         nl_map = newsletter_map()
         source_url = update_data.get('source_url')
-        if api_call_type == SUBSCRIBE:
+        email = update_data.get('email')
+        if not email:
+            email = user_data.get('email') if user_data else None
+
+        if email:
             # send all newsletters whether already subscribed or not
             # bug 1308971
-            for nlid in newsletters:
-                record_source_url.delay(update_data['email'], source_url, nl_map[nlid])
-        else:
-            # api_call_type == SET
-            # this is pref center, so only send new subscriptions
-            for nlid in to_subscribe:
-                record_source_url.delay(update_data['email'], source_url, nl_map[nlid])
+            # if api_call_type == SET this is pref center, so only send new subscriptions
+            nl_list = newsletters if api_call_type == SUBSCRIBE else to_subscribe
+            for nlid in nl_list:
+                record_source_url.delay(email, source_url, nl_map[nlid])
 
     if user_data is None:
         # no user found. create new one.
