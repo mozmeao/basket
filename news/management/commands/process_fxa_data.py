@@ -49,21 +49,6 @@ def get_fxa_time(fxa_id):
     return fxatime or 0
 
 
-def set_fxa_time(fxa_id, fxa_time):
-    try:
-        sfmc.upsert_row(settings.FXA_SFMC_DE, {
-            'FXA_ID': fxa_id,
-            'Timestamp': formatdate(timeval=fxa_time, usegmt=True),
-        })
-    except Exception:
-        sentry_client.captureException()
-        # try again later
-        return
-
-    FXA_IDS[fxa_id] = fxa_time
-    cache.set(_fxa_id_key(fxa_id), fxa_time, timeout=TWO_WEEKS)
-
-
 def file_is_done(pathobj):
     is_done = bool(cache.get(FILE_DONE_KEY % pathobj.name))
     if is_done:
@@ -83,18 +68,58 @@ def set_in_process_files_done():
         set_file_done(FILES_IN_PROCESS.pop())
 
 
-def update_fxa_record(timestamp_tup):
+def set_timestamps_done(timestamp_chunk):
     global UPDATE_COUNT
-    fxaid, timestamp = timestamp_tup
-    curr_ts = get_fxa_time(fxaid)
-    if timestamp > curr_ts:
+    for fxaid, timestamp in timestamp_chunk:
+        FXA_IDS[fxaid] = timestamp
+        cache.set(_fxa_id_key(fxaid), timestamp, timeout=TWO_WEEKS)
         UPDATE_COUNT += 1
-        set_fxa_time(fxaid, timestamp)
-
         # print progress every 100,000
         if UPDATE_COUNT % 100000 == 0:
             log('updated %s records' % UPDATE_COUNT)
-            DMS.ping_url(settings.FXA_SNITCH_URL)
+            if settings.FXA_SNITCH_URL:
+                DMS.ping_url(settings.FXA_SNITCH_URL)
+
+
+def update_fxa_records(timestamp_chunk):
+    formatted_chunk = [format_data_for_sfmc(*vals) for vals in timestamp_chunk]
+    try:
+        sfmc.bulk_upsert_rows(settings.FXA_SFMC_DE, formatted_chunk)
+    except Exception as e:
+        log('error updating chunk: %r' % e)
+        sentry_client.captureException()
+        # try again later
+        return
+
+    set_timestamps_done(timestamp_chunk)
+
+
+def format_data_for_sfmc(fxaid, timestamp):
+    return {
+        'keys': {
+            'FXA_ID': fxaid,
+        },
+        'values': {
+            'Timestamp': formatdate(timeval=timestamp, usegmt=True),
+        },
+    }
+
+
+def chunk_fxa_data(current_timestamps, chunk_size=1000):
+    count = 0
+    chunk = []
+    for fxaid, timestamp in current_timestamps.iteritems():
+        curr_ts = get_fxa_time(fxaid)
+        if timestamp > curr_ts:
+            chunk.append((fxaid, timestamp))
+            count += 1
+            if count == chunk_size:
+                yield chunk
+                chunk = []
+                count = 0
+
+    if chunk:
+        yield chunk
 
 
 def update_fxa_data(current_timestamps):
@@ -104,7 +129,7 @@ def update_fxa_data(current_timestamps):
     total_count = len(current_timestamps)
     log('attempting to update %s fxa timestamps' % total_count)
     pool = ThreadPool(8)
-    pool.map(update_fxa_record, current_timestamps.iteritems())
+    pool.map(update_fxa_records, chunk_fxa_data(current_timestamps))
     pool.close()
     pool.join()
     log('updated %s fxa timestamps' % UPDATE_COUNT)

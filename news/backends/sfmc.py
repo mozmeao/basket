@@ -151,6 +151,7 @@ def build_attributes(data):
 class SFMC(object):
     _client = None
     sms_api_url = 'https://www.exacttargetapis.com/sms/v1/messageContact/{}/send'
+    rowset_api_url = 'https://www.exacttargetapis.com/hub/v1/dataevents/key:{}/rowset'
 
     @property
     def client(self):
@@ -301,7 +302,7 @@ class SFMC(object):
             'keyword': 'FFDROID',  # TODO: Set keyword in arguments.
         }
         url = self.sms_api_url.format(message_id)
-        response = requests.post(url, json=data, headers=self.auth_header)
+        response = requests.post(url, json=data, headers=self.auth_header, timeout=10)
         if response.status_code >= 500:
             raise NewsletterException('SFMC Server Error: {}'.format(response.content),
                                       status_code=response.status_code)
@@ -309,6 +310,17 @@ class SFMC(object):
         if response.status_code >= 400:
             errors = response.json()['errors']
             raise NewsletterException(errors, status_code=response.status_code)
+
+    @time_request
+    def bulk_upsert_rows(self, de_name, values):
+        url = self.rowset_api_url.format(de_name)
+        response = requests.post(url, json=values, headers=self.auth_header, timeout=30)
+        if response.status_code >= 500:
+            raise NewsletterException('SFMC Server Error: {}'.format(response.content),
+                                      status_code=response.status_code)
+
+        if response.status_code >= 400:
+            raise NewsletterException(response.content, status_code=response.status_code)
 
 
 sfmc = SFMC()
