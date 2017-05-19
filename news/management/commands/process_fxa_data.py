@@ -8,8 +8,8 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.management import BaseCommand, CommandError
 
-import babis
 import boto3
+import requests
 from apscheduler.schedulers.blocking import BlockingScheduler
 from django_statsd.clients import statsd
 from pathlib2 import Path
@@ -28,7 +28,6 @@ FILES_IN_PROCESS = []
 TWO_WEEKS = 60 * 60 * 24 * 14
 UPDATE_COUNT = 0
 schedule = BlockingScheduler(timezone=utc)
-DMS = babis.decorator(fail_silenty=True)
 
 
 def log(message):
@@ -196,13 +195,20 @@ def get_fxa_data():
 
 
 @schedule.scheduled_job('interval', id='process_fxa_data', days=1, max_instances=1)
-@babis.decorator(ping_before=settings.FXA_SNITCH_URL, fail_silenty=True)
 def main():
     start_time = time()
     download_fxa_files()
     update_fxa_data(get_fxa_data())
     total_time = time() - start_time
-    log('finished import in %s minutes' % int(total_time / 60))
+    message = 'finished in %s seconds' % int(total_time)
+    log(message)
+    if settings.FXA_SNITCH_URL:
+        try:
+            requests.post(settings.FXA_SNITCH_URL, data={
+                'm': message,
+            })
+        except requests.RequestException:
+            pass
 
 
 class Command(BaseCommand):
