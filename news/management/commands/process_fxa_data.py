@@ -74,11 +74,9 @@ def set_timestamps_done(timestamp_chunk):
         FXA_IDS[fxaid] = timestamp
         cache.set(_fxa_id_key(fxaid), timestamp, timeout=TWO_WEEKS)
         UPDATE_COUNT += 1
-        # print progress every 100,000
-        if UPDATE_COUNT % 100000 == 0:
+        # print progress every 1,000,000
+        if UPDATE_COUNT % 1000000 == 0:
             log('updated %s records' % UPDATE_COUNT)
-            if settings.FXA_SNITCH_URL:
-                DMS.ping_url(settings.FXA_SNITCH_URL)
 
 
 def update_fxa_records(timestamp_chunk):
@@ -198,6 +196,7 @@ def get_fxa_data():
 
 
 @schedule.scheduled_job('interval', id='process_fxa_data', days=1, max_instances=1)
+@babis.decorator(ping_before=settings.FXA_SNITCH_URL, fail_silenty=True)
 def main():
     start_time = time()
     download_fxa_files()
