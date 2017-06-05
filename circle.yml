@@ -2,18 +2,9 @@ machine:
   services:
     - docker
   environment:
-    # Deis
-    DEIS_DEV_APP: basket-dev
-    DEIS_STAGE_APP: basket-stage
-    DEIS_ADMIN_STAGE_APP: basket-admin-stage
-    DEIS_PROD_APP: basket-prod
-    DEIS_ADMIN_APP: basket-admin
-    DEIS_USERNAME: circleci
     # Docker
     DOCKER_REPOSITORY: quay.io/mozmar/basket
     DOCKER_IMAGE_TAG: "${DOCKER_REPOSITORY}:${CIRCLE_SHA1}"
-    DOCKER_EMAIL: mozmar@example.com
-    DOCKER_USERNAME: mozmar+circleci
     # MySQL
     MYSQL_DATABASE: basket
     MYSQL_ALLOW_EMPTY_PASSWORD: 1
@@ -31,11 +22,9 @@ dependencies:
     - docker --version
     - docker info
     - if [[ -e ~/docker/image.tar ]]; then docker load --input ~/docker/image.tar; fi
-    - echo "ENV GIT_SHA ${CIRCLE_SHA1}" >> Dockerfile
     - docker build -t "$DOCKER_IMAGE_TAG" --pull=true .
     - docker pull mariadb:10.0
     - mkdir -p ~/docker; docker save -o ~/docker/image.tar "$DOCKER_REPOSITORY" mozmeao/base:python-2.7-alpine mariadb
-    - bin/deis-cli-install.sh
 
 test:
   pre:
@@ -43,22 +32,4 @@ test:
     - mkdir -p "$CIRCLE_TEST_REPORTS/django"
   override:
     - docker run -d --name db -e MYSQL_DATABASE -e MYSQL_ALLOW_EMPTY_PASSWORD mariadb:10.0
-    - docker run "$DOCKER_IMAGE_TAG" flake8 news
     - docker run --env-file .env --link db -v "$CIRCLE_TEST_REPORTS/django:/app/test-results" "$DOCKER_IMAGE_TAG" bin/run-tests.sh
-
-deployment:
-  demo:
-    branch: /demo__.+/
-    owner: mozmar
-    commands:
-      - bin/deploy.sh demo
-  stage:
-    branch: master
-    owner: mozmar
-    commands:
-      - bin/deploy.sh stage
-  prod:
-    tag: /\d{4}-\d{2}-\d{2}(\.\d)?/
-    owner: mozmar
-    commands:
-      - bin/deploy.sh prod
