@@ -1,5 +1,7 @@
 regions:
   - usw
   - euw
+  - virginia
+  - tokyo
 apps:
   - basket-dev
