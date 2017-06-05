@@ -1,0 +1,5 @@
+regions:
+  - usw
+  - euw
+apps:
+  - basket-dev

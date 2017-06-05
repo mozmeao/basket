@@ -1,0 +1,10 @@
+require_tag: true
+regions:
+  - usw
+  - euw
+  - virginia
+  - tokyo
+apps:
+  - basket-prod
+apps_rw:
+  - basket-admin

@@ -1,0 +1,10 @@
+regions:
+  - usw
+  - euw
+  - virginia
+  - tokyo
+apps:
+  - basket-dev
+  - basket-stage
+apps_rw:
+  - basket-admin-stage
