@@ -1,5 +1,5 @@
 #!/bin/bash
-# Needs DEIS_PROFILE, DOCKER_REPOSITORY, DEIS_APPLICATION, NEWRELIC_API_KEY and
+# Needs DEIS_PROFILE, DEIS_APPLICATION, NEWRELIC_API_KEY and
 # NEWRELIC_APP_NAME environment variables.
 #
 # To set them go to Job -> Configure -> Build Environment -> Inject

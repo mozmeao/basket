@@ -1,7 +1,8 @@
 milestone()
 stage ('Build Images') {
     // make sure we should continue
-    env.DOCKER_IMAGE_TAG = "mozmeao/basket:${env.GIT_COMMIT}"
+    env.DOCKER_REPOSITORY = 'mozmeao/basket'
+    env.DOCKER_IMAGE_TAG = "${env.DOCKER_REPOSITORY}:${env.GIT_COMMIT}"
     if ( config.require_tag ) {
         try {
             sh 'docker/bin/check_if_tag.sh'
@@ -27,7 +28,8 @@ stage ('Push Public Images') {
     try {
         utils.pushDockerhub()
     } catch(err) {
-        utils.ircNotification([stage: 'Dockerhub Push Failed', status: 'warning'])
+        utils.ircNotification([stage: 'Dockerhub Push', status: 'failure'])
+        throw err
     }
 }
 
