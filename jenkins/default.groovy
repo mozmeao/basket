@@ -58,7 +58,7 @@ if ( config.apps ) {
                 milestone()
                 stage (stageName) {
                     // do post deploy if this is an RW app or if there are no RW apps configured
-                    if ( region.db_mode == 'rw' && config.apps_post_deploy && config.apps_post_deploy.contains(appname)) ) {
+                    if ( region.db_mode == 'rw' && config.apps_post_deploy && config.apps_post_deploy.contains(appname) ) {
                         post_deploy = 'true'
                     } else {
                         post_deploy = 'false'
