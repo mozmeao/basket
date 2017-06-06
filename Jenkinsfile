@@ -5,6 +5,11 @@
 def loadBranch(String branch) {
     // load the utility functions used below
     utils = load 'jenkins/utils.groovy'
+    if ( utils.skipTheBuild() ) {
+        println 'Skipping this build. CI Skip detected in commit message.'
+        return
+    }
+
     if ( fileExists("./jenkins/branches/${branch}.yml") ) {
         config = readYaml file: "./jenkins/branches/${branch}.yml"
         println "config ==> ${config}"
