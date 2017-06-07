@@ -1,14 +1,10 @@
 #!groovy
 
-@Library('github.com/mozmar/jenkins-pipeline@20170315.1')
+@Library('github.com/mozmar/jenkins-pipeline@20170607.1')
 
 def loadBranch(String branch) {
     // load the utility functions used below
     utils = load 'jenkins/utils.groovy'
-    if ( utils.skipTheBuild() ) {
-        println 'Skipping this build. CI Skip detected in commit message.'
-        return
-    }
 
     if ( fileExists("./jenkins/branches/${branch}.yml") ) {
         config = readYaml file: "./jenkins/branches/${branch}.yml"
@@ -36,5 +32,9 @@ node {
     stage ('Prepare') {
         checkout scm
     }
-    loadBranch(env.BRANCH_NAME)
+    if ( skipTheBuild() ) {
+        println 'Skipping this build. CI Skip detected in commit message.'
+    } else {
+        loadBranch(env.BRANCH_NAME)
+    }
 }
