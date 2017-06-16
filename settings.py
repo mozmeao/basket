@@ -172,6 +172,7 @@ INSTALLED_APPS = (
 SSLIFY_ADMIN_DISABLE = config('SSLIFY_ADMIN_DISABLE', DEBUG, cast=bool)
 if not SSLIFY_ADMIN_DISABLE:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+HTTPS = config('HTTPS', False, cast=bool)
 
 RAVEN_CONFIG = {
     'dsn': config('SENTRY_DSN', None),

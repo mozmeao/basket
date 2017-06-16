@@ -59,10 +59,14 @@ PHONE_NUMBER_RATE_LIMIT = getattr(settings, 'PHONE_NUMBER_RATE_LIMIT', '2/20m')
 # two submissions for a set of newsletters per email address per 20 minutes
 EMAIL_SUBSCRIBE_RATE_LIMIT = getattr(settings, 'EMAIL_SUBSCRIBE_RATE_LIMIT', '2/20m')
 sync_route = Route(api_token=settings.SYNC_KEY)
+HTTPS = getattr(settings, 'HTTPS', False)
 
 
 def is_token(word):
     return bool(TOKEN_RE.match(word))
+
+def is_secure(request):
+    return HTTPS or request.is_secure()
 
 
 @sync_route.queryset('sync')
@@ -130,7 +134,7 @@ def confirm(request, token):
 @require_POST
 @csrf_exempt
 def fxa_activity(request):
-    if not request.is_secure():
+    if not is_secure(request):
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'fxa-activity requires SSL',
@@ -164,7 +168,7 @@ def fxa_activity(request):
 @require_POST
 @csrf_exempt
 def fxa_register(request):
-    if not request.is_secure():
+    if not is_secure(request):
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'fxa-register requires SSL',
@@ -329,13 +333,13 @@ def subscribe(request):
     optin = data.pop('optin', 'N').upper() == 'Y'
     sync = data.pop('sync', 'N').upper() == 'Y'
 
-    if optin and (not request.is_secure() or not has_valid_api_key(request)):
+    if optin and (not is_secure(request) or not has_valid_api_key(request)):
         # for backward compat we just ignore the optin if
         # no valid API key is sent.
         optin = False
 
     if sync:
-        if not request.is_secure():
+        if not is_secure(request):
             return HttpResponseJSON({
                 'status': 'error',
                 'desc': 'subscribe with sync=Y requires SSL',
@@ -580,7 +584,7 @@ def lookup_user(request):
             'code': errors.BASKET_NETWORK_FAILURE,
         }, 400)
 
-    if not request.is_secure():
+    if not is_secure(request):
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'lookup_user always requires SSL',
@@ -665,7 +669,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
                 }, 400)
 
             if api_call_type != UNSUBSCRIBE and nl in private_newsletters:
-                if not request.is_secure():
+                if not is_secure(request):
                     return HttpResponseJSON({
                         'status': 'error',
                         'desc': 'private newsletter subscription requires SSL',
