@@ -130,12 +130,6 @@ def confirm(request, token):
 @require_POST
 @csrf_exempt
 def fxa_activity(request):
-    if not request.is_secure():
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': 'fxa-activity requires SSL',
-            'code': errors.BASKET_SSL_REQUIRED,
-        }, 401)
     if not has_valid_api_key(request):
         return HttpResponseJSON({
             'status': 'error',
@@ -164,12 +158,6 @@ def fxa_activity(request):
 @require_POST
 @csrf_exempt
 def fxa_register(request):
-    if not request.is_secure():
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': 'fxa-register requires SSL',
-            'code': errors.BASKET_SSL_REQUIRED,
-        }, 401)
     if not has_valid_api_key(request):
         return HttpResponseJSON({
             'status': 'error',
@@ -329,18 +317,12 @@ def subscribe(request):
     optin = data.pop('optin', 'N').upper() == 'Y'
     sync = data.pop('sync', 'N').upper() == 'Y'
 
-    if optin and (not request.is_secure() or not has_valid_api_key(request)):
+    if optin and not has_valid_api_key(request):
         # for backward compat we just ignore the optin if
         # no valid API key is sent.
         optin = False
 
     if sync:
-        if not request.is_secure():
-            return HttpResponseJSON({
-                'status': 'error',
-                'desc': 'subscribe with sync=Y requires SSL',
-                'code': errors.BASKET_SSL_REQUIRED,
-            }, 401)
         if not has_valid_api_key(request):
             return HttpResponseJSON({
                 'status': 'error',
@@ -580,13 +562,6 @@ def lookup_user(request):
             'code': errors.BASKET_NETWORK_FAILURE,
         }, 400)
 
-    if not request.is_secure():
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': 'lookup_user always requires SSL',
-            'code': errors.BASKET_SSL_REQUIRED,
-        }, 401)
-
     token = request.GET.get('token', None)
     email = request.GET.get('email', None)
 
@@ -665,13 +640,6 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
                 }, 400)
 
             if api_call_type != UNSUBSCRIBE and nl in private_newsletters:
-                if not request.is_secure():
-                    return HttpResponseJSON({
-                        'status': 'error',
-                        'desc': 'private newsletter subscription requires SSL',
-                        'code': errors.BASKET_SSL_REQUIRED,
-                    }, 401)
-
                 if not has_valid_api_key(request):
                     return HttpResponseJSON({
                         'status': 'error',
