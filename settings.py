@@ -227,6 +227,9 @@ CELERY_DISABLE_RATE_LIMITS = True
 CELERY_IGNORE_RESULT = True
 CELERYD_PREFETCH_MULTIPLIER = config('CELERYD_PREFETCH_MULTIPLIER', 1, cast=int)
 CELERY_MESSAGE_COMPRESSION = 'gzip'
+CELERY_ROUTES = {
+    'news.tasks.snitch': {'queue': 'snitch'},
+}
 
 SNITCH_ID = config('SNITCH_ID', None)
 
