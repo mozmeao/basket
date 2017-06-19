@@ -77,14 +77,13 @@ class TestLookupUser(TestCase):
         self.user_data = {'status': 'ok'}
         self.url = reverse('lookup_user')
 
-    def ssl_get(self, params=None, **extra):
-        extra['wsgi.url_scheme'] = 'https'
+    def get(self, params=None, **extra):
         params = params or {}
         return self.client.get(self.url, data=params, **extra)
 
     def test_no_parms(self):
         """Passing no parms is a 400 error"""
-        rsp = self.ssl_get()
+        rsp = self.get()
         self.assertEqual(400, rsp.status_code, rsp.content)
 
     def test_both_parms(self):
@@ -93,13 +92,8 @@ class TestLookupUser(TestCase):
             'token': 'dummy',
             'email': 'dummy@example.com',
         }
-        rsp = self.ssl_get(params=params)
+        rsp = self.get(params=params)
         self.assertEqual(400, rsp.status_code, rsp.content)
-
-    def test_not_ssl(self):
-        """Without SSL, immediate 401"""
-        rsp = self.client.get(self.url)
-        self.assertEqual(401, rsp.status_code, rsp.content)
 
     @patch('news.views.get_user_data')
     def test_with_token(self, get_user_data):
@@ -108,7 +102,7 @@ class TestLookupUser(TestCase):
         params = {
             'token': 'dummy',
         }
-        rsp = self.ssl_get(params=params)
+        rsp = self.get(params=params)
         self.assertEqual(200, rsp.status_code, rsp.content)
         self.assertEqual(self.user_data, json.loads(rsp.content))
 
@@ -117,7 +111,7 @@ class TestLookupUser(TestCase):
         params = {
             'email': 'mail@example.com',
         }
-        rsp = self.ssl_get(params)
+        rsp = self.get(params)
         self.assertEqual(401, rsp.status_code, rsp.content)
 
     def test_with_email_disabled_auth(self):
@@ -128,7 +122,7 @@ class TestLookupUser(TestCase):
             'email': 'mail@example.com',
             'api-key': self.auth.api_key,
         }
-        rsp = self.ssl_get(params)
+        rsp = self.get(params)
         self.assertEqual(401, rsp.status_code, rsp.content)
 
     def test_with_email_bad_auth(self):
@@ -137,7 +131,7 @@ class TestLookupUser(TestCase):
             'email': 'mail@example.com',
             'api-key': 'BAD KEY',
         }
-        rsp = self.ssl_get(params)
+        rsp = self.get(params)
         self.assertEqual(401, rsp.status_code, rsp.content)
 
     @patch('news.views.get_user_data')
@@ -148,7 +142,7 @@ class TestLookupUser(TestCase):
             'api-key': self.auth.api_key,
         }
         get_user_data.return_value = self.user_data
-        rsp = self.ssl_get(params)
+        rsp = self.get(params)
         self.assertEqual(200, rsp.status_code, rsp.content)
         self.assertEqual(self.user_data, json.loads(rsp.content))
 
@@ -159,7 +153,7 @@ class TestLookupUser(TestCase):
             'email': 'mail@example.com',
         }
         get_user_data.return_value = self.user_data
-        rsp = self.ssl_get(params, HTTP_X_API_KEY=self.auth.api_key)
+        rsp = self.get(params, HTTP_X_API_KEY=self.auth.api_key)
         self.assertEqual(200, rsp.status_code, rsp.content)
         self.assertEqual(self.user_data, json.loads(rsp.content))
 
@@ -171,5 +165,5 @@ class TestLookupUser(TestCase):
             'email': 'mail@example.com',
             'api-key': self.auth.api_key,
         }
-        rsp = self.ssl_get(params)
+        rsp = self.get(params)
         self.assertEqual(404, rsp.status_code, rsp.content)

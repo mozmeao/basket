@@ -166,20 +166,6 @@ class UpdateUserTaskTests(TestCase):
 
     @patch('news.views.newsletter_and_group_slugs')
     @patch('news.views.newsletter_private_slugs')
-    def test_subscribe_private_newsletter_ssl_required(self, mock_private, mock_slugs):
-        """
-        If subscribing to a private newsletter and the request isn't HTTPS, return a 401.
-        """
-        mock_private.return_value = ['private']
-        mock_slugs.return_value = ['private', 'other']
-        data = {'newsletters': 'private', 'email': 'dude@example.com'}
-        request = self.factory.post('/', data)
-        request.is_secure = lambda: False
-        response = update_user_task(request, SUBSCRIBE, data)
-        self.assert_response_error(response, 401, errors.BASKET_SSL_REQUIRED)
-
-    @patch('news.views.newsletter_and_group_slugs')
-    @patch('news.views.newsletter_private_slugs')
     @patch('news.views.has_valid_api_key')
     def test_subscribe_private_newsletter_invalid_api_key(self, mock_api_key, mock_private, mock_slugs):
         """
@@ -190,26 +176,11 @@ class UpdateUserTaskTests(TestCase):
         mock_slugs.return_value = ['private', 'other']
         data = {'newsletters': 'private', 'email': 'dude@example.com'}
         request = self.factory.post('/', data)
-        request.is_secure = lambda: True
         mock_api_key.return_value = False
 
         response = update_user_task(request, SUBSCRIBE, data)
         self.assert_response_error(response, 401, errors.BASKET_AUTH_ERROR)
         mock_api_key.assert_called_with(request)
-
-    @patch('news.views.newsletter_slugs')
-    @patch('news.views.newsletter_private_slugs')
-    def test_set_private_newsletter_ssl_required(self, mock_private, mock_slugs):
-        """
-        If subscribing to a private newsletter and the request isn't HTTPS, return a 401.
-        """
-        mock_private.return_value = ['private']
-        mock_slugs.return_value = ['private', 'other']
-        data = {'newsletters': 'private', 'email': 'dude@example.com'}
-        request = self.factory.post('/', data)
-        request.is_secure = lambda: False
-        response = update_user_task(request, SET, data)
-        self.assert_response_error(response, 401, errors.BASKET_SSL_REQUIRED)
 
     @patch('news.views.newsletter_slugs')
     @patch('news.views.newsletter_private_slugs')
@@ -223,7 +194,6 @@ class UpdateUserTaskTests(TestCase):
         mock_slugs.return_value = ['private', 'other']
         data = {'newsletters': 'private', 'email': 'dude@example.com'}
         request = self.factory.post('/', data)
-        request.is_secure = lambda: True
         mock_api_key.return_value = False
 
         response = update_user_task(request, SET, data)
@@ -245,7 +215,6 @@ class UpdateUserTaskTests(TestCase):
         mock_group_slugs.return_value = ['private', 'other']
         data = {'newsletters': 'private', 'email': 'dude@example.com'}
         request = self.factory.post('/', data)
-        request.is_secure = lambda: True
         mock_api_key.return_value = True
 
         response = update_user_task(request, SUBSCRIBE, data)

@@ -156,28 +156,9 @@ class GetInvolvedTests(TestCase):
 
 @patch('news.views.update_fxa_info')
 class FxAccountsTest(TestCase):
-    def ssl_post(self, url, params=None, **extra):
-        """Fake a post that used SSL"""
-        extra['wsgi.url_scheme'] = 'https'
-        params = params or {}
-        return self.client.post(url, data=params, **extra)
-
-    def test_requires_ssl(self, fxa_mock):
-        """fxa-register requires SSL"""
-        resp = self.client.post('/news/fxa-register/', {
-            'email': 'dude@example.com',
-            'fxa_id': 'the dude has a Fx account.',
-            'accept_lang': 'de',
-        })
-        self.assertEqual(resp.status_code, 401, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(errors.BASKET_SSL_REQUIRED, data['code'])
-        self.assertFalse(fxa_mock.delay.called)
-
     def test_requires_api_key(self, fxa_mock):
         """fxa-register requires API key"""
-        # Use SSL but no API key
-        resp = self.ssl_post('/news/fxa-register/', {
+        resp = self.client.post('/news/fxa-register/', {
             'email': 'dude@example.com',
             'fxa_id': 'the dude has a Fx account.'
         })
@@ -189,7 +170,7 @@ class FxAccountsTest(TestCase):
     def test_requires_fxa_id(self, fxa_mock):
         """fxa-register requires Firefox Account ID"""
         auth = APIUser.objects.create(name="test")
-        resp = self.ssl_post('/news/fxa-register/', {
+        resp = self.client.post('/news/fxa-register/', {
             'email': 'dude@example.com',
             'accept_lang': 'de',
             'api-key': auth.api_key,
@@ -202,7 +183,7 @@ class FxAccountsTest(TestCase):
     def test_requires_email(self, fxa_mock):
         """fxa-register requires email address"""
         auth = APIUser.objects.create(name="test")
-        resp = self.ssl_post('/news/fxa-register/', {
+        resp = self.client.post('/news/fxa-register/', {
             'fxa_id': 'the dude has a Fx account.',
             'accept_lang': 'de',
             'api-key': auth.api_key,
@@ -215,7 +196,7 @@ class FxAccountsTest(TestCase):
     def test_requires_lang(self, fxa_mock):
         """fxa-register requires language"""
         auth = APIUser.objects.create(name="test")
-        resp = self.ssl_post('/news/fxa-register/', {
+        resp = self.client.post('/news/fxa-register/', {
             'email': 'dude@example.com',
             'fxa_id': 'the dude has a Fx account.',
             'api-key': auth.api_key,
@@ -228,7 +209,7 @@ class FxAccountsTest(TestCase):
     def test_requires_valid_lang(self, fxa_mock):
         """fxa-register requires language"""
         auth = APIUser.objects.create(name="test")
-        resp = self.ssl_post('/news/fxa-register/', {
+        resp = self.client.post('/news/fxa-register/', {
             'email': 'dude@example.com',
             'fxa_id': 'the dude has a Fx account.',
             'accept_lang': 'Phones ringing Dude.',
@@ -239,8 +220,8 @@ class FxAccountsTest(TestCase):
         self.assertEqual(errors.BASKET_INVALID_LANGUAGE, data['code'])
         self.assertFalse(fxa_mock.delay.called)
 
-    def test_with_ssl_and_api_key(self, fxa_mock):
-        """fxa-register should succeed with SSL, API Key, and data."""
+    def test_with_valid_api_key(self, fxa_mock):
+        """fxa-register should succeed with API Key and data."""
         auth = APIUser.objects.create(name="test")
         request_data = {
             'email': 'dude@example.com',
@@ -248,7 +229,7 @@ class FxAccountsTest(TestCase):
             'api-key': auth.api_key,
             'accept_lang': 'de',
         }
-        resp = self.ssl_post('/news/fxa-register/', request_data)
+        resp = self.client.post('/news/fxa-register/', request_data)
         self.assertEqual(resp.status_code, 200, resp.content)
         data = json.loads(resp.content)
         self.assertEqual('ok', data['status'])
@@ -437,23 +418,6 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         response = views.subscribe(request)
         self.assert_response_error(response, 400, errors.BASKET_USAGE_ERROR)
 
-    def test_optin_ssl_required(self):
-        """
-        If optin is 'Y' but the request isn't HTTPS, disable optin.
-        """
-        request_data = {'newsletters': 'asdf', 'optin': 'Y', 'email': 'dude@example.com'}
-        update_data = request_data.copy()
-        del update_data['optin']
-        self.process_email.return_value = update_data['email']
-        request = self.factory.post('/', request_data)
-        request.is_secure = lambda: False
-        self.has_valid_api_key.return_value = True
-
-        response = views.subscribe(request)
-        self.assertEqual(response, self.update_user_task.return_value)
-        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
-                                                 optin=False, sync=False)
-
     def test_optin_valid_api_key_required(self):
         """
         If optin is 'Y' but the API key isn't valid, disable optin.
@@ -463,23 +427,12 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         del update_data['optin']
         self.process_email.return_value = update_data['email']
         request = self.factory.post('/', request_data)
-        request.is_secure = lambda: True
         self.has_valid_api_key.return_value = False
 
         response = views.subscribe(request)
         self.assertEqual(response, self.update_user_task.return_value)
         self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
                                                  optin=False, sync=False)
-
-    def test_sync_ssl_required(self):
-        """
-        If sync set to 'Y' and the request isn't HTTPS, return a 401.
-        """
-        request = self.factory.post('/', {'newsletters': 'asdf', 'sync': 'Y',
-                                          'email': 'dude@example.com'})
-        request.is_secure = lambda: False
-        response = views.subscribe(request)
-        self.assert_response_error(response, 401, errors.BASKET_SSL_REQUIRED)
 
     def test_sync_invalid_api_key(self):
         """
@@ -488,7 +441,6 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         """
         request = self.factory.post('/', {'newsletters': 'asdf', 'sync': 'Y',
                                           'email': 'dude@example.com'})
-        request.is_secure = lambda: True
         self.has_valid_api_key.return_value = False
 
         response = views.subscribe(request)
@@ -619,7 +571,6 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         del update_data['optin']
         del update_data['sync']
         request = self.factory.post('/', request_data)
-        request.is_secure = lambda: True
         self.has_valid_api_key.return_value = True
         self.process_email.return_value = update_data['email']
 
@@ -639,7 +590,6 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         del update_data['optin']
         del update_data['sync']
         request = self.factory.post('/', request_data)
-        request.is_secure = lambda: True
         self.process_email.return_value = update_data['email']
 
         with patch('news.views.has_valid_api_key') as has_valid_api_key:

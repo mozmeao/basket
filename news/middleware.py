@@ -11,14 +11,11 @@ class GraphiteViewHitCountMiddleware(GraphiteRequestTimingMiddleware):
         super(GraphiteViewHitCountMiddleware, self).process_view(
             request, view_func, view_args, view_kwargs)
         if hasattr(request, '_view_name'):
-            secure = 'secure' if request.is_secure() else 'insecure'
-            data = dict(module=request._view_module, name=request._view_name,
-                        method=request.method, secure=secure)
-            statsd.incr('view.count.{module}.{name}.{method}.{secure}'.format(**data))
+            data = dict(module=request._view_module,
+                        name=request._view_name,
+                        method=request.method)
             statsd.incr('view.count.{module}.{name}.{method}'.format(**data))
-            statsd.incr('view.count.{module}.{method}.{secure}'.format(**data))
             statsd.incr('view.count.{module}.{method}'.format(**data))
-            statsd.incr('view.count.{method}.{secure}'.format(**data))
             statsd.incr('view.count.{method}'.format(**data))
 
 
