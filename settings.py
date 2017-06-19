@@ -133,6 +133,7 @@ TEMPLATES = [
 ]
 
 MIDDLEWARE_CLASSES = (
+    'django.middleware.security.SecurityMiddleware',
     'news.middleware.HostnameMiddleware',
     'django.middleware.common.CommonMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -145,9 +146,6 @@ MIDDLEWARE_CLASSES = (
     'django_statsd.middleware.GraphiteMiddleware',
     'ratelimit.middleware.RatelimitMiddleware',
 )
-
-if not DISABLE_ADMIN:
-    MIDDLEWARE_CLASSES = ('sslifyadmin.middleware.SSLifyAdminMiddleware',) + MIDDLEWARE_CLASSES
 
 ROOT_URLCONF = 'urls'
 
@@ -169,8 +167,13 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
 )
 
-SSLIFY_ADMIN_DISABLE = config('SSLIFY_ADMIN_DISABLE', DEBUG, cast=bool)
-if not SSLIFY_ADMIN_DISABLE:
+# SecurityMiddleware settings
+SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default='0', cast=int)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_BROWSER_XSS_FILTER = config('SECURE_BROWSER_XSS_FILTER', default=True, cast=bool)
+SECURE_CONTENT_TYPE_NOSNIFF = config('SECURE_CONTENT_TYPE_NOSNIFF', default=True, cast=bool)
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
+if config('USE_SECURE_PROXY_HEADER', default=SECURE_SSL_REDIRECT, cast=bool):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 RAVEN_CONFIG = {

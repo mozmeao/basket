@@ -23,8 +23,6 @@ django-picklefield==0.3.1 \
 django-ratelimit==0.6.0 \
     --hash=sha256:f73b53b2c4fd342cbd4b983ffc33fdcf8f8a6f595d548865ea63c839ef38293c \
     --hash=sha256:93dabcd3131a88d6fd19ff4de0a8351ed44b4ec943e8d58d27306f7faf8821af
-django-sslify-admin==0.5.0 \
-    --hash=sha256:f4f3877e4ace8451ded7764f7f4b70459da405d73a5a72a28f0d23f50080291d
 django-statsd-mozilla==0.3.15 \
     --hash=sha256:c0e90f304bbf6f10f63e0019102980c950dc683326d2a4e50e7199decc43c36a
 python-decouple==2.3 \
