@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -exo pipefail
+
 flake8 basket
 urlwait
 bin/post-deploy.sh
