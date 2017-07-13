@@ -14,8 +14,9 @@ from pathlib2 import Path
 VERSION = (0, 1)
 
 # ROOT path of the project. A pathlib.Path object.
-ROOT_PATH = Path(__file__).resolve().parents[2]
+ROOT_PATH = Path(__file__).resolve().parents[1]
 ROOT = str(ROOT_PATH)
+print ROOT
 
 
 def path(*args):
