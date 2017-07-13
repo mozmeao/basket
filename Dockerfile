@@ -5,7 +5,7 @@ RUN apk add --update --no-cache xmlsec libffi-dev openssl-dev mariadb-dev
 WORKDIR /app
 EXPOSE 8000
 CMD ["bin/run-prod.sh"]
-ENV DJANGO_SETTINGS_MODULE=settings
+ENV DJANGO_SETTINGS_MODULE=basket.settings
 
 # Install app
 COPY requirements /app/requirements
