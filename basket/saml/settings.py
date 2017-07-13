@@ -3,10 +3,9 @@ import os
 import saml2
 from decouple import config
 
-import saml
 
 DEBUG = config('DEBUG', default=False, cast=bool)
-SAML_DIR = os.path.dirname(saml.__file__)
+SAML_DIR = os.path.dirname(__file__)
 
 LOGIN_URL = '/saml2/login/'
 LOGIN_REDIRECT_URL = '/admin/'
