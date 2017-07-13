@@ -15,3 +15,9 @@ if [[ -z "$GIT_BRANCH" ]]; then
     export GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     export BRANCH_NAME="$GIT_BRANCH"
 fi
+if [[ -z "$DOCKER_REPOSITORY" ]]; then
+    export DOCKER_REPOSITORY="mozmeao/basket"
+fi
+if [[ -z "$DOCKER_IMAGE_TAG" ]]; then
+    export DOCKER_IMAGE_TAG="${DOCKER_REPOSITORY}:${GIT_COMMIT}"
+fi

@@ -5,7 +5,6 @@ set -exo pipefail
 BIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source $BIN_DIR/set_git_env_vars.sh
 
-IMAGE_TAG="mozmeao/basket:${GIT_COMMIT}"
 DOCKER_REBUILD=false
 
 # parse cli args
@@ -20,7 +19,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 function imageExists() {
-    docker history -q "${IMAGE_TAG}" > /dev/null 2>&1
+    docker history -q "${DOCKER_IMAGE_TAG}" > /dev/null 2>&1
     return $?
 }
 

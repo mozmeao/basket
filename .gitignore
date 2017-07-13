@@ -18,3 +18,5 @@ build.py
 *.db
 static
 celerybeat-schedule
+Dockerfile.jenkins
+test-results
