@@ -23,8 +23,8 @@ if settings.DISABLE_ADMIN:
 else:
     if settings.SAML_ENABLE:
         urlpatterns += (
-            url(r'^saml2/', include('saml.urls')),
-            )
+            url(r'^saml2/', include('basket.saml.urls')),
+        )
 
     admin.autodiscover()
     urlpatterns.extend([
