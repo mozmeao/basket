@@ -22,7 +22,7 @@ Get the code
 
 ::
 
-    git clone git@github.com:mozmar/basket.git --recursive
+    git clone git@github.com:mozmeao/basket.git --recursive
 
 The `--recursive` is important!
 
