@@ -2,12 +2,12 @@
     "name": "Basket",
     "description": "A mailing list subscription service that abstracts away the list provider.",
     "repository": {
-        "url": "https://github.com/mozmar/basket",
+        "url": "https://github.com/mozmeao/basket",
         "license": "MPL2",
-        "tests": "https://circleci.com/gh/mozmar/basket/"
+        "tests": "https://circleci.com/gh/mozmeao/basket/"
     },
     "participate": {
-        "home": "https://github.com/mozmar/basket",
+        "home": "https://github.com/mozmeao/basket",
         "docs": "http://basket.readthedocs.org/en/latest/",
         "irc": "irc://irc.mozilla.org/#basket",
         "irc-contacts": ["pmac", "giorgos", "jgmize"]
