@@ -316,6 +316,16 @@ def get_best_language(languages):
     return languages[0]
 
 
+def get_best_request_lang(request):
+    accept_lang = request.META.get('HTTP_ACCEPT_LANGUAGE')
+    if accept_lang:
+        lang = get_best_language(get_accept_languages(accept_lang))
+        if lang:
+            return lang
+
+    return None
+
+
 def process_email(email):
     """Validates that the email is valid.
 

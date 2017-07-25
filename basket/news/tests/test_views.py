@@ -5,11 +5,12 @@ import json
 from django.core.cache import cache
 from django.core.urlresolvers import reverse
 from django.test import TestCase
+from django.test import override_settings
 from django.test.client import RequestFactory
 
 from basket import errors
 from email_validator import EmailSyntaxError
-from mock import Mock, patch
+from mock import Mock, patch, ANY
 
 from basket.news import models, views, utils
 from basket.news.models import APIUser
@@ -393,6 +394,250 @@ class ViewsPatcherMixin(object):
         patcher = patch('basket.news.views.' + name)
         setattr(self, name, patcher.start())
         self.addCleanup(patcher.stop)
+
+
+@override_settings(DEBUG=True)
+class SubscribeMainTests(ViewsPatcherMixin, TestCase):
+    def setUp(self):
+        self.factory = RequestFactory()
+
+        self._patch_views('upsert_user')
+        self._patch_views('process_email')
+        self._patch_views('email_is_blocked')
+        models.Newsletter.objects.create(
+            slug='slug',
+            title='title',
+            active=False,
+            languages='en-US,fr',
+            vendor_id='VENDOR1',
+        )
+        models.Newsletter.objects.create(slug='slug2', vendor_id='VENDOR2')
+        models.Newsletter.objects.create(slug='slug3', vendor_id='VENDOR3')
+        models.Newsletter.objects.create(slug='slug-private', vendor_id='VENDOR4', private=True)
+
+    def tearDown(self):
+        cache.clear()
+        email_block_list_cache.clear()
+
+    def _request(self, *args, **kwargs):
+        kwargs.setdefault('HTTP_X_REQUESTED_WITH', 'XMLHttpRequest')
+        return views.subscribe_main(self.factory.post('/', *args, **kwargs))
+
+    def test_subscribe_success(self):
+        self.process_email.return_value = 'dude@example.com'
+        self.email_is_blocked.return_value = False
+        response = self._request({
+            'newsletters': 'slug',
+            'email': 'dude@example.com',
+            'privacy': 'true',
+        })
+        assert response.status_code == 200
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, {
+            'newsletters': ['slug'],
+            'email': 'dude@example.com',
+            'privacy': True,
+            'format': 'H',
+            'lang': 'en',
+            'first_name': '',
+            'last_name': '',
+            'country': '',
+            'source_url': '',
+        }, start_time=ANY)
+
+    def test_subscribe_success_non_ajax(self):
+        self.process_email.return_value = 'dude@example.com'
+        self.email_is_blocked.return_value = False
+        response = self._request({
+            'newsletters': 'slug',
+            'email': 'dude@example.com',
+            'privacy': 'true',
+        }, HTTP_X_REQUESTED_WITH='')
+        assert response.status_code == 200
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, {
+            'newsletters': ['slug'],
+            'email': 'dude@example.com',
+            'privacy': True,
+            'format': 'H',
+            'lang': 'en',
+            'first_name': '',
+            'last_name': '',
+            'country': '',
+            'source_url': '',
+        }, start_time=ANY)
+        assert 'Thank you for subscribing' in response.content
+
+    def test_privacy_required(self):
+        self.process_email.return_value = 'dude@example.com'
+        self.email_is_blocked.return_value = False
+        response = self._request({
+            'newsletters': 'slug',
+            'email': 'dude@example.com',
+        })
+        assert response.status_code == 400
+        assert json.loads(response.content) == {
+            'status': 'error',
+            'errors': ['privacy: This field is required.'],
+            'errors_by_field': {'privacy': ['This field is required.']},
+        }
+
+    def test_subscribe_error(self):
+        self.process_email.return_value = 'dude@example.com'
+        self.email_is_blocked.return_value = False
+        response = self._request({
+            'email': 'dude@example.com',
+            'privacy': 'true',
+        })
+        assert response.status_code == 400
+        assert json.loads(response.content) == {
+            'status': 'error',
+            'errors': ['newsletters: This field is required.'],
+            'errors_by_field': {'newsletters': ['This field is required.']},
+        }
+
+        response = self._request({
+            'newsletters': 'walter',
+            'email': 'dude@example.com',
+            'privacy': 'true',
+        })
+        assert response.status_code == 400
+        assert json.loads(response.content) == {
+            'status': 'error',
+            'errors': ['newsletters: Select a valid choice. walter is not '
+                       'one of the available choices.'],
+            'errors_by_field': {'newsletters': ['Select a valid choice. walter is not one of '
+                                                'the available choices.']},
+        }
+
+    def test_subscribe_error_non_ajax(self):
+        self.process_email.return_value = 'dude@example.com'
+        self.email_is_blocked.return_value = False
+        response = self._request({
+            'email': 'dude@example.com',
+            'privacy': 'true',
+        }, HTTP_X_REQUESTED_WITH='')
+        assert response.status_code == 400
+        assert 'This field is required' in response.content
+
+    def test_lang_via_accept_language(self):
+        self.process_email.return_value = 'dude@example.com'
+        self.email_is_blocked.return_value = False
+        response = self._request({
+            'newsletters': 'slug',
+            'email': 'dude@example.com',
+            'privacy': 'true',
+        }, HTTP_ACCEPT_LANGUAGE='de,fr,en-US')
+        assert response.status_code == 200
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, {
+            'newsletters': ['slug'],
+            'email': 'dude@example.com',
+            'privacy': True,
+            'format': 'H',
+            'lang': 'fr',  # because fr is in the newsletter
+            'first_name': '',
+            'last_name': '',
+            'country': '',
+            'source_url': '',
+        }, start_time=ANY)
+
+    def test_lang_instead_of_accept_language(self):
+        # specifying a lang still overrides
+        self.process_email.return_value = 'dude@example.com'
+        self.email_is_blocked.return_value = False
+        response = self._request({
+            'newsletters': 'slug',
+            'email': 'dude@example.com',
+            'privacy': 'true',
+            'lang': 'de',
+        }, HTTP_ACCEPT_LANGUAGE='de,fr,en-US')
+        assert response.status_code == 200
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, {
+            'newsletters': ['slug'],
+            'email': 'dude@example.com',
+            'privacy': True,
+            'format': 'H',
+            'lang': 'de',
+            'first_name': '',
+            'last_name': '',
+            'country': '',
+            'source_url': '',
+        }, start_time=ANY)
+
+    def test_source_url_from_referrer(self):
+        self.process_email.return_value = 'dude@example.com'
+        self.email_is_blocked.return_value = False
+        response = self._request({
+            'newsletters': 'slug',
+            'email': 'dude@example.com',
+            'privacy': 'true',
+        }, HTTP_REFERER='https://example.com/bowling')
+        assert response.status_code == 200
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, {
+            'newsletters': ['slug'],
+            'email': 'dude@example.com',
+            'privacy': True,
+            'format': 'H',
+            'lang': 'en',
+            'first_name': '',
+            'last_name': '',
+            'country': '',
+            'source_url': 'https://example.com/bowling',
+        }, start_time=ANY)
+
+    def test_source_url_overrides_referrer(self):
+        self.process_email.return_value = 'dude@example.com'
+        self.email_is_blocked.return_value = False
+        response = self._request({
+            'newsletters': 'slug',
+            'email': 'dude@example.com',
+            'privacy': 'true',
+            'source_url': 'https://example.com/abiding'
+        }, HTTP_REFERER='https://example.com/bowling')
+        assert response.status_code == 200
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, {
+            'newsletters': ['slug'],
+            'email': 'dude@example.com',
+            'privacy': True,
+            'format': 'H',
+            'lang': 'en',
+            'first_name': '',
+            'last_name': '',
+            'country': '',
+            'source_url': 'https://example.com/abiding',
+        }, start_time=ANY)
+
+    def test_multiple_newsletters(self):
+        self.process_email.return_value = 'dude@example.com'
+        self.email_is_blocked.return_value = False
+        response = self._request({
+            'newsletters': ['slug', 'slug2, slug3'],
+            'email': 'dude@example.com',
+            'privacy': 'true',
+            'first_name': 'The',
+            'last_name': 'Dude',
+        })
+        assert response.status_code == 200
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, {
+            'newsletters': ['slug', 'slug2', 'slug3'],
+            'email': 'dude@example.com',
+            'privacy': True,
+            'format': 'H',
+            'lang': 'en',
+            'first_name': 'The',
+            'last_name': 'Dude',
+            'country': '',
+            'source_url': '',
+        }, start_time=ANY)
+
+    def test_blocked_email(self):
+        self.process_email.return_value = 'dude@example.com'
+        self.email_is_blocked.return_value = True
+        response = self._request({
+            'newsletters': 'slug',
+            'email': 'dude@example.com',
+            'privacy': 'true',
+        })
+        assert response.status_code == 200
+        self.upsert_user.delay.assert_not_called()
 
 
 class SubscribeTests(ViewsPatcherMixin, TestCase):

@@ -215,7 +215,7 @@ SFDC_SETTINGS = {
 SFDC_SESSION_TIMEOUT = config('SFDC_SESSION_TIMEOUT', 60 * 60 * 4, cast=int)
 
 CORS_ORIGIN_ALLOW_ALL = True
-CORS_URLS_REGEX = r'^/news/.*$'
+CORS_URLS_REGEX = r'^/(news/.*|subscribe/?)$'
 
 # view rate limiting
 RATELIMIT_VIEW = 'basket.news.views.ratelimited'

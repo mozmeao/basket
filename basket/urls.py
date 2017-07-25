@@ -3,7 +3,7 @@ from django.conf.urls import include, url
 from django.contrib import admin
 from django.views.generic import RedirectView
 
-from basket.news.views import healthz
+from basket.news.views import healthz, subscribe_main
 
 
 home_redirect = '/admin/' if settings.ADMIN_ONLY_MODE else 'https://www.mozilla.org/'
@@ -15,6 +15,7 @@ urlpatterns = [
 
 if not settings.ADMIN_ONLY_MODE:
     urlpatterns.append(url(r'^news/', include('basket.news.urls')))
+    urlpatterns.append(url(r'^subscribe/?$', subscribe_main))
 
 if settings.DISABLE_ADMIN:
     urlpatterns.append(

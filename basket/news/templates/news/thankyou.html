@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{% block title %}Thank you for subscribing{% endblock %}</title>
+  {% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE" />{% endblock %}
+</head>
+<body>
+<h1>Thanks!</h1>
+<p>
+  If you haven’t previously confirmed a subscription to a Mozilla-related
+  newsletter you may have to do so. Please check your inbox or your spam filter
+  for an email from us.
+</p>
+{% if source_url %}
+<p><a href="{{ source_url }}">Click here</a> to return to the site.</p>
+{% endif %}
+</body>
+</html>

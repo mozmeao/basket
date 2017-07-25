@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{% block title %}Error{% endblock %}</title>
+  {% block blockbots %}
+    <meta name="robots" content="NONE,NOARCHIVE"/>{% endblock %}
+</head>
+<body>
+<h1>Error</h1>
+
+<p>We've had a problem processing your request. The following error(s) occurred:</p>
+
+{{ form.errors }}
+
+<p>Use the "back" button to go back to the form and fix the problem(s).</p>
+</body>
+</html>
