@@ -9,9 +9,9 @@ regions:
     name: eu-west
     deis_bin: deis
     db_mode: ro
-  virginia:
-    deis_profile: virginia
-    name: virginia
+  frankfurt:
+    deis_profile: frankfurt
+    name: frankfurt
     deis_bin: deis2
     db_mode: ro
   tokyo:

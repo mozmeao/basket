@@ -2,7 +2,7 @@ require_tag: true
 regions:
   - usw
   - euw
-  - virginia
+  - frankfurt
   - tokyo
 apps:
   - basket-prod
