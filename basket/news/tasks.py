@@ -756,6 +756,7 @@ def process_donation_event(data):
 DONATION_OPTIONAL_FIELDS = {
     'SourceURL__c': 'source_url',
     'Project__c': 'project',
+    'PMT_Subscription_ID__c': 'subscription_id',
 }
 
 
@@ -816,9 +817,8 @@ def process_donation(data):
         'Payment_Type__c': 'Recurring' if data['recurring'] else 'One-Time',
     }
     for dest_name, source_name in DONATION_OPTIONAL_FIELDS.items():
-        value = data.get(source_name)
-        if value:
-            donation[dest_name] = value
+        if source_name in data:
+            donation[dest_name] = data[source_name]
 
     sfdc.opportunity.create(donation)
 
