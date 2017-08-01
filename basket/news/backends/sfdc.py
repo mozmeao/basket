@@ -322,7 +322,7 @@ class SFDC(object):
     @time_request
     def update(self, record, data):
         """
-        Update data in an existing record.
+        Update data in an existing contact record.
 
         @param record: current contact record
         @param data: dict of user data
