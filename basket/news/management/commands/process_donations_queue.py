@@ -61,7 +61,14 @@ class Command(BaseCommand):
                         continue
 
                     try:
-                        process_donation.delay(data)
+                        if 'email' in data['data']:
+                            # email is only defined if this is a donation.
+                            # follow up events will be handled differently.
+                            process_donation.delay(data)
+                        else:
+                            statsd.incr('mofo.donations.message.other_type')
+                            # retry later
+                            continue
                     except Exception:
                         # something's wrong with the queue. try again.
                         statsd.incr('mofo.donations.message.queue_error')
