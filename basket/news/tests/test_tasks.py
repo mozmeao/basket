@@ -166,7 +166,7 @@ class FailedTaskTest(TestCase):
         kwargs = {'token': 3}
         result = send_message.apply(args=args, kwargs=kwargs)
         fail = FailedTask.objects.get()
-        self.assertEqual('basket.news.tasks.send_message', fail.name)
+        self.assertEqual('news.tasks.send_message', fail.name)
         self.assertEqual(result.task_id, fail.task_id)
         self.assertEqual(args, fail.args)
         self.assertEqual(kwargs, fail.kwargs)
@@ -178,7 +178,7 @@ class RetryTaskTest(TestCase):
     """Test that we can retry a task"""
     @patch('django.contrib.messages.info', autospec=True)
     def test_retry_task(self, info):
-        TASK_NAME = 'basket.news.tasks.update_phonebook'
+        TASK_NAME = 'news.tasks.update_phonebook'
         failed_task = FailedTask(name=TASK_NAME,
                                  task_id=4,
                                  args=[1, 2],
