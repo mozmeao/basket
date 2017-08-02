@@ -21,10 +21,11 @@ from basket.news.backends.common import NewsletterException, NewsletterNoResults
 from basket.news.backends.sfdc import sfdc
 from basket.news.backends.sfmc import sfmc
 from basket.news.celery import app as celery_app
-from basket.news.models import FailedTask, Newsletter, Interest, QueuedTask, TransactionalEmailMessage
+from basket.news.models import (FailedTask, Newsletter, Interest,
+                                QueuedTask, TransactionalEmailMessage)
 from basket.news.newsletters import get_sms_messages, get_transactional_message_ids, newsletter_map
 from basket.news.utils import (generate_token, get_user_data,
-                        parse_newsletters, parse_newsletters_csv, SUBSCRIBE, UNSUBSCRIBE)
+                               parse_newsletters, parse_newsletters_csv, SUBSCRIBE, UNSUBSCRIBE)
 
 
 log = logging.getLogger(__name__)
@@ -50,9 +51,9 @@ IGNORE_ERROR_MSGS_POST_RETRY = [
 ]
 # tasks exempt from maintenance mode queuing
 MAINTENANCE_EXEMPT = [
-    'basket.news.tasks.add_fxa_activity',
-    'basket.news.tasks.add_sms_user',
-    'basket.news.tasks.add_sms_user_optin',
+    'news.tasks.add_fxa_activity',
+    'news.tasks.add_sms_user',
+    'news.tasks.add_sms_user_optin',
 ]
 
 
@@ -85,7 +86,7 @@ def get_lock(key, prefix='task'):
     lock_key = sha256(lock_key).hexdigest()
     got_lock = cache.add(lock_key, True, settings.TASK_LOCK_TIMEOUT)
     if not got_lock:
-        statsd.incr('basket.news.tasks.get_lock.no_lock_retry')
+        statsd.incr('news.tasks.get_lock.no_lock_retry')
         raise RetryTask('Could not acquire lock')
 
 
@@ -107,7 +108,7 @@ class RetryTask(Exception):
 def on_task_failure(sender, task_id, exception, einfo, args, kwargs, **skwargs):
     statsd.incr(sender.name + '.failure')
     if not sender.name.endswith('snitch'):
-        statsd.incr('basket.news.tasks.failure_total')
+        statsd.incr('news.tasks.failure_total')
         if settings.STORE_TASK_FAILURES:
             FailedTask.objects.create(
                 task_id=task_id,
@@ -124,19 +125,34 @@ def on_task_failure(sender, task_id, exception, einfo, args, kwargs, **skwargs):
 def on_task_retry(sender, **kwargs):
     statsd.incr(sender.name + '.retry')
     if not sender.name.endswith('snitch'):
-        statsd.incr('basket.news.tasks.retry_total')
+        statsd.incr('news.tasks.retry_total')
 
 
 @task_success.connect
 def on_task_success(sender, **kwargs):
     statsd.incr(sender.name + '.success')
     if not sender.name.endswith('snitch'):
-        statsd.incr('basket.news.tasks.success_total')
+        statsd.incr('news.tasks.success_total')
 
 
 def et_task(func):
     """Decorator to standardize ET Celery tasks."""
-    @celery_app.task(bind=True,
+    # add legacy named tasks as well for transition
+    # current name e.g. news.tasks.taskname
+    # legacy name e.g. basket.news.tasks.taskname
+    full_func_name = 'basket.news.tasks.%s' % func.__name__
+    full_task_name = 'news.tasks.%s' % func.__name__
+
+    @celery_app.task(name=full_func_name, bind=True)
+    def legacy_wrap(self, *args, **kwargs):
+        # redirect to the real task name
+        statsd.incr(self.name + '.total')
+        # calculate name again here to avoid closure strangeness
+        celery_app.send_task(self.name[7:], args=args, kwargs=kwargs)
+
+    # continue to use old names regardless of new layout
+    @celery_app.task(name=full_task_name,
+                     bind=True,
                      default_retry_delay=300,  # 5 min
                      max_retries=8)
     @wraps(func)
@@ -146,7 +162,7 @@ def et_task(func):
             total_time = int((time() - start_time) * 1000)
             statsd.timing(self.name + '.timing', total_time)
         statsd.incr(self.name + '.total')
-        statsd.incr('basket.news.tasks.all_total')
+        statsd.incr('news.tasks.all_total')
         if settings.MAINTENANCE_MODE and self.name not in MAINTENANCE_EXEMPT:
             if not settings.READ_ONLY_MODE:
                 # record task for later
@@ -177,7 +193,7 @@ def et_task(func):
                 raise self.retry(countdown=2 ** (self.request.retries + 1) * 60)
             except self.MaxRetriesExceededError:
                 statsd.incr(self.name + '.retry_max')
-                statsd.incr('basket.news.tasks.retry_max_total')
+                statsd.incr('news.tasks.retry_max_total')
                 # don't bubble certain errors
                 if ignore_error_post_retry(e):
                     return
@@ -433,7 +449,7 @@ def send_message(message_id, email, subscriber_key, format=None, token=None):
 
     try:
         sfmc.send_mail(message_id, email, subscriber_key, token)
-        statsd.incr('basket.news.tasks.send_message.' + message_id)
+        statsd.incr('news.tasks.send_message.' + message_id)
     except NewsletterException as e:
         # Better error messages for some cases. Also there's no point in
         # retrying these
@@ -555,9 +571,9 @@ def confirm_user(token):
             except sfapi.SalesforceMalformedRequest:
                 # probably already know the email address
                 sfdc.update({'email': user['email']}, user)
-            statsd.incr('basket.news.tasks.confirm_user.moved_from_sfmc')
+            statsd.incr('news.tasks.confirm_user.moved_from_sfmc')
         else:
-            statsd.incr('basket.news.tasks.confirm_user.confirm_user_not_found')
+            statsd.incr('news.tasks.confirm_user.confirm_user_not_found')
 
         return
 
@@ -718,7 +734,7 @@ def snitch(start_time=None):
 
     snitch_id = settings.SNITCH_ID
     totalms = int((time() - start_time) * 1000)
-    statsd.timing('basket.news.tasks.snitch.timing', totalms)
+    statsd.timing('news.tasks.snitch.timing', totalms)
     requests.post('https://nosnch.in/{}'.format(snitch_id), data={
         'm': totalms,
     })
