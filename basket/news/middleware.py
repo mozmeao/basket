@@ -11,7 +11,10 @@ class GraphiteViewHitCountMiddleware(GraphiteRequestTimingMiddleware):
         super(GraphiteViewHitCountMiddleware, self).process_view(
             request, view_func, view_args, view_kwargs)
         if hasattr(request, '_view_name'):
-            data = dict(module=request._view_module,
+            vmodule = request._view_module
+            if vmodule.startswith('basket.'):
+                vmodule = vmodule[7:]
+            data = dict(module=vmodule,
                         name=request._view_name,
                         method=request.method)
             statsd.incr('view.count.{module}.{name}.{method}'.format(**data))
