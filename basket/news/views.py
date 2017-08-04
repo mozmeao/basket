@@ -359,7 +359,7 @@ def subscribe_main(request):
             statsd.incr('news.views.subscribe_main.use_referrer')
             data['source_url'] = request.META['HTTP_REFERER']
 
-        if is_ratelimited(request, group='news.views.subscribe_main',
+        if is_ratelimited(request, group='basket.news.views.subscribe_main',
                           key=lambda x, y: '%s-%s' % (':'.join(data['newsletters']), data['email']),
                           rate=EMAIL_SUBSCRIBE_RATE_LIMIT, increment=True):
             statsd.incr('subscribe.ratelimited')
@@ -398,7 +398,7 @@ def subscribe(request):
             # Can't use QueryDict since the string is not url-encoded.
             # It will convert '+' to ' ' for example.
             data = dict(pair.split('=') for pair in raw_request.split('&') if '=' in pair)
-            statsd.incr('basket.news.views.subscribe.fxos-workaround')
+            statsd.incr('news.views.subscribe.fxos-workaround')
         else:
             return HttpResponseJSON({
                 'status': 'error',
@@ -420,7 +420,7 @@ def subscribe(request):
     data['email'] = email
 
     if email_is_blocked(data['email']):
-        statsd.incr('basket.news.views.subscribe.email_blocked')
+        statsd.incr('news.views.subscribe.email_blocked')
         # don't let on there's a problem
         return HttpResponseJSON({'status': 'ok'})
 
@@ -445,7 +445,7 @@ def subscribe(request):
     # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
     if not data.get('source_url') and request.META.get('HTTP_REFERER'):
         # try to get it from referrer
-        statsd.incr('basket.news.views.subscribe.use_referrer')
+        statsd.incr('news.views.subscribe.use_referrer')
         data['source_url'] = request.META['HTTP_REFERER']
 
     return update_user_task(request, SUBSCRIBE, data=data, optin=optin, sync=sync)
@@ -457,7 +457,7 @@ def invalid_email_response():
         'code': errors.BASKET_INVALID_EMAIL,
         'desc': 'Invalid email address',
     }
-    statsd.incr('basket.news.views.invalid_email_response')
+    statsd.incr('news.views.invalid_email_response')
     return HttpResponseJSON(resp_data, 400)
 
 
@@ -798,7 +798,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
             raise Ratelimited()
 
     if sync:
-        statsd.incr('basket.news.views.subscribe.sync')
+        statsd.incr('news.views.subscribe.sync')
         if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
             # save what we can
             upsert_user.delay(api_call_type, data, start_time=time())
