@@ -1,7 +1,6 @@
 require_tag: true
 regions:
   - usw
-  - euw
   - frankfurt
   - tokyo
 apps:

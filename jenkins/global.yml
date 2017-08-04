@@ -4,11 +4,6 @@ regions:
     name: us-west
     deis_bin: deis
     db_mode: rw
-  euw:
-    deis_profile: euw
-    name: eu-west
-    deis_bin: deis
-    db_mode: ro
   frankfurt:
     deis_profile: frankfurt
     name: frankfurt
