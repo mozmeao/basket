@@ -12,7 +12,7 @@ import requests
 from django_statsd.clients import statsd
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
-from basket.news.tasks import process_donation
+from basket.news.tasks import process_donation, process_donation_event
 
 
 class Command(BaseCommand):
@@ -61,14 +61,11 @@ class Command(BaseCommand):
                         continue
 
                     try:
-                        if 'email' in data['data']:
-                            # email is only defined if this is a donation.
-                            # follow up events will be handled differently.
+                        etype = data['data'].setdefault('event_type', 'donation')
+                        if etype == 'donation':
                             process_donation.delay(data)
                         else:
-                            statsd.incr('mofo.donations.message.other_type')
-                            # retry later
-                            continue
+                            process_donation_event.delay(data['data'])
                     except Exception:
                         # something's wrong with the queue. try again.
                         statsd.incr('mofo.donations.message.queue_error')

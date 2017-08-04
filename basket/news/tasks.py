@@ -656,6 +656,39 @@ def record_source_url(email, source_url, newsletter_id):
     })
 
 
+@et_task
+def process_donation_event(data):
+    """Process a followup event on a donation"""
+    etype = data['event_type']
+    status = data.get('status')
+    statsd.incr('news.tasks.process_donation_event.{}'.format(etype))
+    if status:
+        statsd.incr('news.tasks.process_donation_event.{}.{}'.format(etype, status))
+
+    if etype.startswith('charge.dispute.'):
+        if status not in ['charge_refunded', 'won', 'lost']:
+            # only care about the above statuses
+            statsd.incr('news.tasks.process_donation_event.{}.IGNORED'.format(etype))
+            return
+    elif etype == 'charge.refunded':
+        if status not in ['succeeded', 'failed', 'cancelled']:
+            # don't care about pending statuses
+            statsd.incr('news.tasks.process_donation_event.{}.IGNORED'.format(etype))
+            return
+
+    if 'reason' in data:
+        reason_lost = data['reason']
+    else:
+        reason_lost = data['failure_code']
+
+    # will raise a SalesforceError if not found and will be retried
+    sfdc.opportunity.update('PMT_Transaction_ID__c/{}'.format(data['transaction_id']), {
+        'PMT_Type_Lost__c': etype,
+        'PMT_Reason_Lost__c': reason_lost,
+        'Stage': 'Closed Lost',
+    })
+
+
 DONATION_OPTIONAL_FIELDS = {
     'SourceURL__c': 'source_url',
     'Project__c': 'project',

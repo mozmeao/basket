@@ -17,12 +17,73 @@ from basket.news.tasks import (
     mogrify_message_id,
     NewsletterException,
     process_donation,
+    process_donation_event,
     RECOVERY_MESSAGE_ID,
     send_recovery_message_task,
     send_message,
     get_lock,
     RetryTask,
 )
+
+
+@override_settings(TASK_LOCKING_ENABLE=False)
+@patch('basket.news.tasks.sfdc')
+class ProcessDonationEventTests(TestCase):
+    def test_charge_failed(self, sfdc_mock):
+        process_donation_event({
+            'event_type': 'charge.failed',
+            'transaction_id': 'el-dudarino',
+            'failure_code': 'expired_card',
+        })
+        sfdc_mock.opportunity.update.assert_called_with('PMT_Transaction_ID__c/el-dudarino', {
+            'PMT_Type_Lost__c': 'charge.failed',
+            'PMT_Reason_Lost__c': 'expired_card',
+            'Stage': 'Closed Lost',
+        })
+
+    def test_charge_refunded_ignored(self, sfdc_mock):
+        process_donation_event({
+            'event_type': 'charge.refunded',
+            'transaction_id': 'el-dudarino',
+            'reason': 'requested_by_customer',
+            'status': 'pending',
+        })
+        sfdc_mock.opportunity.update.assert_not_called()
+
+    def test_charge_refunded(self, sfdc_mock):
+        process_donation_event({
+            'event_type': 'charge.refunded',
+            'transaction_id': 'el-dudarino',
+            'reason': 'requested_by_customer',
+            'status': 'succeeded',
+        })
+        sfdc_mock.opportunity.update.assert_called_with('PMT_Transaction_ID__c/el-dudarino', {
+            'PMT_Type_Lost__c': 'charge.refunded',
+            'PMT_Reason_Lost__c': 'requested_by_customer',
+            'Stage': 'Closed Lost',
+        })
+
+    def test_charge_disputed_ignored(self, sfdc_mock):
+        process_donation_event({
+            'event_type': 'charge.dispute.closed',
+            'transaction_id': 'el-dudarino',
+            'reason': 'fraudulent',
+            'status': 'under_review',
+        })
+        sfdc_mock.opportunity.update.assert_not_called()
+
+    def test_charge_disputed(self, sfdc_mock):
+        process_donation_event({
+            'event_type': 'charge.dispute.closed',
+            'transaction_id': 'el-dudarino',
+            'reason': 'fraudulent',
+            'status': 'lost',
+        })
+        sfdc_mock.opportunity.update.assert_called_with('PMT_Transaction_ID__c/el-dudarino', {
+            'PMT_Type_Lost__c': 'charge.dispute.closed',
+            'PMT_Reason_Lost__c': 'fraudulent',
+            'Stage': 'Closed Lost',
+        })
 
 
 @override_settings(TASK_LOCKING_ENABLE=False)
