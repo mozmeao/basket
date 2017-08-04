@@ -16,7 +16,7 @@ from basket.news.backends.common import get_timer_decorator, NewsletterException
                                  NewsletterNoResultsException
 
 
-time_request = get_timer_decorator('basket.news.backends.sfmc')
+time_request = get_timer_decorator('news.backends.sfmc')
 
 
 HERD_TIMEOUT = 60
@@ -121,7 +121,7 @@ class ETRefreshClient(ET_Client):
                 payload['refreshToken'] = self.refreshKey
 
             token_response = self.request_token(payload)
-            statsd.incr('basket.news.backends.sfmc.auth_token_refresh')
+            statsd.incr('news.backends.sfmc.auth_token_refresh')
             self.authToken = token_response['accessToken']
             self.authTokenExpiresIn = token_response['expiresIn']
             self.authTokenExpiration = time() + self.authTokenExpiresIn

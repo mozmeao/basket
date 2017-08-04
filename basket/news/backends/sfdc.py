@@ -35,7 +35,7 @@ def cast_lower(value):
     return value.lower()
 
 
-time_request = get_timer_decorator('basket.news.backends.sfdc')
+time_request = get_timer_decorator('news.backends.sfdc')
 LAST_NAME_DEFAULT_VALUE = '_'
 SFDC_SESSION_CACHE_KEY = 'backends:sfdc:auth:sessionid'
 AUTH_BUFFER = 300  # 5 min
@@ -158,7 +158,7 @@ def to_vendor(data):
     # truncate long data
     for field, length in FIELD_MAX_LENGTHS.items():
         if field in contact and len(contact[field]) > length:
-            statsd.incr('basket.news.backends.sfdc.data_truncated')
+            statsd.incr('news.backends.sfdc.data_truncated')
             contact[field] = contact[field][:length]
 
     return contact
@@ -197,7 +197,7 @@ def get_sf_session(force=False):
         session_info = cache.get(SFDC_SESSION_CACHE_KEY)
 
     if session_info is None:
-        statsd.incr('basket.news.backends.sfdc.session_refresh')
+        statsd.incr('news.backends.sfdc.session_refresh')
         session_id, sf_instance = sfapi.SalesforceLogin(**settings.SFDC_SETTINGS)
         session_info = {
             'id': session_id,
@@ -252,11 +252,11 @@ class RefreshingSFType(sfapi.SFType):
             self.refresh_session()
 
         try:
-            statsd.incr('basket.news.backends.sfdc.call_salesforce')
+            statsd.incr('news.backends.sfdc.call_salesforce')
             resp = super(RefreshingSFType, self)._call_salesforce(method, url, **kwargs)
         except sfapi.SalesforceExpiredSession:
-            statsd.incr('basket.news.backends.sfdc.call_salesforce')
-            statsd.incr('basket.news.backends.sfdc.session_expired')
+            statsd.incr('news.backends.sfdc.call_salesforce')
+            statsd.incr('news.backends.sfdc.session_expired')
             self.refresh_session()
             resp = super(RefreshingSFType, self)._call_salesforce(method, url, **kwargs)
 
@@ -267,10 +267,10 @@ class RefreshingSFType(sfapi.SFType):
                 usage = limit = None
 
             if usage:
-                statsd.gauge('basket.news.backends.sfdc.daily_api_used', usage, rate=0.5)
-                statsd.gauge('basket.news.backends.sfdc.daily_api_limit', limit, rate=0.5)
+                statsd.gauge('news.backends.sfdc.daily_api_used', usage, rate=0.5)
+                statsd.gauge('news.backends.sfdc.daily_api_limit', limit, rate=0.5)
                 percentage = float(usage) / float(limit) * 100
-                statsd.gauge('basket.news.backends.sfdc.percent_daily_api_used', percentage, rate=0.5)
+                statsd.gauge('news.backends.sfdc.percent_daily_api_used', percentage, rate=0.5)
 
         return resp
 
