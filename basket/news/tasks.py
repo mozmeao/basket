@@ -137,18 +137,7 @@ def on_task_success(sender, **kwargs):
 
 def et_task(func):
     """Decorator to standardize ET Celery tasks."""
-    # add legacy named tasks as well for transition
-    # current name e.g. news.tasks.taskname
-    # legacy name e.g. basket.news.tasks.taskname
-    full_func_name = 'basket.news.tasks.%s' % func.__name__
     full_task_name = 'news.tasks.%s' % func.__name__
-
-    @celery_app.task(name=full_func_name, bind=True)
-    def legacy_wrap(self, *args, **kwargs):
-        # redirect to the real task name
-        statsd.incr(self.name + '.total')
-        # calculate name again here to avoid closure strangeness
-        celery_app.send_task(self.name[7:], args=args, kwargs=kwargs)
 
     # continue to use old names regardless of new layout
     @celery_app.task(name=full_task_name,
