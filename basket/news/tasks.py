@@ -198,7 +198,7 @@ def et_task(func):
                 if ignore_error_post_retry(e):
                     return
 
-                raise e
+                sentry_client.captureException()
 
     return wrapped
 
