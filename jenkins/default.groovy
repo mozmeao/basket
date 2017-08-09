@@ -68,6 +68,7 @@ if ( config.apps ) {
                     withEnv(["DEIS_PROFILE=${region.deis_profile}",
                              "DEIS_BIN=${region.deis_bin}",
                              "RUN_POST_DEPLOY=${post_deploy}",
+                             "REGION_NAME=${region.name}",
                              "DEIS_APPLICATION=${appname}"]) {
                         try {
                             retry(2) {
