@@ -70,13 +70,17 @@ if ( config.apps ) {
                              "RUN_POST_DEPLOY=${post_deploy}",
                              "REGION_NAME=${region.name}",
                              "DEIS_APPLICATION=${appname}"]) {
-                        try {
-                            retry(2) {
-                                sh 'docker/bin/push2deis.sh'
+                        withCredentials([string(credentialsId: 'newrelic-api-key', variable: 'NEWRELIC_API_KEY')]) {
+                            withCredentials([string(credentialsId: 'datadog-api-key', variable: 'DATADOG_API_KEY')]) {
+                                try {
+                                    retry(2) {
+                                        sh 'docker/bin/push2deis.sh'
+                                    }
+                                } catch(err) {
+                                    utils.ircNotification([stage: stageName, status: 'failure'])
+                                    throw err
+                                }
                             }
-                        } catch(err) {
-                            utils.ircNotification([stage: stageName, status: 'failure'])
-                            throw err
                         }
                     }
                     utils.ircNotification([message: appURL, status: 'shipped'])
