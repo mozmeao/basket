@@ -141,8 +141,8 @@ pyOpenSSL==17.2.0 \
     --hash=sha256:5d617ce36b07c51f330aa63b83bf7f25c40a0e95958876d54d1982f8c91b4834
 pysaml2==4.4.0 \
     --hash=sha256:a83768a873b905451b4931f242983ac95849d4c7ccefbe13119f301f6feadd5a
-python-memcached==1.48 \
-    --hash=sha256:66bbc62d9519f9d531b1f77e687d9f2f5e521cb906f1fd7231f403997e0110c4
+python-memcached==1.58 \
+    --hash=sha256:2775829cb54b9e4c5b3bbd8028680f0c0ab695db154b9c46f0f074ff97540eb6
 repoze.who==2.2 \
     --hash=sha256:322629ec7c779dce4700e8f3ba531002b724d2429178c1cbb0dc169255dc9a8b
 zope.interface==4.1.3 \
