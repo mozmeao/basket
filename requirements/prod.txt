@@ -139,8 +139,8 @@ pycrypto==2.6.1 \
 pyOpenSSL==17.2.0 \
     --hash=sha256:c8959e441c2d85d646f3d6e9024ec02b2fc8dda92596e44ce3460b3a476bc694 \
     --hash=sha256:5d617ce36b07c51f330aa63b83bf7f25c40a0e95958876d54d1982f8c91b4834
-pysaml2==2.2.0 \
-    --hash=sha256:c769a150190a615be213e10eb421f838933ed78a47ef9ff49a6a91aec7ed8f28
+pysaml2==4.4.0 \
+    --hash=sha256:a83768a873b905451b4931f242983ac95849d4c7ccefbe13119f301f6feadd5a
 python-memcached==1.48 \
     --hash=sha256:66bbc62d9519f9d531b1f77e687d9f2f5e521cb906f1fd7231f403997e0110c4
 repoze.who==2.2 \
