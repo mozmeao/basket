@@ -1,7 +1,8 @@
 -r dev.txt
 
-django-redis==4.2.0 \
-    --hash=sha256:9ad6b299458f7e6bfaefa8905f52560017369d82fb8fb0ed4b41adc048dbf11c
+django-redis==4.8.0 \
+    --hash=sha256:9660332cf9de5689a7ebbe0c623c4a0de79e0916a6ae867b5d0b94759bba46c9 \
+    --hash=sha256:5229da5b07ccb8d3e3e9ee098c0b7c03e20eba48634bc456697dd73d62c68b19
 gunicorn==19.4.5 \
     --hash=sha256:c57f1b005a4b90933303c8deed9bedeb509331aa6a0a990023a5796e52bd8988 \
     --hash=sha256:53b58044764ad79d732af18c580b1a54b724adf4d290ec19c4ca78ab22a1ee0d
