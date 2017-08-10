@@ -7,9 +7,9 @@ statsd==3.2.1 \
 dj-database-url==0.4.2 \
     --hash=sha256:e16d94c382ea0564c48038fa7fe8d9c890ef1ab1a8ec4cb48e732c124b9482fd \
     --hash=sha256:a6832d8445ee9d788c5baa48aef8130bf61fdc442f7d9a548424d25cd85c9f08
-django-cache-url==1.0.0 \
-    --hash=sha256:71506c127aba566ab1b9b77bf09ccd3119a387aeb76df1b34f2541ce4764901c \
-    --hash=sha256:3583ca1c9b43b08b9dc71463a5c02fdae6ebebdee812a67198e2a7e429c54210
+django-cache-url==2.0.0 \
+    --hash=sha256:f0009452c4d63468714c7ff59266085947f3f3cc0947b3b2e87121bb27538d6c \
+    --hash=sha256:d7e7d3f3fadaa38ab7c655afafc85c2a1b06a3ddc0002af4ae021c1948307f8b
 django-cors-headers==1.1.0 \
     --hash=sha256:fcd96e2be47c8eef34c650e007a6d546e19e7ee61041b89edbbbbe7619aa3987
 django-jsonfield==0.9.15 \
