@@ -136,8 +136,9 @@ pycparser==2.18 \
     --hash=sha256:99a8ca03e29851d96616ad0404b4aad7d9ee16f25c9f9708a11faf2810f7b226
 pycrypto==2.6.1 \
     --hash=sha256:f2ce1e989b272cfcb677616763e0a2e7ec659effa67a88aa92b3a65528f60a3c
-pyOpenSSL==0.15.1 \
-    --hash=sha256:88e45e6bb25dfed272a1ef2e728461d44b634c2cd689e989b6e56a349c5a3ae5
+pyOpenSSL==17.2.0 \
+    --hash=sha256:c8959e441c2d85d646f3d6e9024ec02b2fc8dda92596e44ce3460b3a476bc694 \
+    --hash=sha256:5d617ce36b07c51f330aa63b83bf7f25c40a0e95958876d54d1982f8c91b4834
 pysaml2==2.2.0 \
     --hash=sha256:c769a150190a615be213e10eb421f838933ed78a47ef9ff49a6a91aec7ed8f28
 python-memcached==1.48 \
