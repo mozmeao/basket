@@ -26,8 +26,8 @@ django-ratelimit==1.0.1 \
     --hash=sha256:a74f23069291441792f960b6ac662579560a7c959e2e8444ecf140bf1a9041c4
 django-statsd-mozilla==0.3.16 \
     --hash=sha256:925f0f13e5a1e7863e5ed1179fd0f6f1a519e5a0293714ba76745286aad7ed02
-python-decouple==2.3 \
-    --hash=sha256:b9fbf747fa8e711d330f2f436b9b2ecf5eed9eb67a637ca81abcd11c2abedec8
+python-decouple==3.1 \
+    --hash=sha256:1317df14b43efee4337a4aa02914bf004f010cd56d6c4bd894e6474ec8c4fe2d
 pytz==2015.4 \
     --hash=sha256:4d64ed1b9e0e73095f5cfa87f0e97ddb4c840049e8efeb7e63b46118ba1d623a \
     --hash=sha256:a78b484d5472dd8c688f8b3eee18646a25c66ce45b2c26652850f6af9ce52b17
