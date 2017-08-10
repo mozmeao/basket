@@ -24,8 +24,8 @@ django-picklefield==1.0.0 \
 django-ratelimit==1.0.1 \
     --hash=sha256:cd3fdaadd335147df20bd00a226190ea21cea52f56b867b0f7ede7beaa3bd1e1 \
     --hash=sha256:a74f23069291441792f960b6ac662579560a7c959e2e8444ecf140bf1a9041c4
-django-statsd-mozilla==0.3.15 \
-    --hash=sha256:c0e90f304bbf6f10f63e0019102980c950dc683326d2a4e50e7199decc43c36a
+django-statsd-mozilla==0.3.16 \
+    --hash=sha256:925f0f13e5a1e7863e5ed1179fd0f6f1a519e5a0293714ba76745286aad7ed02
 python-decouple==2.3 \
     --hash=sha256:b9fbf747fa8e711d330f2f436b9b2ecf5eed9eb67a637ca81abcd11c2abedec8
 pytz==2015.4 \
