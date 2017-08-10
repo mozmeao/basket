@@ -104,8 +104,9 @@ cryptography==2.0.3 \
 decorator==4.1.2 \
     --hash=sha256:95a26b17806e284452bfd97fa20aa1e8cb4ee23542bda4dbac5e4562aa1642cd \
     --hash=sha256:7cb64d38cb8002971710c8899fbdfb859a23a364b7c99dab19d1f719c2ba16b5
-djangosaml2==0.13.0 \
-    --hash=sha256:6514f5ac8db1edf53d9cf247b33e8c28b015c5a61468a905e49f6bf50ea7b8fa
+djangosaml2==0.16.1 \
+    --hash=sha256:3ec8cd640963c0a4ca120bfb52f1d642e0db0f4f2007f662e54100cfcc46cbc1 \
+    --hash=sha256:22af73e1d47a58ddc416bbb1ce22fb10c04fd6c5d3aefc69000ec3477c65e921
 enum34==1.1.2 \
     --hash=sha256:2475d7fcddf5951e92ff546972758802de5260bf409319a9f1934e6bbc8b1dc7
 ipaddress==1.0.16 \
