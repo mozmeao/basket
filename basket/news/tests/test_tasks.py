@@ -38,7 +38,7 @@ class ProcessDonationEventTests(TestCase):
         sfdc_mock.opportunity.update.assert_called_with('PMT_Transaction_ID__c/el-dudarino', {
             'PMT_Type_Lost__c': 'charge.failed',
             'PMT_Reason_Lost__c': 'expired_card',
-            'Stage': 'Closed Lost',
+            'StageName': 'Closed Lost',
         })
 
     def test_charge_refunded_ignored(self, sfdc_mock):
@@ -60,7 +60,7 @@ class ProcessDonationEventTests(TestCase):
         sfdc_mock.opportunity.update.assert_called_with('PMT_Transaction_ID__c/el-dudarino', {
             'PMT_Type_Lost__c': 'charge.refunded',
             'PMT_Reason_Lost__c': 'requested_by_customer',
-            'Stage': 'Closed Lost',
+            'StageName': 'Closed Lost',
         })
 
     def test_charge_disputed_ignored(self, sfdc_mock):
@@ -82,7 +82,7 @@ class ProcessDonationEventTests(TestCase):
         sfdc_mock.opportunity.update.assert_called_with('PMT_Transaction_ID__c/el-dudarino', {
             'PMT_Type_Lost__c': 'charge.dispute.closed',
             'PMT_Reason_Lost__c': 'fraudulent',
-            'Stage': 'Closed Lost',
+            'StageName': 'Closed Lost',
         })
 
 

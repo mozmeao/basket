@@ -674,7 +674,7 @@ def process_donation_event(data):
     sfdc.opportunity.update('PMT_Transaction_ID__c/{}'.format(data['transaction_id']), {
         'PMT_Type_Lost__c': etype,
         'PMT_Reason_Lost__c': reason_lost,
-        'Stage': 'Closed Lost',
+        'StageName': 'Closed Lost',
     })
 
 
