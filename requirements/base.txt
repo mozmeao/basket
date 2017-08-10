@@ -104,10 +104,9 @@ django-extensions==1.8.1 \
     --hash=sha256:c8b39b1c929785286a5ec5f38f9c90f7481fbe51a036161d1b622e7a6abaa1d6
 email_validator==1.0.2 \
     --hash=sha256:669eaae98d86dbd0ab62ab2f5fbc95d01cb28f8e038aa30ab165b244130949c9
-idna==2.1 \
-    --hash=sha256:4cfe64db2804351249d8d13ec1f3a2b0be9dc84b409b65c2a646c4d673fa55bc \
-    --hash=sha256:f28df695e9bede8a19b18a8e4429b4bad4d664e8e98aff27bc39b630f1ae2b42 \
-    --hash=sha256:ed36f281aebf3cd0797f163bb165d84c31507cedd15928b095b1675e2d04c676
+idna==2.6 \
+    --hash=sha256:8c7309c718f94b3a625cb648ace320157ad16ff131ae0af362c9f21b80ef6ec4 \
+    --hash=sha256:2c6a5de3089009e3da7c5dde64a141dbc8551d5b7f6cf4ed7c2568d0cc520a8f
 dnspython==1.14.0 \
     --hash=sha256:21458b942637578f238c7029dc0512c75e61ef64ee0de82a62d175e89d2131dc
 boto3==1.4.1 \
