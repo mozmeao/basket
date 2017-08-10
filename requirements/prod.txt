@@ -101,8 +101,9 @@ cryptography==2.0.3 \
     --hash=sha256:d5341dac22e8ab080e637c632d1b1e92acaa8e66a02d139c0c795c1797531384 \
     --hash=sha256:a83318144a0037f264891ddfcbae9b75303949bb0efaece9713df5e04388b7ef \
     --hash=sha256:d04bb2425086c3fe86f7bc48915290b13e798497839fbb18ab7f6dffcf98cc3a
-decorator==4.0.6 \
-    --hash=sha256:cc3dcda7835a7eafa887fad9d6a69b2d5fd77c0b1c2a1608f52b48e345e37206
+decorator==4.1.2 \
+    --hash=sha256:95a26b17806e284452bfd97fa20aa1e8cb4ee23542bda4dbac5e4562aa1642cd \
+    --hash=sha256:7cb64d38cb8002971710c8899fbdfb859a23a364b7c99dab19d1f719c2ba16b5
 djangosaml2==0.13.0 \
     --hash=sha256:6514f5ac8db1edf53d9cf247b33e8c28b015c5a61468a905e49f6bf50ea7b8fa
 enum34==1.1.2 \
