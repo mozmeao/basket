@@ -23,9 +23,9 @@ msgpack-python==0.4.8 \
     --hash=sha256:f52d9f96df952369fe4adcb0506e10c1c92d47f653f601a66da2a26a7e7141ea \
     --hash=sha256:58c9c1d7891a35bddc6ee5dbec10d347a7ae4983169c24fc5fc8a57ae792ca76 \
     --hash=sha256:1a2b19df0f03519ec7f19f826afb935b202d8979b0856c6fb3dc28955799f886
-whitenoise==2.0.3 \
-    --hash=sha256:19c9520fcd2c1e83961cdc7ddb0b0deb7b93a1aea79f56ee0d6c5e2403fcaa4d \
-    --hash=sha256:c0b646a07f34a32e8f66326a819ceef0fbc1c23356dc8445160bc76861b0df4c
+whitenoise==3.3.0 \
+    --hash=sha256:1d62a003a0ab747de96da45c831cbb512dcb7f69c1ef0bd20b1cd4ae45d8a0c4 \
+    --hash=sha256:d098327276de6fd189398a7bcb95789d1bb2d41b3e011eeae4562f6b1a107dd4
 newrelic==2.60.0.46 \
     --hash=sha256:17d598fccca0845c0337e5276d40d65f951afea6adf9bd9172cff3a87f2ef294
 urlwait==0.4 \
