@@ -1,0 +1,6 @@
+A donation transaction update failed to apply because it could not be found in Salesforce.
+
+Transaction ID: {{ txn_id }}
+Type Lost:      {{ type_lost }}
+Reason Lost:    {{ reason_lost }}
+Server:         {{ server_name }}

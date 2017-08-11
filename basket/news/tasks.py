@@ -9,6 +9,8 @@ from time import mktime, time
 
 from django.conf import settings
 from django.core.cache import cache, caches
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
 
 import requests
 import simple_salesforce as sfapi
@@ -649,6 +651,7 @@ def record_source_url(email, source_url, newsletter_id):
 def process_donation_event(data):
     """Process a followup event on a donation"""
     etype = data['event_type']
+    txn_id = data['transaction_id']
     status = data.get('status')
     statsd.incr('news.tasks.process_donation_event.{}'.format(etype))
     if status:
@@ -670,12 +673,31 @@ def process_donation_event(data):
     else:
         reason_lost = data['failure_code']
 
-    # will raise a SalesforceError if not found and will be retried
-    sfdc.opportunity.update('PMT_Transaction_ID__c/{}'.format(data['transaction_id']), {
-        'PMT_Type_Lost__c': etype,
-        'PMT_Reason_Lost__c': reason_lost,
-        'StageName': 'Closed Lost',
-    })
+    try:
+        # will raise a SalesforceMalformedRequest if not found and will be retried
+        sfdc.opportunity.update('PMT_Transaction_ID__c/{}'.format(txn_id), {
+            'PMT_Type_Lost__c': etype,
+            'PMT_Reason_Lost__c': reason_lost,
+            'StageName': 'Closed Lost',
+        })
+    except sfapi.SalesforceMalformedRequest:
+        # we don't know about this tx_id. Let someone know.
+        # send email
+        if settings.DONATE_NOTIFY_EMAIL:
+            # don't notify about a transaction more than once per day
+            first_mail = cache.add('donate-notify-{}'.format(txn_id), 1, 86400)
+            if first_mail:
+                body = render_to_string('news/donation_notify_email.txt', {
+                    'txn_id': txn_id,
+                    'type_lost': etype,
+                    'reason_lost': reason_lost,
+                    'server_name': settings.STATSD_PREFIX,
+                })
+                send_mail('Donation Record Not Found', body,
+                          'noreply@mozilla.com', [settings.DONATE_NOTIFY_EMAIL])
+
+        # retry
+        raise
 
 
 DONATION_OPTIONAL_FIELDS = {
