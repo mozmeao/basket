@@ -1,4 +1,4 @@
 # requirements for building the docs
 
-Sphinx==1.2.2
+Sphinx==1.6.3
 
