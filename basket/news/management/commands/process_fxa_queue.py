@@ -12,11 +12,12 @@ import requests
 from django_statsd.clients import statsd
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
-from basket.news.tasks import fxa_delete
+from basket.news.tasks import fxa_delete, fxa_verified
 
 
 FXA_EVENT_TYPES = {
     'delete': fxa_delete,
+    'verified': fxa_verified,
 }
 
 
@@ -26,7 +27,6 @@ class Command(BaseCommand):
     snitch_id = settings.FXA_EVENTS_SNITCH_ID
 
     def snitch(self):
-        # print('S', end='')
         if not self.snitch_id:
             return
 
@@ -52,7 +52,6 @@ class Command(BaseCommand):
                 msgs = queue.receive_messages(WaitTimeSeconds=settings.FXA_EVENTS_QUEUE_WAIT_TIME,
                                               MaxNumberOfMessages=10)
                 for msg in msgs:
-                    # print('M', end='')
                     if not (msg and msg.body):
                         continue
 
@@ -72,6 +71,9 @@ class Command(BaseCommand):
                     statsd.incr('fxa.events.message.received.{}'.format(event_type))
                     if event_type not in FXA_EVENT_TYPES:
                         statsd.incr('fxa.events.message.received.{}.IGNORED'.format(event_type))
+                        # we can safely remove from the queue message types we don't need
+                        # this keeps the queue from filling up with old messages
+                        msg.delete()
                         continue
 
                     try:

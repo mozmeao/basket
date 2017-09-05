@@ -304,7 +304,9 @@ RECOVER_MSG_LANGS = config('RECOVER_MSG_LANGS', 'en', cast=Csv())
 EXTRA_SUPPORTED_LANGS = config('EXTRA_SUPPORTED_LANGS', '', cast=Csv())
 
 SYNC_KEY = config('SYNC_KEY', None)
-TESTING_EMAIL_DOMAINS = config('TESTING_EMAIL_DOMAINS', 'restmail.net,example.com', cast=Csv())
+TESTING_EMAIL_DOMAINS = config('TESTING_EMAIL_DOMAINS',
+                               'restmail.net,restmail.lcip.org,example.com',
+                               cast=Csv())
 
 MAINTENANCE_MODE = config('MAINTENANCE_MODE', False, cast=bool)
 QUEUE_BATCH_SIZE = config('QUEUE_BATCH_SIZE', 500, cast=int)
@@ -336,6 +338,9 @@ FXA_SECRET_ACCESS_KEY = config('FXA_SECRET_ACCESS_KEY', default='')
 FXA_S3_BUCKET = config('FXA_S3_BUCKET', default='')
 FXA_SFMC_DE = config('FXA_SFMC_DE', default='FXA_Logins')
 FXA_SNITCH_URL = config('FXA_SNITCH_URL', default='')
+
+FXA_REGISTER_NEWSLETTER = config('FXA_REGISTER_NEWSLETTER', default='firefox-accounts-journey')
+FXA_REGISTER_SOURCE_URL = config('FXA_REGISTER_SOURCE_URL', default='https://accounts.firefox.com/')
 
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run

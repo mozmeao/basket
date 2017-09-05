@@ -46,7 +46,8 @@ class VendorConversionTests(TestCase):
         }
         self.assertDictEqual(to_vendor(data), contact)
 
-    @override_settings(TESTING_EMAIL_DOMAINS=['example.com'])
+    @override_settings(TESTING_EMAIL_DOMAINS=['example.com'],
+                       USE_SANDBOX_BACKEND=False)
     @patch('basket.news.backends.sfdc.newsletter_map')
     def test_to_vendor_test_domain(self, nm_mock):
         """Same as main test but should flip UAT_Test_Data__c switch"""

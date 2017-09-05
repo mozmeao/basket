@@ -13,7 +13,6 @@ from email_validator import EmailSyntaxError
 from mock import Mock, patch, ANY
 
 from basket.news import models, views, utils
-from basket.news.models import APIUser
 from basket.news.newsletters import newsletter_languages, newsletter_fields
 from basket.news.tasks import SUBSCRIBE
 from basket.news.utils import email_block_list_cache
@@ -153,89 +152,6 @@ class GetInvolvedTests(TestCase):
                                                           'dude@example.com', 'us', 'T',
                                                           'ok', 'I like bowling',
                                                           'https://arewebowlingyet.com/')
-
-
-@patch('basket.news.views.update_fxa_info')
-class FxAccountsTest(TestCase):
-    def test_requires_api_key(self, fxa_mock):
-        """fxa-register requires API key"""
-        resp = self.client.post('/news/fxa-register/', {
-            'email': 'dude@example.com',
-            'fxa_id': 'the dude has a Fx account.'
-        })
-        self.assertEqual(resp.status_code, 401, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(errors.BASKET_AUTH_ERROR, data['code'])
-        self.assertFalse(fxa_mock.delay.called)
-
-    def test_requires_fxa_id(self, fxa_mock):
-        """fxa-register requires Firefox Account ID"""
-        auth = APIUser.objects.create(name="test")
-        resp = self.client.post('/news/fxa-register/', {
-            'email': 'dude@example.com',
-            'accept_lang': 'de',
-            'api-key': auth.api_key,
-        })
-        self.assertEqual(resp.status_code, 401, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
-        self.assertFalse(fxa_mock.delay.called)
-
-    def test_requires_email(self, fxa_mock):
-        """fxa-register requires email address"""
-        auth = APIUser.objects.create(name="test")
-        resp = self.client.post('/news/fxa-register/', {
-            'fxa_id': 'the dude has a Fx account.',
-            'accept_lang': 'de',
-            'api-key': auth.api_key,
-        })
-        self.assertEqual(resp.status_code, 401, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
-        self.assertFalse(fxa_mock.delay.called)
-
-    def test_requires_lang(self, fxa_mock):
-        """fxa-register requires language"""
-        auth = APIUser.objects.create(name="test")
-        resp = self.client.post('/news/fxa-register/', {
-            'email': 'dude@example.com',
-            'fxa_id': 'the dude has a Fx account.',
-            'api-key': auth.api_key,
-        })
-        self.assertEqual(resp.status_code, 401, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
-        self.assertFalse(fxa_mock.delay.called)
-
-    def test_requires_valid_lang(self, fxa_mock):
-        """fxa-register requires language"""
-        auth = APIUser.objects.create(name="test")
-        resp = self.client.post('/news/fxa-register/', {
-            'email': 'dude@example.com',
-            'fxa_id': 'the dude has a Fx account.',
-            'accept_lang': 'Phones ringing Dude.',
-            'api-key': auth.api_key,
-        })
-        self.assertEqual(resp.status_code, 400, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual(errors.BASKET_INVALID_LANGUAGE, data['code'])
-        self.assertFalse(fxa_mock.delay.called)
-
-    def test_with_valid_api_key(self, fxa_mock):
-        """fxa-register should succeed with API Key and data."""
-        auth = APIUser.objects.create(name="test")
-        request_data = {
-            'email': 'dude@example.com',
-            'fxa_id': 'the dude has a Fx account.',
-            'api-key': auth.api_key,
-            'accept_lang': 'de',
-        }
-        resp = self.client.post('/news/fxa-register/', request_data)
-        self.assertEqual(resp.status_code, 200, resp.content)
-        data = json.loads(resp.content)
-        self.assertEqual('ok', data['status'])
-        fxa_mock.delay.assert_called_once_with(request_data['email'], 'de',
-                                               request_data['fxa_id'])
 
 
 class SubscribeSMSTests(TestCase):
