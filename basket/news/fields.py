@@ -31,6 +31,24 @@ ENGLISH_LANGUAGE_CHOICES = sorted(
     [(key, u'{0} ({1})'.format(key, value['English']))
      for key, value in product_details.languages.items()]
 )
+COUNTRY_CHOICES = sorted(
+    [(key, u'{0} ({1})'.format(key, value))
+     for key, value in product_details.get_regions('en-US').items()]
+)
+
+
+class CountryField(models.CharField):
+    description = 'CharField for storing a country code.'
+
+    def __init__(self, *args, **kwargs):
+        defaults = {
+            'max_length': 3,
+            'choices': COUNTRY_CHOICES,
+        }
+        for key, value in defaults.items():
+            kwargs.setdefault(key, value)
+
+        return super(CountryField, self).__init__(*args, **kwargs)
 
 
 class LocaleField(models.CharField):

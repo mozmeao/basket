@@ -1,13 +1,19 @@
 from django.conf import settings
 from django.contrib import admin, messages
 
-from basket.news.models import (APIUser, BlockedEmail, FailedTask, Interest, LocaleStewards, Newsletter,
+from basket.news.models import (APIUser, BlockedEmail, FailedTask, Interest, LocaleStewards, LocalizedSMSMessage, Newsletter,
                                 NewsletterGroup, QueuedTask, SMSMessage, TransactionalEmailMessage)
 
 
 class TransactionalEmailAdmin(admin.ModelAdmin):
     fields = ('message_id', 'vendor_id', 'languages', 'description')
     list_display = ('message_id', 'vendor_id', 'languages', 'description')
+
+
+class LocalizedSMSMessageAdmin(admin.ModelAdmin):
+    fields = ('message_id', 'vendor_id', 'language', 'country', 'description')
+    list_display = ('message_id', 'vendor_id', 'language', 'country', 'description')
+    list_editable = ('vendor_id',)
 
 
 class SMSMessageAdmin(admin.ModelAdmin):
@@ -113,6 +119,7 @@ class FailedTaskAdmin(admin.ModelAdmin):
 
 
 admin.site.register(TransactionalEmailMessage, TransactionalEmailAdmin)
+admin.site.register(LocalizedSMSMessage, LocalizedSMSMessageAdmin)
 admin.site.register(SMSMessage, SMSMessageAdmin)
 admin.site.register(APIUser, APIUserAdmin)
 admin.site.register(BlockedEmail, BlockedEmailAdmin)
