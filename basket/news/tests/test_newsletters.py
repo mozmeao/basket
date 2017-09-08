@@ -2,29 +2,24 @@
 
 from django.test import TestCase
 
-from mock import patch
-
 from basket.news import newsletters, utils
-from basket.news.models import Newsletter, NewsletterGroup, SMSMessage
+from basket.news.models import Newsletter, NewsletterGroup, LocalizedSMSMessage
 
 
-@patch.object(newsletters, 'SMS_MESSAGES', {'the-dude': 'ABIDES',
-                                            'the-sheriff': 'REACTIONARY'})
 class TestSMSMessageCache(TestCase):
     def setUp(self):
         newsletters.clear_sms_cache()
-        SMSMessage.objects.create(message_id='the-dude', vendor_id='YOURE_NOT_WRONG_WALTER')
-        SMSMessage.objects.create(message_id='the-walrus', vendor_id='SHUTUP_DONNIE')
+        LocalizedSMSMessage.objects.create(message_id='the-dude', vendor_id='YOURE_NOT_WRONG_WALTER',
+                                           country='us', language='de')
+        LocalizedSMSMessage.objects.create(message_id='the-walrus', vendor_id='SHUTUP_DONNIE',
+                                           country='gb', language='en-GB')
 
-    def test_messages_combined(self):
-        """Messages returned should be a combo of the DB and constants.
+    def test_all_messages(self):
+        """Messages returned should be all of the ones in the DB."""
 
-        DB entries should override the contsants.
-        """
         self.assertEqual(newsletters.get_sms_messages(), {
-            'the-sheriff': 'REACTIONARY',
-            'the-dude': 'YOURE_NOT_WRONG_WALTER',
-            'the-walrus': 'SHUTUP_DONNIE',
+            'the-dude-us-de': 'YOURE_NOT_WRONG_WALTER',
+            'the-walrus-gb-en-gb': 'SHUTUP_DONNIE',
         })
 
 

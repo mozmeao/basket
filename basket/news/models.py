@@ -330,7 +330,16 @@ class LocalizedSMSMessage(models.Model):
 
     class Meta:
         unique_together = ['message_id', 'language', 'country']
-        verbose_name = "Localized SMS message"
+        verbose_name = 'Localized SMS message'
+
+    @staticmethod
+    def make_slug(message_id, country, language):
+        full_msg_id = '%s-%s-%s' % (message_id, country, language)
+        return full_msg_id.lower()
+
+    @property
+    def slug(self):
+        return self.make_slug(self.message_id, self.country, self.language)
 
 
 class TransactionalEmailMessage(models.Model):

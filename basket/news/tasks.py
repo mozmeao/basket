@@ -25,7 +25,7 @@ from basket.news.backends.sfmc import sfmc
 from basket.news.celery import app as celery_app
 from basket.news.models import (FailedTask, Newsletter, Interest,
                                 QueuedTask, TransactionalEmailMessage)
-from basket.news.newsletters import get_sms_messages, get_transactional_message_ids, newsletter_map
+from basket.news.newsletters import get_sms_vendor_id, get_transactional_message_ids, newsletter_map
 from basket.news.utils import (generate_token, get_user_data,
                                parse_newsletters, parse_newsletters_csv, SUBSCRIBE, UNSUBSCRIBE)
 
@@ -579,12 +579,16 @@ def confirm_user(token):
 
 
 @et_task
-def add_sms_user(send_name, mobile_number, optin):
-    messages = get_sms_messages()
-    if send_name not in messages:
-        return
+def add_sms_user(send_name, mobile_number, optin, vendor_id=None):
+    # Adding vendor_id as optional to avoid issues with deployment.
+    # Old tasks with the old sitnature will be on the queue when this is first deployed.
+    # TODO change the task signature to replace send_name with vendor_id
+    if not vendor_id:
+        vendor_id = get_sms_vendor_id(send_name)
+        if not vendor_id:
+            return
 
-    sfmc.send_sms([mobile_number], messages[send_name])
+    sfmc.send_sms([mobile_number], vendor_id)
     if optin:
         add_sms_user_optin.delay(mobile_number)
 

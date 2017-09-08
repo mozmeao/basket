@@ -10,7 +10,6 @@ from django.views.decorators.cache import cache_page, never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_safe
 
-# Get error codes from basket-client so users see the same definitions
 from basket import errors
 from django_statsd.clients import statsd
 from ratelimit.exceptions import Ratelimited
@@ -18,9 +17,9 @@ from ratelimit.utils import is_ratelimited
 from synctool.routing import Route
 
 from basket.news.forms import SubscribeForm
-from basket.news.models import Newsletter, Interest, LocaleStewards, NewsletterGroup, SMSMessage, \
+from basket.news.models import Newsletter, Interest, LocaleStewards, NewsletterGroup, LocalizedSMSMessage, \
     TransactionalEmailMessage
-from basket.news.newsletters import get_sms_messages, newsletter_slugs, newsletter_and_group_slugs, \
+from basket.news.newsletters import get_sms_vendor_id, newsletter_slugs, newsletter_and_group_slugs, \
     newsletter_private_slugs, get_transactional_message_ids
 from basket.news.tasks import (
     add_fxa_activity,
@@ -48,6 +47,7 @@ from basket.news.utils import (
     HttpResponseJSON,
     language_code_is_valid,
     NewsletterException,
+    parse_phone_number,
     process_email,
     newsletter_exception_response,
     parse_newsletters_csv, get_best_request_lang)
@@ -74,7 +74,7 @@ def news_sync():
         NewsletterGroup.objects.all(),
         Interest.objects.all(),
         LocaleStewards.objects.all(),
-        SMSMessage.objects.all(),
+        LocalizedSMSMessage.objects.all(),
         TransactionalEmailMessage.objects.all(),
     ]
 
@@ -464,30 +464,36 @@ def invalid_email_response():
 @require_POST
 @csrf_exempt
 def subscribe_sms(request):
-    if 'mobile_number' not in request.POST:
+    mobile = request.POST.get('mobile_number')
+    if not mobile:
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'mobile_number is missing',
             'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
-    messages = get_sms_messages()
+    country = request.POST.get('country', 'us')
+    language = request.POST.get('lang', 'en-US')
     msg_name = request.POST.get('msg_name', 'SMS_Android')
-    if msg_name not in messages:
+    vendor_id = get_sms_vendor_id(msg_name, country, language)
+    if not vendor_id:
+        if language != 'en-US':
+            # if not available in the requested language, try the default
+            language = 'en-US'
+            vendor_id = get_sms_vendor_id(msg_name, country, language)
+
+    if not vendor_id:
         return HttpResponseJSON({
             'status': 'error',
-            'desc': 'Invalid msg_name',
+            'desc': 'Invalid msg_name + country + language',
             'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
-    mobile = request.POST['mobile_number']
-    mobile = re.sub(r'\D+', '', mobile)
-    if len(mobile) == 10:
-        mobile = '1' + mobile
-    elif len(mobile) != 11 or mobile[0] != '1':
+    mobile = parse_phone_number(mobile, country)
+    if not mobile:
         return HttpResponseJSON({
             'status': 'error',
-            'desc': 'mobile_number must be a US number',
+            'desc': 'mobile_number is invalid',
             'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
@@ -499,7 +505,7 @@ def subscribe_sms(request):
 
     optin = request.POST.get('optin', 'N') == 'Y'
 
-    add_sms_user.delay(msg_name, mobile, optin)
+    add_sms_user.delay(msg_name, mobile, optin, vendor_id=vendor_id)
     return HttpResponseJSON({'status': 'ok'})
 
 

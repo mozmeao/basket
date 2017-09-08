@@ -9,6 +9,7 @@ from django.http import HttpResponse
 from django.utils.encoding import force_unicode
 from django.utils.translation.trans_real import parse_accept_lang_header
 
+import phonenumbers
 import requests
 import simple_salesforce as sfapi
 # Get error codes from basket-client so users see the same definitions
@@ -47,6 +48,20 @@ class HttpResponseJSON(HttpResponse):
         super(HttpResponseJSON, self).__init__(content=json.dumps(data),
                                                content_type='application/json',
                                                status=status)
+
+
+def parse_phone_number(pnum, country='us'):
+    """Parse and validate phone number input and return an E164 formatted number or None if invalid."""
+    region_code = country.upper()
+    try:
+        pn = phonenumbers.parse(pnum, region_code)
+    except phonenumbers.NumberParseException:
+        return None
+
+    if phonenumbers.is_valid_number_for_region(pn, region_code):
+        return phonenumbers.format_number(pn, phonenumbers.PhoneNumberFormat.E164)
+
+    return None
 
 
 def get_email_block_list():
