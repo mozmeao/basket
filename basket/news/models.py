@@ -295,24 +295,6 @@ class LocaleStewards(models.Model):
         )
 
 
-class SMSMessage(models.Model):
-    message_id = models.SlugField(
-        primary_key=True,
-        help_text='The ID for the message that will be used by clients',
-    )
-    vendor_id = models.CharField(
-        max_length=50,
-        help_text="The backend vendor's identifier for this message",
-    )
-    description = models.CharField(
-        max_length=200, blank=True,
-        help_text='Optional short description of this message'
-    )
-
-    class Meta:
-        verbose_name = "SMS message"
-
-
 class LocalizedSMSMessage(models.Model):
     message_id = models.SlugField(
         help_text='The ID for the message that will be used by clients',
