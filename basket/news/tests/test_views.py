@@ -238,7 +238,6 @@ class FxAccountsTest(TestCase):
                                                request_data['fxa_id'])
 
 
-@patch.dict('basket.news.newsletters.SMS_MESSAGES', {'SMS_Android': 'My_Sherona'})
 class SubscribeSMSTests(TestCase):
     def setUp(self):
         cache.clear()
@@ -246,16 +245,38 @@ class SubscribeSMSTests(TestCase):
         patcher = patch.object(views, 'add_sms_user')
         self.add_sms_user = patcher.start()
         self.addCleanup(patcher.stop)
+        patcher = patch.object(views, 'get_sms_vendor_id')
+        self.get_sms_vendor_id = patcher.start()
+        self.get_sms_vendor_id.return_value = 'the dude'
+        self.addCleanup(patcher.stop)
 
     def _request(self, **data):
         return views.subscribe_sms(self.rf.post('/', data))
 
     def test_valid_subscribe(self):
         self._request(mobile_number='9198675309')
-        self.add_sms_user.delay.assert_called_with('SMS_Android', '19198675309', False)
+        self.add_sms_user.delay.assert_called_with('SMS_Android', '+19198675309', False, vendor_id='the dude')
+
+    def test_valid_non_us_subscribe_default_lang(self):
+        """Should default to en-US if the requested lang isn't available but the message_id and country are."""
+        self.get_sms_vendor_id.side_effect = [None, 'the dude']
+        self._request(mobile_number='8088675309', country='in', lang='en-IN')
+        self.add_sms_user.delay.assert_called_with('SMS_Android', '+918088675309', False, vendor_id='the dude')
+
+    def test_valid_non_us_subscribe(self):
+        self.get_sms_vendor_id.return_value = 'sir dude'
+        self._request(mobile_number='9198675309', country='gb', lang='en-GB')
+        self.add_sms_user.delay.assert_called_with('SMS_Android', '+449198675309', False, vendor_id='sir dude')
+        # with country code
+        self._request(mobile_number='449198675309', country='gb', lang='en-GB')
+        self.add_sms_user.delay.assert_called_with('SMS_Android', '+449198675309', False, vendor_id='sir dude')
+
+        self.get_sms_vendor_id.return_value = 'herr dude'
+        self._request(mobile_number='9198675309', country='de', lang='de')
+        self.add_sms_user.delay.assert_called_with('SMS_Android', '+499198675309', False, vendor_id='herr dude')
 
     def test_invalid_number(self):
-        resp = self._request(mobile_number='9198675309999')
+        resp = self._request(mobile_number='8675309')
         self.assertFalse(self.add_sms_user.delay.called)
         self.assertEqual(resp.status_code, 400, resp.content)
         data = json.loads(resp.content)
@@ -271,6 +292,7 @@ class SubscribeSMSTests(TestCase):
         self.assertIn('mobile_number', data['desc'])
 
     def test_invalid_message_name(self):
+        self.get_sms_vendor_id.return_value = None
         resp = self._request(mobile_number='9198675309', msg_name='The_DUDE')
         self.assertFalse(self.add_sms_user.delay.called)
         self.assertEqual(resp.status_code, 400, resp.content)
@@ -280,7 +302,7 @@ class SubscribeSMSTests(TestCase):
 
     def test_phone_number_rate_limit(self):
         self.client.post('/news/subscribe_sms/', {'mobile_number': '9198675309'})
-        self.add_sms_user.delay.assert_called_with('SMS_Android', '19198675309', False)
+        self.add_sms_user.delay.assert_called_with('SMS_Android', '+19198675309', False, vendor_id='the dude')
         self.client.post('/news/subscribe_sms/', {'mobile_number': '9198675309'})
         self.add_sms_user.reset_mock()
 

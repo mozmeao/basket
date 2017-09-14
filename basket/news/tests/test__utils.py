@@ -12,8 +12,28 @@ from basket.news.utils import (
     get_email_block_list,
     language_code_is_valid,
     parse_newsletters_csv,
+    parse_phone_number,
     process_email,
 )
+
+
+class ParsePhoneNumberTests(TestCase):
+    def test_valid_numbers(self):
+        assert parse_phone_number('7068675309', 'us') == '+17068675309'
+        assert parse_phone_number('7068675309', 'de') == '+497068675309'
+        assert parse_phone_number('7068675309', 'gb') == '+447068675309'
+
+    def test_valid_numbers_with_country_code(self):
+        assert parse_phone_number('17068675309', 'us') == '+17068675309'
+        assert parse_phone_number('49337068675309', 'de') == '+49337068675309'
+        assert parse_phone_number('447068675309', 'de') == '+49447068675309'
+        assert parse_phone_number('447068675309', 'gb') == '+447068675309'
+
+    def test_invalid_numbers(self):
+        # too short
+        assert parse_phone_number('1234') is None
+        # no area code
+        assert parse_phone_number('8675309') is None
 
 
 class ParseNewslettersCSVTests(TestCase):

@@ -10,7 +10,7 @@ import product_details
 from .celery import app as celery_app
 from jsonfield import JSONField
 
-from basket.news.fields import CommaSeparatedEmailField, LocaleField
+from basket.news.fields import CommaSeparatedEmailField, CountryField, LocaleField
 
 
 def get_uuid():
@@ -295,9 +295,8 @@ class LocaleStewards(models.Model):
         )
 
 
-class SMSMessage(models.Model):
+class LocalizedSMSMessage(models.Model):
     message_id = models.SlugField(
-        primary_key=True,
         help_text='The ID for the message that will be used by clients',
     )
     vendor_id = models.CharField(
@@ -308,9 +307,21 @@ class SMSMessage(models.Model):
         max_length=200, blank=True,
         help_text='Optional short description of this message'
     )
+    language = LocaleField(default='en-US')
+    country = CountryField(default='us')
 
     class Meta:
-        verbose_name = "SMS message"
+        unique_together = ['message_id', 'language', 'country']
+        verbose_name = 'Localized SMS message'
+
+    @staticmethod
+    def make_slug(message_id, country, language):
+        full_msg_id = '%s-%s-%s' % (message_id, country, language)
+        return full_msg_id.lower()
+
+    @property
+    def slug(self):
+        return self.make_slug(self.message_id, self.country, self.language)
 
 
 class TransactionalEmailMessage(models.Model):

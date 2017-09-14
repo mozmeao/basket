@@ -8,21 +8,16 @@ from django.db.models.signals import post_save
 from django.db.models.signals import post_delete
 from django.core.cache import cache
 
-from basket.news.models import Newsletter, NewsletterGroup, SMSMessage, TransactionalEmailMessage
+from basket.news.models import Newsletter, NewsletterGroup, LocalizedSMSMessage, TransactionalEmailMessage
 
 
 __all__ = ('clear_newsletter_cache', 'get_sms_messages', 'newsletter_field',
            'newsletter_name', 'newsletter_fields')
 
 
-CACHE_KEY = "newsletters_cache_data"
-SMS_CACHE_KEY = "sms_messages_cache_data"
-TRANSACTIONAL_CACHE_KEY = "transactional_messages_cache_data"
-# TODO remove after initial deployment. These values should be added to
-#   to the DB. This is so we don't miss any submissions.
-SMS_MESSAGES = {
-    'SMS_Android': 'MTo3ODow',
-}
+CACHE_KEY = 'newsletters_cache_data'
+SMS_CACHE_KEY = 'local_sms_messages_cache_data'
+TRANSACTIONAL_CACHE_KEY = 'transactional_messages_cache_data'
 
 
 def get_transactional_message_ids():
@@ -45,14 +40,19 @@ def get_sms_messages():
     """
     data = cache.get(SMS_CACHE_KEY)
     if data is None:
-        # TODO have this be an empty dict when SMS_MESSAGES is removed.
-        data = SMS_MESSAGES.copy()
-        for msg in SMSMessage.objects.all():
-            data[msg.message_id] = msg.vendor_id
+        data = {}
+        for msg in LocalizedSMSMessage.objects.all():
+            data[msg.slug] = msg.vendor_id
 
         cache.set(SMS_CACHE_KEY, data)
 
     return data
+
+
+def get_sms_vendor_id(message_id, country='us', language='en-US'):
+    all_msgs = get_sms_messages()
+    full_msg_id = LocalizedSMSMessage.make_slug(message_id, country, language)
+    return all_msgs.get(full_msg_id)
 
 
 def _newsletters():
@@ -217,5 +217,5 @@ post_save.connect(clear_newsletter_cache, sender=Newsletter)
 post_delete.connect(clear_newsletter_cache, sender=Newsletter)
 post_save.connect(clear_newsletter_cache, sender=NewsletterGroup)
 post_delete.connect(clear_newsletter_cache, sender=NewsletterGroup)
-post_save.connect(clear_sms_cache, sender=SMSMessage)
-post_delete.connect(clear_sms_cache, sender=SMSMessage)
+post_save.connect(clear_sms_cache, sender=LocalizedSMSMessage)
+post_delete.connect(clear_sms_cache, sender=LocalizedSMSMessage)
