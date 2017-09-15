@@ -343,11 +343,11 @@ class AddSMSUserTests(TestCase):
 
     def test_success(self):
         add_sms_user('foo', '8675309', False)
-        self.send_sms.assert_called_with(['8675309'], 'bar')
+        self.send_sms.assert_called_with('8675309', 'bar')
 
     def test_success_with_vendor_id(self):
         add_sms_user('foo', '8675309', False, vendor_id='foo')
-        self.send_sms.assert_called_with(['8675309'], 'foo')
+        self.send_sms.assert_called_with('8675309', 'foo')
         self.get_sms_vendor_id.assert_not_called()
 
     def test_success_with_optin(self):
