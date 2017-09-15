@@ -588,7 +588,7 @@ def add_sms_user(send_name, mobile_number, optin, vendor_id=None):
         if not vendor_id:
             return
 
-    sfmc.send_sms([mobile_number], vendor_id)
+    sfmc.send_sms(mobile_number, vendor_id)
     if optin:
         add_sms_user_optin.delay(mobile_number)
 
