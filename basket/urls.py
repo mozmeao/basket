@@ -22,6 +22,9 @@ if settings.DISABLE_ADMIN:
         url(r'^admin/', RedirectView.as_view(url=settings.ADMIN_REDIRECT_URL, permanent=True))
     )
 else:
+    if settings.OIDC_ENABLE:
+        urlpatterns.append(url(r'^oidc/', include('mozilla_django_oidc.urls')))
+
     admin.autodiscover()
     urlpatterns.extend([
         url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
