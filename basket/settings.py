@@ -151,7 +151,6 @@ ROOT_URLCONF = 'basket.urls'
 
 INSTALLED_APPS = (
     'basket.news',
-    'basket.saml',
 
     'corsheaders',
     'product_details',
@@ -350,7 +349,3 @@ if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'tes
     SFMC_SETTINGS.pop('clientid', None)
     SFMC_SETTINGS.pop('clientsecret', None)
     TESTING_EMAIL_DOMAINS = []
-
-SAML_ENABLE = config('SAML_ENABLE', default=False, cast=bool)
-if SAML_ENABLE:
-    from basket.saml.settings import *  # noqa

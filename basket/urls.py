@@ -22,11 +22,6 @@ if settings.DISABLE_ADMIN:
         url(r'^admin/', RedirectView.as_view(url=settings.ADMIN_REDIRECT_URL, permanent=True))
     )
 else:
-    if settings.SAML_ENABLE:
-        urlpatterns += (
-            url(r'^saml2/', include('basket.saml.urls')),
-        )
-
     admin.autodiscover()
     urlpatterns.extend([
         url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
