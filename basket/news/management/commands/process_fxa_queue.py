@@ -39,6 +39,9 @@ class Command(BaseCommand):
         if not settings.FXA_EVENTS_ACCESS_KEY_ID:
             raise CommandError('AWS SQS Credentials not configured')
 
+        if not settings.FXA_EVENTS_QUEUE_ENABLE:
+            raise CommandError('FxA Events Queue is not enabled')
+
         sqs = boto3.resource('sqs',
                              region_name=settings.FXA_EVENTS_QUEUE_REGION,
                              aws_access_key_id=settings.FXA_EVENTS_ACCESS_KEY_ID,
