@@ -346,7 +346,7 @@ FXA_REGISTER_SOURCE_URL = config('FXA_REGISTER_SOURCE_URL', default='https://acc
 OIDC_ENABLE = config('OIDC_ENABLE', default=False, cast=bool)
 if OIDC_ENABLE:
     AUTHENTICATION_BACKENDS = (
-        'nucleus.base.authentication.OIDCModelBackend',
+        'basket.base.authentication.OIDCModelBackend',
     )
     OIDC_OP_AUTHORIZATION_ENDPOINT = config('OIDC_OP_AUTHORIZATION_ENDPOINT')
     OIDC_OP_TOKEN_ENDPOINT = config('OIDC_OP_TOKEN_ENDPOINT')
