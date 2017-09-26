@@ -13,6 +13,7 @@ from django_statsd.clients import statsd
 from product_details import product_details
 from simple_salesforce.api import DEFAULT_API_VERSION
 
+from basket.base.utils import email_is_testing
 from basket.news.backends.common import get_timer_decorator
 from basket.news.country_codes import convert_country_3_to_2
 from basket.news.newsletters import newsletter_map, newsletter_inv_map, is_supported_newsletter_language
@@ -104,9 +105,8 @@ def to_vendor(data):
         contact['Subscriber__c'] = True
 
     if 'email' in data:
-        for domain in settings.TESTING_EMAIL_DOMAINS:
-            if data['email'].endswith(u'@{}'.format(domain)):
-                contact['UAT_Test_Data__c'] = True
+        if email_is_testing(data['email']):
+            contact['UAT_Test_Data__c'] = True
 
     if 'country' in data:
         data['country'] = data['country'].lower()

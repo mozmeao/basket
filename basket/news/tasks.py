@@ -6,6 +6,7 @@ from email.utils import formatdate
 from functools import wraps
 from hashlib import sha256
 from time import mktime, time
+from urllib import urlencode
 
 from django.conf import settings
 from django.core.cache import cache, caches
@@ -19,6 +20,7 @@ from celery.signals import task_failure, task_retry, task_success
 from django_statsd.clients import statsd
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
+from basket.base.utils import email_is_testing
 from basket.news.backends.common import NewsletterException, NewsletterNoResultsException
 from basket.news.backends.sfdc import sfdc
 from basket.news.backends.sfmc import sfmc
@@ -26,7 +28,7 @@ from basket.news.celery import app as celery_app
 from basket.news.models import (FailedTask, Newsletter, Interest,
                                 QueuedTask, TransactionalEmailMessage)
 from basket.news.newsletters import get_sms_vendor_id, get_transactional_message_ids, newsletter_map
-from basket.news.utils import (generate_token, get_user_data,
+from basket.news.utils import (generate_token, get_accept_languages, get_best_language, get_user_data,
                                parse_newsletters, parse_newsletters_csv, SUBSCRIBE, UNSUBSCRIBE)
 
 
@@ -201,6 +203,45 @@ def gmttime():
 
 
 @et_task
+def fxa_delete(data):
+    sfmc.upsert_row('FXA_Deleted', {'FXA_ID': data['uid']})
+
+
+@et_task
+def fxa_verified(data):
+    """Add new FxA users to an SFMC data extension"""
+    # used to be handled by the fxa_register view
+    email = data['email']
+    fxa_id = data['uid']
+    locale = data['locale']
+    subscribe = data.get('marketingOptIn')
+    metrics = data.get('metricsContext', {})
+
+    # if we're not using the sandbox ignore testing domains
+    if email_is_testing(email):
+        return
+
+    lang = get_best_language(get_accept_languages(locale))
+    if not lang:
+        return
+
+    _update_fxa_info(email, lang, fxa_id)
+
+    if subscribe:
+        source_url = settings.FXA_REGISTER_SOURCE_URL
+        query = {k: v for k, v in metrics.items() if k.startswith('utm_')}
+        if query:
+            source_url = '?'.join((source_url, urlencode(query)))
+
+        upsert_user.delay(SUBSCRIBE, {
+            'email': email,
+            'lang': lang,
+            'newsletters': settings.FXA_REGISTER_NEWSLETTER,
+            'source_url': source_url,
+        })
+
+
+@et_task
 def add_fxa_activity(data):
     user_agent = user_agents.parse(data['user_agent'])
     device_type = 'D'
@@ -224,6 +265,13 @@ def add_fxa_activity(data):
 
 @et_task
 def update_fxa_info(email, lang, fxa_id):
+    # TODO delete after fxa_register view is decomissioned
+    _update_fxa_info(email, lang, fxa_id)
+
+
+def _update_fxa_info(email, lang, fxa_id):
+    # for use with update_fxa_info and fxa_verified
+    # TODO move to fxa_verified after decomission of fxa_register view
     try:
         apply_updates('Firefox_Account_ID', {
             'EMAIL_ADDRESS_': email,

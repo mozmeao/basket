@@ -5,35 +5,14 @@ from django.http import HttpResponse
 from django.test import TestCase
 from django.test.client import RequestFactory
 
-from mock import ANY, patch
+from mock import patch
 
 from basket import errors
 
-from basket.news import tasks, views
+from basket.news import views
 from basket.news.backends.common import NewsletterException
 from basket.news.models import APIUser
 from basket.news.utils import SET, generate_token
-
-
-class UpdateFxAInfoTest(TestCase):
-    def setUp(self):
-        patcher = patch.object(tasks, 'apply_updates')
-        self.addCleanup(patcher.stop)
-        self.apply_updates = patcher.start()
-
-    def test_new_user(self):
-        """Adding a new user should add fxa_id."""
-        email = 'dude@example.com'
-        fxa_id = 'the fxa abides'
-
-        tasks.update_fxa_info(email, 'de', fxa_id)
-
-        self.apply_updates.assert_called_once_with('Firefox_Account_ID', {
-            'EMAIL_ADDRESS_': email,
-            'FXA_ID': fxa_id,
-            'FXA_LANGUAGE_ISO2': 'de',
-            'CREATED_DATE_': ANY,
-        })
 
 
 class UserTest(TestCase):

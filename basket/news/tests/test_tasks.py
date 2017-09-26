@@ -1,6 +1,7 @@
 from copy import deepcopy
 from urllib2 import URLError
 
+from django.conf import settings
 from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
@@ -14,11 +15,13 @@ from basket.news.tasks import (
     add_fxa_activity,
     add_sms_user,
     et_task,
+    fxa_verified,
     mogrify_message_id,
     NewsletterException,
     process_donation,
     process_donation_event,
     RECOVERY_MESSAGE_ID,
+    SUBSCRIBE,
     send_recovery_message_task,
     send_message,
     get_lock,
@@ -528,3 +531,54 @@ class AddFxaActivityTests(TestCase):
         self.assertEqual(record['BROWSER'], 'Firefox iOS 1')
         self.assertEqual(record['DEVICE_NAME'], 'iPad')
         self.assertEqual(record['DEVICE_TYPE'], 'T')
+
+
+@patch('basket.news.tasks._update_fxa_info')
+@patch('basket.news.tasks.upsert_user')
+class FxAVerifiedTests(TestCase):
+    def test_no_subscribe(self, upsert_mock, fxa_info_mock):
+        data = {
+            'email': 'thedude@example.com',
+            'uid': 'the-fxa-id',
+            'locale': 'en-US,en',
+            'marketingOptIn': False,
+        }
+        fxa_verified(data)
+        upsert_mock.delay.assert_not_called()
+        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'])
+
+    def test_with_subscribe(self, upsert_mock, fxa_info_mock):
+        data = {
+            'email': 'thedude@example.com',
+            'uid': 'the-fxa-id',
+            'locale': 'en-US,en',
+            'marketingOptIn': True,
+        }
+        fxa_verified(data)
+        upsert_mock.delay.assert_called_with(SUBSCRIBE, {
+            'email': data['email'],
+            'lang': 'en-US',
+            'newsletters': settings.FXA_REGISTER_NEWSLETTER,
+            'source_url': settings.FXA_REGISTER_SOURCE_URL,
+        })
+        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'])
+
+    def test_with_subscribe_and_metrics(self, upsert_mock, fxa_info_mock):
+        data = {
+            'email': 'thedude@example.com',
+            'uid': 'the-fxa-id',
+            'locale': 'en-US,en',
+            'marketingOptIn': True,
+            'metricsContext': {
+                'utm_campaign': 'bowling',
+                'some_other_thing': 'Donnie',
+            }
+        }
+        fxa_verified(data)
+        upsert_mock.delay.assert_called_with(SUBSCRIBE, {
+            'email': data['email'],
+            'lang': 'en-US',
+            'newsletters': settings.FXA_REGISTER_NEWSLETTER,
+            'source_url': settings.FXA_REGISTER_SOURCE_URL + '?utm_campaign=bowling',
+        })
+        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'])
