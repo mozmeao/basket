@@ -208,6 +208,7 @@ def fxa_register(request):
         }, 400)
 
     update_fxa_info.delay(email, lang, data['fxa_id'])
+    return HttpResponseJSON({'status': 'ok'})
 
 
 @require_POST
