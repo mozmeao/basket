@@ -151,12 +151,13 @@ ROOT_URLCONF = 'basket.urls'
 
 INSTALLED_APPS = (
     'basket.news',
-    'basket.saml',
+    'basket.base',
 
     'corsheaders',
     'product_details',
     'raven.contrib.django.raven_compat',
     'django_extensions',
+    'mozilla_django_oidc',
 
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -342,6 +343,22 @@ FXA_SNITCH_URL = config('FXA_SNITCH_URL', default='')
 FXA_REGISTER_NEWSLETTER = config('FXA_REGISTER_NEWSLETTER', default='firefox-accounts-journey')
 FXA_REGISTER_SOURCE_URL = config('FXA_REGISTER_SOURCE_URL', default='https://accounts.firefox.com/')
 
+OIDC_ENABLE = config('OIDC_ENABLE', default=False, cast=bool)
+if OIDC_ENABLE:
+    AUTHENTICATION_BACKENDS = (
+        'nucleus.base.authentication.OIDCModelBackend',
+    )
+    OIDC_OP_AUTHORIZATION_ENDPOINT = config('OIDC_OP_AUTHORIZATION_ENDPOINT')
+    OIDC_OP_TOKEN_ENDPOINT = config('OIDC_OP_TOKEN_ENDPOINT')
+    OIDC_OP_USER_ENDPOINT = config('OIDC_OP_USER_ENDPOINT')
+
+    OIDC_RP_CLIENT_ID = config('OIDC_RP_CLIENT_ID')
+    OIDC_RP_CLIENT_SECRET = config('OIDC_RP_CLIENT_SECRET')
+    OIDC_CREATE_USER = config('OIDC_CREATE_USER', default=False, cast=bool)
+    MIDDLEWARE_CLASSES = MIDDLEWARE_CLASSES + \
+        ('mozilla_django_oidc.middleware.RefreshIDToken',)
+    LOGIN_REDIRECT_URL = '/admin/'
+
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run
     CELERY_ALWAYS_EAGER = True
@@ -350,7 +367,3 @@ if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'tes
     SFMC_SETTINGS.pop('clientid', None)
     SFMC_SETTINGS.pop('clientsecret', None)
     TESTING_EMAIL_DOMAINS = []
-
-SAML_ENABLE = config('SAML_ENABLE', default=False, cast=bool)
-if SAML_ENABLE:
-    from basket.saml.settings import *  # noqa
