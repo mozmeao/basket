@@ -27,6 +27,7 @@ from basket.news.tasks import (
     confirm_user,
     send_recovery_message_task,
     update_custom_unsub,
+    update_fxa_info,
     update_get_involved,
     upsert_contact,
     upsert_user,
@@ -159,11 +160,54 @@ def fxa_activity(request):
 @require_POST
 @csrf_exempt
 def fxa_register(request):
-    # old view for FxA to send us user info. This is now handeled by
-    # a queue via which we receive various events from FxA. See process_fxa_queue.py.
-    # This is still here to avoid errors during the transition to said queue.
-    # TODO remove after complete transistion to queue
-    return HttpResponseJSON({'status': 'ok'})
+    if settings.FXA_EVENTS_QUEUE_ENABLE:
+        # When this setting is true these requests will be handled by
+        # a queue via which we receive various events from FxA. See process_fxa_queue.py.
+        # This is still here to avoid errors during the transition to said queue.
+        # TODO remove after complete transistion to queue
+        return HttpResponseJSON({'status': 'ok'})
+
+    if not has_valid_api_key(request):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'fxa-register requires a valid API-key',
+            'code': errors.BASKET_AUTH_ERROR,
+        }, 401)
+
+    data = request.POST.dict()
+    if 'email' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'fxa-register requires an email address',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+
+    email = process_email(data['email'])
+    if not email:
+        return invalid_email_response()
+
+    if 'fxa_id' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'fxa-register requires a Firefox Account ID',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+    if 'accept_lang' not in data:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'fxa-register requires accept_lang',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+
+    lang = get_best_language(get_accept_languages(data['accept_lang']))
+    if lang is None:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'invalid language',
+            'code': errors.BASKET_INVALID_LANGUAGE,
+        }, 400)
+
+    update_fxa_info.delay(email, lang, data['fxa_id'])
 
 
 @require_POST
