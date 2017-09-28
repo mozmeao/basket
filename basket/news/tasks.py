@@ -379,7 +379,8 @@ def upsert_contact(api_call_type, data, user_data):
             # if api_call_type == SET this is pref center, so only send new subscriptions
             nl_list = newsletters if api_call_type == SUBSCRIBE else to_subscribe
             for nlid in nl_list:
-                record_source_url.delay(email, source_url, nl_map[nlid])
+                if nlid in nl_map:
+                    record_source_url.delay(email, source_url, nl_map[nlid])
 
     if user_data is None:
         # no user found. create new one.
