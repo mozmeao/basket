@@ -105,6 +105,7 @@ class TestGetAcceptLanguages(TestCase):
         """
         Should return a list of valid lang codes or an empty list
         """
+        self._test(None, [])
         self._test('', [])
         self._test('en/us,en*;q=0.5', [])
         self._test('Chinese,zh-cn;q=0.5', ['zh-CN'])

@@ -280,6 +280,8 @@ def get_accept_languages(header_value):
     Parse the user's Accept-Language HTTP header and return a list of languages
     """
     # adapted from bedrock: http://j.mp/1o3pWo5
+    if not header_value:
+        return []
     languages = []
     pattern = re.compile(r'^([A-Za-z]{2,3})(?:-([A-Za-z]{2})(?:-[A-Za-z0-9]+)?)?$')
 
