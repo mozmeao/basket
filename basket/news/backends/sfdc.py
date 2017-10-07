@@ -251,6 +251,7 @@ class RefreshingSFType(sfapi.SFType):
         if self.session_is_expired():
             self.refresh_session()
 
+        kwargs['timeout'] = settings.SFDC_REQUEST_TIMEOUT
         try:
             statsd.incr('news.backends.sfdc.call_salesforce')
             resp = super(RefreshingSFType, self)._call_salesforce(method, url, **kwargs)

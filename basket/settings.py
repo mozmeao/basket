@@ -214,6 +214,8 @@ SFDC_SETTINGS = {
 # default SFDC sessions timeout after 2 hours of inactivity. so they never timeout on
 # prod. Let's make it every 4 hours by default.
 SFDC_SESSION_TIMEOUT = config('SFDC_SESSION_TIMEOUT', 60 * 60 * 4, cast=int)
+SFDC_REQUEST_TIMEOUT = config('SFDC_REQUEST_TIMEOUT', 10, cast=int)
+
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_URLS_REGEX = r'^/(news/.*|subscribe/?)$'
