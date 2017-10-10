@@ -29,7 +29,8 @@ from basket.news.models import (FailedTask, Newsletter, Interest,
                                 QueuedTask, TransactionalEmailMessage)
 from basket.news.newsletters import get_sms_vendor_id, get_transactional_message_ids, newsletter_map
 from basket.news.utils import (generate_token, get_accept_languages, get_best_language, get_user_data,
-                               parse_newsletters, parse_newsletters_csv, SUBSCRIBE, UNSUBSCRIBE)
+                               iso_format_unix_timestamp, parse_newsletters, parse_newsletters_csv,
+                               SUBSCRIBE, UNSUBSCRIBE)
 
 
 log = logging.getLogger(__name__)
@@ -762,8 +763,10 @@ DONATION_OPTIONAL_FIELDS = {
 
 @et_task
 def process_donation(data):
-    timestamp = data['timestamp']
-    data = data['data']
+    if 'data' in data:
+        # here for old messages
+        # TODO remove in a subsequent deployment
+        data = data['data']
     get_lock(data['email'])
     # tells the backend to leave the "subscriber" flag alone
     contact_data = {'_set_subscriber': False}
@@ -809,13 +812,17 @@ def process_donation(data):
         'Name': 'Foundation Donation',
         'Donation_Contact__c': user_data['id'],
         'StageName': 'Closed Won',
-        'CloseDate': timestamp,
         'Amount': float(data['donation_amount']),
         'Currency__c': data['currency'].upper(),
         'Payment_Source__c': data['service'],
         'PMT_Transaction_ID__c': data['transaction_id'],
         'Payment_Type__c': 'Recurring' if data['recurring'] else 'One-Time',
     }
+    # this is a unix timestamp in ms since epoc
+    timestamp = data.get('created')
+    if timestamp:
+        donation['CloseDate'] = iso_format_unix_timestamp(timestamp)
+
     for dest_name, source_name in DONATION_OPTIONAL_FIELDS.items():
         if source_name in data:
             donation[dest_name] = data[source_name]
