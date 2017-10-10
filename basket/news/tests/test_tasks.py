@@ -1,4 +1,3 @@
-from copy import deepcopy
 from urllib2 import URLError
 
 from django.conf import settings
@@ -94,31 +93,28 @@ class ProcessDonationEventTests(TestCase):
 @patch('basket.news.tasks.sfdc')
 class ProcessDonationTests(TestCase):
     donate_data = {
-        'timestamp': u'2016-11-21T16:46:49.327Z',
-        'data': {
-            'created': 1479746809327,
-            'currency': u'USD',
-            'donation_amount': u'75.00',
-            'email': u'dude@example.com',
-            'first_name': u'Jeffery',
-            'last_name': u'Lebowski',
-            'project': u'mozillafoundation',
-            'source_url': 'https://example.com/donate',
-            'recurring': True,
-            'service': u'paypal',
-            'transaction_id': u'NLEKFRBED3BQ614797468093.25',
-        },
+        'created': 1479746809327,
+        'currency': u'USD',
+        'donation_amount': u'75.00',
+        'email': u'dude@example.com',
+        'first_name': u'Jeffery',
+        'last_name': u'Lebowski',
+        'project': u'mozillafoundation',
+        'source_url': 'https://example.com/donate',
+        'recurring': True,
+        'service': u'paypal',
+        'transaction_id': u'NLEKFRBED3BQ614797468093.25',
     }
 
     def test_one_name(self, sfdc_mock, gud_mock):
-        data = deepcopy(self.donate_data)
+        data = self.donate_data.copy()
         gud_mock.return_value = {
             'id': '1234',
             'first_name': '',
             'last_name': '_',
         }
-        del data['data']['first_name']
-        data['data']['last_name'] = 'Donnie'
+        del data['first_name']
+        data['last_name'] = 'Donnie'
         process_donation(data)
         sfdc_mock.update.assert_called_with(gud_mock(), {
             '_set_subscriber': False,
@@ -126,10 +122,10 @@ class ProcessDonationTests(TestCase):
         })
 
     def test_name_splitting(self, sfdc_mock, gud_mock):
-        data = deepcopy(self.donate_data)
+        data = self.donate_data.copy()
         gud_mock.return_value = None
-        del data['data']['first_name']
-        data['data']['last_name'] = 'Theodore Donald Kerabatsos'
+        del data['first_name']
+        data['last_name'] = 'Theodore Donald Kerabatsos'
         with self.assertRaises(RetryTask):
             # raises retry b/c the 2nd call to get_user_data returns None
             process_donation(data)
@@ -143,7 +139,7 @@ class ProcessDonationTests(TestCase):
         })
 
     def test_only_update_contact_if_modified(self, sfdc_mock, gud_mock):
-        data = deepcopy(self.donate_data)
+        data = self.donate_data.copy()
         gud_mock.return_value = {
             'id': '1234',
             'first_name': '',
@@ -157,7 +153,7 @@ class ProcessDonationTests(TestCase):
         })
 
         sfdc_mock.reset_mock()
-        data = deepcopy(self.donate_data)
+        data = self.donate_data.copy()
         gud_mock.return_value = {
             'id': '1234',
             'first_name': 'Jeffery',
@@ -167,7 +163,7 @@ class ProcessDonationTests(TestCase):
         sfdc_mock.update.assert_not_called()
 
     def test_donation_data(self, sfdc_mock, gud_mock):
-        data = deepcopy(self.donate_data)
+        data = self.donate_data.copy()
         gud_mock.return_value = {
             'id': '1234',
             'first_name': 'Jeffery',
@@ -179,14 +175,15 @@ class ProcessDonationTests(TestCase):
             'Name': 'Foundation Donation',
             'Donation_Contact__c': '1234',
             'StageName': 'Closed Won',
-            'CloseDate': data['timestamp'],
-            'Amount': float(data['data']['donation_amount']),
+            # calculated from data['created']
+            'CloseDate': '2016-11-21T16:46:49.327000',
+            'Amount': float(data['donation_amount']),
             'Currency__c': 'USD',
             'Payment_Source__c': 'paypal',
-            'PMT_Transaction_ID__c': data['data']['transaction_id'],
+            'PMT_Transaction_ID__c': data['transaction_id'],
             'Payment_Type__c': 'Recurring',
-            'SourceURL__c': data['data']['source_url'],
-            'Project__c': data['data']['project'],
+            'SourceURL__c': data['source_url'],
+            'Project__c': data['project'],
         })
 
 

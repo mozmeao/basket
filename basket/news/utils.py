@@ -1,5 +1,6 @@
 import json
 import re
+from datetime import datetime
 from itertools import chain
 from uuid import uuid4
 
@@ -37,6 +38,15 @@ UNSUBSCRIBE = 'UNSUBSCRIBE'
 SET = 'SET'
 
 email_block_list_cache = caches['email_block_list']
+
+
+def iso_format_unix_timestamp(timestamp):
+    """
+    Convert a unix timestamp in milliseconds since epoc
+    to an ISO formatted date string
+    """
+    if timestamp:
+        return datetime.utcfromtimestamp(float(timestamp) / 1000).isoformat()
 
 
 def generate_token():

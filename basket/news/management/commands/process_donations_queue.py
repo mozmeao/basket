@@ -63,7 +63,7 @@ class Command(BaseCommand):
                     try:
                         etype = data['data'].setdefault('event_type', 'donation')
                         if etype == 'donation':
-                            process_donation.delay(data)
+                            process_donation.delay(data['data'])
                         else:
                             process_donation_event.delay(data['data'])
                     except Exception:
