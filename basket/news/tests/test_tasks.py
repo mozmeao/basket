@@ -93,7 +93,7 @@ class ProcessDonationEventTests(TestCase):
 @patch('basket.news.tasks.sfdc')
 class ProcessDonationTests(TestCase):
     donate_data = {
-        'created': 1479746809327,
+        'created': 1479746809.327,
         'currency': u'USD',
         'donation_amount': u'75.00',
         'email': u'dude@example.com',
