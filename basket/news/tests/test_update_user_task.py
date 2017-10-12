@@ -178,7 +178,7 @@ class UpdateUserTaskTests(TestCase):
 
     @patch('basket.news.views.newsletter_and_group_slugs')
     @patch('basket.news.views.newsletter_private_slugs')
-    @patch('basket.news.views.has_valid_api_key')
+    @patch('basket.news.views.is_authorized')
     def test_subscribe_private_newsletter_invalid_api_key(self, mock_api_key, mock_private, mock_slugs):
         """
         If subscribing to a private newsletter and the request has an invalid API key,
@@ -192,11 +192,11 @@ class UpdateUserTaskTests(TestCase):
 
         response = update_user_task(request, SUBSCRIBE, data)
         self.assert_response_error(response, 401, errors.BASKET_AUTH_ERROR)
-        mock_api_key.assert_called_with(request)
+        mock_api_key.assert_called_with(request, data['email'])
 
     @patch('basket.news.views.newsletter_slugs')
     @patch('basket.news.views.newsletter_private_slugs')
-    @patch('basket.news.views.has_valid_api_key')
+    @patch('basket.news.views.is_authorized')
     def test_set_private_newsletter_invalid_api_key(self, mock_api_key, mock_private, mock_slugs):
         """
         If subscribing to a private newsletter and the request has an invalid API key,
@@ -210,12 +210,12 @@ class UpdateUserTaskTests(TestCase):
 
         response = update_user_task(request, SET, data)
         self.assert_response_error(response, 401, errors.BASKET_AUTH_ERROR)
-        mock_api_key.assert_called_with(request)
+        mock_api_key.assert_called_with(request, data['email'])
 
     @patch('basket.news.views.newsletter_slugs')
     @patch('basket.news.views.newsletter_and_group_slugs')
     @patch('basket.news.views.newsletter_private_slugs')
-    @patch('basket.news.views.has_valid_api_key')
+    @patch('basket.news.views.is_authorized')
     def test_private_newsletter_success(self, mock_api_key, mock_private, mock_group_slugs,
                                         mock_slugs):
         """
@@ -231,11 +231,11 @@ class UpdateUserTaskTests(TestCase):
 
         response = update_user_task(request, SUBSCRIBE, data)
         self.assert_response_ok(response)
-        mock_api_key.assert_called_with(request)
+        mock_api_key.assert_called_with(request, data['email'])
 
         response = update_user_task(request, SET, data)
         self.assert_response_ok(response)
-        mock_api_key.assert_called_with(request)
+        mock_api_key.assert_called_with(request, data['email'])
 
     def test_rate_limit(self):
         """Should raise Ratelimited if email attempts to sign up for same newsletter quickly"""

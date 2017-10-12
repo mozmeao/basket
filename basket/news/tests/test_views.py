@@ -584,7 +584,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
 
         self._patch_views('update_user_task')
         self._patch_views('process_email')
-        self._patch_views('has_valid_api_key')
+        self._patch_views('is_authorized')
 
     def tearDown(self):
         cache.clear()
@@ -610,7 +610,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         del update_data['optin']
         self.process_email.return_value = update_data['email']
         request = self.factory.post('/', request_data)
-        self.has_valid_api_key.return_value = False
+        self.is_authorized.return_value = False
 
         response = views.subscribe(request)
         self.assertEqual(response, self.update_user_task.return_value)
@@ -624,11 +624,11 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         """
         request = self.factory.post('/', {'newsletters': 'asdf', 'sync': 'Y',
                                           'email': 'dude@example.com'})
-        self.has_valid_api_key.return_value = False
+        self.is_authorized.return_value = False
 
         response = views.subscribe(request)
         self.assert_response_error(response, 401, errors.BASKET_AUTH_ERROR)
-        self.has_valid_api_key.assert_called_with(request)
+        self.is_authorized.assert_called_with(request, self.process_email.return_value)
 
     def test_email_validation_error(self):
         """
@@ -754,12 +754,12 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         del update_data['optin']
         del update_data['sync']
         request = self.factory.post('/', request_data)
-        self.has_valid_api_key.return_value = True
+        self.is_authorized.return_value = True
         self.process_email.return_value = update_data['email']
 
         response = views.subscribe(request)
 
-        self.has_valid_api_key.assert_called_with(request)
+        self.is_authorized.assert_called_with(request, self.process_email.return_value)
         self.assertEqual(response, self.update_user_task.return_value)
         self.process_email.assert_called_with('dude@example.com')
         self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
@@ -774,16 +774,14 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         del update_data['sync']
         request = self.factory.post('/', request_data)
         self.process_email.return_value = update_data['email']
+        self.is_authorized.return_value = True
+        response = views.subscribe(request)
+        self.is_authorized.assert_called_with(request, self.process_email.return_value)
 
-        with patch('basket.news.views.has_valid_api_key') as has_valid_api_key:
-            has_valid_api_key.return_value = True
-            response = views.subscribe(request)
-            has_valid_api_key.assert_called_with(request)
-
-            self.assertEqual(response, self.update_user_task.return_value)
-            self.process_email.assert_called_with('dude@example.com')
-            self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
-                                                     optin=True, sync=True)
+        self.assertEqual(response, self.update_user_task.return_value)
+        self.process_email.assert_called_with('dude@example.com')
+        self.update_user_task.assert_called_with(request, SUBSCRIBE, data=update_data,
+                                                 optin=True, sync=True)
 
 
 class TestRateLimitingFunctions(ViewsPatcherMixin, TestCase):

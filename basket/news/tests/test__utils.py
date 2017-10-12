@@ -1,6 +1,9 @@
 # -*- coding: utf8 -*-
 
-from django.test import TestCase
+from django.test import override_settings, TestCase, RequestFactory
+
+import fxa.constants
+import fxa.errors
 from mock import Mock, patch
 
 from basket.news.management.commands.process_fxa_queue import FxATSProxyTask
@@ -11,11 +14,132 @@ from basket.news.utils import (
     get_accept_languages,
     get_best_language,
     get_email_block_list,
+    get_fxa_clients,
+    has_valid_fxa_oauth,
+    is_authorized,
     language_code_is_valid,
     parse_newsletters_csv,
     parse_phone_number,
     process_email,
 )
+
+
+@override_settings(FXA_OAUTH_SERVER_ENV='stable')
+@patch('basket.news.utils.fxa.oauth')
+@patch('basket.news.utils.fxa.profile')
+class GetFxAClientsTests(TestCase):
+    def test_get_fxa_clients(self, profile_mock, oauth_mock):
+        oauth, profile = get_fxa_clients()
+        oauth_mock.Client.assert_called_with(server_url=fxa.constants.STABLE_URLS['oauth'])
+        profile_mock.Client.assert_called_with(server_url=fxa.constants.STABLE_URLS['profile'])
+        assert oauth == oauth_mock.Client.return_value
+        assert profile == profile_mock.Client.return_value
+
+        get_fxa_clients()
+        assert oauth_mock.Client.call_count == 1
+
+
+@patch('basket.news.utils.get_fxa_clients')
+class FxAOauthTests(TestCase):
+    def request(self, bearer=None):
+        rf = RequestFactory()
+        kwargs = {}
+        if bearer:
+            kwargs['HTTP_AUTHORIZATION'] = 'Bearer %s' % bearer
+        return rf.get('/', **kwargs)
+
+    def test_bad_oauth_verify(self, gfc_mock):
+        request = self.request('dude-token')
+        email = 'dude@example.com'
+        oauth_mock, profile_mock = Mock(), Mock()
+        gfc_mock.return_value = oauth_mock, profile_mock
+        verify_token = oauth_mock.verify_token
+        verify_token.side_effect = fxa.errors.ClientError()
+        assert not has_valid_fxa_oauth(request, email)
+        verify_token.assert_called_with('dude-token', scope=['basket', 'profile:email'])
+
+    def test_bad_oauth_profile(self, gfc_mock):
+        request = self.request('dude-token')
+        email = 'dude@example.com'
+        oauth_mock, profile_mock = Mock(), Mock()
+        gfc_mock.return_value = oauth_mock, profile_mock
+        verify_token = oauth_mock.verify_token
+        get_email = profile_mock.get_email
+        get_email.side_effect = fxa.errors.ClientError()
+        assert not has_valid_fxa_oauth(request, email)
+        get_email.assert_called_with('dude-token')
+        verify_token.assert_called_with('dude-token', scope=['basket', 'profile:email'])
+
+    def test_oauth_profile_email_no_match(self, gfc_mock):
+        request = self.request('dude-token')
+        email = 'dude@example.com'
+        oauth_mock, profile_mock = Mock(), Mock()
+        gfc_mock.return_value = oauth_mock, profile_mock
+        verify_token = oauth_mock.verify_token
+        get_email = profile_mock.get_email
+        get_email.return_value = 'walter@example.com'
+        assert not has_valid_fxa_oauth(request, email)
+        get_email.assert_called_with('dude-token')
+        verify_token.assert_called_with('dude-token', scope=['basket', 'profile:email'])
+
+    def test_oauth_success(self, gfc_mock):
+        request = self.request('dude-token')
+        email = 'dude@example.com'
+        oauth_mock, profile_mock = Mock(), Mock()
+        gfc_mock.return_value = oauth_mock, profile_mock
+        verify_token = oauth_mock.verify_token
+        get_email = profile_mock.get_email
+        get_email.return_value = 'dude@example.com'
+        assert has_valid_fxa_oauth(request, email)
+        get_email.assert_called_with('dude-token')
+        verify_token.assert_called_with('dude-token', scope=['basket', 'profile:email'])
+
+    def test_bad_bearer_header(self, gfc_mock):
+        # should cause a header parse problem
+        request = self.request(' ')
+        email = 'dude@example.com'
+        assert not has_valid_fxa_oauth(request, email)
+        gfc_mock.assert_not_called()
+
+    def test_no_bearer_header(self, gfc_mock):
+        request = self.request()
+        email = 'dude@example.com'
+        assert not has_valid_fxa_oauth(request, email)
+        gfc_mock.assert_not_called()
+
+
+@patch('basket.news.utils.has_valid_api_key')
+@patch('basket.news.utils.has_valid_fxa_oauth')
+class IsAuthorizedTests(TestCase):
+    def test_good_api_key(self, hvfo_mock, hvak_mock):
+        hvak_mock.return_value = True
+        request = Mock()
+        assert is_authorized(request, 'dude@example.com')
+        hvak_mock.assert_called_with(request)
+        hvfo_mock.assert_not_called()
+
+    def test_good_fxa_oauth(self, hvfo_mock, hvak_mock):
+        hvak_mock.return_value = False
+        hvfo_mock.return_value = True
+        request = Mock()
+        assert is_authorized(request, 'dude@example.com')
+        hvak_mock.assert_called_with(request)
+        hvfo_mock.assert_called_with(request, 'dude@example.com')
+
+    def test_no_email(self, hvfo_mock, hvak_mock):
+        hvak_mock.return_value = False
+        request = Mock()
+        assert not is_authorized(request)
+        hvak_mock.assert_called_with(request)
+        hvfo_mock.assert_not_called()
+
+    def test_no_auth(self, hvfo_mock, hvak_mock):
+        hvak_mock.return_value = False
+        hvfo_mock.return_value = False
+        request = Mock()
+        assert not is_authorized(request, 'dude@example.com')
+        hvak_mock.assert_called_with(request)
+        hvfo_mock.assert_called_with(request, 'dude@example.com')
 
 
 class FxATSProxyTaskTests(TestCase):
