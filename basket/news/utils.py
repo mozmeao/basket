@@ -42,11 +42,11 @@ email_block_list_cache = caches['email_block_list']
 
 def iso_format_unix_timestamp(timestamp):
     """
-    Convert a unix timestamp in milliseconds since epoc
+    Convert a unix timestamp in seconds since epoc
     to an ISO formatted date string
     """
     if timestamp:
-        return datetime.utcfromtimestamp(float(timestamp) / 1000).isoformat()
+        return datetime.utcfromtimestamp(float(timestamp)).isoformat()
 
 
 def generate_token():
