@@ -45,6 +45,7 @@ from basket.news.utils import (
     get_user,
     has_valid_api_key,
     HttpResponseJSON,
+    is_authorized,
     language_code_is_valid,
     NewsletterException,
     parse_phone_number,
@@ -434,17 +435,22 @@ def subscribe(request):
     optin = data.pop('optin', 'N').upper() == 'Y'
     sync = data.pop('sync', 'N').upper() == 'Y'
 
-    if optin and not has_valid_api_key(request):
+    authorized = False
+    if optin or sync:
+        if is_authorized(request, email):
+            authorized = True
+
+    if optin and not authorized:
         # for backward compat we just ignore the optin if
         # no valid API key is sent.
         optin = False
 
     if sync:
-        if not has_valid_api_key(request):
+        if not authorized:
             return HttpResponseJSON({
                 'status': 'error',
                 'desc': 'Using subscribe with sync=Y, you need to pass a '
-                        'valid `api-key` GET or POST parameter or X-api-key header',
+                        'valid `api-key` or FxA OAuth Authorization.',
                 'code': errors.BASKET_AUTH_ERROR,
             }, 401)
 
@@ -695,11 +701,11 @@ def lookup_user(request):
             'code': errors.BASKET_USAGE_ERROR,
         }, 400)
 
-    if email and not has_valid_api_key(request):
+    if email and not is_authorized(request, email):
         return HttpResponseJSON({
             'status': 'error',
             'desc': 'Using lookup_user with `email`, you need to pass a '
-                    'valid `api-key` GET parameter or X-api-key header',
+                    'valid `api-key` or FxA OAuth Autorization header.',
             'code': errors.BASKET_AUTH_ERROR,
         }, 401)
 
@@ -763,10 +769,10 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
                 }, 400)
 
             if api_call_type != UNSUBSCRIBE and nl in private_newsletters:
-                if not has_valid_api_key(request):
+                if not is_authorized(request, data.get('email')):
                     return HttpResponseJSON({
                         'status': 'error',
-                        'desc': 'private newsletter subscription requires a valid API key',
+                        'desc': 'private newsletter subscription requires a valid API key or OAuth',
                         'code': errors.BASKET_AUTH_ERROR,
                     }, 401)
 

@@ -10,6 +10,10 @@ from django.http import HttpResponse
 from django.utils.encoding import force_unicode
 from django.utils.translation.trans_real import parse_accept_lang_header
 
+import fxa.constants
+import fxa.errors
+import fxa.oauth
+import fxa.profile
 import phonenumbers
 import requests
 import simple_salesforce as sfapi
@@ -17,6 +21,7 @@ import simple_salesforce as sfapi
 from basket import errors
 from django_statsd.clients import statsd
 from email_validator import validate_email, EmailNotValidError
+from raven.contrib.django.raven_compat.models import client as sentry_client
 
 from basket.news.backends.common import NewsletterException
 from basket.news.backends.sfdc import sfdc
@@ -95,14 +100,76 @@ def email_is_blocked(email):
     return False
 
 
+def is_authorized(request, email=None):
+    if has_valid_api_key(request):
+        return True
+
+    if email and has_valid_fxa_oauth(request, email):
+        return True
+
+    return False
+
+
 def has_valid_api_key(request):
     # The API key could be the query parameter 'api-key' or the
     # request header 'X-api-key'.
-
     api_key = (request.REQUEST.get('api-key', None) or
                request.REQUEST.get('api_key', None) or
                request.META.get('HTTP_X_API_KEY', None))
-    return APIUser.is_valid(api_key)
+    if api_key:
+        return APIUser.is_valid(api_key)
+
+    return False
+
+
+FXA_CLIENTS = {
+    'oauth': None,
+    'profile': None,
+}
+
+
+def get_fxa_clients():
+    """Return and/or create FxA OAuth client instances"""
+    if FXA_CLIENTS['oauth'] is None:
+        server_urls = fxa.constants.ENVIRONMENT_URLS.get(settings.FXA_OAUTH_SERVER_ENV)
+        FXA_CLIENTS['oauth'] = fxa.oauth.Client(server_url=server_urls['oauth'])
+        FXA_CLIENTS['profile'] = fxa.profile.Client(server_url=server_urls['profile'])
+
+    return FXA_CLIENTS['oauth'], FXA_CLIENTS['profile']
+
+
+def has_valid_fxa_oauth(request, email):
+    if not email:
+        return False
+
+    # Grab the token out of the Authorization header
+    authorization = request.META.get('HTTP_AUTHORIZATION')
+    if not authorization:
+        return False
+
+    authorization = authorization.split(None, 1)
+    if authorization[0].lower() != 'bearer' or len(authorization) != 2:
+        return False
+
+    token = authorization[1].strip()
+    oauth, profile = get_fxa_clients()
+    # Validate the token with oauth-server and check for appropriate scope.
+    # This will raise an exception if things are not as they should be.
+    try:
+        oauth.verify_token(token, scope=['basket', 'profile:email'])
+    except fxa.errors.Error:
+        # security failure or server problem. can't validate. return invalid
+        sentry_client.captureException()
+        return False
+
+    try:
+        fxa_email = profile.get_email(token)
+    except fxa.errors.Error:
+        # security failure or server problem. can't validate. return invalid
+        sentry_client.captureException()
+        return False
+
+    return email == fxa_email
 
 
 def get_or_create_user_data(token=None, email=None):

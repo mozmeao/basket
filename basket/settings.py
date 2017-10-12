@@ -343,6 +343,9 @@ FXA_SECRET_ACCESS_KEY = config('FXA_SECRET_ACCESS_KEY', default='')
 FXA_S3_BUCKET = config('FXA_S3_BUCKET', default='')
 FXA_SFMC_DE = config('FXA_SFMC_DE', default='FXA_Logins')
 FXA_SNITCH_URL = config('FXA_SNITCH_URL', default='')
+# stable, stage, or production
+# https://github.com/mozilla/PyFxA/blob/master/fxa/constants.py
+FXA_OAUTH_SERVER_ENV = config('FXA_OAUTH_SERVER_ENV', default='stable')
 
 FXA_REGISTER_NEWSLETTER = config('FXA_REGISTER_NEWSLETTER', default='firefox-accounts-journey')
 FXA_REGISTER_SOURCE_URL = config('FXA_REGISTER_SOURCE_URL', default='https://accounts.firefox.com/')
