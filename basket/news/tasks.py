@@ -773,12 +773,14 @@ def process_donation(data):
     get_lock(data['email'])
     # tells the backend to leave the "subscriber" flag alone
     contact_data = {'_set_subscriber': False}
-    if 'first_name' in data:
-        if data.get('first_name'):
-            contact_data['first_name'] = data['first_name']
-        if data.get('last_name'):
-            contact_data['last_name'] = data['last_name']
-    elif data.get('last_name'):
+    first_name = data.get('first_name', '').strip()
+    last_name = data.get('last_name', '').strip()
+    if first_name and last_name:
+        contact_data['first_name'] = first_name
+        contact_data['last_name'] = last_name
+    elif first_name:
+        contact_data['first_name'] = first_name
+    elif last_name:
         names = data['last_name'].rsplit(None, 1)
         if len(names) == 2:
             first, last = names
