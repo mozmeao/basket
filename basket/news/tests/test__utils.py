@@ -1,8 +1,9 @@
 # -*- coding: utf8 -*-
 
 from django.test import TestCase
-from mock import patch
+from mock import Mock, patch
 
+from basket.news.management.commands.process_fxa_queue import FxATSProxyTask
 from basket.news.models import BlockedEmail
 from basket.news.utils import (
     email_block_list_cache,
@@ -15,6 +16,52 @@ from basket.news.utils import (
     parse_phone_number,
     process_email,
 )
+
+
+class FxATSProxyTaskTests(TestCase):
+    def test_no_call_before_timestamp(self):
+        """Should not call task if timestamp is less than desired"""
+        task = Mock()
+        data = {
+            'ts': 1231.123,
+            'dude': 'abiding',
+        }
+        t = FxATSProxyTask(task, 1234)
+        t.delay(data)
+        task.delay.assert_not_called()
+
+    def test_no_call_timestamp_disabled(self):
+        """Should not call task before timestamp is configured"""
+        task = Mock()
+        data = {
+            'ts': 0,
+            'dude': 'abiding',
+        }
+        t = FxATSProxyTask(task, 1234)
+        t.delay(data)
+        task.delay.assert_not_called()
+
+    def test_call_after_timestamp(self):
+        """Should call task after the desired timestamp"""
+        task = Mock()
+        data = {
+            'ts': 1234.123,
+            'dude': 'abiding',
+        }
+        t = FxATSProxyTask(task, 1234)
+        t.delay(data)
+        task.delay.assert_called_with(data)
+
+    def test_call_exatly_at_timestamp(self):
+        """Should call task exactly at the desired timestamp"""
+        task = Mock()
+        data = {
+            'ts': 1234.000,
+            'dude': 'abiding',
+        }
+        t = FxATSProxyTask(task, 1234)
+        t.delay(data)
+        task.delay.assert_called_with(data)
 
 
 class ParsePhoneNumberTests(TestCase):
