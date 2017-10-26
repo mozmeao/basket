@@ -12,12 +12,27 @@ import requests
 from django_statsd.clients import statsd
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
-from basket.news.tasks import fxa_delete, fxa_verified
+from basket.news.tasks import fxa_delete, fxa_login, fxa_verified
+
+
+# TODO remove this after the cutover
+class FxATSProxyTask(object):
+    """Fake task that will only fire the real task after timestamp"""
+    def __init__(self, task, timestamp):
+        self.task = task
+        self.ts = timestamp
+
+    def delay(self, data):
+        if not self.ts or data['ts'] < self.ts:
+            return
+
+        self.task.delay(data)
 
 
 FXA_EVENT_TYPES = {
     'delete': fxa_delete,
     'verified': fxa_verified,
+    'login': FxATSProxyTask(fxa_login, settings.FXA_LOGIN_CUTOVER_TIMESTAMP),
 }
 
 

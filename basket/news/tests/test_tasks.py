@@ -1,3 +1,4 @@
+from copy import deepcopy
 from urllib2 import URLError
 
 from django.conf import settings
@@ -14,6 +15,7 @@ from basket.news.tasks import (
     add_fxa_activity,
     add_sms_user,
     et_task,
+    fxa_login,
     fxa_verified,
     mogrify_message_id,
     NewsletterException,
@@ -598,3 +600,77 @@ class FxAVerifiedTests(TestCase):
             'source_url': settings.FXA_REGISTER_SOURCE_URL + '?utm_campaign=bowling',
         })
         fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'])
+
+
+@patch('basket.news.tasks.upsert_user')
+@patch('basket.news.tasks._add_fxa_activity')
+class FxALoginTests(TestCase):
+    # based on real data pulled from the queue
+    base_data = {
+        'deviceCount': 2,
+        'email': 'the.dude@example.com',
+        'event': 'login',
+        'metricsContext': {
+            'device_id': 'phones-ringing-dude',
+            'flowBeginTime': 1508897207639,
+            'flowCompleteSignal': 'account.signed',
+            'flowType': 'login',
+            'flow_id': 'the-dude-goes-with-the-flow-man',
+            'flow_time': 31568,
+            'time': 1508897239207,
+            'utm_campaign': 'fxa-embedded-form-fx',
+            'utm_content': 'fx-56.0.1',
+            'utm_medium': 'referral',
+            'utm_source': 'firstrun_f131',
+        },
+        'service': 'sync',
+        'ts': 1508897239.207,
+        'uid': 'the-fxa-id-for-el-dudarino',
+        'userAgent': 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:56.0) Gecko/20100101 Firefox/56.0',
+    }
+
+    def get_data(self):
+        return deepcopy(self.base_data)
+
+    def test_fxa_login_task_with_no_utm(self, afa_mock, upsert_mock):
+        data = self.get_data()
+        del data['metricsContext']
+        data['deviceCount'] = 1
+        fxa_login(data)
+        afa_mock.assert_called_with({
+            'user_agent': data['userAgent'],
+            'fxa_id': data['uid'],
+            'first_device': True,
+        })
+        upsert_mock.delay.assert_not_called()
+
+    def test_fxa_login_task_with_utm_data(self, afa_mock, upsert_mock):
+        data = self.get_data()
+        fxa_login(data)
+        afa_mock.assert_called_with({
+            'user_agent': data['userAgent'],
+            'fxa_id': data['uid'],
+            'first_device': False,
+        })
+        upsert_mock.delay.assert_called_with(SUBSCRIBE, {
+            'email': 'the.dude@example.com',
+            'newsletters': settings.FXA_LOGIN_CAMPAIGNS['fxa-embedded-form-fx'],
+            'source_url': ANY,
+        })
+        source_url = upsert_mock.delay.call_args[0][1]['source_url']
+        assert 'utm_campaign=fxa-embedded-form-fx' in source_url
+        assert 'utm_content=fx-56.0.1' in source_url
+        assert 'utm_medium=referral' in source_url
+        assert 'utm_source=firstrun_f131' in source_url
+
+    def test_fxa_login_task_with_utm_data_no_subscribe(self, afa_mock, upsert_mock):
+        data = self.get_data()
+        # not in the FXA_LOGIN_CAMPAIGNS setting
+        data['metricsContext']['utm_campaign'] = 'nonesense'
+        fxa_login(data)
+        afa_mock.assert_called_with({
+            'user_agent': data['userAgent'],
+            'fxa_id': data['uid'],
+            'first_device': False,
+        })
+        upsert_mock.delay.assert_not_called()

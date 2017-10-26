@@ -203,6 +203,15 @@ def gmttime():
     return formatdate(timeval=stamp, localtime=False, usegmt=True)
 
 
+def fxa_source_url(metrics):
+    source_url = settings.FXA_REGISTER_SOURCE_URL
+    query = {k: v for k, v in metrics.items() if k.startswith('utm_')}
+    if query:
+        source_url = '?'.join((source_url, urlencode(query)))
+
+    return source_url
+
+
 @et_task
 def fxa_delete(data):
     sfmc.upsert_row('FXA_Deleted', {'FXA_ID': data['uid']})
@@ -229,21 +238,45 @@ def fxa_verified(data):
     _update_fxa_info(email, lang, fxa_id)
 
     if subscribe:
-        source_url = settings.FXA_REGISTER_SOURCE_URL
-        query = {k: v for k, v in metrics.items() if k.startswith('utm_')}
-        if query:
-            source_url = '?'.join((source_url, urlencode(query)))
-
         upsert_user.delay(SUBSCRIBE, {
             'email': email,
             'lang': lang,
             'newsletters': settings.FXA_REGISTER_NEWSLETTER,
-            'source_url': source_url,
+            'source_url': fxa_source_url(metrics),
+        })
+
+
+@et_task
+def fxa_login(data):
+    email = data['email']
+    # if we're not using the sandbox ignore testing domains
+    if email_is_testing(email):
+        return
+
+    new_data = {
+        'user_agent': data['userAgent'],
+        'fxa_id': data['uid'],
+        'first_device': data['deviceCount'] == 1,
+    }
+    _add_fxa_activity(new_data)
+
+    metrics = data.get('metricsContext', {})
+    newsletter = settings.FXA_LOGIN_CAMPAIGNS.get(metrics.get('utm_campaign'))
+    if newsletter:
+        upsert_user.delay(SUBSCRIBE, {
+            'email': email,
+            'newsletters': newsletter,
+            'source_url': fxa_source_url(metrics),
         })
 
 
 @et_task
 def add_fxa_activity(data):
+    # TODO delete after fxa_activity view is decomissioned
+    _add_fxa_activity(data)
+
+
+def _add_fxa_activity(data):
     user_agent = user_agents.parse(data['user_agent'])
     device_type = 'D'
     if user_agent.is_mobile:
