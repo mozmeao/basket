@@ -6,6 +6,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
 
+import simple_salesforce as sfapi
 from mock import ANY, Mock, patch
 
 from basket.news.celery import app as celery_app
@@ -206,6 +207,40 @@ class ProcessDonationTests(TestCase):
             'SourceURL__c': data['source_url'],
             'Project__c': data['project'],
         })
+
+    def test_donation_silent_failure_on_dupe(self, sfdc_mock, gud_mock):
+        data = self.donate_data.copy()
+        gud_mock.return_value = {
+            'id': '1234',
+            'first_name': 'Jeffery',
+            'last_name': 'Lebowski',
+        }
+        error_content = [{
+            u'errorCode': u'DUPLICATE_VALUE',
+            u'fields': [],
+            u'message': u'duplicate value found: PMT_Transaction_ID__c '
+                        u'duplicates value on record with id: blah-blah',
+        }]
+        exc = sfapi.SalesforceMalformedRequest('url', 400, 'opportunity', error_content)
+        sfdc_mock.opportunity.create.side_effect = exc
+        process_donation(data)
+
+    def test_donation_normal_failure_not_dupe(self, sfdc_mock, gud_mock):
+        data = self.donate_data.copy()
+        gud_mock.return_value = {
+            'id': '1234',
+            'first_name': 'Jeffery',
+            'last_name': 'Lebowski',
+        }
+        error_content = [{
+            u'errorCode': u'OTHER_ERROR',
+            u'fields': [],
+            u'message': u'Some other non-dupe problem',
+        }]
+        exc = sfapi.SalesforceMalformedRequest('url', 400, 'opportunity', error_content)
+        sfdc_mock.opportunity.create.side_effect = exc
+        with self.assertRaises(sfapi.SalesforceMalformedRequest):
+            process_donation(data)
 
 
 @override_settings(TASK_LOCKING_ENABLE=True)
