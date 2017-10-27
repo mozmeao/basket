@@ -761,7 +761,7 @@ def process_donation_event(data):
         reason_lost = data['failure_code']
 
     try:
-        # will raise a SalesforceMalformedRequest if not found and will be retried
+        # will raise a SalesforceMalformedRequest if not found
         sfdc.opportunity.update('PMT_Transaction_ID__c/{}'.format(txn_id), {
             'PMT_Type_Lost__c': etype,
             'PMT_Reason_Lost__c': reason_lost,
@@ -865,7 +865,14 @@ def process_donation(data):
         if source_name in data:
             donation[dest_name] = data[source_name]
 
-    sfdc.opportunity.create(donation)
+    try:
+        sfdc.opportunity.create(donation)
+    except sfapi.SalesforceMalformedRequest as e:
+        if e.content and e.content[0].get('errorCode') == 'DUPLICATE_VALUE':
+            # already in the system, ignore
+            pass
+        else:
+            raise
 
 
 @celery_app.task()
