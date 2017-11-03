@@ -769,14 +769,15 @@ def process_donation_event(data):
         })
     except sfapi.SalesforceMalformedRequest:
         # we don't know about this tx_id. Let someone know.
-        if settings.DONATE_UPDATE_FAIL_DE:
+        do_notify = cache.add('donate-notify-{}'.format(txn_id), 1, 86400)
+        if do_notify and settings.DONATE_UPDATE_FAIL_DE:
             sfmc.add_row(settings.DONATE_UPDATE_FAIL_DE, {
                 'PMT_Transaction_ID__c': txn_id,
                 'Payment_Type__c': etype,
                 'PMT_Reason_Lost__c': reason_lost,
             })
 
-        if settings.DONATE_NOTIFY_EMAIL:
+        if do_notify and settings.DONATE_NOTIFY_EMAIL:
             # don't notify about a transaction more than once per day
             first_mail = cache.add('donate-notify-{}'.format(txn_id), 1, 86400)
             if first_mail:
@@ -788,6 +789,9 @@ def process_donation_event(data):
                 })
                 send_mail('Donation Record Not Found', body,
                           'noreply@mozilla.com', [settings.DONATE_NOTIFY_EMAIL])
+
+        # retry
+        raise
 
 
 DONATION_OPTIONAL_FIELDS = {
