@@ -21,6 +21,37 @@ from basket.news.utils import email_block_list_cache
 none_mock = Mock(return_value=None)
 
 
+@patch.object(views, 'update_user_meta')
+class UpdateUserMetaTests(TestCase):
+    def setUp(self):
+        self.rf = RequestFactory()
+
+    def test_invalid_data(self, uum_mock):
+        req = self.rf.post('/', {'country': 'dude'})
+        resp = views.user_meta(req, 'the-dudes-token-man')
+        assert resp.status_code == 400
+        uum_mock.delay.assert_not_called()
+
+    def test_valid_uppercase_country(self, uum_mock):
+        req = self.rf.post('/', {'country': 'GB'})
+        resp = views.user_meta(req, 'the-dudes-token-man')
+        assert resp.status_code == 200
+        uum_mock.delay.assert_called_with('the-dudes-token-man', {
+            'country': 'gb',
+            '_set_subscriber': False,
+        })
+
+    def test_only_send_given_values(self, uum_mock):
+        req = self.rf.post('/', {'first_name': 'The', 'last_name': 'Dude'})
+        resp = views.user_meta(req, 'the-dudes-token-man')
+        assert resp.status_code == 200
+        uum_mock.delay.assert_called_with('the-dudes-token-man', {
+            'first_name': 'The',
+            'last_name': 'Dude',
+            '_set_subscriber': False,
+        })
+
+
 class TestIsToken(TestCase):
     def test_invalid_tokens(self):
         self.assertFalse(views.is_token('the dude'))

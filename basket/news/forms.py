@@ -50,8 +50,9 @@ class NewslettersField(forms.MultipleChoiceField):
 
 
 def country_choices():
+    """Upper and Lower case country codes"""
     regions = product_details.get_regions('en-US')
-    return regions.iteritems()
+    return regions.items() + [(code.upper(), name) for code, name in regions.iteritems()]
 
 
 class SubscribeForm(forms.Form):
@@ -64,3 +65,25 @@ class SubscribeForm(forms.Form):
     last_name = forms.CharField(required=False)
     country = forms.ChoiceField(required=False, choices=country_choices)
     lang = forms.CharField(required=False, validators=[RegexValidator(regex=LANG_RE)])
+
+    def clean_country(self):
+        country = self.cleaned_data['country']
+        if country:
+            return country.lower()
+
+        return country
+
+
+class UpdateUserMeta(forms.Form):
+    source_url = forms.CharField(required=False)
+    first_name = forms.CharField(required=False)
+    last_name = forms.CharField(required=False)
+    country = forms.ChoiceField(required=False, choices=country_choices)
+    lang = forms.CharField(required=False, validators=[RegexValidator(regex=LANG_RE)])
+
+    def clean_country(self):
+        country = self.cleaned_data['country']
+        if country:
+            return country.lower()
+
+        return country
