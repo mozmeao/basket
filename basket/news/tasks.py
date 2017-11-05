@@ -332,6 +332,12 @@ def update_get_involved(interest_id, lang, name, email, country, email_format,
 
 
 @et_task
+def update_user_meta(token, data):
+    """Update a user's metadata, not newsletters"""
+    sfdc.update({'token': token}, data)
+
+
+@et_task
 def upsert_user(api_call_type, data):
     """
     Update or insert (upsert) a contact record in SFDC

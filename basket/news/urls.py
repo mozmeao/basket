@@ -3,7 +3,7 @@ from django.conf.urls import url
 from .views import (confirm, custom_unsub_reason, debug_user,
                     fxa_activity, fxa_register, get_involved, list_newsletters, lookup_user,
                     newsletters, send_recovery_message, subscribe, subscribe_sms, sync_route,
-                    unsubscribe, user)
+                    unsubscribe, user, user_meta)
 
 
 def token_url(url_prefix, *args, **kwargs):
@@ -20,6 +20,7 @@ urlpatterns = (
     url('^subscribe_sms/$', subscribe_sms),
     token_url('unsubscribe', unsubscribe),
     token_url('user', user),
+    token_url('user-meta', user_meta),
     token_url('confirm', confirm),
     url('^debug-user/$', debug_user),
     url('^lookup-user/$', lookup_user, name='lookup_user'),

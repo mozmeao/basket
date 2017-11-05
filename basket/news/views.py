@@ -16,7 +16,7 @@ from ratelimit.exceptions import Ratelimited
 from ratelimit.utils import is_ratelimited
 from synctool.routing import Route
 
-from basket.news.forms import SubscribeForm
+from basket.news.forms import SubscribeForm, UpdateUserMeta
 from basket.news.models import Newsletter, Interest, LocaleStewards, NewsletterGroup, LocalizedSMSMessage, \
     TransactionalEmailMessage
 from basket.news.newsletters import get_sms_vendor_id, newsletter_slugs, newsletter_and_group_slugs, \
@@ -29,6 +29,7 @@ from basket.news.tasks import (
     update_custom_unsub,
     update_fxa_info,
     update_get_involved,
+    update_user_meta,
     upsert_contact,
     upsert_user,
 )
@@ -533,6 +534,26 @@ def unsubscribe(request, token):
         data['newsletters'] = ','.join(newsletter_slugs())
 
     return update_user_task(request, UNSUBSCRIBE, data)
+
+
+@require_POST
+@csrf_exempt
+def user_meta(request, token):
+    """Only update user metadata, not newsletters"""
+    form = UpdateUserMeta(request.POST)
+    if form.is_valid():
+        # don't send empty values
+        data = {k: v for k, v in form.cleaned_data.items() if v}
+        # don't change subscriber status
+        data['_set_subscriber'] = False
+        update_user_meta.delay(token, data)
+        return HttpResponseJSON({'status': 'ok'})
+
+    return HttpResponseJSON({
+        'status': 'error',
+        'desc': 'data is invalid',
+        'code': errors.BASKET_USAGE_ERROR,
+    }, 400)
 
 
 @csrf_exempt
