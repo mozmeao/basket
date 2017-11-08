@@ -1,4 +1,19 @@
-FROM mozmeao/base:python-2.7
+FROM python:2.7-slim
+
+# from https://github.com/mozmeao/docker-pythode/blob/master/Dockerfile.footer
+
+# Extra python env
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# add non-priviledged user
+RUN adduser --uid 1000 --disabled-password --gecos '' --no-create-home webdev
+
+# Add apt script
+COPY docker/bin/apt-install /usr/local/bin/
+
+# end from Dockerfile.footer
 
 RUN apt-install build-essential mysql-client-5.5 libmysqlclient-dev libxslt1.1 libxml2 libxml2-dev libxslt1-dev
 
