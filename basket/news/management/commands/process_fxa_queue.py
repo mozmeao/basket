@@ -85,7 +85,7 @@ class Command(BaseCommand):
                         msg.delete()
                         continue
 
-                    event_type = event.get('event', '__NONE__')
+                    event_type = event.get('event', '__NONE__').replace(':', '-')
                     statsd.incr('fxa.events.message.received.{}'.format(event_type))
                     if event_type not in FXA_EVENT_TYPES:
                         statsd.incr('fxa.events.message.received.{}.IGNORED'.format(event_type))
