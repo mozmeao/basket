@@ -773,7 +773,7 @@ def process_donation_event(data):
             'PMT_Reason_Lost__c': reason_lost,
             'StageName': 'Closed Lost',
         })
-    except sfapi.SalesforceMalformedRequest:
+    except sfapi.SalesforceMalformedRequest as e:
         # we don't know about this tx_id. Let someone know.
         do_notify = cache.add('donate-notify-{}'.format(txn_id), 1, 86400)
         if do_notify and settings.DONATE_UPDATE_FAIL_DE:
@@ -781,6 +781,8 @@ def process_donation_event(data):
                 'PMT_Transaction_ID__c': txn_id,
                 'Payment_Type__c': etype,
                 'PMT_Reason_Lost__c': reason_lost,
+                'Error_Text': str(e)[:4000],
+                'Date': gmttime(),
             })
 
         if do_notify and settings.DONATE_NOTIFY_EMAIL:
