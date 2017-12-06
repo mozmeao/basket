@@ -1,4 +1,4 @@
-FROM python:2.7-slim
+FROM python:2-stretch
 
 # from https://github.com/mozmeao/docker-pythode/blob/master/Dockerfile.footer
 
