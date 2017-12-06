@@ -334,15 +334,15 @@ def format_form_errors(errors):
 
 @require_POST
 @csrf_exempt
+def subscribe_json(request):
+    request.META['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest'
+    return subscribe_main(request)
+
+
+@require_POST
+@csrf_exempt
 def subscribe_main(request):
     """Subscription view for use with client side JS"""
-    if not request.is_secure() and not settings.DEBUG:
-        return HttpResponseJSON({
-            'status': 'error',
-            'errors': ['Secure request is required'],
-            'errors_by_field': {NON_FIELD_ERRORS: ['Secure request is required']}
-        }, 403)
-
     form = SubscribeForm(request.POST)
     if form.is_valid():
         data = form.cleaned_data
