@@ -6,11 +6,11 @@ from django.db import models
 from django.template.loader import render_to_string
 from django.utils.timezone import now
 
-import product_details
+from product_details import product_details
 from .celery import app as celery_app
 from jsonfield import JSONField
 
-from basket.news.fields import CommaSeparatedEmailField, CountryField, LocaleField
+from basket.news.fields import CommaSeparatedEmailField, CountryField, LocaleField, parse_emails
 
 
 def get_uuid():
@@ -241,6 +241,10 @@ class Interest(models.Model):
     )
 
     @property
+    def default_steward_emails_list(self):
+        return parse_emails(self.default_steward_emails)
+
+    @property
     def welcome_id(self):
         return self._welcome_id or self.interest_id
 
@@ -259,11 +263,11 @@ class Interest(models.Model):
 
         # Find the right stewards for the given language.
         try:
-            stewards = self.localestewards_set.get(locale=lang)
-            emails = stewards.emails
+            stewards = self.stewards.get(locale=lang)
+            emails = stewards.emails_list
         except LocaleStewards.DoesNotExist:
-            emails = self.default_steward_emails
-        emails = emails.split(',')
+            emails = self.default_steward_emails_list
+        print emails
 
         send_mail('Inquiry about {0}'.format(self.title), email_body, 'contribute@mozilla.org',
                   emails)
@@ -276,12 +280,17 @@ class LocaleStewards(models.Model):
     """
     List of steward emails for a specific interest-locale combination.
     """
-    interest = models.ForeignKey(Interest)
+    interest = models.ForeignKey(Interest, on_delete=models.CASCADE,
+                                 related_name='stewards')
     locale = LocaleField()
     emails = CommaSeparatedEmailField(
         blank=False,
         help_text='Comma-separated list of the stewards\' email addresses.',
     )
+
+    @property
+    def emails_list(self):
+        return parse_emails(self.emails)
 
     class Meta:
         unique_together = ('interest', 'locale')

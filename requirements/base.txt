@@ -1,9 +1,9 @@
-Django==1.8.18 \
-    --hash=sha256:d8e2fd119756ab10b43a31052c3c8efbc262064b81eecb7871372de4d37b1a94 \
-    --hash=sha256:c7611cdd5e2539a443b7960c7cafd867d986c2720a1b44808deaa60ce3da50c7
-statsd==3.2.1 \
-    --hash=sha256:7aff40c6cdda703193fac6231410c6c0ad5939ce053a168016501e982c755c84 \
-    --hash=sha256:3fa92bf0192af926f7a0d9be031fe3fd0fbaa1992d42cf2f07e68f76ac18288e
+Django==1.11.9 \
+    --hash=sha256:90952c46d2b7b042db00e98b05f5dd97a5775822948d46fd82ff074d8ac75853 \
+    --hash=sha256:353d129f22e1d24980d6061666f435781141c2dfd852f14ffc8a670175821034
+statsd==3.2.2 \
+    --hash=sha256:50e0e7b34e5c01e78e270f17ccbd6bcc334f1a81ac5cb0b19050f7dd24d72c3e \
+    --hash=sha256:84f2427ef7b8ffab28cdb717933f6889d248d710eee32b5eb79e3fdac0e374dd
 dj-database-url==0.3.0 \
     --hash=sha256:ca01768fdecde134301f3170743226f60edff5c3935f12437378ebd911506353 \
     --hash=sha256:f2e273ed34acbb560962d5cf12917936d8df02297df09bd3089b8546d4584138
@@ -12,17 +12,18 @@ django-cache-url==1.0.0 \
     --hash=sha256:3583ca1c9b43b08b9dc71463a5c02fdae6ebebdee812a67198e2a7e429c54210
 django-cors-headers==1.1.0 \
     --hash=sha256:fcd96e2be47c8eef34c650e007a6d546e19e7ee61041b89edbbbbe7619aa3987
-django-jsonfield==0.9.15 \
-    --hash=sha256:429690b1c69cbd65c6c592c66d1592f8a1cf3d5282103083731fa90ea53c17c2
+django-jsonfield==1.0.1 \
+    --hash=sha256:6c0afd5554739365b55d86e285cf966cc3a45682fff963463364ea1f6511ca3e
 django-mozilla-product-details==0.11.1 \
     --hash=sha256:6a9bf2898deae722876bd19eb874bfdcbe884f99c8096c2ddd6cdea8b95d4fa0
 django-picklefield==0.3.1 \
     --hash=sha256:d99426be46fd92fe6b64b9f5c5926ea9859394e44ec3ef9e1f7c647d3a26657f
-django-ratelimit==0.6.0 \
-    --hash=sha256:f73b53b2c4fd342cbd4b983ffc33fdcf8f8a6f595d548865ea63c839ef38293c \
-    --hash=sha256:93dabcd3131a88d6fd19ff4de0a8351ed44b4ec943e8d58d27306f7faf8821af
-django-statsd-mozilla==0.3.15 \
-    --hash=sha256:c0e90f304bbf6f10f63e0019102980c950dc683326d2a4e50e7199decc43c36a
+django-ratelimit==1.1.0 \
+    --hash=sha256:3c954ca36ad66675a3bb079f526b4234a3d0092954f8e84820132b77e87c00e0 \
+    --hash=sha256:6e1c88b22055c49dc5abf721340fdc39a35de5f310f81acc3752c689ece71a15
+django-statsd-mozilla==0.4.0 \
+    --hash=sha256:0d87cb63de8107279cbb748caad9aa74c6a44e7e96ccc5dbf07b89f77285a4b8 \
+    --hash=sha256:81084f3d426f5184f0a0f1dbfe035cc26b66f041d2184559d916a228d856f0d3
 python-decouple==2.3 \
     --hash=sha256:b9fbf747fa8e711d330f2f436b9b2ecf5eed9eb67a637ca81abcd11c2abedec8
 pytz==2015.4 \

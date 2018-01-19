@@ -5,22 +5,25 @@ from django.forms import TextInput
 from product_details import product_details
 
 
+def parse_emails(emails_string):
+    emails = []
+    for email in emails_string.split(','):
+        email = email.strip()
+        if email:
+            validate_email(email)
+            emails.append(email)
+
+    return emails
+
+
 class CommaSeparatedEmailField(models.TextField):
     """TextField that stores a comma-separated list of emails."""
-    __metaclass__ = models.SubfieldBase
-
-    def validate(self, value, model_instance):
-        super(CommaSeparatedEmailField, self).validate(value, model_instance)
-
-        # Validate that all non-empty emails are valid.
-        for email in value.split(','):
-            if email:
-                validate_email(email.strip())
-
     def pre_save(self, model_instance, add):
         """Remove whitespace and excess commas."""
-        emails = getattr(model_instance, self.attname).split(',')
-        return ','.join(email.strip() for email in emails if email)
+        emails = getattr(model_instance, self.attname)
+        emails = ','.join(parse_emails(emails))
+        setattr(model_instance, self.attname, emails)
+        return emails
 
     def formfield(self, **kwargs):
         kwargs['widget'] = TextInput(attrs={'style': 'width: 400px'})
