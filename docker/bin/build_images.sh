@@ -23,13 +23,6 @@ function imageExists() {
     return $?
 }
 
-function dockerRun() {
-    env_file="$1"
-    image_tag="mozorg/bedrock_${2}:${GIT_COMMIT}"
-    cmd="$3"
-    docker run --rm --user $(id -u) -v "$PWD:/app" --env-file "docker/envfiles/${env_file}.env" "$image_tag" bash -c "$cmd"
-}
-
 if ! imageExists; then
     docker/bin/docker_build.sh --pull
 fi

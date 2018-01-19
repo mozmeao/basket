@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from mock import call, Mock, patch
@@ -15,21 +16,33 @@ class CommaSeparatedEmailFieldTests(TestCase):
         in the list.
         """
         with patch('basket.news.fields.validate_email') as validate_email:
-            self.field.validate('  foo@example.com   ,bar@example.com   ', None)
+            instance = Mock()
+            self.field.attname = 'blah'
+            instance.blah = '  foo@example.com   ,bar@example.com   '
+            self.field.pre_save(instance, False)
             validate_email.assert_has_calls([
                 call('foo@example.com'),
                 call('bar@example.com'),
             ])
 
             validate_email.reset_mock()
-            self.field.validate('foo@example.com', None)
+            instance.blah = 'foo@example.com'
+            self.field.pre_save(instance, False)
             validate_email.assert_has_calls([
                 call('foo@example.com'),
             ])
 
             validate_email.reset_mock()
-            self.field.validate('', None)
+            instance.blah = ''
+            self.field.pre_save(instance, False)
             self.assertFalse(validate_email.called)
+
+    def test_invalid_email(self):
+        instance = Mock()
+        self.field.attname = 'blah'
+        instance.blah = 'the.dude'
+        with self.assertRaises(ValidationError):
+            self.field.pre_save(instance, False)
 
     def test_pre_save(self):
         """pre_save should remove unnecessary whitespace and commas."""
