@@ -16,6 +16,7 @@ from basket.news.tasks import (
     add_fxa_activity,
     add_sms_user,
     et_task,
+    fxa_email_changed,
     fxa_login,
     fxa_verified,
     mogrify_message_id,
@@ -709,3 +710,45 @@ class FxALoginTests(TestCase):
             'first_device': False,
         })
         upsert_mock.delay.assert_not_called()
+
+
+@patch('basket.news.tasks.sfmc')
+@patch('basket.news.tasks.cache')
+class FxAEmailChangedTests(TestCase):
+    def test_timestamps_older_message(self, cache_mock, sfmc_mock):
+        data = {
+            'ts': 1234.567,
+            'uid': 'the-fxa-id-for-el-dudarino',
+            'email': 'the-dudes-new-email@example.com',
+        }
+        cache_mock.get.return_value = 1234.678
+        # ts higher in cache, should no-op
+        fxa_email_changed(data)
+        sfmc_mock.upsert_row.assert_not_called()
+
+    def test_timestamps_newer_message(self, cache_mock, sfmc_mock):
+        data = {
+            'ts': 1234.567,
+            'uid': 'the-fxa-id-for-el-dudarino',
+            'email': 'the-dudes-new-email@example.com',
+        }
+        cache_mock.get.return_value = 1234.456
+        # ts higher in message, do the things
+        fxa_email_changed(data)
+        sfmc_mock.upsert_row.assert_called_with('FXA_EmailUpdated', {
+            'FXA_ID': data['uid'],
+            'NewEmailAddress': data['email'],
+        })
+
+    def test_timestamps_nothin_cached(self, cache_mock, sfmc_mock):
+        data = {
+            'ts': 1234.567,
+            'uid': 'the-fxa-id-for-el-dudarino',
+            'email': 'the-dudes-new-email@example.com',
+        }
+        cache_mock.get.return_value = 0
+        fxa_email_changed(data)
+        sfmc_mock.upsert_row.assert_called_with('FXA_EmailUpdated', {
+            'FXA_ID': data['uid'],
+            'NewEmailAddress': data['email'],
+        })

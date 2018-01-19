@@ -213,6 +213,24 @@ def fxa_source_url(metrics):
 
 
 @et_task
+def fxa_email_changed(data):
+    ts = data['ts']
+    fxa_id = data['uid']
+    email = data['email']
+    cache_key = 'fxa_email_changed:%s' % fxa_id
+    prev_ts = float(cache.get(cache_key, 0))
+    if prev_ts and prev_ts > ts:
+        # message older than our last update for this UID
+        return
+
+    sfmc.upsert_row('FXA_EmailUpdated', {
+        'FXA_ID': fxa_id,
+        'NewEmailAddress': email,
+    })
+    cache.set(cache_key, ts, 7200)  # 2 hr
+
+
+@et_task
 def fxa_delete(data):
     sfmc.upsert_row('FXA_Deleted', {'FXA_ID': data['uid']})
 

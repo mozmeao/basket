@@ -12,7 +12,7 @@ import requests
 from django_statsd.clients import statsd
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
-from basket.news.tasks import fxa_delete, fxa_login, fxa_verified
+from basket.news.tasks import fxa_delete, fxa_email_changed, fxa_login, fxa_verified
 
 
 # TODO remove this after the cutover
@@ -32,6 +32,7 @@ class FxATSProxyTask(object):
 FXA_EVENT_TYPES = {
     'delete': fxa_delete,
     'verified': fxa_verified,
+    'primaryEmailChanged': fxa_email_changed,
     'login': FxATSProxyTask(fxa_login, settings.FXA_LOGIN_CUTOVER_TIMESTAMP),
 }
 
