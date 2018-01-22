@@ -267,7 +267,6 @@ class Interest(models.Model):
             emails = stewards.emails_list
         except LocaleStewards.DoesNotExist:
             emails = self.default_steward_emails_list
-        print emails
 
         send_mail('Inquiry about {0}'.format(self.title), email_body, 'contribute@mozilla.org',
                   emails)
