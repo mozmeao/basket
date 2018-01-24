@@ -2,6 +2,7 @@ regions:
   - usw
   - frankfurt
   - tokyo
+  - oregon-b
 apps:
   - basket-dev
   - basket-stage
