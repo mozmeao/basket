@@ -14,3 +14,8 @@ regions:
     name: tokyo
     deis_bin: deis2
     db_mode: ro
+  oregon-b:
+    deis_profile: oregon-b
+    name: oregon-b
+    deis_bin: deis2
+    db_mode: rw
