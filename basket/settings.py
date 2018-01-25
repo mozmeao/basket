@@ -177,11 +177,6 @@ SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
 if config('USE_SECURE_PROXY_HEADER', default=SECURE_SSL_REDIRECT, cast=bool):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-RAVEN_CONFIG = {
-    'dsn': config('SENTRY_DSN', None),
-    'release': config('GIT_SHA', None),
-}
-
 # legacy name
 EXACTTARGET_USE_SANDBOX = config('EXACTTARGET_USE_SANDBOX', False, cast=bool)
 USE_SANDBOX_BACKEND = config('USE_SANDBOX_BACKEND', EXACTTARGET_USE_SANDBOX, cast=bool)
@@ -264,6 +259,12 @@ HOSTNAME = platform.node()
 DEIS_APP = config('DEIS_APP', default=None)
 DEIS_DOMAIN = config('DEIS_DOMAIN', default=None)
 DEIS_RELEASE = config('DEIS_RELEASE', default=None)
+
+RAVEN_CONFIG = {
+    'dsn': config('SENTRY_DSN', None),
+    'site': '.'.join(x for x in [DEIS_APP, DEIS_DOMAIN] if x),
+    'release': config('GIT_SHA', None),
+}
 
 STATSD_HOST = config('STATSD_HOST', get_default_gateway_linux())
 STATSD_PORT = config('STATSD_PORT', 8125, cast=int)
