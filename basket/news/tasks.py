@@ -241,9 +241,13 @@ def fxa_verified(data):
     # used to be handled by the fxa_register view
     email = data['email']
     fxa_id = data['uid']
-    locale = data['locale']
+    locale = data.get('locale')
     subscribe = data.get('marketingOptIn')
     metrics = data.get('metricsContext', {})
+
+    if not locale:
+        statsd.incr('fxa_verified.ignored.no_locale')
+        return
 
     # if we're not using the sandbox ignore testing domains
     if email_is_testing(email):
