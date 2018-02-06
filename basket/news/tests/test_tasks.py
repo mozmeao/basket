@@ -161,6 +161,25 @@ class ProcessDonationTests(TestCase):
             'email': 'dude@example.com',
         })
 
+    def test_name_none(self, sfdc_mock, gud_mock):
+        """Should be okay if only last_name is provided and is None.
+
+        https://sentry.prod.mozaws.net/operations/basket-prod/issues/683973/
+        """
+        data = self.donate_data.copy()
+        gud_mock.return_value = None
+        del data['first_name']
+        data['last_name'] = None
+        with self.assertRaises(RetryTask):
+            # raises retry b/c the 2nd call to get_user_data returns None
+            process_donation(data)
+        sfdc_mock.add.assert_called_with({
+            '_set_subscriber': False,
+            'token': ANY,
+            'record_type': ANY,
+            'email': 'dude@example.com',
+        })
+
     def test_only_update_contact_if_modified(self, sfdc_mock, gud_mock):
         data = self.donate_data.copy()
         gud_mock.return_value = {
