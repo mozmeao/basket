@@ -840,8 +840,9 @@ def process_donation(data):
     get_lock(data['email'])
     # tells the backend to leave the "subscriber" flag alone
     contact_data = {'_set_subscriber': False}
-    first_name = data.get('first_name', '').strip()
-    last_name = data.get('last_name', '').strip()
+    # do "or ''" because data can contain None values
+    first_name = (data.get('first_name') or '').strip()
+    last_name = (data.get('last_name') or '').strip()
     if first_name and last_name:
         contact_data['first_name'] = first_name
         contact_data['last_name'] = last_name
