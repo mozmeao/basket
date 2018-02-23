@@ -91,6 +91,8 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS',
                        default='.allizom.org, .moz.works, basket.mozmar.org, '
                                'basket.mozilla.com, basket.mozilla.org',
                        cast=Csv())
+ALLOWED_CIDR_NETS = config('ALLOWED_CIDR_NETS', default='', cast=Csv())
+
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', not DEBUG, cast=bool)
 CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', not DEBUG, cast=bool)
 DISABLE_ADMIN = config('DISABLE_ADMIN', READ_ONLY_MODE, cast=bool)
@@ -133,6 +135,7 @@ TEMPLATES = [
 ]
 
 MIDDLEWARE = (
+    'allow_cidr.middleware.AllowCIDRMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'basket.news.middleware.HostnameMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -174,6 +177,10 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = False
 SECURE_BROWSER_XSS_FILTER = config('SECURE_BROWSER_XSS_FILTER', default=True, cast=bool)
 SECURE_CONTENT_TYPE_NOSNIFF = config('SECURE_CONTENT_TYPE_NOSNIFF', default=True, cast=bool)
 SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
+SECURE_REDIRECT_EXEMPT = [
+    r'^healthz/$',
+    r'^readiness/$',
+]
 if config('USE_SECURE_PROXY_HEADER', default=SECURE_SSL_REDIRECT, cast=bool):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
