@@ -161,6 +161,7 @@ INSTALLED_APPS = (
     'raven.contrib.django.raven_compat',
     'django_extensions',
     'mozilla_django_oidc',
+    'watchman',
 
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -178,11 +179,17 @@ SECURE_BROWSER_XSS_FILTER = config('SECURE_BROWSER_XSS_FILTER', default=True, ca
 SECURE_CONTENT_TYPE_NOSNIFF = config('SECURE_CONTENT_TYPE_NOSNIFF', default=True, cast=bool)
 SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
 SECURE_REDIRECT_EXEMPT = [
-    r'^healthz/$',
-    r'^readiness/$',
+    r'^healthz/(ping/)?$',
 ]
 if config('USE_SECURE_PROXY_HEADER', default=SECURE_SSL_REDIRECT, cast=bool):
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# watchman
+WATCHMAN_DISABLE_APM = True
+WATCHMAN_CHECKS = (
+    'watchman.checks.caches',
+    'watchman.checks.databases',
+)
 
 # legacy name
 EXACTTARGET_USE_SANDBOX = config('EXACTTARGET_USE_SANDBOX', False, cast=bool)
