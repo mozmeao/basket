@@ -826,6 +826,7 @@ def process_donation_event(data):
 
 DONATION_OPTIONAL_FIELDS = {
     'SourceURL__c': 'source_url',
+    'Donation_Form_URL__c': 'donation_url',
     'Project__c': 'project',
     'PMT_Subscription_ID__c': 'subscription_id',
 }
@@ -898,7 +899,10 @@ def process_donation(data):
 
     for dest_name, source_name in DONATION_OPTIONAL_FIELDS.items():
         if source_name in data:
-            donation[dest_name] = data[source_name]
+            # truncate at 2000 chars as that's the max for
+            # a SFDC text field. We may do more granular
+            # truncation per field in future.
+            donation[dest_name] = data[source_name][:2000]
 
     try:
         sfdc.opportunity.create(donation)
