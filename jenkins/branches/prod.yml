@@ -3,6 +3,7 @@ regions:
   - usw
   - frankfurt
   - tokyo
+  - oregon-a
   - oregon-b
 apps:
   - basket-prod
