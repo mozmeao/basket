@@ -131,7 +131,7 @@ def to_vendor(data):
             data['lang'] = 'en'
 
     for k, v in data.iteritems():
-        if v and k in FIELD_MAP:
+        if v != '' and k in FIELD_MAP:
             if k in PROCESSORS_TO_VENDOR:
                 v = PROCESSORS_TO_VENDOR[k](v)
 
