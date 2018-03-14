@@ -225,6 +225,36 @@ class VendorConversionTests(TestCase):
         }
         self.assertDictEqual(to_vendor(data), contact)
 
+    def test_to_vendor_boolean_casting_with_booleans(self):
+        data = {
+            'email': 'dude@example.com',
+            'token': 'totally-token-man',
+            'format': 'H',
+            'country': 'US',
+            'lang': 'en',
+            'source_url': 'https://www.example.com',
+            'first_name': 'The',
+            'last_name': 'Dude',
+            'fsa_allow_share': True,
+            'optout': False,
+            'optin': True,
+        }
+        contact = {
+            'Email_Format__c': 'H',
+            'FirstName': 'The',
+            'LastName': 'Dude',
+            'Subscriber__c': True,
+            'Email_Language__c': 'en',
+            'Signup_Source_URL__c': 'https://www.example.com',
+            'Token__c': 'totally-token-man',
+            'Email': 'dude@example.com',
+            'MailingCountryCode': 'us',
+            'FSA_Allow_Info_Shared__c': True,
+            'HasOptedOutOfEmail': False,
+            'Double_Opt_In__c': True,
+        }
+        self.assertDictEqual(to_vendor(data), contact)
+
     @override_settings(EXTRA_SUPPORTED_LANGS=['zh-tw'])
     def test_to_vendor_extra_langs(self):
         data = {
