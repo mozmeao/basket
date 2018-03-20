@@ -552,6 +552,27 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
             'source_url': 'https://example.com/bowling',
         }, start_time=ANY)
 
+    def test_source_url_from_invalid_referrer(self):
+        self.process_email.return_value = 'dude@example.com'
+        self.email_is_blocked.return_value = False
+        response = self._request({
+            'newsletters': 'slug',
+            'email': 'dude@example.com',
+            'privacy': 'true',
+        }, HTTP_REFERER='javascript:alert("dude!")')
+        assert response.status_code == 200
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, {
+            'newsletters': ['slug'],
+            'email': 'dude@example.com',
+            'privacy': True,
+            'format': 'H',
+            'lang': 'en',
+            'first_name': '',
+            'last_name': '',
+            'country': '',
+            'source_url': '',
+        }, start_time=ANY)
+
     def test_source_url_overrides_referrer(self):
         self.process_email.return_value = 'dude@example.com'
         self.email_is_blocked.return_value = False

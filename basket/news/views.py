@@ -15,7 +15,7 @@ from ratelimit.exceptions import Ratelimited
 from ratelimit.utils import is_ratelimited
 from synctool.routing import Route
 
-from basket.news.forms import SubscribeForm, UpdateUserMeta
+from basket.news.forms import SubscribeForm, UpdateUserMeta, SOURCE_URL_RE
 from basket.news.models import Newsletter, Interest, LocaleStewards, NewsletterGroup, LocalizedSMSMessage, \
     TransactionalEmailMessage
 from basket.news.newsletters import get_sms_vendor_id, newsletter_slugs, newsletter_and_group_slugs, \
@@ -364,8 +364,10 @@ def subscribe_main(request):
         # NOTE this is not a typo; Referrer is misspelled in the HTTP spec
         # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
         if not data['source_url'] and request.META.get('HTTP_REFERER'):
-            statsd.incr('news.views.subscribe_main.use_referrer')
-            data['source_url'] = request.META['HTTP_REFERER']
+            referrer = request.META['HTTP_REFERER']
+            if SOURCE_URL_RE.match(referrer):
+                statsd.incr('news.views.subscribe_main.use_referrer')
+                data['source_url'] = referrer
 
         if is_ratelimited(request, group='basket.news.views.subscribe_main',
                           key=lambda x, y: '%s-%s' % (':'.join(data['newsletters']), data['email']),

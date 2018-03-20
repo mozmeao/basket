@@ -99,3 +99,39 @@ def test_privacy_required(email_mock):
     form.fields['newsletters'].choices = (('dude', 'dude'),)
     assert not form.is_valid()
     assert 'privacy' in form.errors
+
+
+@patch.object(forms, 'process_email', return_value='dude@example.com')
+def test_source_url_clean(email_mock):
+    # HTTP URL
+    form = forms.SubscribeForm({
+        'newsletters': ['dude'],
+        'email': 'dude@example.com',
+        'privacy': 'true',
+        'source_url': 'http://example.com',
+    })
+    form.fields['newsletters'].choices = (('dude', 'dude'), ('walter', 'walter'))
+    assert form.is_valid(), form.errors
+    assert form.cleaned_data['source_url'] == 'http://example.com'
+
+    # HTTPS URL
+    form = forms.SubscribeForm({
+        'newsletters': ['dude'],
+        'email': 'dude@example.com',
+        'privacy': 'true',
+        'source_url': 'https://example.com',
+    })
+    form.fields['newsletters'].choices = (('dude', 'dude'), ('walter', 'walter'))
+    assert form.is_valid(), form.errors
+    assert form.cleaned_data['source_url'] == 'https://example.com'
+
+    # JavaScript URL
+    form = forms.SubscribeForm({
+        'newsletters': ['dude'],
+        'email': 'dude@example.com',
+        'privacy': 'true',
+        'source_url': 'javascript:alert("dude!")',
+    })
+    form.fields['newsletters'].choices = (('dude', 'dude'), ('walter', 'walter'))
+    assert form.is_valid(), form.errors
+    assert form.cleaned_data['source_url'] == ''
