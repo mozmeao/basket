@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
@@ -8,6 +10,7 @@ from basket.news.utils import parse_newsletters_csv, process_email, LANG_RE
 
 
 FORMATS = (('H', 'HTML'), ('T', 'Text'))
+SOURCE_URL_RE = re.compile(r'^https?://')
 
 
 class EmailForm(forms.Form):
@@ -65,6 +68,14 @@ class SubscribeForm(forms.Form):
     last_name = forms.CharField(required=False)
     country = forms.ChoiceField(required=False, choices=country_choices)
     lang = forms.CharField(required=False, validators=[RegexValidator(regex=LANG_RE)])
+
+    def clean_source_url(self):
+        source_url = self.cleaned_data['source_url']
+        if source_url:
+            if SOURCE_URL_RE.match(source_url):
+                return source_url
+
+        return ''
 
     def clean_country(self):
         country = self.cleaned_data['country']
