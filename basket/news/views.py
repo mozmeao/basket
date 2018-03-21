@@ -358,7 +358,11 @@ def subscribe_main(request):
                 data['lang'] = 'en'
         # if lang not provided get the best one from the accept-language header
         else:
-            data['lang'] = get_best_request_lang(request) or 'en'
+            lang = get_best_request_lang(request)
+            if lang:
+                data['lang'] = lang
+            else:
+                del data['lang']
 
         # if source_url not provided we should store the referrer header
         # NOTE this is not a typo; Referrer is misspelled in the HTTP spec
@@ -797,11 +801,11 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
         if lang:
             data['lang'] = lang
             del data['accept_lang']
-        else:
-            data['lang'] = 'en'
     # if lang not provided get the best one from the accept-language header
     else:
-        data['lang'] = get_best_request_lang(request) or 'en'
+        lang = get_best_request_lang(request)
+        if lang:
+            data['lang'] = lang
 
     email = data.get('email')
     token = data.get('token')
