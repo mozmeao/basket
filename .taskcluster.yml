@@ -6,11 +6,26 @@ metadata:
   owner: "{{ event.head.user.email }}"
   source: "{{ event.head.repo.url }}"
 tasks:
+  # build the docker image
   - provisionerId: "{{ taskcluster.docker.provisionerId }}"
     workerType: "{{ taskcluster.docker.workerType }}"
+    metadata:
+      name: Basket Docker Image Creation
+      description: Basket Docker Image Creation
+      owner: "{{ event.head.user.email }}"
+      source: "{{ event.head.repo.url }}"
+    routes:
+      - "notify.irc-channel.#basket.on-any"
+    extra:
+      github:
+        env: true
+        events:
+          - push
+        branches:
+          - taskcluster
     payload:
       maxRunTime: 3600
-      image: "taskcluster/image_builder:0.1.3"
+      image: "taskcluster/image_builder:2.0.0"
       env:
         DOCKER_IMAGE_TAG: "mozmeao/basket:{{ event.head.sha }}"
       features:
@@ -23,15 +38,3 @@ tasks:
           git clone $GITHUB_HEAD_REPO_URL basket && cd basket && git checkout $GITHUB_HEAD_BRANCH &&
           docker build -t "$DOCKER_IMAGE_TAG" --pull=true . &&
           docker run --env-file docker/envfiles/test.env "$DOCKER_IMAGE_TAG" bin/run-tests.sh
-    extra:
-      github:
-        env: true
-        events:
-          - push
-        branches:
-          - taskcluster
-    metadata:
-      name: Basket Docker Image Creation
-      description: Basket Docker Image Creation
-      owner: "{{ event.head.user.email }}"
-      source: "{{ event.head.repo.url }}"
