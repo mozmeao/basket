@@ -7,13 +7,13 @@ metadata:
   source: "{{ event.head.repo.url }}"
 tasks:
   # build the docker image
-  - provisionerId: "{{ taskcluster.docker.provisionerId }}"
-    workerType: "{{ taskcluster.docker.workerType }}"
-    metadata:
+  - metadata:
       name: Basket Docker Image Creation
       description: Basket Docker Image Creation
       owner: "{{ event.head.user.email }}"
       source: "{{ event.head.repo.url }}"
+    provisionerId: "{{ taskcluster.docker.provisionerId }}"
+    workerType: "{{ taskcluster.docker.workerType }}"
     routes:
       - "notify.irc-channel.#basket.on-any"
     extra:
@@ -26,7 +26,7 @@ tasks:
           - release
     payload:
       maxRunTime: 1800
-      image: "taskcluster/image_builder:2.0.0"
+      image: "taskcluster/image_builder:0.1.5"
       env:
         DOCKER_IMAGE_TAG: "mozmeao/basket:{{ event.head.sha }}"
       features:
