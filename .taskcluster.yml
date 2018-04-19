@@ -26,14 +26,14 @@ tasks:
           - release
     payload:
       maxRunTime: 1800
-      image: "taskcluster/image_builder:0.1.5"
+      image: "docker:17-git"
       env:
         DOCKER_IMAGE_TAG: "mozmeao/basket:{{ event.head.sha }}"
       features:
         dind: true
         taskclusterProxy: true
       command:
-        - "/bin/bash"
+        - "/bin/sh"
         - "-c"
         - >-
           git clone $GITHUB_HEAD_REPO_URL basket && cd basket && git checkout $GITHUB_HEAD_BRANCH &&
