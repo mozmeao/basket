@@ -20,11 +20,12 @@ tasks:
       github:
         env: true
         events:
+          - pull_request.opened
+          - pull_request.synchronize
           - push
-        branches:
-          - taskcluster
+          - release
     payload:
-      maxRunTime: 3600
+      maxRunTime: 1800
       image: "taskcluster/image_builder:2.0.0"
       env:
         DOCKER_IMAGE_TAG: "mozmeao/basket:{{ event.head.sha }}"
