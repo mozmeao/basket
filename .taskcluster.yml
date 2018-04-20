@@ -26,7 +26,7 @@ tasks:
           - release
     payload:
       maxRunTime: 1800
-      image: "docker:17-git"
+      image: "taskcluster/image_builder:0.1.5"
       env:
         DOCKER_IMAGE_TAG: "mozmeao/basket:{{ event.head.sha }}"
       features:
@@ -36,6 +36,7 @@ tasks:
         - "/bin/sh"
         - "-c"
         - >-
+          docker info && docker --version &&
           git clone $GITHUB_HEAD_REPO_URL basket && cd basket && git checkout $GITHUB_HEAD_BRANCH &&
           docker build -t "$DOCKER_IMAGE_TAG" --pull=true . &&
           docker run --env-file docker/envfiles/test.env "$DOCKER_IMAGE_TAG" bin/run-tests.sh
