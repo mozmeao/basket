@@ -1,9 +1,14 @@
+import re
+
 from django.conf import settings
 from django.core.exceptions import MiddlewareNotUsed
 from django.http import HttpResponsePermanentRedirect
 
 from django_statsd.clients import statsd
 from django_statsd.middleware import GraphiteRequestTimingMiddleware
+
+
+IP_RE = re.compile(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
 
 
 class GraphiteViewHitCountMiddleware(GraphiteRequestTimingMiddleware):
@@ -37,6 +42,10 @@ class HostnameMiddleware(object):
         return response
 
 
+def is_ip_address(hostname):
+    return bool(IP_RE.match(hostname))
+
+
 class EnforceHostnameMiddleware(object):
     """
     Enforce the hostname per the ENFORCE_HOSTNAME setting in the project's settings
@@ -54,7 +63,7 @@ class EnforceHostnameMiddleware(object):
     def __call__(self, request):
         """Enforce the host name"""
         host = request.get_host()
-        if host in self.allowed_hosts:
+        if host in self.allowed_hosts or is_ip_address(host):
             return self.get_response(request)
 
         # redirect to the proper host name\
