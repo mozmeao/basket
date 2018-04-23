@@ -92,6 +92,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS',
                                'basket.mozilla.com, basket.mozilla.org',
                        cast=Csv())
 ALLOWED_CIDR_NETS = config('ALLOWED_CIDR_NETS', default='', cast=Csv())
+ENFORCE_HOSTNAME = config('ENFORCE_HOSTNAME', default='', cast=Csv())
 
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', not DEBUG, cast=bool)
 CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', not DEBUG, cast=bool)
@@ -99,7 +100,7 @@ DISABLE_ADMIN = config('DISABLE_ADMIN', READ_ONLY_MODE, cast=bool)
 STORE_TASK_FAILURES = config('STORE_TASK_FAILURES', not READ_ONLY_MODE, cast=bool)
 # if DISABLE_ADMIN is True redirect /admin/ to this URL
 ADMIN_REDIRECT_URL = config('ADMIN_REDIRECT_URL',
-                            'https://basket-admin.us-west.moz.works/admin/')
+                            'https://admin.basket.moz.works/admin/')
 
 TIME_ZONE = 'America/Los_Angeles'
 USE_TZ = True
@@ -137,6 +138,7 @@ TEMPLATES = [
 MIDDLEWARE = (
     'allow_cidr.middleware.AllowCIDRMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'basket.news.middleware.EnforceHostnameMiddleware',
     'basket.news.middleware.HostnameMiddleware',
     'django.middleware.common.CommonMiddleware',
     'corsheaders.middleware.CorsMiddleware',
