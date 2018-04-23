@@ -11,7 +11,7 @@ set -ex
 BIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source $BIN_DIR/set_git_env_vars.sh
 
-DEIS_BIN="${DEIS_BIN:-deis}"
+DEIS_BIN="${DEIS_BIN:-deis2}"
 NR_APP="${DEIS_APPLICATION}-${REGION_NAME}"
 NR_DESC="Jenkins built $DOCKER_IMAGE_TAG from $GIT_COMMIT_SHORT and deployed it as Deis app $DEIS_APPLICATION in $REGION_NAME"
 

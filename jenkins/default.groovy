@@ -44,8 +44,8 @@ stage ('Push Public Images') {
  */
 if ( config.apps ) {
     milestone()
-    // default to usw only
-    def regions = config.regions ?: ['usw']
+    // default to oregon-b only
+    def regions = config.regions ?: ['oregon-b']
     for (regionId in regions) {
         def region = global_config.regions[regionId]
         if ( region.db_mode == 'rw' && config.apps_rw ) {
@@ -66,7 +66,6 @@ if ( config.apps ) {
                         post_deploy = 'false'
                     }
                     withEnv(["DEIS_PROFILE=${region.deis_profile}",
-                             "DEIS_BIN=${region.deis_bin}",
                              "RUN_POST_DEPLOY=${post_deploy}",
                              "REGION_NAME=${region.name}",
                              "DEIS_APPLICATION=${appname}"]) {
