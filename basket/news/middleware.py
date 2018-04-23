@@ -3,6 +3,7 @@ import re
 from django.conf import settings
 from django.core.exceptions import MiddlewareNotUsed
 from django.http import HttpResponsePermanentRedirect
+from django.http.request import split_domain_port
 
 from django_statsd.clients import statsd
 from django_statsd.middleware import GraphiteRequestTimingMiddleware
@@ -63,7 +64,8 @@ class EnforceHostnameMiddleware(object):
     def __call__(self, request):
         """Enforce the host name"""
         host = request.get_host()
-        if host in self.allowed_hosts or is_ip_address(host):
+        domain, port = split_domain_port(host)
+        if domain in self.allowed_hosts or is_ip_address(domain):
             return self.get_response(request)
 
         # redirect to the proper host name\
