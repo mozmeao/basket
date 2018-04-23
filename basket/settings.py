@@ -93,6 +93,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS',
                        cast=Csv())
 ALLOWED_CIDR_NETS = config('ALLOWED_CIDR_NETS', default='', cast=Csv())
 ENFORCE_HOSTNAME = config('ENFORCE_HOSTNAME', default='', cast=Csv())
+USE_X_FORWARDED_HOST = True
 
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', not DEBUG, cast=bool)
 CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', not DEBUG, cast=bool)
