@@ -251,7 +251,7 @@ CELERYBEAT_SCHEDULE = {}
 if SNITCH_ID:
     CELERYBEAT_SCHEDULE['snitch'] = {
         'task': 'basket.news.tasks.snitch',
-        'schedule': timedelta(minutes=15),
+        'schedule': timedelta(minutes=5),
     }
 
 
