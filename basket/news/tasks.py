@@ -1,6 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 
-import datetime
+from datetime import datetime, timedelta
 import logging
 from email.utils import formatdate
 from functools import wraps
@@ -31,11 +31,6 @@ from basket.news.newsletters import get_sms_vendor_id, get_transactional_message
 from basket.news.utils import (generate_token, get_accept_languages, get_best_language, get_user_data,
                                iso_format_unix_timestamp, parse_newsletters, parse_newsletters_csv,
                                SUBSCRIBE, UNSUBSCRIBE)
-
-# datetime.datetime is not a submodule, rather datetime is a class
-# within the datetime module.
-# See https://stackoverflow.com/questions/27491472/how-to-directly-import-now-from-datetime-datetime-submodule
-now = datetime.datetime.now
 
 log = logging.getLogger(__name__)
 
@@ -203,8 +198,8 @@ def et_task(func):
 
 def gmttime(basetime=None):
     if basetime is None:
-        basetime = now()
-    d = basetime + datetime.timedelta(minutes=10)
+        basetime = datetime.now()
+    d = basetime + timedelta(minutes=10)
     stamp = mktime(d.timetuple())
     return formatdate(timeval=stamp, localtime=False, usegmt=True)
 
@@ -249,7 +244,7 @@ def fxa_verified(data):
     fxa_id = data['uid']
     create_date = data.get('createDate')
     if create_date:
-        create_date = datetime.datetime.utcfromtimestamp(create_date)
+        create_date = datetime.fromtimestamp(create_date)
 
     locale = data.get('locale')
     subscribe = data.get('marketingOptIn')
