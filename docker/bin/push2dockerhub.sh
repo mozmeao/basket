@@ -7,7 +7,7 @@ source $BIN_DIR/set_git_env_vars.sh
 
 DOCKER_USERNAME="${DOCKER_USERNAME:-mozjenkins}"
 
-docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD -e $DOCKER_USERNAME@example.com
+docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
 
 # Push to docker hub
 docker push $DOCKER_IMAGE_TAG
