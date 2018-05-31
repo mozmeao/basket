@@ -1,6 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 
-import datetime
+from datetime import datetime, timedelta
 import logging
 from email.utils import formatdate
 from functools import wraps
@@ -31,7 +31,6 @@ from basket.news.newsletters import get_sms_vendor_id, get_transactional_message
 from basket.news.utils import (generate_token, get_accept_languages, get_best_language, get_user_data,
                                iso_format_unix_timestamp, parse_newsletters, parse_newsletters_csv,
                                SUBSCRIBE, UNSUBSCRIBE)
-
 
 log = logging.getLogger(__name__)
 
@@ -197,8 +196,10 @@ def et_task(func):
     return wrapped
 
 
-def gmttime():
-    d = datetime.datetime.now() + datetime.timedelta(minutes=10)
+def gmttime(basetime=None):
+    if basetime is None:
+        basetime = datetime.now()
+    d = basetime + timedelta(minutes=10)
     stamp = mktime(d.timetuple())
     return formatdate(timeval=stamp, localtime=False, usegmt=True)
 
@@ -241,6 +242,10 @@ def fxa_verified(data):
     # used to be handled by the fxa_register view
     email = data['email']
     fxa_id = data['uid']
+    create_date = data.get('createDate')
+    if create_date:
+        create_date = datetime.fromtimestamp(create_date)
+
     locale = data.get('locale')
     subscribe = data.get('marketingOptIn')
     metrics = data.get('metricsContext', {})
@@ -257,7 +262,7 @@ def fxa_verified(data):
     if not lang:
         return
 
-    _update_fxa_info(email, lang, fxa_id)
+    _update_fxa_info(email, lang, fxa_id, create_date)
 
     if subscribe:
         upsert_user.delay(SUBSCRIBE, {
@@ -325,13 +330,13 @@ def update_fxa_info(email, lang, fxa_id):
     _update_fxa_info(email, lang, fxa_id)
 
 
-def _update_fxa_info(email, lang, fxa_id):
+def _update_fxa_info(email, lang, fxa_id, create_date=None):
     # for use with update_fxa_info and fxa_verified
     # TODO move to fxa_verified after decomission of fxa_register view
     try:
         apply_updates('Firefox_Account_ID', {
             'EMAIL_ADDRESS_': email,
-            'CREATED_DATE_': gmttime(),
+            'CREATED_DATE_': gmttime(create_date),
             'FXA_ID': fxa_id,
             'FXA_LANGUAGE_ISO2': lang,
         })

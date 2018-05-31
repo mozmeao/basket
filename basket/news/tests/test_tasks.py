@@ -6,6 +6,8 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
 
+from datetime import datetime
+
 import simple_salesforce as sfapi
 from mock import ANY, Mock, patch
 
@@ -19,6 +21,7 @@ from basket.news.tasks import (
     fxa_email_changed,
     fxa_login,
     fxa_verified,
+    gmttime,
     mogrify_message_id,
     NewsletterException,
     process_donation,
@@ -618,7 +621,7 @@ class FxAVerifiedTests(TestCase):
         }
         fxa_verified(data)
         upsert_mock.delay.assert_not_called()
-        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'])
+        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], None)
 
     def test_with_subscribe(self, upsert_mock, fxa_info_mock):
         data = {
@@ -634,7 +637,7 @@ class FxAVerifiedTests(TestCase):
             'newsletters': settings.FXA_REGISTER_NEWSLETTER,
             'source_url': settings.FXA_REGISTER_SOURCE_URL,
         })
-        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'])
+        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], None)
 
     def test_with_subscribe_and_metrics(self, upsert_mock, fxa_info_mock):
         data = {
@@ -654,7 +657,19 @@ class FxAVerifiedTests(TestCase):
             'newsletters': settings.FXA_REGISTER_NEWSLETTER,
             'source_url': settings.FXA_REGISTER_SOURCE_URL + '?utm_campaign=bowling',
         })
-        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'])
+        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], None)
+
+    def test_with_createDate(self, upsert_mock, fxa_info_mock):
+        create_date_float = 1526996035.498
+        create_date = datetime.fromtimestamp(create_date_float)
+        data = {
+            'createDate': create_date_float,
+            'email': 'thedude@example.com',
+            'uid': 'the-fxa-id',
+            'locale': 'en-US,en'
+        }
+        fxa_verified(data)
+        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], create_date)
 
 
 @patch('basket.news.tasks.upsert_user')
@@ -771,3 +786,18 @@ class FxAEmailChangedTests(TestCase):
             'FXA_ID': data['uid'],
             'NewEmailAddress': data['email'],
         })
+
+
+class GmttimeTests(TestCase):
+    @patch('basket.news.tasks.datetime')
+    def test_no_basetime_provided(self, datetime_mock):
+        # original time is 'Fri, 09 Sep 2016 13:33:55 GMT'
+        datetime_mock.now.return_value = datetime.fromtimestamp(1473428035.498)
+        formatted_time = gmttime()
+        self.assertEqual(formatted_time, 'Fri, 09 Sep 2016 13:43:55 GMT')
+
+    def test_basetime_provided(self):
+        # original time is 'Fri, 09 Sep 2016 13:33:55 GMT', updates to 13:43:55
+        basetime = datetime.fromtimestamp(1473428035.498)
+        formatted_time = gmttime(basetime)
+        self.assertEqual(formatted_time, 'Fri, 09 Sep 2016 13:43:55 GMT')
