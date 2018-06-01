@@ -49,6 +49,7 @@ FIELD_MAP = {
     'last_name': 'LastName',
     'format': 'Email_Format__c',
     'country': 'MailingCountryCode',
+    'postal_code': 'MailingPostalCode',
     'lang': 'Email_Language__c',
     'token': 'Token__c',
     'optin': 'Double_Opt_In__c',
@@ -279,6 +280,7 @@ class RefreshingSFType(sfapi.SFType):
 class SFDC(object):
     _contact = None
     _opportunity = None
+    _campaign_member = None
 
     @property
     def contact(self):
@@ -293,6 +295,13 @@ class SFDC(object):
             self._opportunity = RefreshingSFType('Opportunity')
 
         return self._opportunity
+
+    @property
+    def campaign_member(self):
+        if self._campaign_member is None and settings.SFDC_SETTINGS.get('username'):
+            self._campaign_member = RefreshingSFType('CampaignMember')
+
+        return self._campaign_member
 
     @time_request
     def get(self, token=None, email=None):
@@ -344,6 +353,14 @@ class SFDC(object):
         # source_url should only be added if user doesn't already have one
         if record.get('source_url') and 'source_url' in data:
             del data['source_url']
+
+        # first_name should only be updated if user doesn't already have one
+        if record.get('first_name') and 'first_name' in data:
+            del data['first_name']
+
+        # last_name should only be updated if it is currently the default value
+        if record.get('last_name') != LAST_NAME_DEFAULT_VALUE and 'last_name' in data:
+            del data['last_name']
 
         self.contact.update(contact_id, to_vendor(data))
 

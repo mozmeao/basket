@@ -536,7 +536,7 @@ def apply_updates(database, record):
 
 
 @et_task
-def send_message(message_id, email, subscriber_key, format=None, token=None):
+def send_message(message_id, email, subscriber_key, token=None):
     """
     Ask ET to send a message.
 
@@ -544,9 +544,6 @@ def send_message(message_id, email, subscriber_key, format=None, token=None):
     @param str email: email to send it to
     @param str subscriber_key: id of the email user (email or SFDC id)
     @param token: optional token when sending recovery
-    @param format: vestigial argument so that old style tasks on the queue
-                   at deployment don't fail
-                   TODO remove after initial deployment
 
     @raises: NewsletterException for retryable errors, BasketError for
         fatal errors.
@@ -839,10 +836,6 @@ DONATION_OPTIONAL_FIELDS = {
 
 @et_task
 def process_donation(data):
-    if 'data' in data:
-        # here for old messages
-        # TODO remove in a subsequent deployment
-        data = data['data']
     get_lock(data['email'])
     # tells the backend to leave the "subscriber" flag alone
     contact_data = {'_set_subscriber': False}
@@ -911,6 +904,59 @@ def process_donation(data):
 
     try:
         sfdc.opportunity.create(donation)
+    except sfapi.SalesforceMalformedRequest as e:
+        if e.content and e.content[0].get('errorCode') == 'DUPLICATE_VALUE':
+            # already in the system, ignore
+            pass
+        else:
+            raise
+
+
+PETITION_CONTACT_FIELDS = [
+    'first_name',
+    'last_name',
+    'country',
+    'postal_code',
+    'source_url',
+]
+
+
+@et_task
+def process_petition_signature(data):
+    """
+    Add petition signature to SFDC
+    """
+    data = data['form']
+    get_lock(data['email'])
+    # tells the backend to leave the "subscriber" flag alone
+    contact_data = {'_set_subscriber': False}
+    contact_data.update({k: data[k] for k in PETITION_CONTACT_FIELDS if data.get(k)})
+
+    user_data = get_user_data(email=data['email'],
+                              extra_fields=['id'])
+    if user_data:
+        sfdc.update(user_data, contact_data)
+    else:
+        contact_data['token'] = generate_token()
+        contact_data['email'] = data['email']
+        contact_data['record_type'] = settings.DONATE_CONTACT_RECORD_TYPE
+        sfdc.add(contact_data)
+        # fetch again to get ID
+        user_data = get_user_data(email=data.get('email'),
+                                  extra_fields=['id'])
+        if not user_data:
+            # retry here to make sure we associate the donation data with the proper account
+            raise RetryTask('User not yet available')
+
+    campaign_member = {
+        'CampaignId': data['campaign_id'],
+        'ContactId': user_data['id'],
+        'Full_URL__c': data['source_url'],
+        'Status': 'Signed',
+    }
+
+    try:
+        sfdc.campaign_member.create(campaign_member)
     except sfapi.SalesforceMalformedRequest as e:
         if e.content and e.content[0].get('errorCode') == 'DUPLICATE_VALUE':
             # already in the system, ignore

@@ -12,7 +12,18 @@ import requests
 from django_statsd.clients import statsd
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
-from basket.news.tasks import process_donation, process_donation_event
+from basket.news.tasks import (
+    process_donation,
+    process_donation_event,
+    process_petition_signature,
+)
+
+
+EVENT_TYPES = {
+    'donation': process_donation,
+    'crm_petition_data': process_petition_signature,
+    'DEFAULT': process_donation_event,
+}
 
 
 class Command(BaseCommand):
@@ -62,10 +73,8 @@ class Command(BaseCommand):
 
                     try:
                         etype = data['data'].setdefault('event_type', 'donation')
-                        if etype == 'donation':
-                            process_donation.delay(data['data'])
-                        else:
-                            process_donation_event.delay(data['data'])
+                        processor = EVENT_TYPES.get(etype, EVENT_TYPES['DEFAULT'])
+                        processor.delay(data['data'])
                     except Exception:
                         # something's wrong with the queue. try again.
                         statsd.incr('mofo.donations.message.queue_error')
