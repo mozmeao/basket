@@ -1,4 +1,4 @@
-FROM python:2-slim
+FROM python:2-slim-stretch
 
 # from https://github.com/mozmeao/docker-pythode/blob/master/Dockerfile.footer
 
@@ -15,7 +15,7 @@ COPY docker/bin/apt-install /usr/local/bin/
 
 # end from Dockerfile.footer
 
-RUN apt-install build-essential mysql-client-5.5 libmysqlclient-dev libxslt1.1 libxml2 libxml2-dev libxslt1-dev
+RUN apt-install build-essential libmariadbclient-dev mariadb-client libxslt1.1 libxml2 libxml2-dev libxslt1-dev
 
 WORKDIR /app
 EXPOSE 8000
