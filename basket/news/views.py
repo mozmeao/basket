@@ -57,10 +57,10 @@ from basket.news.utils import (
 TOKEN_RE = re.compile(r'^[0-9a-f-]{36}$', flags=re.IGNORECASE)
 IP_RATE_LIMIT_EXTERNAL = getattr(settings, 'IP_RATE_LIMIT_EXTERNAL', '40/m')
 IP_RATE_LIMIT_INTERNAL = getattr(settings, 'IP_RATE_LIMIT_INTERNAL', '400/m')
-# two submissions for a specific message per phone number per 20 minutes
-PHONE_NUMBER_RATE_LIMIT = getattr(settings, 'PHONE_NUMBER_RATE_LIMIT', '2/20m')
-# two submissions for a set of newsletters per email address per 20 minutes
-EMAIL_SUBSCRIBE_RATE_LIMIT = getattr(settings, 'EMAIL_SUBSCRIBE_RATE_LIMIT', '2/20m')
+# four submissions for a specific message per phone number per 5 minutes
+PHONE_NUMBER_RATE_LIMIT = getattr(settings, 'PHONE_NUMBER_RATE_LIMIT', '4/5m')
+# four submissions for a set of newsletters per email address per 5 minutes
+EMAIL_SUBSCRIBE_RATE_LIMIT = getattr(settings, 'EMAIL_SUBSCRIBE_RATE_LIMIT', '4/5m')
 sync_route = Route(api_token=settings.SYNC_KEY)
 
 
