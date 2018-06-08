@@ -8,7 +8,7 @@ from mock import patch, ANY
 from ratelimit.exceptions import Ratelimited
 
 from basket.news.utils import SUBSCRIBE, UNSUBSCRIBE, SET
-from basket.news.views import update_user_task
+from basket.news import views
 
 
 class UpdateUserTaskTests(TestCase):
@@ -44,7 +44,7 @@ class UpdateUserTaskTests(TestCase):
 
         with patch('basket.news.views.newsletter_slugs') as newsletter_slugs:
             newsletter_slugs.return_value = ['foo', 'baz']
-            response = update_user_task(request, SUBSCRIBE, {'newsletters': 'foo,bar'})
+            response = views.update_user_task(request, SUBSCRIBE, {'newsletters': 'foo,bar'})
 
             self.assert_response_error(response, 400, errors.BASKET_INVALID_NEWSLETTER)
 
@@ -56,7 +56,7 @@ class UpdateUserTaskTests(TestCase):
         data = {'email': 'dude@example.com', 'accept_lang': 'pt-pt,fr;q=0.8'}
         after_data = {'email': 'dude@example.com', 'lang': 'pt'}
 
-        response = update_user_task(request, SUBSCRIBE, data, sync=False)
+        response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
         self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data, start_time=ANY)
 
@@ -68,7 +68,7 @@ class UpdateUserTaskTests(TestCase):
         data = {'email': 'dude@example.com'}
         after_data = {'email': 'dude@example.com', 'lang': 'pt'}
 
-        response = update_user_task(request, SUBSCRIBE, data, sync=False)
+        response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
         self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data, start_time=ANY)
 
@@ -84,7 +84,7 @@ class UpdateUserTaskTests(TestCase):
                 'lang': 'de',
                 'accept_lang': 'pt-BR'}
 
-        response = update_user_task(request, SUBSCRIBE, data, sync=False)
+        response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
         # basically asserts that the data['lang'] value wasn't changed.
         self.upsert_user.delay.assert_called_with(SUBSCRIBE, data, start_time=ANY)
@@ -94,7 +94,7 @@ class UpdateUserTaskTests(TestCase):
         If the email is missing, return a 400 error.
         """
         request = self.factory.post('/')
-        response = update_user_task(request, SUBSCRIBE)
+        response = views.update_user_task(request, SUBSCRIBE)
 
         self.assert_response_error(response, 400, errors.BASKET_USAGE_ERROR)
 
@@ -106,7 +106,7 @@ class UpdateUserTaskTests(TestCase):
         request = self.factory.post('/')
         data = {'email': 'a@example.com', 'first_name': 'The', 'last_name': 'Dude'}
 
-        response = update_user_task(request, SUBSCRIBE, data, sync=False)
+        response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
         self.upsert_user.delay.assert_called_with(SUBSCRIBE, data, start_time=ANY)
         self.assertFalse(self.upsert_contact.called)
@@ -120,7 +120,7 @@ class UpdateUserTaskTests(TestCase):
 
         with patch('basket.news.views.newsletter_and_group_slugs') as newsletter_slugs:
             newsletter_slugs.return_value = ['foo', 'bar']
-            response = update_user_task(request, SUBSCRIBE, data, sync=False)
+            response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
             self.assert_response_ok(response)
 
     def test_success_with_valid_lang(self):
@@ -130,7 +130,7 @@ class UpdateUserTaskTests(TestCase):
 
         with patch('basket.news.views.language_code_is_valid') as mock_language_code_is_valid:
             mock_language_code_is_valid.return_value = True
-            response = update_user_task(request, SUBSCRIBE, data, sync=False)
+            response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
             self.assert_response_ok(response)
 
     def test_success_with_request_data(self):
@@ -140,7 +140,7 @@ class UpdateUserTaskTests(TestCase):
         """
         data = {'email': 'a@example.com', 'lang': 'en'}
         request = self.factory.post('/', data)
-        response = update_user_task(request, SUBSCRIBE, sync=False)
+        response = views.update_user_task(request, SUBSCRIBE, sync=False)
 
         self.assert_response_ok(response)
         self.upsert_user.delay.assert_called_with(SUBSCRIBE, data, start_time=ANY)
@@ -156,7 +156,7 @@ class UpdateUserTaskTests(TestCase):
         gud_mock.return_value = {'token': 'mytoken', 'email': 'a@example.com'}
         self.upsert_contact.return_value = 'mytoken', True
 
-        response = update_user_task(request, SUBSCRIBE, data, sync=True)
+        response = views.update_user_task(request, SUBSCRIBE, data, sync=True)
 
         self.assert_response_ok(response, token='mytoken', created=True)
         self.upsert_contact.assert_called_with(SUBSCRIBE, data, gud_mock.return_value)
@@ -171,7 +171,7 @@ class UpdateUserTaskTests(TestCase):
         mock_slugs.return_value = ['private', 'other']
         request = self.factory.post('/')
         data = {'token': 'mytoken', 'newsletters': 'private'}
-        response = update_user_task(request, UNSUBSCRIBE, data)
+        response = views.update_user_task(request, UNSUBSCRIBE, data)
 
         self.assert_response_ok(response)
         self.upsert_user.delay.assert_called_with(UNSUBSCRIBE, data, start_time=ANY)
@@ -190,7 +190,7 @@ class UpdateUserTaskTests(TestCase):
         request = self.factory.post('/', data)
         mock_api_key.return_value = False
 
-        response = update_user_task(request, SUBSCRIBE, data)
+        response = views.update_user_task(request, SUBSCRIBE, data)
         self.assert_response_error(response, 401, errors.BASKET_AUTH_ERROR)
         mock_api_key.assert_called_with(request, data['email'])
 
@@ -208,7 +208,7 @@ class UpdateUserTaskTests(TestCase):
         request = self.factory.post('/', data)
         mock_api_key.return_value = False
 
-        response = update_user_task(request, SET, data)
+        response = views.update_user_task(request, SET, data)
         self.assert_response_error(response, 401, errors.BASKET_AUTH_ERROR)
         mock_api_key.assert_called_with(request, data['email'])
 
@@ -229,36 +229,36 @@ class UpdateUserTaskTests(TestCase):
         request = self.factory.post('/', data)
         mock_api_key.return_value = True
 
-        response = update_user_task(request, SUBSCRIBE, data)
+        response = views.update_user_task(request, SUBSCRIBE, data)
         self.assert_response_ok(response)
         mock_api_key.assert_called_with(request, data['email'])
 
-        response = update_user_task(request, SET, data)
+        response = views.update_user_task(request, SET, data)
         self.assert_response_ok(response)
         mock_api_key.assert_called_with(request, data['email'])
 
     def test_rate_limit(self):
         """Should raise Ratelimited if email attempts to sign up for same newsletter quickly"""
+        views.EMAIL_SUBSCRIBE_RATE_LIMIT = '2/1m'
         request = self.factory.post('/')
         data = {'email': 'a@example.com', 'newsletters': 'foo,bar'}
-
         with patch('basket.news.views.newsletter_and_group_slugs') as newsletter_slugs:
             newsletter_slugs.return_value = ['foo', 'bar']
-            update_user_task(request, SUBSCRIBE, data, sync=False)
-            response = update_user_task(request, SUBSCRIBE, data, sync=False)
+            views.update_user_task(request, SUBSCRIBE, data, sync=False)
+            response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
             self.assert_response_ok(response)
             with self.assertRaises(Ratelimited):
-                update_user_task(request, SUBSCRIBE, data, sync=False)
+                views.update_user_task(request, SUBSCRIBE, data, sync=False)
 
     def test_rate_limit_user_update(self):
         """Should raise Ratelimited if token attempts to update same newsletters quickly"""
+        views.EMAIL_SUBSCRIBE_RATE_LIMIT = '2/1m'
         request = self.factory.post('/')
         data = {'token': 'a@example.com', 'newsletters': 'foo,bar'}
-
         with patch('basket.news.views.newsletter_slugs') as newsletter_slugs:
             newsletter_slugs.return_value = ['foo', 'bar']
-            update_user_task(request, SET, data, sync=False)
-            response = update_user_task(request, SET, data, sync=False)
+            views.update_user_task(request, SET, data, sync=False)
+            response = views.update_user_task(request, SET, data, sync=False)
             self.assert_response_ok(response)
             with self.assertRaises(Ratelimited):
-                update_user_task(request, SET, data, sync=False)
+                views.update_user_task(request, SET, data, sync=False)

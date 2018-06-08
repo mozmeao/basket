@@ -248,6 +248,7 @@ class SubscribeSMSTests(TestCase):
         self.assertIn('msg_name', data['desc'])
 
     def test_phone_number_rate_limit(self):
+        views.PHONE_NUMBER_RATE_LIMIT = '2/1m'
         self.client.post('/news/subscribe_sms/', {'mobile_number': '9198675309'})
         self.add_sms_user.delay.assert_called_with('SMS_Android', '+19198675309', False, vendor_id='the dude')
         self.client.post('/news/subscribe_sms/', {'mobile_number': '9198675309'})
