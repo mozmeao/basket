@@ -10,12 +10,11 @@ from django.core.cache import cache
 
 import simple_salesforce as sfapi
 from django_statsd.clients import statsd
-from product_details import product_details
 from simple_salesforce.api import DEFAULT_API_VERSION
 
 from basket.base.utils import email_is_testing
 from basket.news.backends.common import get_timer_decorator
-from basket.news.country_codes import convert_country_3_to_2
+from basket.news.country_codes import SFDC_COUNTRIES_LIST, convert_country_3_to_2
 from basket.news.newsletters import newsletter_map, newsletter_inv_map, is_supported_newsletter_language
 
 
@@ -116,8 +115,7 @@ def to_vendor(data):
             if new_country:
                 data['country'] = new_country
 
-        all_countries = product_details.get_regions('en-US').keys()
-        if data['country'] not in all_countries:
+        if data['country'] not in SFDC_COUNTRIES_LIST:
             # just don't set the country
             del data['country']
 

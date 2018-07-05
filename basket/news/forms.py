@@ -3,8 +3,8 @@ import re
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
-from product_details import product_details
 
+from basket.news.country_codes import SFDC_COUNTRIES
 from basket.news.newsletters import newsletter_field_choices
 from basket.news.utils import parse_newsletters_csv, process_email, LANG_RE
 
@@ -54,8 +54,7 @@ class NewslettersField(forms.MultipleChoiceField):
 
 def country_choices():
     """Upper and Lower case country codes"""
-    regions = product_details.get_regions('en-US')
-    return regions.items() + [(code.upper(), name) for code, name in regions.iteritems()]
+    return SFDC_COUNTRIES.items() + [(code.upper(), name) for code, name in SFDC_COUNTRIES.iteritems()]
 
 
 class SubscribeForm(forms.Form):
