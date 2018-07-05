@@ -4,6 +4,8 @@ from django.forms import TextInput
 
 from product_details import product_details
 
+from basket.news.country_codes import SFDC_COUNTRIES
+
 
 def parse_emails(emails_string):
     emails = []
@@ -35,8 +37,8 @@ ENGLISH_LANGUAGE_CHOICES = sorted(
      for key, value in product_details.languages.items()]
 )
 COUNTRY_CHOICES = sorted(
-    [(key, u'{0} ({1})'.format(key, value))
-     for key, value in product_details.get_regions('en-US').items()]
+    [(key, u'{0} ({1})'.format(key, value.decode('utf-8')))
+     for key, value in SFDC_COUNTRIES.items()]
 )
 
 
