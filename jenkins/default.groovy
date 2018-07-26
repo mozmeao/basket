@@ -7,17 +7,17 @@ stage ('Build Images') {
         try {
             sh 'docker/bin/check_if_tag.sh'
         } catch(err) {
-            utils.ircNotification([stage: 'Git Tag Check', status: 'failure'])
+            utils.slackNotification([stage: 'Git Tag Check', status: 'failure'])
             throw err
         }
     }
-    utils.ircNotification([stage: 'Test & Deploy', status: 'starting'])
+    utils.slackNotification([stage: 'Test & Deploy', status: 'starting'])
     lock ("basket-docker-${env.GIT_COMMIT}") {
         try {
             sh 'docker/bin/build_images.sh'
             sh 'docker/bin/run_tests.sh'
         } catch(err) {
-            utils.ircNotification([stage: 'Docker Build', status: 'failure'])
+            utils.slackNotification([stage: 'Docker Build', status: 'failure'])
             throw err
         }
     }
@@ -28,7 +28,7 @@ stage ('Push Public Images') {
     try {
         utils.pushDockerhub()
     } catch(err) {
-        utils.ircNotification([stage: 'Dockerhub Push', status: 'failure'])
+        utils.slackNotification([stage: 'Dockerhub Push', status: 'failure'])
         throw err
     }
 }
@@ -76,13 +76,13 @@ if ( config.apps ) {
                                         sh 'docker/bin/push2deis.sh'
                                     }
                                 } catch(err) {
-                                    utils.ircNotification([stage: stageName, status: 'failure'])
+                                    utils.slackNotification([stage: stageName, status: 'failure'])
                                     throw err
                                 }
                             }
                         }
                     }
-                    utils.ircNotification([message: appURL, status: 'shipped'])
+                    utils.slackNotification([message: appURL, status: 'shipped'])
                 }
             }
         }
