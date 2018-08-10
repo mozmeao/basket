@@ -18,6 +18,7 @@ from basket.news.utils import (
     has_valid_fxa_oauth,
     is_authorized,
     language_code_is_valid,
+    get_best_supported_lang,
     parse_newsletters_csv,
     parse_phone_number,
     process_email,
@@ -308,6 +309,42 @@ class GetBestLanguageTests(TestCase):
     def test_no_langs(self):
         """Should return none if no langs given."""
         self._test([], None)
+
+
+class TestGetBestSupportedLang(TestCase):
+    def setUp(self):
+        patcher = patch('basket.news.utils.newsletter_languages', return_value=[
+            'de', 'en', 'es', 'fr', 'id', 'pt', 'ru', 'pl', 'hu', 'zh-TW'])
+        self.addCleanup(patcher.stop)
+        patcher.start()
+
+    def test_empty_string(self):
+        """Empty string is accepted as a language code"""
+        self.assertEqual(get_best_supported_lang(''), 'en')
+
+    def test_exact_codes(self):
+        """2 or 5 character code that's in the list is valid"""
+        self.assertEqual(get_best_supported_lang('es'), 'es')
+        self.assertEqual(get_best_supported_lang('zh-TW'), 'zh-TW')
+
+    def test_case_insensitive(self):
+        """Matching is not case sensitive"""
+        self.assertEqual(get_best_supported_lang('ES'), 'es')
+        self.assertEqual(get_best_supported_lang('es-MX'), 'es')
+        self.assertEqual(get_best_supported_lang('PT-br'), 'pt')
+
+    def test_invalid_codes(self):
+        """A code that's not in the list gets the default."""
+        self.assertEqual(get_best_supported_lang('hi'), 'en')
+        self.assertEqual(get_best_supported_lang('hi-IN'), 'en')
+        self.assertEqual(get_best_supported_lang('dude'), 'en')
+
+    def test_weak_match(self):
+        """Matching is best based on first 2 characters."""
+        self.assertEqual(get_best_supported_lang('es-MX'), 'es')
+        self.assertEqual(get_best_supported_lang('pt-BR'), 'pt')
+        self.assertEqual(get_best_supported_lang('en-ZA'), 'en')
+        self.assertEqual(get_best_supported_lang('zh-CN'), 'zh-TW')
 
 
 class TestLanguageCodeIsValid(TestCase):

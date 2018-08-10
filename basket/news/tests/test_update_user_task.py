@@ -49,9 +49,11 @@ class UpdateUserTaskTests(TestCase):
             self.assert_response_error(response, 400, errors.BASKET_INVALID_NEWSLETTER)
 
     @patch('basket.news.views.get_best_language')
-    def test_accept_lang(self, get_best_language_mock):
+    @patch('basket.news.utils.newsletter_languages')
+    def test_accept_lang(self, nl_mock, get_best_language_mock):
         """If accept_lang param is provided, should set the lang in data."""
         get_best_language_mock.return_value = 'pt'
+        nl_mock.return_value = ['pt', 'en', 'de']
         request = self.factory.post('/')
         data = {'email': 'dude@example.com', 'accept_lang': 'pt-pt,fr;q=0.8'}
         after_data = {'email': 'dude@example.com', 'lang': 'pt'}
@@ -61,9 +63,11 @@ class UpdateUserTaskTests(TestCase):
         self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data, start_time=ANY)
 
     @patch('basket.news.utils.get_best_language')
-    def test_accept_lang_header(self, get_best_language_mock):
+    @patch('basket.news.utils.newsletter_languages')
+    def test_accept_lang_header(self, nl_mock, get_best_language_mock):
         """If accept-language header is provided, should set the lang in data."""
         get_best_language_mock.return_value = 'pt'
+        nl_mock.return_value = ['pt', 'en', 'de']
         request = self.factory.post('/', HTTP_ACCEPT_LANGUAGE='pt-pt,fr;q=0.8')
         data = {'email': 'dude@example.com'}
         after_data = {'email': 'dude@example.com', 'lang': 'pt'}
@@ -73,12 +77,14 @@ class UpdateUserTaskTests(TestCase):
         self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data, start_time=ANY)
 
     @patch('basket.news.utils.get_best_language')
-    def test_lang_overrides_accept_lang(self, get_best_language_mock):
+    @patch('basket.news.utils.newsletter_languages')
+    def test_lang_overrides_accept_lang(self, nl_mock, get_best_language_mock):
         """
         If lang is provided it was from the user, and accept_lang isn't as reliable, so we should
         prefer lang.
         """
         get_best_language_mock.return_value = 'pt-BR'
+        nl_mock.return_value = ['pt', 'en', 'de']
         request = self.factory.post('/')
         data = {'email': 'a@example.com',
                 'lang': 'de',
@@ -88,6 +94,24 @@ class UpdateUserTaskTests(TestCase):
         self.assert_response_ok(response)
         # basically asserts that the data['lang'] value wasn't changed.
         self.upsert_user.delay.assert_called_with(SUBSCRIBE, data, start_time=ANY)
+
+    @patch('basket.news.utils.get_best_language')
+    @patch('basket.news.utils.newsletter_languages')
+    def test_lang_default_if_not_in_list(self, nl_mock, get_best_language_mock):
+        """
+        If lang is provided it was from the user, and accept_lang isn't as reliable, so we should
+        prefer lang.
+        """
+        get_best_language_mock.return_value = 'pt-BR'
+        nl_mock.return_value = ['pt', 'en', 'de']
+        request = self.factory.post('/')
+        data = {'email': 'a@example.com', 'lang': 'hi'}
+        after_data = {'email': 'a@example.com', 'lang': 'en'}
+
+        response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
+        self.assert_response_ok(response)
+        # basically asserts that the data['lang'] value wasn't changed.
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data, start_time=ANY)
 
     def test_missing_email(self):
         """
