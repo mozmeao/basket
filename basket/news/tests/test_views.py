@@ -515,7 +515,7 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
             'newsletters': 'slug',
             'email': 'dude@example.com',
             'privacy': 'true',
-            'lang': 'de',
+            'lang': 'fr',
         }, HTTP_ACCEPT_LANGUAGE='de,fr,en-US')
         assert response.status_code == 200
         self.upsert_user.delay.assert_called_with(SUBSCRIBE, {
@@ -523,7 +523,30 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
             'email': 'dude@example.com',
             'privacy': True,
             'format': 'H',
-            'lang': 'de',
+            'lang': 'fr',
+            'first_name': '',
+            'last_name': '',
+            'country': '',
+            'source_url': '',
+        }, start_time=ANY)
+
+    def test_lang_default_if_unsupported(self):
+        # specifying a lang still overrides
+        self.process_email.return_value = 'dude@example.com'
+        self.email_is_blocked.return_value = False
+        response = self._request({
+            'newsletters': 'slug',
+            'email': 'dude@example.com',
+            'privacy': 'true',
+            'lang': 'es',
+        })
+        assert response.status_code == 200
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, {
+            'newsletters': ['slug'],
+            'email': 'dude@example.com',
+            'privacy': True,
+            'format': 'H',
+            'lang': 'en',
             'first_name': '',
             'last_name': '',
             'country': '',

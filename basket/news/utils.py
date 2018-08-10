@@ -422,6 +422,38 @@ def get_best_request_lang(request):
     return None
 
 
+def _fix_supported_lang(code):
+    """
+    If there's a dash in the locale the second half should be upper case.
+    """
+    if '-' in code:
+        codebits = code.split('-')
+        code = '{}-{}'.format(codebits[0], codebits[1].upper())
+
+    return code
+
+
+def get_best_supported_lang(code):
+    """
+    Take whatever language code we get from the user and return the best one
+    we support for newsletters.
+    """
+    code = str(code).lower()
+    all_langs = [l.lower() for l in newsletter_languages()]
+    if code in all_langs:
+        return _fix_supported_lang(code)
+
+    all_langs_2char = {c[:2]: c for c in all_langs}
+    if len(code) > 2:
+        code2 = code[:2]
+        if code2 in all_langs:
+            return _fix_supported_lang(code2)
+        if code2 in all_langs_2char:
+            return _fix_supported_lang(all_langs_2char[code2])
+
+    return 'en'
+
+
 def process_email(email):
     """Validates that the email is valid.
 

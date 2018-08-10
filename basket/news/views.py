@@ -41,6 +41,7 @@ from basket.news.utils import (
     email_is_blocked,
     get_accept_languages,
     get_best_language,
+    get_best_supported_lang,
     get_user_data,
     get_user,
     has_valid_api_key,
@@ -363,6 +364,10 @@ def subscribe_main(request):
                 data['lang'] = lang
             else:
                 del data['lang']
+
+        # now ensure that if we do have a lang that it's a supported one
+        if 'lang' in data:
+            data['lang'] = get_best_supported_lang(data['lang'])
 
         # if source_url not provided we should store the referrer header
         # NOTE this is not a typo; Referrer is misspelled in the HTTP spec
@@ -806,6 +811,10 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
         lang = get_best_request_lang(request)
         if lang:
             data['lang'] = lang
+
+    # now ensure that if we do have a lang that it's a supported one
+    if 'lang' in data:
+        data['lang'] = get_best_supported_lang(data['lang'])
 
     email = data.get('email')
     token = data.get('token')
