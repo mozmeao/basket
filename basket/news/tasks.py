@@ -1,7 +1,8 @@
 from __future__ import absolute_import, unicode_literals
 
-from datetime import datetime, timedelta
+import json
 import logging
+from datetime import datetime, timedelta
 from email.utils import formatdate
 from functools import wraps
 from hashlib import sha256
@@ -962,6 +963,13 @@ def process_petition_signature(data):
         'Full_URL__c': data['source_url'],
         'Status': 'Signed',
     }
+    comments = data.get('comments')
+    if comments:
+        campaign_member['Petition_Comments__c'] = comments[:500]
+
+    metadata = data.get('metadata')
+    if metadata:
+        campaign_member['Petition_Flex__c'] = json.dumps(metadata)[:500]
 
     try:
         sfdc.campaign_member.create(campaign_member)
