@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 from urllib2 import URLError
 
@@ -24,8 +25,10 @@ from basket.news.tasks import (
     gmttime,
     mogrify_message_id,
     NewsletterException,
+    PETITION_CONTACT_FIELDS,
     process_donation,
     process_donation_event,
+    process_petition_signature,
     RECOVERY_MESSAGE_ID,
     SUBSCRIBE,
     send_recovery_message_task,
@@ -33,6 +36,178 @@ from basket.news.tasks import (
     get_lock,
     RetryTask,
 )
+
+
+@override_settings(TASK_LOCKING_ENABLE=False)
+@patch('basket.news.tasks.upsert_user')
+@patch('basket.news.tasks.get_user_data')
+@patch('basket.news.tasks.sfdc')
+class ProcessPetitionSignatureTests(TestCase):
+    def _get_sig_data(self):
+        return {
+            'form': {
+                'campaign_id': 'abiding',
+                'email': u'dude@example.com',
+                'first_name': u'Jeffery',
+                'last_name': u'Lebowski',
+                'country': 'us',
+                'postal_code': '90210',
+                'source_url': 'https://example.com/change',
+                'email_subscription': False,
+                'comments': 'The Dude abides',
+                'metadata': {
+                    'location': 'bowling alley',
+                    'donnie': 'out of his element',
+                }
+            }
+        }
+
+    def _get_contact_data(self, data):
+        data = data['form']
+        contact_data = {'_set_subscriber': False}
+        contact_data.update({k: data[k] for k in PETITION_CONTACT_FIELDS if k in data})
+        return contact_data
+
+    def test_signature_with_comments_metadata(self, sfdc_mock, gud_mock, uu_mock):
+        data = self._get_sig_data()
+        contact_data = self._get_contact_data(data)
+        user_data = {
+            'id': '1234',
+            'token': 'the-token',
+        }
+        campaign_member = {
+            'CampaignId': data['form']['campaign_id'],
+            'ContactId': user_data['id'],
+            'Full_URL__c': data['form']['source_url'],
+            'Status': 'Signed',
+            'Petition_Comments__c': data['form']['comments'],
+            'Petition_Flex__c': json.dumps(data['form']['metadata']),
+        }
+        gud_mock.return_value = user_data
+        process_petition_signature(data)
+        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
+        sfdc_mock.add.assert_not_called()
+        uu_mock.delay.assert_not_called()
+        sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
+
+    def test_signature_with_long_comments_metadata(self, sfdc_mock, gud_mock, uu_mock):
+        data = self._get_sig_data()
+        data['form']['comments'] = 'DUDER!' * 100
+        data['form']['metadata']['location'] = 'bowling alley' * 100
+        contact_data = self._get_contact_data(data)
+        user_data = {
+            'id': '1234',
+            'token': 'the-token',
+        }
+        campaign_member = {
+            'CampaignId': data['form']['campaign_id'],
+            'ContactId': user_data['id'],
+            'Full_URL__c': data['form']['source_url'],
+            'Status': 'Signed',
+            'Petition_Comments__c': data['form']['comments'][:500],
+            'Petition_Flex__c': json.dumps(data['form']['metadata'])[:500],
+        }
+        assert data['form']['comments'] != campaign_member['Petition_Comments__c']
+        gud_mock.return_value = user_data
+        process_petition_signature(data)
+        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
+        sfdc_mock.add.assert_not_called()
+        uu_mock.delay.assert_not_called()
+        sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
+
+    def test_signature_without_comments_metadata(self, sfdc_mock, gud_mock, uu_mock):
+        data = self._get_sig_data()
+        del data['form']['comments']
+        del data['form']['metadata']
+        contact_data = self._get_contact_data(data)
+        user_data = {
+            'id': '1234',
+            'token': 'the-token',
+        }
+        campaign_member = {
+            'CampaignId': data['form']['campaign_id'],
+            'ContactId': user_data['id'],
+            'Full_URL__c': data['form']['source_url'],
+            'Status': 'Signed',
+        }
+        gud_mock.return_value = user_data
+        process_petition_signature(data)
+        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
+        sfdc_mock.add.assert_not_called()
+        uu_mock.delay.assert_not_called()
+        sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
+
+    def test_signature_with_subscription(self, sfdc_mock, gud_mock, uu_mock):
+        data = self._get_sig_data()
+        data['form']['email_subscription'] = True
+        del data['form']['comments']
+        del data['form']['metadata']
+        contact_data = self._get_contact_data(data)
+        user_data = {
+            'id': '1234',
+            'token': 'the-token',
+        }
+        campaign_member = {
+            'CampaignId': data['form']['campaign_id'],
+            'ContactId': user_data['id'],
+            'Full_URL__c': data['form']['source_url'],
+            'Status': 'Signed',
+        }
+        gud_mock.return_value = user_data
+        process_petition_signature(data)
+        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
+        sfdc_mock.add.assert_not_called()
+        uu_mock.delay.assert_called_with(SUBSCRIBE, {
+            'token': user_data['token'],
+            'lang': 'en-US',
+            'newsletters': 'mozilla-foundation',
+            'source_url': data['form']['source_url'],
+        })
+        sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
+
+    @patch('basket.news.tasks.generate_token')
+    def test_signature_with_new_user(self, gt_mock, sfdc_mock, gud_mock, uu_mock):
+        data = self._get_sig_data()
+        del data['form']['comments']
+        del data['form']['metadata']
+        contact_data = self._get_contact_data(data)
+        contact_data['token'] = gt_mock()
+        contact_data['email'] = data['form']['email']
+        contact_data['record_type'] = settings.DONATE_CONTACT_RECORD_TYPE
+        user_data = {
+            'id': '1234',
+            'token': 'the-token',
+        }
+        campaign_member = {
+            'CampaignId': data['form']['campaign_id'],
+            'ContactId': user_data['id'],
+            'Full_URL__c': data['form']['source_url'],
+            'Status': 'Signed',
+        }
+        gud_mock.side_effect = [None, user_data]
+        process_petition_signature(data)
+        sfdc_mock.update.assert_not_called()
+        sfdc_mock.add.assert_called_with(contact_data)
+        uu_mock.delay.assert_not_called()
+        sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
+
+    @patch('basket.news.tasks.generate_token')
+    def test_signature_with_new_user_retry(self, gt_mock, sfdc_mock, gud_mock, uu_mock):
+        data = self._get_sig_data()
+        del data['form']['comments']
+        del data['form']['metadata']
+        contact_data = self._get_contact_data(data)
+        contact_data['token'] = gt_mock()
+        contact_data['email'] = data['form']['email']
+        contact_data['record_type'] = settings.DONATE_CONTACT_RECORD_TYPE
+        gud_mock.return_value = None
+        with self.assertRaises(RetryTask):
+            process_petition_signature(data)
+
+        sfdc_mock.update.assert_not_called()
+        sfdc_mock.add.assert_called_with(contact_data)
+        uu_mock.delay.assert_not_called()
+        sfdc_mock.campaign_member.create.assert_not_called()
 
 
 @override_settings(TASK_LOCKING_ENABLE=False)
