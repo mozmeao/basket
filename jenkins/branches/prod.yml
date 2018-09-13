@@ -3,7 +3,6 @@ regions:
   - oregon-a
   - oregon-b
   - frankfurt
-  - tokyo
 apps:
   - basket-prod
 apps_rw:
