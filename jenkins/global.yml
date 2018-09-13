@@ -3,10 +3,6 @@ regions:
     deis_profile: frankfurt
     name: frankfurt
     db_mode: ro
-  tokyo:
-    deis_profile: tokyo
-    name: tokyo
-    db_mode: ro
   oregon-a:
     deis_profile: oregon-a
     name: oregon-a
