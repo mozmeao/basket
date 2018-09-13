@@ -246,7 +246,7 @@ class SFMC(object):
         assert_response(resp)
 
     @time_request
-    def delete_row(self, de_name, token=None, email=None):
+    def delete_row(self, de_name, column, value):
         """
         Delete a row from a data extension. Either token or email are required.
 
@@ -255,13 +255,7 @@ class SFMC(object):
         @param email: user's email address
         @return: None
         """
-        assert token or email, 'token or email required'
-        if token:
-            values = {'TOKEN': token}
-        else:
-            values = {'EMAIL_ADDRESS_': email}
-
-        row = self._get_row_obj(de_name, values)
+        row = self._get_row_obj(de_name, {column: value})
         resp = row.delete()
         assert_response(resp)
 
