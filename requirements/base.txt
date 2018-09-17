@@ -145,8 +145,9 @@ tzlocal==1.5.1 \
 phonenumbers==8.9.13 \
     --hash=sha256:42d55b4202c26c1bdbd69c33e847e0b55f939191d403e620c150cb2a96bf5494 \
     --hash=sha256:ea68fd4a60ac7c647c02c0e74191f7885e84f18f8c206d1300b52859e0002ad6
-PyBrowserID==0.12.0 \
-    --hash=sha256:40cfec78212d79af67ca8744c563dc029d30196585e4848b03e01bbbd36cf53e
+PyBrowserID==0.14.0 \
+    --hash=sha256:8e237d6a2bc9ead849a4472a84d3e6a9309bec99cf8e10d36213710dda8df8ca \
+    --hash=sha256:6c227669e87cc25796ae76f6a0ef65025528c8ad82d352679fa9a3e5663a71e3
 PyFxA==0.4.0 \
     --hash=sha256:78f7cc76d9d22f17cdb5212ecb7c946aaeac43c9c9a4e6f141e2e232d1fe7290
 asn1crypto==0.23.0 \
