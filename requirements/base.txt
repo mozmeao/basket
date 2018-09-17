@@ -103,9 +103,9 @@ dnspython==1.15.0 \
 boto3==1.9.4 \
     --hash=sha256:323660fd1aa9c95fe90003f44c5fc37cbb891a8b506fa346967d14edcbcb90a4 \
     --hash=sha256:2152e0da8098665e6a03bbbde1de1b4fafdef7151010d1f0e53693a3f2a1deb0
-botocore==1.4.76 \
-    --hash=sha256:1e7d7132415e138a865c823a4f249e7f11ed5475909763ae2be73f241f64ee67 \
-    --hash=sha256:5b03accb56ea30f55c2d3b22168f401fdcea6ebd4ce474123f45092010ca225f
+botocore==1.12.4 \
+    --hash=sha256:3b2cab368572ee987a6236321ddea491e4253c819009c87ebc9e42e60371e3ae \
+    --hash=sha256:7834eba53c6bedea21eb76f25a39e477dede3a24aeb51ff19c0248ea8348f007
 docutils==0.12 \
     --hash=sha256:c7db717810ab6965f66c8cf0398a98c9d8df982da39b4cd7f162911eb89596fa
 futures==3.0.5 \
