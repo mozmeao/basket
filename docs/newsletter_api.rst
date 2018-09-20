@@ -90,14 +90,7 @@ The following URLs are available (assuming "/news" is app url):
     which pages produce the most subscriptions.
 
     If the email address is invalid (due to format, or unrecognized domain), the error
-    code will be ``BASKET_INVALID_EMAIL`` from the basket client. If it is likely just
-    a misspelled domain, then basket may suggest a correction. If there is a suggestion,
-    it will be in the error response in the ``suggestion`` parameter.
-
-    If you've validated that the email address is indeed correct and don't want the validation,
-    you may pass ``validated=true`` with your submission and the address will be accepted. It
-    is suggested that you not use this unless you've specifically asked the user if it is really
-    correct.
+    code will be ``BASKET_INVALID_EMAIL`` from the basket client.
 
 /news/unsubscribe
 -----------------
