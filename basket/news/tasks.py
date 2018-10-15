@@ -827,11 +827,22 @@ def process_donation_event(data):
         raise
 
 
+# all strings and truncated at 2000 chars
 DONATION_OPTIONAL_FIELDS = {
     'SourceURL__c': 'source_url',
     'Donation_Form_URL__c': 'donation_url',
     'Project__c': 'project',
     'PMT_Subscription_ID__c': 'subscription_id',
+}
+# Add these fields as optional for now as some messages
+# could still come through without them. Mix of string
+# and numerical data.
+DONATION_NEW_FIELDS = {
+    'Donation_Locale__c': 'locale',
+    'Processors_Fee__c': 'transaction_fee',
+    'Net_Amount__c': 'net_amount',
+    'Conversion_Amount__c': 'conversion_amount',
+    'Last_4_Digits__c': 'last_4',
 }
 
 
@@ -895,6 +906,10 @@ def process_donation(data):
     timestamp = data.get('created')
     if timestamp:
         donation['CloseDate'] = iso_format_unix_timestamp(timestamp)
+
+    for dest_name, source_name in DONATION_NEW_FIELDS.items():
+        if source_name in data:
+            donation[dest_name] = data[source_name]
 
     for dest_name, source_name in DONATION_OPTIONAL_FIELDS.items():
         if source_name in data:

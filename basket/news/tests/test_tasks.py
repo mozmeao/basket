@@ -276,8 +276,13 @@ class ProcessDonationEventTests(TestCase):
 class ProcessDonationTests(TestCase):
     donate_data = {
         'created': 1479746809.327,
+        'locale': 'pt-BR',
         'currency': u'USD',
         'donation_amount': u'75.00',
+        'transaction_fee': 0.42,
+        'net_amount': 75.42,
+        'conversion_amount': 42.75,
+        'last_4': u'5309',
         'email': u'dude@example.com',
         'first_name': u'Jeffery',
         'last_name': u'Lebowski',
@@ -404,6 +409,11 @@ class ProcessDonationTests(TestCase):
             'Payment_Type__c': 'Recurring',
             'SourceURL__c': data['source_url'],
             'Project__c': data['project'],
+            'Donation_Locale__c': data['locale'],
+            'Processors_Fee__c': data['transaction_fee'],
+            'Net_Amount__c': data['net_amount'],
+            'Conversion_Amount__c': data['conversion_amount'],
+            'Last_4_Digits__c': data['last_4'],
         })
 
     def test_donation_silent_failure_on_dupe(self, sfdc_mock, gud_mock):
