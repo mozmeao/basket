@@ -343,6 +343,9 @@ DONATE_SECRET_ACCESS_KEY = config('DONATE_SECRET_ACCESS_KEY', default='')
 DONATE_QUEUE_REGION = config('DONATE_QUEUE_REGION', default='')
 DONATE_QUEUE_URL = config('DONATE_QUEUE_URL', default='')
 DONATE_QUEUE_WAIT_TIME = config('DONATE_QUEUE_WAIT_TIME', cast=int, default=10)
+# turn this on to consume the queue but ignore the messages
+# needed so that donate.m.o can run continuous tests w/o filling the SFDC sandbox
+DONATE_QUEUE_IGNORE_MODE = config('DONATE_QUEUE_IGNORE_MODE', cast=bool, default=False)
 DONATE_OPP_RECORD_TYPE = config('DONATE_OPP_RECORD_TYPE', default='')
 DONATE_CONTACT_RECORD_TYPE = config('DONATE_CONTACT_RECORD_TYPE', default='')
 DONATE_SNITCH_ID = config('DONATE_SNITCH_ID', default='')

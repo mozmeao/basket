@@ -60,6 +60,11 @@ class Command(BaseCommand):
                     if not (msg and msg.body):
                         continue
 
+                    if settings.DONATE_QUEUE_IGNORE_MODE:
+                        statsd.incr('mofo.donations.message.ignored')
+                        msg.delete()
+                        continue
+
                     statsd.incr('mofo.donations.message.received')
                     try:
                         data = json.loads(msg.body)
