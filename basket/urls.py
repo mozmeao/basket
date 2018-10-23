@@ -1,17 +1,15 @@
 from django.conf import settings
 from django.conf.urls import include, url
 from django.contrib import admin
-from django.views.generic import RedirectView
+from django.views.generic import RedirectView, TemplateView
 
 from watchman import views as watchman_views
 
 from basket.news.views import subscribe_main, subscribe_json
 
 
-home_redirect = '/admin/' if settings.ADMIN_ONLY_MODE else 'https://www.mozilla.org/'
-
 urlpatterns = [
-    url(r'^$', RedirectView.as_view(url=home_redirect, permanent=True)),
+    url(r'^$', TemplateView.as_view(template_name='home.html')),
     url(r'^watchman/$', watchman_views.dashboard, name="watchman.dashboard"),
     url(r'^healthz/$', watchman_views.ping, name="watchman.ping"),
     url(r'^readiness/$', watchman_views.status, name="watchman.status"),

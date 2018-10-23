@@ -16,7 +16,7 @@ build.py
 .#*
 .noseids
 *.db
-static
+/static
 celerybeat-schedule
 Dockerfile.jenkins
 test-results

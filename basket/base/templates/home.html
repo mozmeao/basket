@@ -1,0 +1,33 @@
+{% load static %}
+<html>
+  <head>
+    <title>Basket: Mozilla's Newsletter Service</title>
+    <link rel="shortcut icon" href="{% static "img/favicon.ico" %}">
+    <style>
+     body {
+         background: linear-gradient(to right, #F27121, #E94057, #8A2387);
+         font-family: "Arial";
+         text-align: center;
+         margin: 100px;
+         color: WhiteSmoke;
+     }
+     #heart {
+         color: Orange;
+     }
+    </style>
+  </head>
+  <body>
+    <h1>Basket: Mozilla's Newsletter Service</h1>
+    <p>
+      made with <span id="heart">❤</span> by the Mozilla Marketing and Operations Team<br/>
+      run by the Mozilla Lifecycle Marketing Team
+    </p>
+    <p>
+      Looking for the <a href="/admin/">admin panel</a>, the <a href="/news/">list of newsletters</a>,<br>
+      or the <a href="https://github.com/mozmeao/basket/">source code</a>?
+    </p>
+    <p>
+      Having a problem or need a change? Please <a href="https://github.com/mozmeao/basket/issues/new">file an issue</a>.
+    </p>
+  </body>
+</html>
