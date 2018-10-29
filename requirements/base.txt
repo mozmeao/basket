@@ -61,9 +61,9 @@ ua-parser==0.8.0 \
     --hash=sha256:97bbcfc9321a3151d96bb5d62e54270247b0e3be0590a6f2ff12329851718dcb
 https://github.com/selwin/python-user-agents/archive/ed386c818ff7a10849348711d4bdd00506088702.tar.gz#egg=user-agents==1.0.1 \
     --hash=sha256:82be0e44ed40c0eaf87ea0e87a24fc8f0afdd8eb14ffb478aad02cb29e3eed2c
-amqp==1.4.9 \
-    --hash=sha256:2dea4d16d073c902c3b89d9b96620fb6729ac0f7a923bbc777cb4ad827c0c61a \
-    --hash=sha256:e0ed0ce6b8ffe5690a2e856c7908dc557e0e605283d6885dd1361d79f2928908
+amqp==2.3.2 \
+    --hash=sha256:eed41946890cd43e8dee44a316b85cf6fee5a1a34bb4a562b660a358eb529e1b \
+    --hash=sha256:073dd02fdd73041bffc913b767866015147b61f2a9bc104daef172fc1a0066eb
 anyjson==0.3.3 \
     --hash=sha256:37812d863c9ad3e35c0734c42e0bf0320ce8c3bed82cd20ad54cb34d158157ba
 billiard==3.3.0.23 \
