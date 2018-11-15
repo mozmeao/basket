@@ -1,9 +1,9 @@
 from django.conf.urls import url
 
 from .views import (confirm, custom_unsub_reason, debug_user,
-                    fxa_activity, fxa_register, get_involved, list_newsletters, lookup_user,
-                    newsletters, send_recovery_message, subscribe, subscribe_sms, sync_route,
-                    unsubscribe, user, user_meta)
+                    fxa_activity, fxa_concerts_rsvp, fxa_register, get_involved,
+                    list_newsletters, lookup_user, newsletters, send_recovery_message,
+                    subscribe, subscribe_sms, sync_route, unsubscribe, user, user_meta)
 
 
 def token_url(url_prefix, *args, **kwargs):
@@ -16,6 +16,7 @@ urlpatterns = (
     url('^get-involved/$', get_involved),
     url('^fxa-register/$', fxa_register),
     url('^fxa-activity/$', fxa_activity),
+    url('^fxa-concerts-rsvp/$', fxa_concerts_rsvp),
     url('^subscribe/$', subscribe),
     url('^subscribe_sms/$', subscribe_sms),
     token_url('unsubscribe', unsubscribe),

@@ -751,6 +751,16 @@ def send_recovery_message_task(email):
 
 
 @et_task
+def record_fxa_concerts_rsvp(email, is_firefox, campaign_id):
+    sfmc.add_row('FxAccounts_Concert_RSVP', {
+        'Email': email,
+        'Firefox': is_firefox,
+        'Campaign_ID': campaign_id,
+        'RSVP_Time': gmttime(),
+    })
+
+
+@et_task
 def record_source_url(email, source_url, newsletter_id):
     if not source_url:
         source_url = '__NONE__'

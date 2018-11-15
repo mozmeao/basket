@@ -24,6 +24,7 @@ from basket.news.tasks import (
     add_fxa_activity,
     add_sms_user,
     confirm_user,
+    record_fxa_concerts_rsvp,
     send_recovery_message_task,
     update_custom_unsub,
     update_fxa_info,
@@ -210,6 +211,34 @@ def fxa_register(request):
         }, 400)
 
     update_fxa_info.delay(email, lang, data['fxa_id'])
+    return HttpResponseJSON({'status': 'ok'})
+
+
+@require_POST
+@csrf_exempt
+def fxa_concerts_rsvp(request):
+    if not has_valid_api_key(request):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'requires a valid API-key',
+            'code': errors.BASKET_AUTH_ERROR,
+        }, 401)
+
+    fields = ('email', 'is_firefox', 'campaign_id')
+    data = request.POST.dict()
+    if not all(f in data for f in fields):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'missing required field',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 401)
+
+    is_firefox = 'Y' if data['is_firefox'][0].upper() == 'Y' else 'N'
+    record_fxa_concerts_rsvp.delay(
+        email=data['email'],
+        is_firefox=is_firefox,
+        campaign_id=data['campaign_id'],
+    )
     return HttpResponseJSON({'status': 'ok'})
 
 
