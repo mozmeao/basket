@@ -1087,3 +1087,53 @@ class TestValidateEmail(TestCase):
         """Should return None for an invalid email."""
         ve_mock.side_effect = EmailSyntaxError
         self.assertIsNone(utils.process_email(self.email))
+
+
+class FxAConcertsRSVPTests(ViewsPatcherMixin, TestCase):
+    def setUp(self):
+        self.rf = RequestFactory()
+
+        self._patch_views('has_valid_api_key')
+        self._patch_views('record_fxa_concerts_rsvp')
+
+    def test_valid_submission(self):
+        self.has_valid_api_key.return_value = True
+        req = self.rf.post('/', {
+            'email': 'dude@example.com',
+            'is_firefox': 'yes',
+            'campaign_id': 'bowling',
+        })
+        resp = views.fxa_concerts_rsvp(req)
+        self.record_fxa_concerts_rsvp.delay.assert_called_with(
+            email='dude@example.com',
+            is_firefox='Y',
+            campaign_id='bowling',
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual('ok', data['status'])
+
+    def test_requires_api_key(self):
+        self.has_valid_api_key.return_value = False
+        req = self.rf.post('/', {
+            'email': 'dude@example.com',
+            'is_firefox': 'yes',
+            'campaign_id': 'bowling',
+        })
+        resp = views.fxa_concerts_rsvp(req)
+        self.assertFalse(self.record_fxa_concerts_rsvp.delay.called)
+        self.assertEqual(resp.status_code, 401, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_AUTH_ERROR, data['code'])
+
+    def test_requires_all_fields(self):
+        self.has_valid_api_key.return_value = True
+        req = self.rf.post('/', {
+            'email': 'dude@example.com',
+            'is_firefox': 'yes',
+        })
+        resp = views.fxa_concerts_rsvp(req)
+        self.assertFalse(self.record_fxa_concerts_rsvp.delay.called)
+        self.assertEqual(resp.status_code, 401, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
