@@ -26,9 +26,9 @@ pyflakes==2.0.0 \
 pytest==4.0.1 \
     --hash=sha256:ca4761407f1acc85ffd1609f464ca20bb71a767803505bd4127d0e45c5a50e23 \
     --hash=sha256:1d131cc532be0023ef8ae265e2a779938d0619bb6c2510f52987ffcba7fa1ee4
-pytest-django==2.8.0 \
-    --hash=sha256:d76f934e77fa073f48cc521945a49900a859e610fa029dd880d1d8b997b77c23 \
-    --hash=sha256:d145ac9dc7a557a719ab79770be0941004e1e038e137c34591919d9df2a790b1
+pytest-django==3.4.4 \
+    --hash=sha256:deffd9d65827c582bd0a85638a0fe52f0eb65a764872ddcee9ce51cdf6ae9f55 \
+    --hash=sha256:fe1f71a0171f6b7edac37654da0904c9bd5ffba5221ab5a76779ab870611f41f
 pytest-pythonpath==0.7 \
     --hash=sha256:036bc2b62b5d3a991e45c389748ccfb61e88eb5b14b27cab4b5c1fbcd4ffd191
 funcsigs==1.0.1 \
