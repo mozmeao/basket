@@ -218,8 +218,8 @@ hawkauthlib==2.0.0 \
 ipaddress==1.0.22 \
     --hash=sha256:64b28eec5e78e7510698f6d4da08800a5c575caa4a286c93d651c5d3ff7b6794 \
     --hash=sha256:b146c751ea45cad6188dd6cf2d9b757f6f4f8d6ffb96a023e6f2e26eea02a72c
-pycparser==2.18 \
-    --hash=sha256:99a8ca03e29851d96616ad0404b4aad7d9ee16f25c9f9708a11faf2810f7b226
+pycparser==2.19 \
+    --hash=sha256:a988718abfad80b6b157acce7bf130a30876d27603738ac39f140993246b25b3
 django-allow-cidr==0.3.0 \
     --hash=sha256:63436f3820dd788863ef35f4fad5499f5ad23063b52033b03afdb1df7929797f \
     --hash=sha256:f19558a27ea558ad2174d15874f8eaf36d9e50e16587c7558d2a3bdc69c0d3bb
