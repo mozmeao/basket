@@ -7,7 +7,7 @@ Interact with our email marketing provider via a nice simple HTTP API.
 .. image:: https://circleci.com/gh/mozmeao/basket/tree/master.svg?style=svg
     :target: https://circleci.com/gh/mozmeao/basket/tree/master
 
-GitLab Rocks!
+GitLab Rocks! But can it update protected branch?
 
 
 Docs
