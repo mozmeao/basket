@@ -137,9 +137,9 @@ scandir==1.9.0 \
     --hash=sha256:c7708f29d843fc2764310732e41f0ce27feadde453261859ec0fca7865dfc41b \
     --hash=sha256:c9009c527929f6e25604aec39b0a43c3f831d2947d89d6caaab22f057b7055c8 \
     --hash=sha256:f5c71e29b4e2af7ccdc03a020c626ede51da471173b4a6ad1e904f2b2e04b4bd
-APScheduler==3.3.1 \
-    --hash=sha256:bc9f96e498adb362beb5f1d3715a2570d100183add4ace5227c1a7d5dbaac900 \
-    --hash=sha256:f68874dff1bdffcc6ce3adb7840c1e4d162c609a3e3f831351df30b75732767b
+APScheduler==3.5.3 \
+    --hash=sha256:6599bc78901ee7e9be85cbd073d9cc155c42d2bc867c5cde4d4d1cc339ebfbeb \
+    --hash=sha256:a8fe0c82d1c21bcf4a1b0e00aa35709f1f63fdd36446e406fa56cc0d51d3acc6
 tzlocal==1.3.2 \
     --hash=sha256:07dee68c9f5b9ca665762eb0860418cc289bd561f7e32a4ec37a09426895e7bd
 phonenumbers==8.8.1 \
