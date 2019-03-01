@@ -7,7 +7,7 @@ set -eo pipefail
 # defaults and constants
 CHANNEL="basket"
 PROJECT_NAME="basket"
-BLUE_BUILD_URL="https://ci.us-west.moz.works/blue/organizations/jenkins/basket_multibranch_pipeline"
+BLUE_BUILD_URL="https://ci.vpn1.moz.works/blue/organizations/jenkins/basket_multibranch_pipeline"
 BLUE_BUILD_URL="${BLUE_BUILD_URL}/detail/${BRANCH_NAME/\//%2f}/${BUILD_NUMBER}/pipeline"
 
 # parse cli args
