@@ -325,15 +325,8 @@ def _add_fxa_activity(data):
     })
 
 
-@et_task
-def update_fxa_info(email, lang, fxa_id):
-    # TODO delete after fxa_register view is decomissioned
-    _update_fxa_info(email, lang, fxa_id)
-
-
 def _update_fxa_info(email, lang, fxa_id, create_date=None):
-    # for use with update_fxa_info and fxa_verified
-    # TODO move to fxa_verified after decomission of fxa_register view
+    # leaving here because easier to test
     try:
         apply_updates('Firefox_Account_ID', {
             'EMAIL_ADDRESS_': email,
