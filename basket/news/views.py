@@ -1,4 +1,3 @@
-import json
 import re
 from time import time
 
@@ -21,7 +20,6 @@ from basket.news.models import Newsletter, Interest, LocaleStewards, NewsletterG
 from basket.news.newsletters import get_sms_vendor_id, newsletter_slugs, newsletter_and_group_slugs, \
     newsletter_private_slugs, get_transactional_message_ids
 from basket.news.tasks import (
-    add_fxa_activity,
     add_sms_user,
     confirm_user,
     record_fxa_concerts_rsvp,
@@ -128,34 +126,6 @@ def confirm(request, token):
                       rate=EMAIL_SUBSCRIBE_RATE_LIMIT, increment=True):
         raise Ratelimited()
     confirm_user.delay(token, start_time=time())
-    return HttpResponseJSON({'status': 'ok'})
-
-
-@require_POST
-@csrf_exempt
-def fxa_activity(request):
-    if not has_valid_api_key(request):
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': 'fxa-activity requires a valid API-key',
-            'code': errors.BASKET_AUTH_ERROR,
-        }, 401)
-
-    data = json.loads(request.body)
-    if 'fxa_id' not in data:
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': 'fxa-activity requires a Firefox Account ID',
-            'code': errors.BASKET_USAGE_ERROR,
-        }, 401)
-    if 'user_agent' not in data:
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': 'fxa-activity requires a device user-agent',
-            'code': errors.BASKET_USAGE_ERROR,
-        }, 401)
-
-    add_fxa_activity.delay(data)
     return HttpResponseJSON({'status': 'ok'})
 
 

@@ -371,8 +371,6 @@ FXA_OAUTH_SERVER_ENV = config('FXA_OAUTH_SERVER_ENV', default='stable')
 
 FXA_REGISTER_NEWSLETTER = config('FXA_REGISTER_NEWSLETTER', default='firefox-accounts-journey')
 FXA_REGISTER_SOURCE_URL = config('FXA_REGISTER_SOURCE_URL', default='https://accounts.firefox.com/')
-# TODO remove this after the cutover
-FXA_LOGIN_CUTOVER_TIMESTAMP = config('FXA_LOGIN_CUTOVER_TIMESTAMP', default='0', cast=int)
 # TODO move this to the DB
 FXA_LOGIN_CAMPAIGNS = {
     'fxa-embedded-form-moz': 'mozilla-welcome',
