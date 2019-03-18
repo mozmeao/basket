@@ -56,7 +56,6 @@ IGNORE_ERROR_MSGS_POST_RETRY = [
 ]
 # tasks exempt from maintenance mode queuing
 MAINTENANCE_EXEMPT = [
-    'news.tasks.add_fxa_activity',
     'news.tasks.add_sms_user',
     'news.tasks.add_sms_user_optin',
 ]
@@ -296,12 +295,6 @@ def fxa_login(data):
             'newsletters': newsletter,
             'source_url': fxa_source_url(metrics),
         })
-
-
-@et_task
-def add_fxa_activity(data):
-    # TODO delete after fxa_activity view is decomissioned
-    _add_fxa_activity(data)
 
 
 def _add_fxa_activity(data):

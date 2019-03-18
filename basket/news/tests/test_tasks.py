@@ -16,7 +16,7 @@ from basket.news.celery import app as celery_app
 from basket.news.models import FailedTask
 from basket.news.newsletters import clear_sms_cache
 from basket.news.tasks import (
-    add_fxa_activity,
+    _add_fxa_activity,
     add_sms_user,
     et_task,
     fxa_email_changed,
@@ -661,7 +661,7 @@ class AddFxaActivityTests(TestCase):
         }
 
         with patch('basket.news.tasks.apply_updates') as apply_updates_mock:
-            add_fxa_activity(data)
+            _add_fxa_activity(data)
         record = apply_updates_mock.call_args[0][1]
         return record
 
