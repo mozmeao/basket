@@ -658,6 +658,7 @@ class AddFxaActivityTests(TestCase):
             'fxa_id': fxa_id,
             'first_device': first_device,
             'user_agent': user_agent,
+            'service': 'sync',
         }
 
         with patch('basket.news.tasks.apply_updates') as apply_updates_mock:
@@ -806,7 +807,7 @@ class FxAVerifiedTests(TestCase):
         }
         fxa_verified(data)
         upsert_mock.delay.assert_not_called()
-        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], None)
+        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], '', None)
 
     def test_with_subscribe(self, upsert_mock, fxa_info_mock):
         data = {
@@ -814,6 +815,7 @@ class FxAVerifiedTests(TestCase):
             'uid': 'the-fxa-id',
             'locale': 'en-US,en',
             'marketingOptIn': True,
+            'service': 'sync',
         }
         fxa_verified(data)
         upsert_mock.delay.assert_called_with(SUBSCRIBE, {
@@ -822,7 +824,7 @@ class FxAVerifiedTests(TestCase):
             'newsletters': settings.FXA_REGISTER_NEWSLETTER,
             'source_url': settings.FXA_REGISTER_SOURCE_URL,
         })
-        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], None)
+        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], 'sync', None)
 
     def test_with_subscribe_and_metrics(self, upsert_mock, fxa_info_mock):
         data = {
@@ -833,7 +835,8 @@ class FxAVerifiedTests(TestCase):
             'metricsContext': {
                 'utm_campaign': 'bowling',
                 'some_other_thing': 'Donnie',
-            }
+            },
+            'service': 'monitor',
         }
         fxa_verified(data)
         upsert_mock.delay.assert_called_with(SUBSCRIBE, {
@@ -842,7 +845,7 @@ class FxAVerifiedTests(TestCase):
             'newsletters': settings.FXA_REGISTER_NEWSLETTER,
             'source_url': settings.FXA_REGISTER_SOURCE_URL + '?utm_campaign=bowling',
         })
-        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], None)
+        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], 'monitor', None)
 
     def test_with_createDate(self, upsert_mock, fxa_info_mock):
         create_date_float = 1526996035.498
@@ -854,7 +857,7 @@ class FxAVerifiedTests(TestCase):
             'locale': 'en-US,en'
         }
         fxa_verified(data)
-        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], create_date)
+        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], '', create_date)
 
 
 @patch('basket.news.tasks.upsert_user')
@@ -896,6 +899,7 @@ class FxALoginTests(TestCase):
             'user_agent': data['userAgent'],
             'fxa_id': data['uid'],
             'first_device': True,
+            'service': 'sync',
         })
         upsert_mock.delay.assert_not_called()
 
@@ -906,6 +910,7 @@ class FxALoginTests(TestCase):
             'user_agent': data['userAgent'],
             'fxa_id': data['uid'],
             'first_device': False,
+            'service': 'sync',
         })
         upsert_mock.delay.assert_called_with(SUBSCRIBE, {
             'email': 'the.dude@example.com',
@@ -927,6 +932,7 @@ class FxALoginTests(TestCase):
             'user_agent': data['userAgent'],
             'fxa_id': data['uid'],
             'first_device': False,
+            'service': 'sync',
         })
         upsert_mock.delay.assert_not_called()
 

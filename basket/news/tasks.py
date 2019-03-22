@@ -249,6 +249,7 @@ def fxa_verified(data):
     locale = data.get('locale')
     subscribe = data.get('marketingOptIn')
     metrics = data.get('metricsContext', {})
+    service = data.get('service', '')
 
     if not locale:
         statsd.incr('fxa_verified.ignored.no_locale')
@@ -262,7 +263,7 @@ def fxa_verified(data):
     if not lang:
         return
 
-    _update_fxa_info(email, lang, fxa_id, create_date)
+    _update_fxa_info(email, lang, fxa_id, service, create_date)
 
     if subscribe:
         upsert_user.delay(SUBSCRIBE, {
@@ -284,6 +285,7 @@ def fxa_login(data):
         'user_agent': data['userAgent'],
         'fxa_id': data['uid'],
         'first_device': data['deviceCount'] == 1,
+        'service': data.get('service', '')
     }
     _add_fxa_activity(new_data)
 
@@ -307,6 +309,7 @@ def _add_fxa_activity(data):
 
     apply_updates('Sync_Device_Logins', {
         'FXA_ID': data['fxa_id'],
+        'SERVICE': data['service'],
         'LOGIN_DATE': gmttime(),
         'FIRST_DEVICE': 'y' if data.get('first_device') else 'n',
         'OS': user_agent.os.family,
@@ -318,7 +321,7 @@ def _add_fxa_activity(data):
     })
 
 
-def _update_fxa_info(email, lang, fxa_id, create_date=None):
+def _update_fxa_info(email, lang, fxa_id, service, create_date=None):
     # leaving here because easier to test
     try:
         apply_updates('Firefox_Account_ID', {
@@ -326,6 +329,7 @@ def _update_fxa_info(email, lang, fxa_id, create_date=None):
             'CREATED_DATE_': gmttime(create_date),
             'FXA_ID': fxa_id,
             'FXA_LANGUAGE_ISO2': lang,
+            'SERVICE': service,
         })
     except NewsletterException as e:
         # don't report these errors to sentry until retries exhausted
