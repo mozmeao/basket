@@ -17,9 +17,9 @@ django-jsonfield==1.1.0 \
     --hash=sha256:25e53eae8bda165721773145ee0f8ae53b746bb3051b32f2821ba84d79aa77ef \
     --hash=sha256:813c52463fbbb548fe0d85bf935d0bf72e933fae2bb00ce3ba27bf69ff6fd2ad \
     --hash=sha256:cacf5a21e7c2490109a60f1122c05aa3858a8dc06952ad764831b4428164fc8e
-django-mozilla-product-details==0.13 \
-    --hash=sha256:ce97fc2533aa06560d9b438ebba2522dc0b2ada86d6e0537cfb5ac06db1a6aa2 \
-    --hash=sha256:4ffa5a104f53645460a50c9342a41e3ea02d432851becf56e820d42faa94839f
+django-mozilla-product-details==0.13.1 \
+    --hash=sha256:fad2022fb9289aca574a9c1cb6bea90c9977302ad31494608b540d35c201e3a9 \
+    --hash=sha256:fdb87422ebd1b15ece9d338100c75d1dbe936930ca14e4f5644b9918b6b4f6f3
 django-picklefield==0.3.1 \
     --hash=sha256:d99426be46fd92fe6b64b9f5c5926ea9859394e44ec3ef9e1f7c647d3a26657f
 django-ratelimit==1.1.0 \
