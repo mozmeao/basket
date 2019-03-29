@@ -57,6 +57,14 @@ def country_choices():
     return SFDC_COUNTRIES.items() + [(code.upper(), name) for code, name in SFDC_COUNTRIES.iteritems()]
 
 
+class CommonVoiceForm(forms.Form):
+    email = EmailField()
+    days_interval = forms.IntegerField(required=False)
+    created_at = forms.DateTimeField(required=False)
+    goal_reached_at = forms.DateTimeField(required=False)
+    first_contribution_date = forms.DateTimeField(required=False)
+
+
 class SubscribeForm(forms.Form):
     email = EmailField()
     newsletters = NewslettersField()

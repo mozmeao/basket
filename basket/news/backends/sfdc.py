@@ -63,6 +63,10 @@ FIELD_MAP = {
     'fsa_city': 'MailingCity',
     'fsa_current_status': 'FSA_Current_Status__c',
     'fsa_allow_share': 'FSA_Allow_Info_Shared__c',
+    'cv_days_interval': 'cv_days_interval__c',
+    'cv_created_at': 'cv_created_at__c',
+    'cv_goal_reached_at': 'cv_goal_reached_at__c',
+    'cv_first_contribution_date': 'cv_first_contr_dt__c',
 }
 INV_FIELD_MAP = {v: k for k, v in FIELD_MAP.items()}
 FIELD_DEFAULTS = {

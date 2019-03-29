@@ -103,7 +103,7 @@ STORE_TASK_FAILURES = config('STORE_TASK_FAILURES', not READ_ONLY_MODE, cast=boo
 ADMIN_REDIRECT_URL = config('ADMIN_REDIRECT_URL',
                             'https://admin.basket.moz.works/admin/')
 
-TIME_ZONE = 'America/Los_Angeles'
+TIME_ZONE = 'UTC'
 USE_TZ = True
 SITE_ID = 1
 USE_I18N = False
@@ -385,6 +385,8 @@ FXA_LOGIN_CAMPAIGNS = {
     'membership-tech': 'member-tech',
     'membership-tk': 'member-tk',
 }
+
+COMMON_VOICE_NEWSLETTER = config('COMMON_VOICE_NEWSLETTER', default='common-voice')
 
 OIDC_ENABLE = config('OIDC_ENABLE', default=False, cast=bool)
 if OIDC_ENABLE:
