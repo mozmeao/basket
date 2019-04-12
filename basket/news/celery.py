@@ -1,3 +1,6 @@
+import celery
+from raven.contrib.celery import register_signal, register_logger_signal
+from raven.contrib.django.raven_compat.models import client
 from __future__ import absolute_import
 
 import os
@@ -7,9 +10,6 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'basket.settings')
 
 from django.conf import settings  # noqa
 
-import celery
-from raven.contrib.celery import register_signal, register_logger_signal
-from raven.contrib.django.raven_compat.models import client
 
 
 class Celery(celery.Celery):
