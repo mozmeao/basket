@@ -1,12 +1,12 @@
+from django.core.handlers.wsgi import WSGIRequest
+from django.core.wsgi import get_wsgi_application
+from raven.contrib.django.raven_compat.middleware.wsgi import Sentry
+from whitenoise.django import DjangoWhiteNoise
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "basket.settings")
 
-from django.core.handlers.wsgi import WSGIRequest
-from django.core.wsgi import get_wsgi_application
 
-from raven.contrib.django.raven_compat.middleware.wsgi import Sentry
-from whitenoise.django import DjangoWhiteNoise
 
 try:
     import newrelic.agent
