@@ -314,6 +314,11 @@ LOGGING = {
             'handlers': ['console'],
             'propagate': False,
         },
+        'suds.client': {
+            'level': 'ERROR',
+            'handlers': ['console'],
+            'propagate': False,
+        },
     },
 }
 
