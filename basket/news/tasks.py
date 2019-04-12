@@ -31,7 +31,7 @@ from basket.news.models import (FailedTask, Newsletter, Interest,
 from basket.news.newsletters import get_sms_vendor_id, get_transactional_message_ids, newsletter_map
 from basket.news.utils import (generate_token, get_accept_languages, get_best_language, get_user_data,
                                iso_format_unix_timestamp, parse_newsletters, parse_newsletters_csv,
-                               SUBSCRIBE, UNSUBSCRIBE)
+                               SUBSCRIBE, UNSUBSCRIBE, get_best_supported_lang)
 
 log = logging.getLogger(__name__)
 
@@ -926,6 +926,12 @@ def process_donation(data):
             pass
         else:
             raise
+
+
+@et_task
+def process_newsletter_subscribe(data):
+    data['lang'] = get_best_supported_lang(data['lang'])
+    upsert_user(SUBSCRIBE, data)
 
 
 PETITION_CONTACT_FIELDS = [

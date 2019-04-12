@@ -15,6 +15,7 @@ from raven.contrib.django.raven_compat.models import client as sentry_client
 from basket.news.tasks import (
     process_donation,
     process_donation_event,
+    process_newsletter_subscribe,
     process_petition_signature,
 )
 
@@ -22,6 +23,7 @@ from basket.news.tasks import (
 EVENT_TYPES = {
     'donation': process_donation,
     'crm_petition_data': process_petition_signature,
+    'newsletter_signup_data': process_newsletter_subscribe,
     'DEFAULT': process_donation_event,
 }
 
