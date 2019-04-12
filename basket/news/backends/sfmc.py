@@ -306,8 +306,8 @@ class SFMC(object):
                                       status_code=response.status_code)
 
         if response.status_code >= 400:
-            errors = response.json()['errors']
-            raise NewsletterException(errors, status_code=response.status_code)
+            raise NewsletterException('SFMC Request Error: {}'.format(response.content),
+                                      status_code=response.status_code)
 
     @time_request
     def bulk_upsert_rows(self, de_name, values):
