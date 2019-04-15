@@ -930,6 +930,7 @@ def process_donation(data):
 
 @et_task
 def process_newsletter_subscribe(data):
+    data = data['form']
     data['lang'] = get_best_supported_lang(data['lang'])
     upsert_user(SUBSCRIBE, data)
 

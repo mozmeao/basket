@@ -80,6 +80,7 @@ class Command(BaseCommand):
 
                     try:
                         etype = data['data'].setdefault('event_type', 'donation')
+                        statsd.incr('mofo.donations.message.received.{}'.format(etype))
                         processor = EVENT_TYPES.get(etype, EVENT_TYPES['DEFAULT'])
                         processor.delay(data['data'])
                     except Exception:
