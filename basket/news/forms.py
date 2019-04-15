@@ -57,12 +57,15 @@ def country_choices():
     return SFDC_COUNTRIES.items() + [(code.upper(), name) for code, name in SFDC_COUNTRIES.iteritems()]
 
 
+UTC_DATETIME_FORMATS = ['%Y-%m-%dT%H:%M:%SZ']
+
+
 class CommonVoiceForm(forms.Form):
     email = EmailField()
     days_interval = forms.IntegerField(required=False)
-    created_at = forms.DateTimeField(required=False)
-    goal_reached_at = forms.DateTimeField(required=False)
-    first_contribution_date = forms.DateTimeField(required=False)
+    created_at = forms.DateTimeField(input_formats=UTC_DATETIME_FORMATS, required=False)
+    goal_reached_at = forms.DateTimeField(input_formats=UTC_DATETIME_FORMATS, required=False)
+    first_contribution_date = forms.DateTimeField(input_formats=UTC_DATETIME_FORMATS, required=False)
 
 
 class SubscribeForm(forms.Form):
