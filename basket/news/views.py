@@ -14,7 +14,7 @@ from ratelimit.exceptions import Ratelimited
 from ratelimit.utils import is_ratelimited
 from synctool.routing import Route
 
-from basket.news.forms import SubscribeForm, UpdateUserMeta, SOURCE_URL_RE
+from basket.news.forms import CommonVoiceForm, SubscribeForm, UpdateUserMeta, SOURCE_URL_RE
 from basket.news.models import Newsletter, Interest, LocaleStewards, NewsletterGroup, LocalizedSMSMessage, \
     TransactionalEmailMessage
 from basket.news.newsletters import get_sms_vendor_id, newsletter_slugs, newsletter_and_group_slugs, \
@@ -22,6 +22,7 @@ from basket.news.newsletters import get_sms_vendor_id, newsletter_slugs, newslet
 from basket.news.tasks import (
     add_sms_user,
     confirm_user,
+    record_common_voice_goals,
     record_fxa_concerts_rsvp,
     send_recovery_message_task,
     update_custom_unsub,
@@ -274,6 +275,31 @@ def format_form_errors(errors):
             error_list.append('{}: {}'.format(fname, err))
 
     return error_list
+
+
+@require_POST
+@csrf_exempt
+def common_voice_goals(request):
+    if not has_valid_api_key(request):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'requires a valid API-key',
+            'code': errors.BASKET_AUTH_ERROR,
+        }, 401)
+
+    form = CommonVoiceForm(request.POST)
+    if form.is_valid():
+        # don't send empty values and use ISO formatted date strings
+        data = {k: v for k, v in form.cleaned_data.items() if v}
+        record_common_voice_goals.delay(data)
+        return HttpResponseJSON({'status': 'ok'})
+    else:
+        # form is invalid
+        return HttpResponseJSON({
+            'status': 'error',
+            'errors': format_form_errors(form.errors),
+            'errors_by_field': form.errors,
+        }, 400)
 
 
 @require_POST

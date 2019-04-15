@@ -1,4 +1,5 @@
 import re
+from time import strptime
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -11,6 +12,7 @@ from basket.news.utils import parse_newsletters_csv, process_email, LANG_RE
 
 FORMATS = (('H', 'HTML'), ('T', 'Text'))
 SOURCE_URL_RE = re.compile(r'^https?://')
+UTC_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%SZ'
 
 
 class EmailForm(forms.Form):
@@ -55,6 +57,27 @@ class NewslettersField(forms.MultipleChoiceField):
 def country_choices():
     """Upper and Lower case country codes"""
     return SFDC_COUNTRIES.items() + [(code.upper(), name) for code, name in SFDC_COUNTRIES.iteritems()]
+
+
+def validate_datetime_str(value):
+    try:
+        strptime(value, UTC_DATETIME_FORMAT)
+    except Exception as e:
+        raise ValidationError(str(e))
+
+
+class CommonVoiceForm(forms.Form):
+    email = EmailField()
+    days_interval = forms.IntegerField(required=False)
+    created_at = forms.CharField(required=False,
+                                 max_length=20,
+                                 validators=[validate_datetime_str])
+    goal_reached_at = forms.CharField(required=False,
+                                      max_length=20,
+                                      validators=[validate_datetime_str])
+    first_contribution_date = forms.CharField(required=False,
+                                              max_length=20,
+                                              validators=[validate_datetime_str])
 
 
 class SubscribeForm(forms.Form):

@@ -1089,6 +1089,46 @@ class TestValidateEmail(TestCase):
         self.assertIsNone(utils.process_email(self.email))
 
 
+class CommonVoiceGoalsTests(ViewsPatcherMixin, TestCase):
+    def setUp(self):
+        self.rf = RequestFactory()
+
+        self._patch_views('has_valid_api_key')
+        self._patch_views('record_common_voice_goals')
+
+    def test_valid_submission(self):
+        self.has_valid_api_key.return_value = True
+        req = self.rf.post('/', {
+            'email': 'dude@example.com',
+            'days_interval': '1',
+            'created_at': '2019-04-07T12:42:34Z',
+            'goal_reached_at': '',
+        })
+        resp = views.common_voice_goals(req)
+        self.record_common_voice_goals.delay.assert_called_with({
+            'email': 'dude@example.com',
+            'days_interval': 1,
+            'created_at': '2019-04-07T12:42:34Z',
+        })
+        self.assertEqual(resp.status_code, 200, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual('ok', data['status'])
+
+    def test_invalid_date(self):
+        self.has_valid_api_key.return_value = True
+        req = self.rf.post('/', {
+            'email': 'dude@example.com',
+            'days_interval': '1',
+            # invalid format
+            'created_at': '2019-04-07 12:42:34',
+        })
+        resp = views.common_voice_goals(req)
+        self.record_common_voice_goals.delay.assert_not_called()
+        self.assertEqual(resp.status_code, 400, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual('error', data['status'])
+
+
 class FxAConcertsRSVPTests(ViewsPatcherMixin, TestCase):
     def setUp(self):
         self.rf = RequestFactory()

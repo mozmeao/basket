@@ -741,6 +741,27 @@ def send_recovery_message_task(email):
 
 
 @et_task
+def record_common_voice_goals(data):
+    email = data.pop('email')
+    user_data = get_user_data(email=email, extra_fields=['id'])
+    new_data = {
+        'source_url': 'https://voice.mozilla.org',
+        'newsletters': [settings.COMMON_VOICE_NEWSLETTER],
+    }
+    for k, v in data.items():
+        new_data['cv_' + k] = v
+
+    if user_data:
+        sfdc.update(user_data, new_data)
+    else:
+        new_data.update({
+            'email': email,
+            'token': generate_token(),
+        })
+        sfdc.add(new_data)
+
+
+@et_task
 def record_fxa_concerts_rsvp(email, is_firefox, campaign_id):
     sfmc.add_row('FxAccounts_Concert_RSVP', {
         'Email': email,
