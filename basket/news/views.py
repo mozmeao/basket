@@ -1,5 +1,4 @@
 import re
-from datetime import datetime
 from time import time
 
 from django.conf import settings
@@ -290,14 +289,8 @@ def common_voice_goals(request):
 
     form = CommonVoiceForm(request.POST)
     if form.is_valid():
-        data = {}
         # don't send empty values and use ISO formatted date strings
-        for k, v in form.cleaned_data.items():
-            if v:
-                if isinstance(v, datetime):
-                    v = v.isoformat()
-
-                data[k] = v
+        data = {k: v for k, v in form.cleaned_data.items() if v}
         record_common_voice_goals.delay(data)
         return HttpResponseJSON({'status': 'ok'})
     else:
