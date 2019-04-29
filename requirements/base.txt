@@ -143,9 +143,9 @@ APScheduler==3.6.0 \
     --hash=sha256:e885b0f2ad5887a69ceffc5de39e2b2f34b4aa80521b79b1f2db911340e68a66
 tzlocal==1.5.1 \
     --hash=sha256:4ebeb848845ac898da6519b9b31879cf13b6626f7184c496037b818e238f2c4e
-phonenumbers==8.8.1 \
-    --hash=sha256:796c0eb59f694f3ef70bc005bc02530189edc9c6ce242900a16afd56a5515460 \
-    --hash=sha256:be0b891b3bb6dbbb3d24a11da756fa6d34c5592c775f6df42f969b7dc058c425
+phonenumbers==8.10.10 \
+    --hash=sha256:dabc8cfcff96446b0787ea337739ea286ec3949ec27a4790a9b4587817da5c5f \
+    --hash=sha256:efac24159582581d8ac467b5fc23fea298b1c101e6947f37c2ab666ec18f6cde
 PyBrowserID==0.12.0 \
     --hash=sha256:40cfec78212d79af67ca8744c563dc029d30196585e4848b03e01bbbd36cf53e
 PyFxA==0.4.0 \
