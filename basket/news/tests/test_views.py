@@ -1114,6 +1114,27 @@ class CommonVoiceGoalsTests(ViewsPatcherMixin, TestCase):
         data = json.loads(resp.content)
         self.assertEqual('ok', data['status'])
 
+    def test_valid_submission_with_boolean(self):
+        self.has_valid_api_key.return_value = True
+        req = self.rf.post('/', {
+            'email': 'dude@example.com',
+            'days_interval': '1',
+            'created_at': '2019-04-07T12:42:34Z',
+            'last_active_date': '2019-04-17T12:42:34Z',
+            'two_day_streak': 'True',
+        })
+        resp = views.common_voice_goals(req)
+        self.record_common_voice_goals.delay.assert_called_with({
+            'email': 'dude@example.com',
+            'days_interval': 1,
+            'created_at': '2019-04-07T12:42:34Z',
+            'last_active_date': '2019-04-17T12:42:34Z',
+            'two_day_streak': True,
+        })
+        self.assertEqual(resp.status_code, 200, resp.content)
+        data = json.loads(resp.content)
+        self.assertEqual('ok', data['status'])
+
     def test_invalid_date(self):
         self.has_valid_api_key.return_value = True
         req = self.rf.post('/', {

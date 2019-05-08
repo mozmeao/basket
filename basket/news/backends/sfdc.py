@@ -67,6 +67,8 @@ FIELD_MAP = {
     'cv_created_at': 'cv_created_at__c',
     'cv_goal_reached_at': 'cv_goal_reached_at__c',
     'cv_first_contribution_date': 'cv_first_contr_dt__c',
+    'cv_two_day_streak': 'cv_two_day_streak__c',
+    'cv_last_active_date': 'cv_last_active_dt__c',
 }
 INV_FIELD_MAP = {v: k for k, v in FIELD_MAP.items()}
 FIELD_DEFAULTS = {
