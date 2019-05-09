@@ -78,6 +78,10 @@ class CommonVoiceForm(forms.Form):
     first_contribution_date = forms.CharField(required=False,
                                               max_length=20,
                                               validators=[validate_datetime_str])
+    last_active_date = forms.CharField(required=False,
+                                       max_length=20,
+                                       validators=[validate_datetime_str])
+    two_day_streak = forms.NullBooleanField()
 
 
 class SubscribeForm(forms.Form):

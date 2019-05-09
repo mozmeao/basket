@@ -290,7 +290,7 @@ def common_voice_goals(request):
     form = CommonVoiceForm(request.POST)
     if form.is_valid():
         # don't send empty values and use ISO formatted date strings
-        data = {k: v for k, v in form.cleaned_data.items() if v}
+        data = {k: v for k, v in form.cleaned_data.items() if not (v == '' or v is None)}
         record_common_voice_goals.delay(data)
         return HttpResponseJSON({'status': 'ok'})
     else:
