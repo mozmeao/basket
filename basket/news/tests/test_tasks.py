@@ -798,7 +798,8 @@ class AddFxaActivityTests(TestCase):
 @patch('basket.news.tasks._update_fxa_info')
 @patch('basket.news.tasks.upsert_user')
 class FxAVerifiedTests(TestCase):
-    def test_no_subscribe(self, upsert_mock, fxa_info_mock):
+    @patch('basket.news.tasks.sfmc')
+    def test_no_subscribe(self, sfmc_mock, upsert_mock, fxa_info_mock):
         data = {
             'email': 'thedude@example.com',
             'uid': 'the-fxa-id',
@@ -847,7 +848,8 @@ class FxAVerifiedTests(TestCase):
         })
         fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], 'monitor', None)
 
-    def test_with_createDate(self, upsert_mock, fxa_info_mock):
+    @patch('basket.news.tasks.sfmc')
+    def test_with_createDate(self, sfmc_mock, upsert_mock, fxa_info_mock):
         create_date_float = 1526996035.498
         create_date = datetime.fromtimestamp(create_date_float)
         data = {

@@ -272,6 +272,8 @@ def fxa_verified(data):
             'newsletters': settings.FXA_REGISTER_NEWSLETTER,
             'source_url': fxa_source_url(metrics),
         })
+    else:
+        record_source_url(email, fxa_source_url(metrics), 'fxa-no-optin')
 
 
 @et_task
