@@ -52,6 +52,10 @@ class Newsletter(models.Model):
         help_text="Whether this newsletter is private. Private newsletters "
                   "require the subscribe requests to use an API key.",
     )
+    indent = models.BooleanField(
+        default=False,
+        help_text="Whether this newsletter is indented in the email preference center.",
+    )
     vendor_id = models.CharField(
         max_length=128,
         help_text="The backend vendor's identifier for this newsletter",

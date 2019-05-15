@@ -47,11 +47,11 @@ class APIUserAdmin(admin.ModelAdmin):
 
 class NewsletterAdmin(admin.ModelAdmin):
     fields = ('title', 'slug', 'vendor_id', 'description', 'languages',
-              'show', 'order', 'active', 'requires_double_optin', 'private')
-    list_display = ('order', 'title', 'slug', 'vendor_id', 'languages', 'show', 'active',
+              'show', 'order', 'active', 'indent', 'requires_double_optin', 'private')
+    list_display = ('order', 'title', 'slug', 'vendor_id', 'languages', 'show', 'active', 'indent',
                     'requires_double_optin', 'private')
     list_display_links = ('title', 'slug')
-    list_editable = ('order', 'show', 'active', 'requires_double_optin', 'private')
+    list_editable = ('order', 'show', 'active', 'indent', 'requires_double_optin', 'private')
     list_filter = ('show', 'active', 'requires_double_optin', 'private')
     prepopulated_fields = {"slug": ("title",)}
     search_fields = ('title', 'slug', 'description', 'vendor_id')

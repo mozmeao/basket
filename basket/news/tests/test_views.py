@@ -906,7 +906,7 @@ class TestNewslettersAPI(TestCase):
             vendor_id='VENDOR1',
         )
 
-        models.Newsletter.objects.create(slug='slug2', vendor_id='VENDOR2')
+        models.Newsletter.objects.create(slug='slug2', vendor_id='VENDOR2', indent=True)
         models.Newsletter.objects.create(slug='slug3', vendor_id='VENDOR3', private=True)
 
         req = self.rf.get(self.url)
@@ -918,6 +918,8 @@ class TestNewslettersAPI(TestCase):
         obj = newsletters['slug']
 
         self.assertTrue(newsletters['slug3']['private'])
+        self.assertTrue(newsletters['slug2']['indent'])
+        self.assertFalse(newsletters['slug3']['indent'])
         self.assertEqual(nl1.title, obj['title'])
         self.assertEqual(nl1.active, obj['active'])
         for lang in ['en-US', 'fr']:
