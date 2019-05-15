@@ -550,7 +550,8 @@ def user(request, token):
             data['email'] = email
         return update_user_task(request, SET, data)
 
-    return get_user(token)
+    get_fxa = 'fxa' in request.GET
+    return get_user(token, get_fxa=get_fxa)
 
 
 @require_POST
@@ -685,6 +686,7 @@ def lookup_user(request):
 
     token = request.GET.get('token', None)
     email = request.GET.get('email', None)
+    get_fxa = 'fxa' in request.GET
 
     if (not email and not token) or (email and token):
         return HttpResponseJSON({
@@ -707,7 +709,7 @@ def lookup_user(request):
             return invalid_email_response()
 
     try:
-        user_data = get_user_data(token=token, email=email)
+        user_data = get_user_data(token=token, email=email, get_fxa=get_fxa)
     except NewsletterException as e:
         return newsletter_exception_response(e)
 
