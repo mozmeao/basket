@@ -10,7 +10,7 @@ from mock import patch
 from basket import errors
 
 from basket.news import views
-from basket.news.backends.common import NewsletterException
+from basket.news.backends.common import NewsletterException, NewsletterNoResultsException
 from basket.news.models import APIUser
 from basket.news.utils import SET, generate_token
 
@@ -74,16 +74,73 @@ class TestLookupUser(TestCase):
         rsp = self.get(params=params)
         self.assertEqual(400, rsp.status_code, rsp.content)
 
-    @patch('basket.news.views.get_user_data')
-    def test_with_token(self, get_user_data):
+    @patch('basket.news.utils.sfdc')
+    @patch('basket.news.utils.sfmc')
+    def test_with_token(self, sfmc_mock, sfdc_mock):
         """Passing a token gets back that user's data"""
-        get_user_data.return_value = self.user_data
+        sfdc_mock.get.return_value = self.user_data
         params = {
             'token': 'dummy',
         }
         rsp = self.get(params=params)
         self.assertEqual(200, rsp.status_code, rsp.content)
         self.assertEqual(self.user_data, json.loads(rsp.content))
+        sfmc_mock.get_row.assert_not_called()
+
+    @patch('basket.news.utils.sfdc')
+    @patch('basket.news.utils.sfmc')
+    def test_get_fxa_status(self, sfmc_mock, sfdc_mock):
+        """Should request FxA status from SFMC"""
+        user_data = self.user_data.copy()
+        user_data['email'] = 'hisdudeness@example.com'
+        sfdc_mock.get.return_value = user_data
+        response = user_data.copy()
+        response['has_fxa'] = True
+        params = {
+            'token': 'dummy',
+            'fxa': '1',
+        }
+        rsp = self.get(params=params)
+        sfmc_mock.get_row.assert_called_with('Firefox_Account_ID', ['FXA_ID'], email=user_data['email'])
+        self.assertEqual(200, rsp.status_code, rsp.content)
+        self.assertEqual(response, json.loads(rsp.content))
+
+    @patch('basket.news.utils.sfdc')
+    @patch('basket.news.utils.sfmc')
+    def test_get_fxa_status_false(self, sfmc_mock, sfdc_mock):
+        """Should request FxA status from SFMC"""
+        user_data = self.user_data.copy()
+        user_data['email'] = 'hisdudeness@example.com'
+        sfdc_mock.get.return_value = user_data
+        response = user_data.copy()
+        response['has_fxa'] = False
+        sfmc_mock.get_row.side_effect = NewsletterNoResultsException
+        params = {
+            'token': 'dummy',
+            'fxa': '1',
+        }
+        rsp = self.get(params=params)
+        sfmc_mock.get_row.assert_called_with('Firefox_Account_ID', ['FXA_ID'], email=user_data['email'])
+        self.assertEqual(200, rsp.status_code, rsp.content)
+        self.assertEqual(response, json.loads(rsp.content))
+
+    @patch('basket.news.utils.sfdc')
+    @patch('basket.news.utils.sfmc')
+    def test_get_fxa_status_error(self, sfmc_mock, sfdc_mock):
+        """Should request FxA status from SFMC"""
+        user_data = self.user_data.copy()
+        user_data['email'] = 'hisdudeness@example.com'
+        sfdc_mock.get.return_value = user_data
+        sfmc_mock.get_row.side_effect = NewsletterException
+        params = {
+            'token': 'dummy',
+            'fxa': '1',
+        }
+        rsp = self.get(params=params)
+        sfmc_mock.get_row.assert_called_with('Firefox_Account_ID', ['FXA_ID'], email=user_data['email'])
+        self.assertEqual(200, rsp.status_code, rsp.content)
+        # should not contain 'has_fxa' at all on general error
+        self.assertEqual(user_data, json.loads(rsp.content))
 
     def test_with_email_no_api_key(self):
         """Passing email without api key is a 401"""

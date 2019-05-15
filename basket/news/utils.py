@@ -23,8 +23,9 @@ from django_statsd.clients import statsd
 from email_validator import validate_email, EmailNotValidError
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
-from basket.news.backends.common import NewsletterException
+from basket.news.backends.common import NewsletterException, NewsletterNoResultsException
 from basket.news.backends.sfdc import sfdc
+from basket.news.backends.sfmc import sfmc
 from basket.news.models import APIUser, BlockedEmail
 from basket.news.newsletters import newsletter_inactive_slugs, newsletter_group_newsletter_slugs, \
     newsletter_languages
@@ -274,7 +275,7 @@ IGNORE_USER_FIELDS = [
 ]
 
 
-def get_user_data(token=None, email=None, extra_fields=None):
+def get_user_data(token=None, email=None, extra_fields=None, get_fxa=False):
     """Return a dictionary of the user's data from Exact Target.
     Look them up by their email if given, otherwise by the token.
 
@@ -284,6 +285,10 @@ def get_user_data(token=None, email=None, extra_fields=None):
     in the IGNORE_USER_FIELDS list. If you need one of those fields then
     call this function with said field name in a list passed in
     the `extra_fields` argument.
+
+    If `get_fxa` is True then the email will be looked up in the FxA Data Extension
+    in SFMC and a boolean field will be including indicating whether they are
+    an account holder or not.
 
     Review of results:
 
@@ -325,11 +330,24 @@ def get_user_data(token=None, email=None, extra_fields=None):
         if extra_fields and fn not in extra_fields:
             user.pop(fn, None)
 
+    if get_fxa:
+        try:
+            sfmc.get_row('Firefox_Account_ID', ['FXA_ID'], email=user['email'])
+        except NewsletterNoResultsException:
+            fxa_user = False
+        except NewsletterException:
+            fxa_user = None
+        else:
+            fxa_user = True
+
+        if fxa_user is not None:
+            user['has_fxa'] = fxa_user
+
     user['status'] = 'ok'
     return user
 
 
-def get_user(token=None, email=None):
+def get_user(token=None, email=None, get_fxa=False):
     if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
         # can't return user data during maintenance
         return HttpResponseJSON({
@@ -339,7 +357,7 @@ def get_user(token=None, email=None):
         }, 400)
 
     try:
-        user_data = get_user_data(token, email)
+        user_data = get_user_data(token, email, get_fxa=get_fxa)
         status_code = 200
     except NewsletterException as e:
         return newsletter_exception_response(e)
