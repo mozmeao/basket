@@ -1,4 +1,3 @@
 # https://pyup.io/docs/bot/config/
-schedule: "every week"
+schedule: "every month"
 branch: master
-assignees: pmac
