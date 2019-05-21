@@ -1,3 +1,4 @@
+# flake8: noqa
 from __future__ import absolute_import
 
 import os
@@ -5,7 +6,7 @@ import os
 # set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'basket.settings')
 
-from django.conf import settings  # noqa
+from django.conf import settings
 
 import celery
 from raven.contrib.celery import register_signal, register_logger_signal
