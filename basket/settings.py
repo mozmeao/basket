@@ -111,7 +111,7 @@ USE_I18N = False
 STATIC_ROOT = path('static')
 STATIC_URL = '/static/'
 if not DEBUG:
-    STATICFILES_STORAGE = 'whitenoise.django.GzipManifestStaticFilesStorage'
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 try:
     # Make this unique, and don't share it with anybody.
@@ -139,6 +139,7 @@ TEMPLATES = [
 MIDDLEWARE = (
     'allow_cidr.middleware.AllowCIDRMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'basket.news.middleware.EnforceHostnameMiddleware',
     'basket.news.middleware.HostnameMiddleware',
     'django.middleware.common.CommonMiddleware',
