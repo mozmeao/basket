@@ -402,7 +402,7 @@ if OIDC_ENABLE:
     OIDC_RP_CLIENT_SECRET = config('OIDC_RP_CLIENT_SECRET')
     OIDC_CREATE_USER = config('OIDC_CREATE_USER', default=False, cast=bool)
     MIDDLEWARE = MIDDLEWARE + \
-        ('mozilla_django_oidc.middleware.RefreshIDToken',)
+        ('mozilla_django_oidc.middleware.SessionRefresh',)
     LOGIN_REDIRECT_URL = '/admin/'
 
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
