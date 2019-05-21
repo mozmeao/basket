@@ -686,8 +686,8 @@ class AddFxaActivityTests(TestCase):
     def test_windows(self):
         ua = 'Mozilla/5.0 (Windows NT 6.1; rv:10.0) Gecko/20100101 Firefox/10.0'
         record = self._base_test(ua)
-        self.assertEqual(record['OS'], 'Windows 7')
-        self.assertEqual(record['OS_VERSION'], '')  # Not sure if we expect '7' here.
+        self.assertEqual(record['OS'], 'Windows')
+        self.assertEqual(record['OS_VERSION'], '7')  # Not sure if we expect '7' here.
         self.assertEqual(record['BROWSER'], 'Firefox 10')
         self.assertEqual(record['DEVICE_NAME'], 'Other')
         self.assertEqual(record['DEVICE_TYPE'], 'D')
