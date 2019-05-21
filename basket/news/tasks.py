@@ -248,6 +248,7 @@ def fxa_verified(data):
 
     locale = data.get('locale')
     subscribe = data.get('marketingOptIn')
+    newsletters = data.get('newsletters')
     metrics = data.get('metricsContext', {})
     service = data.get('service', '')
     country = data.get('countryCode', '')
@@ -266,11 +267,20 @@ def fxa_verified(data):
 
     _update_fxa_info(email, lang, fxa_id, service, create_date)
 
-    if subscribe:
+    add_news = None
+    if newsletters:
+        if settings.FXA_REGISTER_NEWSLETTER not in newsletters:
+            newsletters.append(settings.FXA_REGISTER_NEWSLETTER)
+
+        add_news = ','.join(newsletters)
+    elif subscribe:
+        add_news = settings.FXA_REGISTER_NEWSLETTER
+
+    if add_news:
         upsert_user.delay(SUBSCRIBE, {
             'email': email,
             'lang': lang,
-            'newsletters': settings.FXA_REGISTER_NEWSLETTER,
+            'newsletters': add_news,
             'source_url': fxa_source_url(metrics),
             'country': country,
         })

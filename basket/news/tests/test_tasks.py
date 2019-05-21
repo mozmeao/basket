@@ -787,10 +787,29 @@ class FxAVerifiedTests(TestCase):
             'service': 'sync',
         }
         fxa_verified(data)
-        upsert_mock.delay.assert_called_with(SUBSCRIBE, {
+        upsert_mock.delay.assert_called_once_with(SUBSCRIBE, {
             'email': data['email'],
             'lang': 'en-US',
             'newsletters': settings.FXA_REGISTER_NEWSLETTER,
+            'source_url': settings.FXA_REGISTER_SOURCE_URL,
+            'country': '',
+        })
+        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], 'sync', None)
+
+    def test_with_newsletters(self, upsert_mock, fxa_info_mock):
+        data = {
+            'email': 'thedude@example.com',
+            'uid': 'the-fxa-id',
+            'locale': 'en-US,en',
+            'marketingOptIn': True,
+            'newsletters': ['test-pilot', 'take-action-for-the-internet'],
+            'service': 'sync',
+        }
+        fxa_verified(data)
+        upsert_mock.delay.assert_called_once_with(SUBSCRIBE, {
+            'email': data['email'],
+            'lang': 'en-US',
+            'newsletters': 'test-pilot,take-action-for-the-internet,' + settings.FXA_REGISTER_NEWSLETTER,
             'source_url': settings.FXA_REGISTER_SOURCE_URL,
             'country': '',
         })
