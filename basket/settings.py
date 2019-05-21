@@ -41,7 +41,7 @@ REDIS_URL = config('REDIS_URL', None)
 if REDIS_URL:
     REDIS_URL = REDIS_URL.rstrip('/0')
     # use redis for celery and cache
-    os.environ['BROKER_URL'] = REDIS_URL + '/' + config('REDIS_CELERY_DB', '0')
+    os.environ['CELERY_BROKER_URL'] = REDIS_URL + '/' + config('REDIS_CELERY_DB', '0')
     os.environ['CACHE_URL'] = REDIS_URL + '/' + config('REDIS_CACHE_DB', '1')
 
 # Production uses MySQL, but Sqlite should be sufficient for local development.
@@ -237,23 +237,23 @@ CORS_URLS_REGEX = r'^/(news/|subscribe)'
 # view rate limiting
 RATELIMIT_VIEW = 'basket.news.views.ratelimited'
 
-CELERY_ALWAYS_EAGER = config('CELERY_ALWAYS_EAGER', DEBUG, cast=bool)
-BROKER_URL = config('BROKER_URL', None)
+CELERY_TASK_ALWAYS_EAGER = config('CELERY_TASK_ALWAYS_EAGER', DEBUG, cast=bool)
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', None)
 CELERY_REDIS_MAX_CONNECTIONS = config('CELERY_REDIS_MAX_CONNECTIONS', 2, cast=int)
-CELERY_DISABLE_RATE_LIMITS = True
-CELERY_IGNORE_RESULT = True
-CELERYD_PREFETCH_MULTIPLIER = config('CELERYD_PREFETCH_MULTIPLIER', 1, cast=int)
-CELERY_MESSAGE_COMPRESSION = 'gzip'
-CELERY_ROUTES = {
+CELERY_WORKER_DISABLE_RATE_LIMITS = True
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = config('CELERY_WORKER_PREFETCH_MULTIPLIER', 1, cast=int)
+CELERY_TASK_COMPRESSION = 'gzip'
+CELERY_TASK_ROUTES = {
     'basket.news.tasks.snitch': {'queue': 'snitch'},
 }
 
 SNITCH_ID = config('SNITCH_ID', None)
 
-CELERYBEAT_SCHEDULE = {}
+CELERY_BEAT_SCHEDULE = {}
 
 if SNITCH_ID:
-    CELERYBEAT_SCHEDULE['snitch'] = {
+    CELERY_BEAT_SCHEDULE['snitch'] = {
         'task': 'basket.news.tasks.snitch',
         'schedule': timedelta(minutes=5),
     }
@@ -368,7 +368,7 @@ FXA_EVENTS_SNITCH_ID = config('FXA_EVENTS_SNITCH_ID', default='')
 
 FXA_ACCESS_KEY_ID = config('FXA_ACCESS_KEY_ID', default='')
 FXA_SECRET_ACCESS_KEY = config('FXA_SECRET_ACCESS_KEY', default='')
-FXA_S3_BUCKET = config('FXA_S3_BUCKET', default='')
+FXA_CELERY_S3_BUCKET = config('FXA_CELERY_S3_BUCKET', default='')
 FXA_SFMC_DE = config('FXA_SFMC_DE', default='FXA_Logins')
 FXA_SNITCH_URL = config('FXA_SNITCH_URL', default='')
 # stable, stage, or production
@@ -407,7 +407,7 @@ if OIDC_ENABLE:
 
 if sys.argv[0].endswith('py.test') or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     # stuff that's absolutely required for a test run
-    CELERY_ALWAYS_EAGER = True
+    CELERY_TASK_ALWAYS_EAGER = True
     SFDC_SETTINGS.pop('username', None)
     SFDC_SETTINGS.pop('password', None)
     SFMC_SETTINGS.pop('clientid', None)

@@ -4,6 +4,6 @@ DEBUG=1
 SECRET_KEY=sssssssshhhhhhhhhh
 
 # this is so you don't need a real queue for development
-CELERY_ALWAYS_EAGER=1
+CELERY_TASK_ALWAYS_EAGER=1
 
 ALLOWED_HOSTS='*'

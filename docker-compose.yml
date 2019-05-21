@@ -18,7 +18,8 @@ services:
       - DEBUG=True
       - ALLOWED_HOSTS=localhost,127.0.0.1,
       - REDIS_URL=redis://redis:6379
-      - CELERY_ALWAYS_EAGER=False
+      - CELERY_TASK_ALWAYS_EAGER=False
+      - CELERY_LOG_LEVEL=debug
       - DJANGO_LOG_LEVEL=DEBUG
     env_file: .env
 
