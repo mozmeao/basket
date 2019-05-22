@@ -824,6 +824,7 @@ class FxAVerifiedTests(TestCase):
             'lang': 'en-US',
             'newsletters': settings.FXA_REGISTER_NEWSLETTER,
             'source_url': settings.FXA_REGISTER_SOURCE_URL,
+            'country': '',
         })
         fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], 'sync', None)
 
@@ -838,6 +839,7 @@ class FxAVerifiedTests(TestCase):
                 'some_other_thing': 'Donnie',
             },
             'service': 'monitor',
+            'countryCode': 'DE',
         }
         fxa_verified(data)
         upsert_mock.delay.assert_called_with(SUBSCRIBE, {
@@ -845,6 +847,7 @@ class FxAVerifiedTests(TestCase):
             'lang': 'en-US',
             'newsletters': settings.FXA_REGISTER_NEWSLETTER,
             'source_url': settings.FXA_REGISTER_SOURCE_URL + '?utm_campaign=bowling',
+            'country': 'DE',
         })
         fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], 'monitor', None)
 
@@ -887,6 +890,7 @@ class FxALoginTests(TestCase):
         'ts': 1508897239.207,
         'uid': 'the-fxa-id-for-el-dudarino',
         'userAgent': 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:56.0) Gecko/20100101 Firefox/56.0',
+        'countryCode': 'US',
     }
 
     def get_data(self):
@@ -918,6 +922,7 @@ class FxALoginTests(TestCase):
             'email': 'the.dude@example.com',
             'newsletters': settings.FXA_LOGIN_CAMPAIGNS['fxa-embedded-form-fx'],
             'source_url': ANY,
+            'country': 'US',
         })
         source_url = upsert_mock.delay.call_args[0][1]['source_url']
         assert 'utm_campaign=fxa-embedded-form-fx' in source_url

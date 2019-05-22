@@ -250,6 +250,7 @@ def fxa_verified(data):
     subscribe = data.get('marketingOptIn')
     metrics = data.get('metricsContext', {})
     service = data.get('service', '')
+    country = data.get('countryCode', '')
 
     if not locale:
         statsd.incr('fxa_verified.ignored.no_locale')
@@ -271,6 +272,7 @@ def fxa_verified(data):
             'lang': lang,
             'newsletters': settings.FXA_REGISTER_NEWSLETTER,
             'source_url': fxa_source_url(metrics),
+            'country': country,
         })
     else:
         record_source_url(email, fxa_source_url(metrics), 'fxa-no-optin')
@@ -298,6 +300,7 @@ def fxa_login(data):
             'email': email,
             'newsletters': newsletter,
             'source_url': fxa_source_url(metrics),
+            'country': data.get('countryCode', ''),
         })
 
 
