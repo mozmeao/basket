@@ -1,5 +1,6 @@
 from django.test import TestCase
 
+from celery.exceptions import Retry
 from mock import patch, Mock
 
 from basket.news.backends.common import NewsletterException
@@ -15,7 +16,7 @@ class TestConfirmTask(TestCase):
         an exception so our task logic will retry
         """
         get_user_data.side_effect = NewsletterException('Stuffs broke yo.')
-        with self.assertRaises(NewsletterException):
+        with self.assertRaises(Retry):
             confirm_user('token')
         self.assertFalse(sfdc_mock.update.called)
 
