@@ -55,3 +55,13 @@ services:
       - redis
     command:
       ./bin/run-donate-worker.sh
+
+  test:
+    extends: app
+    env_file: docker/envfiles/test.env
+    depends_on:
+      - db
+    links:
+      - db
+    command:
+      ./bin/run-tests.sh

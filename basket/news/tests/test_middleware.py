@@ -12,7 +12,9 @@ def test_is_ip_address():
     assert not is_ip_address('42.basket.mozilla.org')
 
 
-@override_settings(DEBUG=False, ENFORCE_HOSTNAME=['basket.mozilla.org'])
+@override_settings(DEBUG=False,
+                   ENFORCE_HOSTNAME=['basket.mozilla.org'],
+                   ALLOWED_HOSTS=['*'])
 def test_enforce_hostname_middleware():
     get_resp_mock = Mock()
     mw = EnforceHostnameMiddleware(get_resp_mock)
