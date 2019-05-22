@@ -1,6 +1,4 @@
-FROM python:2-slim-stretch
-
-# from https://github.com/mozmeao/docker-pythode/blob/master/Dockerfile.footer
+FROM python:3-slim-stretch
 
 # Extra python env
 ENV PYTHONDONTWRITEBYTECODE=1
