@@ -1,5 +1,6 @@
 import json
 from copy import deepcopy
+from datetime import datetime
 from urllib2 import URLError
 
 from django.conf import settings
@@ -7,9 +8,8 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
 
-from datetime import datetime
-
 import simple_salesforce as sfapi
+from celery.exceptions import Retry
 from mock import ANY, Mock, patch
 
 from basket.news.celery import app as celery_app
@@ -201,7 +201,7 @@ class ProcessPetitionSignatureTests(TestCase):
         contact_data['email'] = data['form']['email']
         contact_data['record_type'] = settings.DONATE_CONTACT_RECORD_TYPE
         gud_mock.return_value = None
-        with self.assertRaises(RetryTask):
+        with self.assertRaises(Retry):
             process_petition_signature(data)
 
         sfdc_mock.update.assert_not_called()
@@ -313,7 +313,7 @@ class ProcessDonationTests(TestCase):
         gud_mock.return_value = None
         del data['first_name']
         data['last_name'] = 'Theodore Donald Kerabatsos'
-        with self.assertRaises(RetryTask):
+        with self.assertRaises(Retry):
             # raises retry b/c the 2nd call to get_user_data returns None
             process_donation(data)
         sfdc_mock.add.assert_called_with({
@@ -334,7 +334,7 @@ class ProcessDonationTests(TestCase):
         gud_mock.return_value = None
         del data['first_name']
         data['last_name'] = '  '
-        with self.assertRaises(RetryTask):
+        with self.assertRaises(Retry):
             # raises retry b/c the 2nd call to get_user_data returns None
             process_donation(data)
         sfdc_mock.add.assert_called_with({
@@ -353,7 +353,7 @@ class ProcessDonationTests(TestCase):
         gud_mock.return_value = None
         del data['first_name']
         data['last_name'] = None
-        with self.assertRaises(RetryTask):
+        with self.assertRaises(Retry):
             # raises retry b/c the 2nd call to get_user_data returns None
             process_donation(data)
         sfdc_mock.add.assert_called_with({
@@ -447,7 +447,7 @@ class ProcessDonationTests(TestCase):
         }]
         exc = sfapi.SalesforceMalformedRequest('url', 400, 'opportunity', error_content)
         sfdc_mock.opportunity.create.side_effect = exc
-        with self.assertRaises(sfapi.SalesforceMalformedRequest):
+        with self.assertRaises(Retry):
             process_donation(data)
 
 
@@ -540,7 +540,7 @@ class RecoveryMessageTask(TestCase):
         """Error talking to Basket. I'm shocked, SHOCKED!"""
         mock_look_for_user.side_effect = NewsletterException('ET has failed to achieve.')
 
-        with self.assertRaises(NewsletterException):
+        with self.assertRaises(Retry):
             send_recovery_message_task(self.email)
 
         self.assertFalse(mock_send.called)
