@@ -58,7 +58,10 @@ DATABASES = {
                       cast=dj_database_url.parse),
 }
 if DATABASES['default']['ENGINE'] == 'django.db.backends.mysql':
-    DATABASES['default']['OPTIONS'] = {'init_command': 'SET storage_engine=InnoDB'}
+    DATABASES['default']['OPTIONS'] = {
+        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+    }
+
 
 CACHES = {
     'default': config('CACHE_URL',
