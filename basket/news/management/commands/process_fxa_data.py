@@ -1,5 +1,3 @@
-from __future__ import print_function, unicode_literals
-
 from email.utils import formatdate
 from multiprocessing.dummy import Pool as ThreadPool
 from time import time
@@ -105,7 +103,7 @@ def format_data_for_sfmc(fxaid, timestamp):
 def chunk_fxa_data(current_timestamps, chunk_size=1000):
     count = 0
     chunk = []
-    for fxaid, timestamp in current_timestamps.iteritems():
+    for fxaid, timestamp in current_timestamps.items():
         curr_ts = get_fxa_time(fxaid)
         if timestamp > curr_ts:
             chunk.append((fxaid, timestamp))

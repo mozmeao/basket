@@ -487,7 +487,7 @@ def subscribe(request):
     if not newsletters:
         # request.body causes tests to raise exceptions
         # while request.read() works.
-        raw_request = request.read()
+        raw_request = request.read().decode()
         if 'newsletters=' in raw_request:
             # malformed request from FxOS
             # Can't use QueryDict since the string is not url-encoded.

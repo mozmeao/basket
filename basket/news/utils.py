@@ -7,7 +7,7 @@ from uuid import uuid4
 from django.conf import settings
 from django.core.cache import caches
 from django.http import HttpResponse
-from django.utils.encoding import force_unicode
+from django.utils.encoding import force_str
 from django.utils.translation.trans_real import parse_accept_lang_header
 
 import fxa.constants
@@ -259,7 +259,7 @@ def language_code_is_valid(code):
 
     Raises TypeError if anything but a string is passed in.
     """
-    if not isinstance(code, basestring):
+    if not isinstance(code, str):
         raise TypeError("Language code must be a string")
 
     if code == '':
@@ -488,7 +488,7 @@ def process_email(email):
     if not email:
         return None
 
-    email = force_unicode(email)
+    email = force_str(email)
     try:
         # NOTE SFDC doesn't support SMPTUTF8, so we cannot enable support
         #      here until they do or we switch providers
@@ -505,7 +505,7 @@ def parse_newsletters_csv(newsletters):
     if isinstance(newsletters, (list, tuple)):
         return newsletters
 
-    if not isinstance(newsletters, basestring):
+    if not isinstance(newsletters, str):
         return []
 
     return [x.strip() for x in newsletters.split(',') if x.strip()]

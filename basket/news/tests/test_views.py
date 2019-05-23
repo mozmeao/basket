@@ -321,7 +321,7 @@ class SubscribeEmailValidationTest(TestCase):
                               content_type='text/plain; charset=UTF-8')
         views.subscribe(req)
         update_user_mock.assert_called_with(req, views.SUBSCRIBE, data={
-            'email': u'dude@xn--5rtw95l.xn--wgv71a',
+            'email': 'dude@xn--5rtw95l.xn--wgv71a',
             'newsletters': 'firefox-os',
         }, optin=False, sync=False)
 
@@ -332,7 +332,7 @@ class SubscribeEmailValidationTest(TestCase):
                                                      'newsletters': 'firefox-os'})
         views.subscribe(req)
         update_user_mock.assert_called_with(req, views.SUBSCRIBE, data={
-            'email': u'dude@xn--5rtw95l.xn--wgv71a',
+            'email': 'dude@xn--5rtw95l.xn--wgv71a',
             'newsletters': 'firefox-os',
         }, optin=False, sync=False)
 
@@ -433,7 +433,7 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
             'country': '',
             'source_url': '',
         }, start_time=ANY)
-        assert 'Thank you for subscribing' in response.content
+        assert b'Thank you for subscribing' in response.content
 
     def test_privacy_required(self):
         self.process_email.return_value = 'dude@example.com'
@@ -485,7 +485,7 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
             'privacy': 'true',
         }, HTTP_X_REQUESTED_WITH='')
         assert response.status_code == 400
-        assert 'This field is required' in response.content
+        assert b'This field is required' in response.content
 
     def test_lang_via_accept_language(self):
         self.process_email.return_value = 'dude@example.com'
@@ -734,10 +734,10 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         # example from real error with PII details changed
         self.process_email.return_value = 'dude@example.com'
         req = self.factory.generic('POST', '/news/subscribe/',
-                                   data='newsletters=mozilla-foundation&'
-                                        'source_url=https%3A%2F%2Fadvocacy.mozilla.org%2Fencrypt'
-                                        '&lang=en&email=dude@example.com'
-                                        '&country=DE&first_name=Dude&Walter',
+                                   data=b'newsletters=mozilla-foundation&'
+                                        b'source_url=https%3A%2F%2Fadvocacy.mozilla.org%2Fencrypt'
+                                        b'&lang=en&email=dude@example.com'
+                                        b'&country=DE&first_name=Dude&Walter',
                                    content_type='text/plain; charset=UTF-8')
         views.subscribe(req)
         update_user_mock.assert_called_with(req, views.SUBSCRIBE, data={
@@ -995,7 +995,7 @@ class TestNewslettersAPI(TestCase):
             languages='en-US, fr, de ',
         )
         vendor_ids = newsletter_fields()
-        self.assertEqual([u'VEND1'], vendor_ids)
+        self.assertEqual(['VEND1'], vendor_ids)
         # Now add another newsletter
         models.Newsletter.objects.create(
             slug='slug2',
@@ -1005,7 +1005,7 @@ class TestNewslettersAPI(TestCase):
             languages='en-US, fr, de ',
         )
         vendor_ids2 = set(newsletter_fields())
-        self.assertEqual(set([u'VEND1', u'VEND2']), vendor_ids2)
+        self.assertEqual(set(['VEND1', 'VEND2']), vendor_ids2)
 
     def test_cache_clear_on_delete(self):
         # Our caching of newsletter data doesn't result in wrong answers
@@ -1018,7 +1018,7 @@ class TestNewslettersAPI(TestCase):
             languages='en-US, fr, de ',
         )
         vendor_ids = newsletter_fields()
-        self.assertEqual([u'VEND1'], vendor_ids)
+        self.assertEqual(['VEND1'], vendor_ids)
         # Now delete it
         nl1.delete()
         vendor_ids = newsletter_fields()
