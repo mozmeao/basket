@@ -22,7 +22,7 @@ from django_statsd.clients import statsd
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
 from basket.base.utils import email_is_testing
-from basket.news.backends.common import NewsletterException, NewsletterNoResultsException
+from basket.news.backends.common import NewsletterException
 from basket.news.backends.sfdc import sfdc
 from basket.news.backends.sfmc import sfmc
 from basket.news.celery import app as celery_app
@@ -579,70 +579,6 @@ def mogrify_message_id(message_id, lang, format):
     return result
 
 
-DOI_FLAGS_MAP = {
-    'ABOUT_MOBILE': 'mobile',
-    'ABOUT_MOZILLA': 'about-mozilla',
-    'APP_DEV': 'app-dev',
-    'CONNECTED_DEVICES': 'connected-devices',
-    'DEV_EVENTS': 'developer-events',
-    'FIREFOX_ACCOUNTS_JOURNEY': 'firefox-accounts-journey',
-    'FIREFOX_DESKTOP': 'firefox-desktop',
-    'FIREFOX_FRIENDS': 'firefox-friends',
-    'FIREFOX_IOS': 'firefox-ios',
-    'FOUNDATION': 'mozilla-foundation',
-    'GAMEDEV_CONF': 'game-developer-conference',
-    'GET_INVOLVED': 'get-involved',
-    'MAKER_PARTY': 'maker-party',
-    'MOZFEST': 'mozilla-festival',
-    'MOZILLA_AND_YOU': 'mozilla-and-you',
-    'MOZILLA_GENERAL': 'mozilla-general',
-    'MOZILLA_PHONE': 'mozilla-phone',
-    'MOZ_LEARN': 'mozilla-learning-network',
-    'SHAPE_WEB': 'shape-web',
-    'STUDENT_AMBASSADORS': 'ambassadors',
-    'VIEW_SOURCE_GLOBAL': 'view-source-conference-global',
-    'VIEW_SOURCE_NA': 'view-source-conference-north-america',
-    'WEBMAKER': 'webmaker',
-    'TEST_PILOT': 'test-pilot',
-    'IOS_TEST_FLIGHT': 'ios-beta-test-flight',
-}
-DOI_FIELDS_MAP = {
-    'EMAIL_FORMAT_': 'format',
-    'EMAIL_ADDRESS_': 'email',
-    'LANGUAGE_ISO2': 'lang',
-    'SOURCE_URL': 'source_url',
-    'FIRST_NAME': 'first_name',
-    'LAST_NAME': 'last_name',
-    'COUNTRY_': 'country',
-}
-
-
-# TODO remove this and the data above a few months after SFDC deployment
-def get_sfmc_doi_user(token):
-    nl_flags = ['{}_FLG'.format(f) for f in DOI_FLAGS_MAP]
-    try:
-        row = sfmc.get_row('Double_Opt_In', nl_flags + DOI_FIELDS_MAP.keys(), token=token)
-    except NewsletterNoResultsException:
-        return None
-
-    newsletters = []
-    for sfmc_id, slug in DOI_FLAGS_MAP.items():
-        val = (row.get('{}_FLG'.format(sfmc_id)) or 'n').lower()
-        if val == 'y':
-            newsletters.append(slug)
-
-    record = {}
-    for sfmc_id, fid in DOI_FIELDS_MAP.items():
-        val = row.get(sfmc_id)
-        if val:
-            record[fid] = val
-
-    record['newsletters'] = newsletters
-    record['token'] = token
-
-    return record
-
-
 @et_task
 def confirm_user(token):
     """
@@ -662,19 +598,7 @@ def confirm_user(token):
     user_data = get_user_data(token=token)
 
     if user_data is None:
-        user = get_sfmc_doi_user(token)
-        if user and user.get('email'):
-            get_lock(user['email'])
-            user['optin'] = True
-            try:
-                sfdc.add(user)
-            except sfapi.SalesforceMalformedRequest:
-                # probably already know the email address
-                sfdc.update({'email': user['email']}, user)
-            statsd.incr('news.tasks.confirm_user.moved_from_sfmc')
-        else:
-            statsd.incr('news.tasks.confirm_user.confirm_user_not_found')
-
+        statsd.incr('news.tasks.confirm_user.confirm_user_not_found')
         return
 
     if user_data['optin']:
@@ -715,16 +639,8 @@ def update_custom_unsub(token, reason):
     try:
         sfdc.update({'token': token}, {'reason': reason})
     except sfapi.SalesforceMalformedRequest:
-        # likely the record can't be found. try the DoI DE.
-        user = get_sfmc_doi_user(token)
-        if user and user.get('email'):
-            get_lock(user['email'])
-            user['reason'] = reason
-            try:
-                sfdc.add(user)
-            except sfapi.SalesforceMalformedRequest:
-                # probably already know the email address
-                sfdc.update({'email': user['email']}, user)
+        # likely the record can't be found. nothing to do.
+        pass
 
 
 @et_task

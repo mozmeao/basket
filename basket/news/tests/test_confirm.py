@@ -42,14 +42,3 @@ class TestConfirmTask(TestCase):
         token = "TOKEN"
         confirm_user(token)
         self.assertFalse(sfdc_mock.update.called)
-
-    @patch('basket.news.tasks.get_sfmc_doi_user')
-    def test_user_not_found(self, doi_mock, get_user_data, sfdc_mock):
-        """If we can't find the user, try SFMC"""
-        get_user_data.return_value = None
-        doi_mock.return_value = None
-        token = "TOKEN"
-        confirm_user(token)
-        doi_mock.assert_called_with(token)
-        self.assertFalse(sfdc_mock.add.called)
-        self.assertFalse(sfdc_mock.update.called)
