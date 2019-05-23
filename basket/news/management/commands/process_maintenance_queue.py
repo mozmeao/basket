@@ -21,4 +21,4 @@ class Command(BaseCommand):
             task.retry()
             count += 1
 
-        print '{} processed. {} remaining.'.format(count, QueuedTask.objects.count())
+        print('{} processed. {} remaining.'.format(count, QueuedTask.objects.count()))

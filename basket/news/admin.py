@@ -92,7 +92,7 @@ class QueuedTaskAdmin(admin.ModelAdmin):
             old_task.retry()
             count += 1
         messages.info(request, 'Queued %d task%s to process' % (count, '' if count == 1 else 's'))
-    retry_task_action.short_description = u'Process task(s)'
+    retry_task_action.short_description = 'Process task(s)'
 
 
 class FailedTaskAdmin(admin.ModelAdmin):
@@ -109,7 +109,7 @@ class FailedTaskAdmin(admin.ModelAdmin):
             old_task.retry()
             count += 1
         messages.info(request, 'Queued %d task%s to try again' % (count, '' if count == 1 else 's'))
-    retry_task_action.short_description = u'Retry task(s)'
+    retry_task_action.short_description = 'Retry task(s)'
 
 
 admin.site.register(TransactionalEmailMessage, TransactionalEmailAdmin)

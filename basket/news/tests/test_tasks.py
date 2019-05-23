@@ -1,7 +1,7 @@
 import json
 from copy import deepcopy
 from datetime import datetime
-from urllib2 import URLError
+from urllib.error import URLError
 
 from django.conf import settings
 from django.core.cache import cache
@@ -47,9 +47,9 @@ class ProcessPetitionSignatureTests(TestCase):
         return {
             'form': {
                 'campaign_id': 'abiding',
-                'email': u'dude@example.com',
-                'first_name': u'Jeffery',
-                'last_name': u'Lebowski',
+                'email': 'dude@example.com',
+                'first_name': 'Jeffery',
+                'last_name': 'Lebowski',
                 'country': 'us',
                 'postal_code': '90210',
                 'source_url': 'https://example.com/change',
@@ -310,20 +310,20 @@ class ProcessDonationTests(TestCase):
     donate_data = {
         'created': 1479746809.327,
         'locale': 'pt-BR',
-        'currency': u'USD',
-        'donation_amount': u'75.00',
+        'currency': 'USD',
+        'donation_amount': '75.00',
         'transaction_fee': 0.42,
         'net_amount': 75.42,
         'conversion_amount': 42.75,
-        'last_4': u'5309',
-        'email': u'dude@example.com',
-        'first_name': u'Jeffery',
-        'last_name': u'Lebowski',
-        'project': u'mozillafoundation',
+        'last_4': '5309',
+        'email': 'dude@example.com',
+        'first_name': 'Jeffery',
+        'last_name': 'Lebowski',
+        'project': 'mozillafoundation',
         'source_url': 'https://example.com/donate',
         'recurring': True,
-        'service': u'paypal',
-        'transaction_id': u'NLEKFRBED3BQ614797468093.25',
+        'service': 'paypal',
+        'transaction_id': 'NLEKFRBED3BQ614797468093.25',
     }
 
     def test_one_name(self, sfdc_mock, gud_mock):
@@ -457,10 +457,10 @@ class ProcessDonationTests(TestCase):
             'last_name': 'Lebowski',
         }
         error_content = [{
-            u'errorCode': u'DUPLICATE_VALUE',
-            u'fields': [],
-            u'message': u'duplicate value found: PMT_Transaction_ID__c '
-                        u'duplicates value on record with id: blah-blah',
+            'errorCode': 'DUPLICATE_VALUE',
+            'fields': [],
+            'message': 'duplicate value found: PMT_Transaction_ID__c '
+                       'duplicates value on record with id: blah-blah',
         }]
         exc = sfapi.SalesforceMalformedRequest('url', 400, 'opportunity', error_content)
         sfdc_mock.opportunity.create.side_effect = exc
@@ -474,9 +474,9 @@ class ProcessDonationTests(TestCase):
             'last_name': 'Lebowski',
         }
         error_content = [{
-            u'errorCode': u'OTHER_ERROR',
-            u'fields': [],
-            u'message': u'Some other non-dupe problem',
+            'errorCode': 'OTHER_ERROR',
+            'fields': [],
+            'message': 'Some other non-dupe problem',
         }]
         exc = sfapi.SalesforceMalformedRequest('url', 400, 'opportunity', error_content)
         sfdc_mock.opportunity.create.side_effect = exc
@@ -528,7 +528,7 @@ class FailedTaskTest(TestCase):
         self.assertEqual(result.task_id, fail.task_id)
         self.assertEqual(args, fail.args)
         self.assertEqual(kwargs, fail.kwargs)
-        self.assertEqual(u"Exception('Test exception',)", fail.exc)
+        self.assertEqual("Exception('Test exception')", fail.exc)
         self.assertIn("Exception: Test exception", fail.einfo)
 
 

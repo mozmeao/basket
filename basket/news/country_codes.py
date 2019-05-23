@@ -252,7 +252,7 @@ SFDC_COUNTRIES = {
   'zm': 'Zambia',
   'zw': 'Zimbabwe',
 }
-SFDC_COUNTRIES_LIST = SFDC_COUNTRIES.keys()
+SFDC_COUNTRIES_LIST = list(SFDC_COUNTRIES.keys())
 COUNTRY_CODES_MAP = {
     'afg': 'af',
     'ala': 'ax',

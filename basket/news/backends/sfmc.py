@@ -289,7 +289,7 @@ class SFMC(object):
 
     @time_request
     def send_sms(self, phone_numbers, message_id):
-        if isinstance(phone_numbers, basestring):
+        if isinstance(phone_numbers, str):
             phone_numbers = [phone_numbers]
 
         phone_numbers = [pn.lstrip('+') for pn in phone_numbers]

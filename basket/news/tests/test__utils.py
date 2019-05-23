@@ -356,13 +356,13 @@ class TestLanguageCodeIsValid(TestCase):
 class TestProcessEmail(TestCase):
     def test_non_ascii_email_domain(self):
         """Should return IDNA version of domain"""
-        self.assertEqual(process_email(u'dude@黒川.日本'), u'dude@xn--5rtw95l.xn--wgv71a')
-        self.assertEqual(process_email('dude@黒川.日本'), u'dude@xn--5rtw95l.xn--wgv71a')
+        self.assertEqual(process_email('dude@黒川.日本'), 'dude@xn--5rtw95l.xn--wgv71a')
+        self.assertEqual(process_email('dude@黒川.日本'), 'dude@xn--5rtw95l.xn--wgv71a')
 
     def test_non_ascii_email_username(self):
         """Should return none as SFDC does not support non-ascii characters in emails"""
-        self.assertIsNone(process_email(u'düde@黒川.日本'))
-        self.assertIsNone(process_email(u'düde@example.com'))
+        self.assertIsNone(process_email('düde@黒川.日本'))
+        self.assertIsNone(process_email('düde@example.com'))
 
     def test_valid_email(self):
         """Should not return None for valid email."""

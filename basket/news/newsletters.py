@@ -106,11 +106,11 @@ def _get_newsletters_data():
 
 def newsletter_map():
     by_name = _newsletters()['by_name']
-    return {name: nl.vendor_id for name, nl in by_name.iteritems()}
+    return {name: nl.vendor_id for name, nl in by_name.items()}
 
 
 def newsletter_inv_map():
-    return {v: k for k, v in newsletter_map().iteritems()}
+    return {v: k for k, v in newsletter_map().items()}
 
 
 def newsletter_field(name):
@@ -142,7 +142,7 @@ def newsletter_slugs():
     Get a list of all the available newsletters.
     Returns a list of their slugs.
     """
-    return _newsletters()['by_name'].keys()
+    return list(_newsletters()['by_name'].keys())
 
 
 def newsletter_group_slugs():
@@ -151,7 +151,7 @@ def newsletter_group_slugs():
     Returns a list of their slugs.
     """
     # using get() in case old format cached
-    return _newsletters().get('groups', {}).keys()
+    return list(_newsletters().get('groups', {}).keys())
 
 
 def newsletter_and_group_slugs():
@@ -175,7 +175,7 @@ def slug_to_vendor_id(slug):
 
 def newsletter_fields():
     """Get a list of all the newsletter backend-specific fields"""
-    return _newsletters()['by_vendor_id'].keys()
+    return list(_newsletters()['by_vendor_id'].keys())
 
 
 def newsletter_languages():

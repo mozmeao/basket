@@ -1,5 +1,3 @@
-from __future__ import absolute_import, unicode_literals
-
 import json
 import logging
 from datetime import datetime, timedelta
@@ -7,7 +5,7 @@ from email.utils import formatdate
 from functools import wraps
 from hashlib import sha256
 from time import mktime, time
-from urllib import urlencode
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.core.cache import cache, caches
@@ -87,7 +85,7 @@ def get_lock(key, prefix='task'):
         return
 
     lock_key = 'basket-{}-{}'.format(prefix, key)
-    lock_key = sha256(lock_key).hexdigest()
+    lock_key = sha256(lock_key.encode()).hexdigest()
     got_lock = cache.add(lock_key, True, settings.TASK_LOCK_TIMEOUT)
     if not got_lock:
         statsd.incr('news.tasks.get_lock.no_lock_retry')
@@ -431,7 +429,7 @@ def upsert_contact(api_call_type, data, user_data):
         # When including any newsletter that does not
         # require confirmation, user gets a pass on confirming and goes straight
         # to confirmed.
-        to_subscribe = [nl for nl, sub in update_data['newsletters'].iteritems() if sub]
+        to_subscribe = [nl for nl, sub in update_data['newsletters'].items() if sub]
         if to_subscribe and not (forced_optin or
                                  (user_data and user_data.get('optin'))):
             exempt_from_confirmation = Newsletter.objects \
