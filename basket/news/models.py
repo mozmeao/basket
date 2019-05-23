@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+
 from uuid import uuid4
 
 from django.core.mail import send_mail
@@ -172,8 +172,8 @@ class FailedTask(models.Model):
     name = models.CharField(max_length=255)
     args = JSONField(null=False, default=list)
     kwargs = JSONField(null=False, default=dict)
-    exc = models.TextField(null=True, default=None, help_text=u"repr(exception)")
-    einfo = models.TextField(null=True, default=None, help_text=u"repr(einfo)")
+    exc = models.TextField(null=True, default=None, help_text="repr(exception)")
+    einfo = models.TextField(null=True, default=None, help_text="repr(einfo)")
 
     def __unicode__(self):
         return self.task_id
@@ -181,10 +181,10 @@ class FailedTask(models.Model):
     def formatted_call(self):
         """Return a string that could be evalled to repeat the original call"""
         formatted_args = [repr(arg) for arg in self.args]
-        formatted_kwargs = [u"%s=%r" % (key, val) for key, val in self.kwargs.iteritems()]
-        return u"%s(%s)" % (
+        formatted_kwargs = ["%s=%r" % (key, val) for key, val in self.kwargs.items()]
+        return "%s(%s)" % (
             self.name,
-            u", ".join(formatted_args + formatted_kwargs)
+            ", ".join(formatted_args + formatted_kwargs)
         )
 
     @property
@@ -301,7 +301,7 @@ class LocaleStewards(models.Model):
         verbose_name_plural = 'Locale Stewards'
 
     def __unicode__(self):
-        return u'Stewards for {lang_code} ({lang_name})'.format(
+        return 'Stewards for {lang_code} ({lang_name})'.format(
             lang_code=self.locale,
             lang_name=product_details.languages[self.locale]['English'],
         )

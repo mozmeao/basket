@@ -137,7 +137,7 @@ def to_vendor(data):
             # use our default language (English) if we don't support the language
             data['lang'] = 'en'
 
-    for k, v in data.iteritems():
+    for k, v in data.items():
         if v != '' and k in FIELD_MAP:
             if k in PROCESSORS_TO_VENDOR:
                 v = PROCESSORS_TO_VENDOR[k](v)
@@ -181,7 +181,7 @@ def from_vendor(contact):
     news_map = newsletter_inv_map()
     data = {}
     newsletters = []
-    for fn, fv in contact.iteritems():
+    for fn, fv in contact.items():
         if fn in INV_FIELD_MAP:
             data_name = INV_FIELD_MAP[fn]
             if data_name in FIELD_DEFAULTS:
@@ -228,8 +228,8 @@ class RefreshingSFType(sfapi.SFType):
         self.refresh_session()
 
     def _base_url(self):
-        return (u'https://{instance}/services/data/'
-                u'v{version}/sobjects/{name}/').format(instance=self.sf_instance,
+        return ('https://{instance}/services/data/'
+                'v{version}/sobjects/{name}/').format(instance=self.sf_instance,
                                                        name=self.name,
                                                        version=self.sf_version)
 

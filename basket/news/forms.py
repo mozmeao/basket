@@ -56,7 +56,7 @@ class NewslettersField(forms.MultipleChoiceField):
 
 def country_choices():
     """Upper and Lower case country codes"""
-    return SFDC_COUNTRIES.items() + [(code.upper(), name) for code, name in SFDC_COUNTRIES.iteritems()]
+    return list(SFDC_COUNTRIES.items()) + [(code.upper(), name) for code, name in SFDC_COUNTRIES.items()]
 
 
 def validate_datetime_str(value):
