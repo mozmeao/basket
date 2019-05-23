@@ -368,7 +368,7 @@ FXA_EVENTS_SNITCH_ID = config('FXA_EVENTS_SNITCH_ID', default='')
 
 FXA_ACCESS_KEY_ID = config('FXA_ACCESS_KEY_ID', default='')
 FXA_SECRET_ACCESS_KEY = config('FXA_SECRET_ACCESS_KEY', default='')
-FXA_CELERY_S3_BUCKET = config('FXA_CELERY_S3_BUCKET', default='')
+FXA_S3_BUCKET = config('FXA_S3_BUCKET', default='')
 FXA_SFMC_DE = config('FXA_SFMC_DE', default='FXA_Logins')
 FXA_SNITCH_URL = config('FXA_SNITCH_URL', default='')
 # stable, stage, or production
