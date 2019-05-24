@@ -135,7 +135,9 @@ def get_fxa_clients():
     """Return and/or create FxA OAuth client instances"""
     if FXA_CLIENTS['oauth'] is None:
         server_urls = fxa.constants.ENVIRONMENT_URLS.get(settings.FXA_OAUTH_SERVER_ENV)
-        FXA_CLIENTS['oauth'] = fxa.oauth.Client(server_url=server_urls['oauth'])
+        FXA_CLIENTS['oauth'] = fxa.oauth.Client(server_url=server_urls['oauth'],
+                                                client_id=settings.FXA_CLIENT_ID,
+                                                client_secret=settings.FXA_CLIENT_SECRET)
         FXA_CLIENTS['profile'] = fxa.profile.Client(server_url=server_urls['profile'])
 
     return FXA_CLIENTS['oauth'], FXA_CLIENTS['profile']

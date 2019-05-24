@@ -96,6 +96,7 @@ ENFORCE_HOSTNAME = config('ENFORCE_HOSTNAME', default='', cast=Csv())
 USE_X_FORWARDED_HOST = True
 
 SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', not DEBUG, cast=bool)
+SESSION_ENGINE = config('SESSION_ENGINE', default='django.contrib.sessions.backends.cache')
 CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', not DEBUG, cast=bool)
 DISABLE_ADMIN = config('DISABLE_ADMIN', READ_ONLY_MODE, cast=bool)
 STORE_TASK_FAILURES = config('STORE_TASK_FAILURES', not READ_ONLY_MODE, cast=bool)
@@ -374,7 +375,10 @@ FXA_SNITCH_URL = config('FXA_SNITCH_URL', default='')
 # stable, stage, or production
 # https://github.com/mozilla/PyFxA/blob/master/fxa/constants.py
 FXA_OAUTH_SERVER_ENV = config('FXA_OAUTH_SERVER_ENV', default='stable')
+FXA_CLIENT_ID = config('FXA_CLIENT_ID', default='')
+FXA_CLIENT_SECRET = config('FXA_CLIENT_SECRET', default='')
 
+FXA_EMAIL_PREFS_DOMAIN = config('FXA_EMAIL_PREFS_DOMAIN', default='www.mozilla.org')
 FXA_REGISTER_NEWSLETTER = config('FXA_REGISTER_NEWSLETTER', default='firefox-accounts-journey')
 FXA_REGISTER_SOURCE_URL = config('FXA_REGISTER_SOURCE_URL', default='https://accounts.firefox.com/')
 # TODO move this to the DB

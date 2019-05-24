@@ -1,8 +1,10 @@
+import os
 import re
 from time import time
 
 from django.conf import settings
 from django.core.exceptions import NON_FIELD_ERRORS
+from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.views.decorators.cache import cache_page, never_cache
 from django.views.decorators.csrf import csrf_exempt
@@ -12,6 +14,7 @@ from basket import errors
 from django_statsd.clients import statsd
 from ratelimit.exceptions import Ratelimited
 from ratelimit.utils import is_ratelimited
+from raven.contrib.django.raven_compat.models import client as sentry_client
 from synctool.routing import Route
 
 from basket.news.forms import CommonVoiceForm, SubscribeForm, UpdateUserMeta, SOURCE_URL_RE
@@ -41,6 +44,7 @@ from basket.news.utils import (
     get_accept_languages,
     get_best_language,
     get_best_supported_lang,
+    get_fxa_clients,
     get_user_data,
     get_user,
     has_valid_api_key,
@@ -117,6 +121,85 @@ def ratelimited(request, e):
         'desc': 'rate limit reached',
         'code': errors.BASKET_USAGE_ERROR,
     }, 429)
+
+
+def generate_fxa_state():
+    return os.urandom(16).encode('hex')
+
+
+@require_safe
+def fxa_start(request):
+    fxa_oauth = get_fxa_clients()[0]
+    fxa_state = request.session['fxa_state'] = generate_fxa_state()
+    redirect_uri = request.build_absolute_uri('/fxa/callback/')
+    redirect_to = fxa_oauth.get_redirect_url(state=fxa_state,
+                                             redirect_uri=redirect_uri,
+                                             scope='profile',
+                                             email=request.GET.get('email'))
+    return HttpResponseRedirect(redirect_to)
+
+
+@require_safe
+def fxa_success(request):
+    # remove state from session to prevent multiple attempts
+    sess_state = request.session.pop('fxa_state', None)
+    if sess_state is None:
+        # need a better error state here
+        return HttpResponseJSON({
+            'status': 'error',
+            'message': 'no state found',
+        }, 400)
+
+    code = request.GET.get('code')
+    state = request.GET.get('state')
+    if not (code and state):
+        # need a better error state here
+        return HttpResponseJSON({
+            'status': 'error',
+            'message': 'no code or state returned',
+        }, 400)
+
+    if sess_state != state:
+        # need a better error state here
+        return HttpResponseJSON({
+            'status': 'error',
+            'message': 'states do not match',
+        }, 400)
+
+    fxa_oauth, fxa_profile = get_fxa_clients()
+    try:
+        access_token = fxa_oauth.trade_code(code)['access_token']
+        user_profile = fxa_profile.get_profile(access_token)
+    except Exception:
+        sentry_client.captureException()
+        # need a better error state here
+        return HttpResponseJSON({
+            'status': 'error',
+            'message': 'error communicating with FxA',
+        }, 500)
+
+    # TODO use user_profile['uid'] to check account in SFMC
+    email = user_profile['email']
+    user_data = get_user_data(email=email)
+    if user_data:
+        token = user_data['token']
+    else:
+        new_user_data = {
+            'email': email,
+            'optin': True,
+            'format': 'H',
+            'newsletters': [settings.FXA_REGISTER_NEWSLETTER],
+            'source_url': settings.FXA_REGISTER_SOURCE_URL + '?utm_source=basket-fxa-oauth',
+        }
+        lang = fxa_profile.get('locale')
+        if lang:
+            lang = get_best_language(get_accept_languages(lang))
+            new_user_data['lang'] = lang
+
+        token = upsert_contact(SUBSCRIBE, new_user_data, None)[0]
+
+    redirect_to = 'https://{}/newsletter/existing/{}/?fxa=1'.format(settings.FXA_EMAIL_PREFS_DOMAIN, token)
+    return HttpResponseRedirect(redirect_to)
 
 
 @require_POST

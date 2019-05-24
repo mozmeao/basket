@@ -5,7 +5,7 @@ from django.views.generic import RedirectView, TemplateView
 
 from watchman import views as watchman_views
 
-from basket.news.views import subscribe_main, subscribe_json
+from basket.news.views import subscribe_main, subscribe_json, fxa_start, fxa_success
 
 
 urlpatterns = [
@@ -19,6 +19,8 @@ if not settings.ADMIN_ONLY_MODE:
     urlpatterns.append(url(r'^news/', include('basket.news.urls')))
     urlpatterns.append(url(r'^subscribe/?$', subscribe_main))
     urlpatterns.append(url(r'^subscribe\.json$', subscribe_json))
+    urlpatterns.append(url(r'^fxa/?$', fxa_start))
+    urlpatterns.append(url(r'^fxa/callback/?$', fxa_success))
 
 if settings.DISABLE_ADMIN:
     urlpatterns.append(
