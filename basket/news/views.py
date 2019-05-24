@@ -142,43 +142,31 @@ def fxa_start(request):
 @require_safe
 def fxa_success(request):
     # remove state from session to prevent multiple attempts
+    error_url = 'https://{}/newsletter/fxa-error/'.format(settings.FXA_EMAIL_PREFS_DOMAIN)
     sess_state = request.session.pop('fxa_state', None)
     if sess_state is None:
-        # need a better error state here
-        return HttpResponseJSON({
-            'status': 'error',
-            'message': 'no state found',
-        }, 400)
+        statsd.incr('news.views.fxa_success.error.no_state')
+        return HttpResponseRedirect(error_url)
 
     code = request.GET.get('code')
     state = request.GET.get('state')
     if not (code and state):
-        # need a better error state here
-        return HttpResponseJSON({
-            'status': 'error',
-            'message': 'no code or state returned',
-        }, 400)
+        statsd.incr('news.views.fxa_success.error.no_code_state')
+        return HttpResponseRedirect(error_url)
 
     if sess_state != state:
-        # need a better error state here
-        return HttpResponseJSON({
-            'status': 'error',
-            'message': 'states do not match',
-        }, 400)
+        statsd.incr('news.views.fxa_success.error.no_state_match')
+        return HttpResponseRedirect(error_url)
 
     fxa_oauth, fxa_profile = get_fxa_clients()
     try:
         access_token = fxa_oauth.trade_code(code)['access_token']
         user_profile = fxa_profile.get_profile(access_token)
     except Exception:
+        statsd.incr('news.views.fxa_success.error.fxa_comm')
         sentry_client.captureException()
-        # need a better error state here
-        return HttpResponseJSON({
-            'status': 'error',
-            'message': 'error communicating with FxA',
-        }, 500)
+        return HttpResponseRedirect(error_url)
 
-    # TODO use user_profile['uid'] to check account in SFMC
     email = user_profile['email']
     user_data = get_user_data(email=email)
     if user_data:
