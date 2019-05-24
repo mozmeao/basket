@@ -179,7 +179,7 @@ def fxa_success(request):
             'newsletters': [settings.FXA_REGISTER_NEWSLETTER],
             'source_url': settings.FXA_REGISTER_SOURCE_URL + '?utm_source=basket-fxa-oauth',
         }
-        lang = fxa_profile.get('locale')
+        lang = user_profile.get('locale')
         if lang:
             lang = get_best_language(get_accept_languages(lang))
             new_user_data['lang'] = lang
