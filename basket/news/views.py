@@ -140,22 +140,22 @@ def fxa_start(request):
 
 
 @require_safe
-def fxa_success(request):
+def fxa_callback(request):
     # remove state from session to prevent multiple attempts
     error_url = 'https://{}/newsletter/fxa-error/'.format(settings.FXA_EMAIL_PREFS_DOMAIN)
     sess_state = request.session.pop('fxa_state', None)
     if sess_state is None:
-        statsd.incr('news.views.fxa_success.error.no_state')
+        statsd.incr('news.views.fxa_callback.error.no_state')
         return HttpResponseRedirect(error_url)
 
     code = request.GET.get('code')
     state = request.GET.get('state')
     if not (code and state):
-        statsd.incr('news.views.fxa_success.error.no_code_state')
+        statsd.incr('news.views.fxa_callback.error.no_code_state')
         return HttpResponseRedirect(error_url)
 
     if sess_state != state:
-        statsd.incr('news.views.fxa_success.error.no_state_match')
+        statsd.incr('news.views.fxa_callback.error.no_state_match')
         return HttpResponseRedirect(error_url)
 
     fxa_oauth, fxa_profile = get_fxa_clients()
@@ -163,7 +163,7 @@ def fxa_success(request):
         access_token = fxa_oauth.trade_code(code)['access_token']
         user_profile = fxa_profile.get_profile(access_token)
     except Exception:
-        statsd.incr('news.views.fxa_success.error.fxa_comm')
+        statsd.incr('news.views.fxa_callback.error.fxa_comm')
         sentry_client.captureException()
         return HttpResponseRedirect(error_url)
 
