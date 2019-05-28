@@ -2,11 +2,12 @@
 
 import json
 
+from django.conf import settings
 from django.core.cache import cache
 from django.core.urlresolvers import reverse
 from django.test import TestCase
 from django.test import override_settings
-from django.test.client import RequestFactory
+from django.test.client import RequestFactory, Client
 
 from basket import errors
 from email_validator import EmailSyntaxError
@@ -1200,3 +1201,179 @@ class FxAConcertsRSVPTests(ViewsPatcherMixin, TestCase):
         self.assertEqual(resp.status_code, 401, resp.content)
         data = json.loads(resp.content)
         self.assertEqual(errors.BASKET_USAGE_ERROR, data['code'])
+
+
+@override_settings(FXA_EMAIL_PREFS_DOMAIN='www.mozilla.org')
+class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
+    def setUp(self):
+        self.client = Client()
+        self._patch_views('get_user_data')
+        self._patch_views('get_fxa_clients')
+        self._patch_views('statsd')
+        self._patch_views('sentry_client')
+        self._patch_views('upsert_contact')
+
+    def test_no_session_state(self):
+        """Should return a redirect to error page"""
+        resp = self.client.get('/fxa/callback/')
+        assert resp.status_code == 302
+        assert resp['location'] == 'https://www.mozilla.org/newsletter/fxa-error/'
+        self.statsd.incr.assert_called_with('news.views.fxa_callback.error.no_state')
+
+    def test_no_returned_state(self):
+        """Should return a redirect to error page"""
+        session = self.client.session
+        session['fxa_state'] = 'thedude'
+        session.save()
+        resp = self.client.get('/fxa/callback/', {'code': 'thecode'})
+        assert resp.status_code == 302
+        assert resp['location'] == 'https://www.mozilla.org/newsletter/fxa-error/'
+        self.statsd.incr.assert_called_with('news.views.fxa_callback.error.no_code_state')
+
+    def test_no_returned_code(self):
+        """Should return a redirect to error page"""
+        session = self.client.session
+        session['fxa_state'] = 'thedude'
+        session.save()
+        resp = self.client.get('/fxa/callback/', {'state': 'thedude'})
+        assert resp.status_code == 302
+        assert resp['location'] == 'https://www.mozilla.org/newsletter/fxa-error/'
+        self.statsd.incr.assert_called_with('news.views.fxa_callback.error.no_code_state')
+
+    def test_session_and_request_state_no_match(self):
+        """Should return a redirect to error page"""
+        session = self.client.session
+        session['fxa_state'] = 'thedude'
+        session.save()
+        # no state
+        resp = self.client.get('/fxa/callback/', {'code': 'thecode', 'state': 'walter'})
+        assert resp.status_code == 302
+        assert resp['location'] == 'https://www.mozilla.org/newsletter/fxa-error/'
+        self.statsd.incr.assert_called_with('news.views.fxa_callback.error.no_state_match')
+
+    def test_fxa_communication_issue(self):
+        """Should return a redirect to error page"""
+        fxa_oauth_mock = Mock()
+        self.get_fxa_clients.return_value = fxa_oauth_mock, Mock()
+        fxa_oauth_mock.trade_code.side_effect = RuntimeError
+        session = self.client.session
+        session['fxa_state'] = 'thedude'
+        session.save()
+        # no state
+        resp = self.client.get('/fxa/callback/', {'code': 'thecode', 'state': 'thedude'})
+        assert resp.status_code == 302
+        assert resp['location'] == 'https://www.mozilla.org/newsletter/fxa-error/'
+        self.statsd.incr.assert_called_with('news.views.fxa_callback.error.fxa_comm')
+        self.sentry_client.captureException.assert_called()
+
+    def test_existing_user(self):
+        """Should return a redirect to email pref center"""
+        fxa_oauth_mock, fxa_profile_mock = Mock(), Mock()
+        fxa_oauth_mock.trade_code.return_value = {'access_token': 'access-token'}
+        fxa_profile_mock.get_profile.return_value = {'email': 'dude@example.com'}
+        self.get_fxa_clients.return_value = fxa_oauth_mock, fxa_profile_mock
+        self.get_user_data.return_value = {'token': 'the-token'}
+        session = self.client.session
+        session['fxa_state'] = 'thedude'
+        session.save()
+        # no state
+        resp = self.client.get('/fxa/callback/', {'code': 'thecode', 'state': 'thedude'})
+        assert resp.status_code == 302
+        fxa_oauth_mock.trade_code.assert_called_with('thecode')
+        fxa_profile_mock.get_profile.assert_called_with('access-token')
+        self.statsd.incr.assert_not_called()
+        assert resp['location'] == 'https://www.mozilla.org/newsletter/existing/the-token/?fxa=1'
+        self.get_user_data.assert_called_with(email='dude@example.com')
+
+    def test_new_user_with_locale(self):
+        """Should return a redirect to email pref center"""
+        fxa_oauth_mock, fxa_profile_mock = Mock(), Mock()
+        fxa_oauth_mock.trade_code.return_value = {'access_token': 'access-token'}
+        fxa_profile_mock.get_profile.return_value = {
+            'email': 'dude@example.com',
+            'locale': 'en,en-US',
+        }
+        self.get_fxa_clients.return_value = fxa_oauth_mock, fxa_profile_mock
+        self.get_user_data.return_value = None
+        self.upsert_contact.return_value = 'the-new-token', True
+        session = self.client.session
+        session['fxa_state'] = 'thedude'
+        session.save()
+        # no state
+        resp = self.client.get('/fxa/callback/', {'code': 'thecode', 'state': 'thedude'})
+        assert resp.status_code == 302
+        fxa_oauth_mock.trade_code.assert_called_with('thecode')
+        fxa_profile_mock.get_profile.assert_called_with('access-token')
+        self.statsd.incr.assert_not_called()
+        assert resp['location'] == 'https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1'
+        self.get_user_data.assert_called_with(email='dude@example.com')
+        self.upsert_contact.assert_called_with(SUBSCRIBE, {
+            'email': 'dude@example.com',
+            'optin': True,
+            'format': 'H',
+            'newsletters': [settings.FXA_REGISTER_NEWSLETTER],
+            'source_url': settings.FXA_REGISTER_SOURCE_URL + '?utm_source=basket-fxa-oauth',
+            'lang': 'en',
+        }, None)
+
+    def test_new_user_without_locale(self):
+        """Should return a redirect to email pref center"""
+        fxa_oauth_mock, fxa_profile_mock = Mock(), Mock()
+        fxa_oauth_mock.trade_code.return_value = {'access_token': 'access-token'}
+        fxa_profile_mock.get_profile.return_value = {
+            'email': 'dude@example.com',
+        }
+        self.get_fxa_clients.return_value = fxa_oauth_mock, fxa_profile_mock
+        self.get_user_data.return_value = None
+        self.upsert_contact.return_value = 'the-new-token', True
+        session = self.client.session
+        session['fxa_state'] = 'thedude'
+        session.save()
+        # no state
+        resp = self.client.get('/fxa/callback/', {'code': 'thecode', 'state': 'thedude'})
+        assert resp.status_code == 302
+        fxa_oauth_mock.trade_code.assert_called_with('thecode')
+        fxa_profile_mock.get_profile.assert_called_with('access-token')
+        self.statsd.incr.assert_not_called()
+        assert resp['location'] == 'https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1'
+        self.get_user_data.assert_called_with(email='dude@example.com')
+        self.upsert_contact.assert_called_with(SUBSCRIBE, {
+            'email': 'dude@example.com',
+            'optin': True,
+            'format': 'H',
+            'newsletters': [settings.FXA_REGISTER_NEWSLETTER],
+            'source_url': settings.FXA_REGISTER_SOURCE_URL + '?utm_source=basket-fxa-oauth',
+        }, None)
+
+
+class FxAPrefCenterOauthStartTests(ViewsPatcherMixin, TestCase):
+    def setUp(self):
+        self.client = Client()
+        self._patch_views('get_fxa_clients')
+        self._patch_views('generate_fxa_state')
+
+    def test_get_redirect_url(self):
+        fxa_oauth_mock = Mock()
+        fxa_oauth_mock.get_redirect_url.return_value = good_redirect = 'https://example.com/oauth'
+        self.get_fxa_clients.return_value = fxa_oauth_mock, None
+        self.generate_fxa_state.return_value = 'the-dude-abides'
+        resp = self.client.get('/fxa/')
+        fxa_oauth_mock.get_redirect_url.assert_called_with(state='the-dude-abides',
+                                                           redirect_uri='http://testserver/fxa/callback/',
+                                                           scope='profile',
+                                                           email=None)
+        assert resp.status_code == 302
+        assert resp['location'] == good_redirect
+
+    def test_get_redirect_url_with_email(self):
+        fxa_oauth_mock = Mock()
+        fxa_oauth_mock.get_redirect_url.return_value = good_redirect = 'https://example.com/oauth'
+        self.get_fxa_clients.return_value = fxa_oauth_mock, None
+        self.generate_fxa_state.return_value = 'the-dude-abides'
+        resp = self.client.get('/fxa/?email=dude%40example.com')
+        fxa_oauth_mock.get_redirect_url.assert_called_with(state='the-dude-abides',
+                                                           redirect_uri='http://testserver/fxa/callback/',
+                                                           scope='profile',
+                                                           email='dude@example.com')
+        assert resp.status_code == 302
+        assert resp['location'] == good_redirect
