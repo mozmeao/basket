@@ -27,8 +27,11 @@ from basket.news.backends.common import NewsletterException, NewsletterNoResults
 from basket.news.backends.sfdc import sfdc
 from basket.news.backends.sfmc import sfmc
 from basket.news.models import APIUser, BlockedEmail
-from basket.news.newsletters import newsletter_inactive_slugs, newsletter_group_newsletter_slugs, \
-    newsletter_languages
+from basket.news.newsletters import (
+    newsletter_group_newsletter_slugs,
+    newsletter_inactive_slugs,
+    newsletter_languages,
+)
 
 
 # Error messages
@@ -337,7 +340,8 @@ def get_user_data(token=None, email=None, extra_fields=None, get_fxa=False):
             sfmc.get_row('Firefox_Account_ID', ['FXA_ID'], email=user['email'])
         except NewsletterNoResultsException:
             fxa_user = False
-        except NewsletterException:
+        except Exception:
+            # some error happened, but we should return the user data anyway
             fxa_user = None
         else:
             fxa_user = True
