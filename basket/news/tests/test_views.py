@@ -1346,6 +1346,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         }, None)
 
 
+@override_settings(FXA_CLIENT_ID='dude')
 class FxAPrefCenterOauthStartTests(ViewsPatcherMixin, TestCase):
     def setUp(self):
         self.client = Client()

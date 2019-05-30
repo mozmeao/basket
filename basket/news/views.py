@@ -129,13 +129,16 @@ def generate_fxa_state():
 
 @require_safe
 def fxa_start(request):
-    fxa_oauth = get_fxa_clients()[0]
-    fxa_state = request.session['fxa_state'] = generate_fxa_state()
-    redirect_uri = request.build_absolute_uri('/fxa/callback/')
-    redirect_to = fxa_oauth.get_redirect_url(state=fxa_state,
-                                             redirect_uri=redirect_uri,
-                                             scope='profile',
-                                             email=request.GET.get('email'))
+    if not settings.FXA_CLIENT_ID:
+        redirect_to = 'https://www.mozilla.org/firefox/accounts/'
+    else:
+        fxa_oauth = get_fxa_clients()[0]
+        fxa_state = request.session['fxa_state'] = generate_fxa_state()
+        redirect_uri = request.build_absolute_uri('/fxa/callback/')
+        redirect_to = fxa_oauth.get_redirect_url(state=fxa_state,
+                                                 redirect_uri=redirect_uri,
+                                                 scope='profile',
+                                                 email=request.GET.get('email'))
     return HttpResponseRedirect(redirect_to)
 
 
