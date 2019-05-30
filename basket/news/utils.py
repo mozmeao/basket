@@ -342,6 +342,7 @@ def get_user_data(token=None, email=None, extra_fields=None, get_fxa=False):
             fxa_user = False
         except Exception:
             # some error happened, but we should return the user data anyway
+            sentry_client.captureException()
             fxa_user = None
         else:
             fxa_user = True
