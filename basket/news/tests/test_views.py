@@ -1350,31 +1350,25 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
 class FxAPrefCenterOauthStartTests(ViewsPatcherMixin, TestCase):
     def setUp(self):
         self.client = Client()
-        self._patch_views('get_fxa_clients')
+        self._patch_views('get_fxa_authorization_url')
         self._patch_views('generate_fxa_state')
 
     def test_get_redirect_url(self):
-        fxa_oauth_mock = Mock()
-        fxa_oauth_mock.get_redirect_url.return_value = good_redirect = 'https://example.com/oauth'
-        self.get_fxa_clients.return_value = fxa_oauth_mock, None
+        self.get_fxa_authorization_url.return_value = good_redirect = 'https://example.com/oauth'
         self.generate_fxa_state.return_value = 'the-dude-abides'
         resp = self.client.get('/fxa/')
-        fxa_oauth_mock.get_redirect_url.assert_called_with(state='the-dude-abides',
-                                                           redirect_uri='http://testserver/fxa/callback/',
-                                                           scope='profile',
-                                                           email=None)
+        self.get_fxa_authorization_url.assert_called_with('the-dude-abides',
+                                                          'http://testserver/fxa/callback/',
+                                                          None)
         assert resp.status_code == 302
         assert resp['location'] == good_redirect
 
     def test_get_redirect_url_with_email(self):
-        fxa_oauth_mock = Mock()
-        fxa_oauth_mock.get_redirect_url.return_value = good_redirect = 'https://example.com/oauth'
-        self.get_fxa_clients.return_value = fxa_oauth_mock, None
+        self.get_fxa_authorization_url.return_value = good_redirect = 'https://example.com/oauth'
         self.generate_fxa_state.return_value = 'the-dude-abides'
         resp = self.client.get('/fxa/?email=dude%40example.com')
-        fxa_oauth_mock.get_redirect_url.assert_called_with(state='the-dude-abides',
-                                                           redirect_uri='http://testserver/fxa/callback/',
-                                                           scope='profile',
-                                                           email='dude@example.com')
+        self.get_fxa_authorization_url.assert_called_with('the-dude-abides',
+                                                          'http://testserver/fxa/callback/',
+                                                          'dude@example.com')
         assert resp.status_code == 302
         assert resp['location'] == good_redirect

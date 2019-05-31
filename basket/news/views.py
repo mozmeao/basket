@@ -129,25 +129,29 @@ def generate_fxa_state():
     return os.urandom(16).encode('hex')
 
 
+def get_fxa_authorization_url(state, redirect_uri, email):
+    fxa_server = fxa.constants.ENVIRONMENT_URLS.get(settings.FXA_OAUTH_SERVER_ENV)['oauth']
+    params = {
+        'client_id': settings.FXA_CLIENT_ID,
+        'state': state,
+        'redirect_uri': redirect_uri,
+        'scope': 'profile',
+    }
+    if email:
+        params['email'] = email
+
+    return '{}/authorization?{}'.format(fxa_server, urlencode(params))
+
+
 @require_safe
 def fxa_start(request):
     if not settings.FXA_CLIENT_ID:
         redirect_to = 'https://www.mozilla.org/firefox/accounts/'
     else:
-        fxa_server = fxa.constants.ENVIRONMENT_URLS.get(settings.FXA_OAUTH_SERVER_ENV)['oauth']
         fxa_state = request.session['fxa_state'] = generate_fxa_state()
         redirect_uri = request.build_absolute_uri('/fxa/callback/')
         email = request.GET.get('email')
-        params = {
-            'client_id': settings.FXA_CLIENT_ID,
-            'state': fxa_state,
-            'redirect_uri': redirect_uri,
-            'scope': 'profile',
-        }
-        if email:
-            params['email'] = email
-
-        redirect_to = '{}/authorization?{}'.format(fxa_server, urlencode(params))
+        redirect_to = get_fxa_authorization_url(fxa_state, redirect_uri, email)
 
     return HttpResponseRedirect(redirect_to)
 
