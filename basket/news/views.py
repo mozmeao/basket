@@ -1,6 +1,7 @@
 import os
 import re
 from time import time
+from urllib import urlencode
 
 from django.conf import settings
 from django.core.exceptions import NON_FIELD_ERRORS
@@ -10,6 +11,7 @@ from django.views.decorators.cache import cache_page, never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_safe
 
+import fxa.constants
 from basket import errors
 from django_statsd.clients import statsd
 from ratelimit.exceptions import Ratelimited
@@ -132,13 +134,21 @@ def fxa_start(request):
     if not settings.FXA_CLIENT_ID:
         redirect_to = 'https://www.mozilla.org/firefox/accounts/'
     else:
-        fxa_oauth = get_fxa_clients()[0]
+        fxa_server = fxa.constants.ENVIRONMENT_URLS.get(settings.FXA_OAUTH_SERVER_ENV)['oauth']
         fxa_state = request.session['fxa_state'] = generate_fxa_state()
         redirect_uri = request.build_absolute_uri('/fxa/callback/')
-        redirect_to = fxa_oauth.get_redirect_url(state=fxa_state,
-                                                 redirect_uri=redirect_uri,
-                                                 scope='profile',
-                                                 email=request.GET.get('email'))
+        email = request.GET.get('email')
+        params = {
+            'client_id': settings.FXA_CLIENT_ID,
+            'state': fxa_state,
+            'redirect_uri': redirect_uri,
+            'scope': 'profile',
+        }
+        if email:
+            params['email'] = email
+
+        redirect_to = '{}/authorization?{}'.format(fxa_server, urlencode(params))
+
     return HttpResponseRedirect(redirect_to)
 
 
