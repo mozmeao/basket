@@ -151,8 +151,8 @@ phonenumbers==8.10.13 \
 PyBrowserID==0.14.0 \
     --hash=sha256:6c227669e87cc25796ae76f6a0ef65025528c8ad82d352679fa9a3e5663a71e3 \
     --hash=sha256:8e237d6a2bc9ead849a4472a84d3e6a9309bec99cf8e10d36213710dda8df8ca
-PyFxA==0.7.1 \
-    --hash=sha256:616689486d8d63956aa40836cffafde6e7590cdeb200badabaaf3c17d5b26cce
+PyFxA==0.7.2 \
+    --hash=sha256:87c1f940e40c6dce4d46ec0d411bb521a897f574234462c970e6392a834305ea
 asn1crypto==0.24.0 \
     --hash=sha256:2f1adbb7546ed199e3c90ef23ec95c5cf3585bac7d11fb7eb562a3fe89c64e87 \
     --hash=sha256:9d5c20441baf0cb60a4ac34cc447c6c189024b6b4c6cd7877034f4965c464e49
