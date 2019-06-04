@@ -2,7 +2,7 @@ import json
 import os
 import re
 from time import time
-from urllib import urlencode
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.core.exceptions import NON_FIELD_ERRORS
