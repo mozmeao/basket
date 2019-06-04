@@ -14,8 +14,8 @@ stage ('Build Images') {
     utils.slackNotification([stage: 'Test & Deploy', status: 'starting'])
     lock ("basket-docker-${env.GIT_COMMIT}") {
         try {
-            sh 'docker/bin/build_images.sh'
-            sh 'docker/bin/run_tests.sh'
+            sh 'bin/dc.sh build --pull web builder'
+            sh 'bin/dc.sh run test-image'
         } catch(err) {
             utils.slackNotification([stage: 'Docker Build', status: 'failure'])
             throw err

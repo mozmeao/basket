@@ -1,4 +1,4 @@
-version: "2"
+version: "3.4"
 services:
   db:
     image: mariadb
@@ -9,8 +9,12 @@ services:
   redis:
     image: redis
 
-  app:
-    build: .
+  web:
+    build:
+      context: .
+      args:
+        GIT_SHA: ${GIT_COMMIT:-latest}
+    image: mozmeao/basket:${GIT_COMMIT:-latest}
     volumes:
       - .:/app
     environment:
@@ -22,46 +26,90 @@ services:
       - CELERY_LOG_LEVEL=debug
       - DJANGO_LOG_LEVEL=DEBUG
     env_file: .env
-
-  web:
-    extends: app
     ports:
       - "8000:8000"
     depends_on:
-      - db
-      - redis
-    links:
       - db
       - redis
     command:
       ./bin/run-dev.sh
 
   worker:
-    extends: app
+    image: mozmeao/basket:${GIT_COMMIT:-latest}
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=mysql://root@db/basket
+      - DEBUG=True
+      - ALLOWED_HOSTS=localhost,127.0.0.1,
+      - REDIS_URL=redis://redis:6379
+      - CELERY_TASK_ALWAYS_EAGER=False
+      - CELERY_LOG_LEVEL=debug
+      - DJANGO_LOG_LEVEL=DEBUG
+    env_file: .env
     depends_on:
-      - web
-    links:
       - db
       - redis
     command:
       ./bin/run-worker.sh
 
   donate-worker:
-    extends: app
+    image: mozmeao/basket:${GIT_COMMIT:-latest}
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=mysql://root@db/basket
+      - DEBUG=True
+      - ALLOWED_HOSTS=localhost,127.0.0.1,
+      - REDIS_URL=redis://redis:6379
+      - CELERY_TASK_ALWAYS_EAGER=False
+      - CELERY_LOG_LEVEL=debug
+      - DJANGO_LOG_LEVEL=DEBUG
+    env_file: .env
     depends_on:
-      - web
-    links:
       - db
       - redis
     command:
       ./bin/run-donate-worker.sh
 
-  test:
-    extends: app
+  test-local:
+    image: mozmeao/basket:${GIT_COMMIT:-latest}
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=mysql://root@db/basket
+      - DEBUG=True
+      - ALLOWED_HOSTS=localhost,127.0.0.1,
+      - REDIS_URL=redis://redis:6379
+      - CELERY_TASK_ALWAYS_EAGER=False
+      - CELERY_LOG_LEVEL=debug
+      - DJANGO_LOG_LEVEL=DEBUG
     env_file: docker/envfiles/test.env
     depends_on:
       - db
-    links:
-      - db
+      - redis
     command:
       ./bin/run-tests.sh
+
+  test-image:
+    image: mozmeao/basket:${GIT_COMMIT:-latest}
+    environment:
+      - DATABASE_URL=mysql://root@db/basket
+      - DEBUG=True
+      - ALLOWED_HOSTS=localhost,127.0.0.1,
+      - REDIS_URL=redis://redis:6379
+      - CELERY_TASK_ALWAYS_EAGER=False
+      - CELERY_LOG_LEVEL=debug
+      - DJANGO_LOG_LEVEL=DEBUG
+    env_file: docker/envfiles/test.env
+    depends_on:
+      - db
+      - redis
+    command:
+      ./bin/run-tests.sh
+
+  builder:
+    build:
+      context: .
+      target: builder
+    image: mozmeao/basket:builder-${GIT_COMMIT:-latest}
