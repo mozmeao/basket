@@ -8,7 +8,6 @@ source $BIN_DIR/set_git_env_vars.sh
 DOCKER_NO_CACHE=false
 DOCKER_PULL=false
 DOCKER_CTX='.'
-DOCKERFILE_FINAL="Dockerfile.jenkins"
 
 # parse cli args
 while [[ $# -gt 1 ]]; do
@@ -28,9 +27,5 @@ while [[ $# -gt 1 ]]; do
     shift # past argument or value
 done
 
-rm -f $DOCKERFILE_FINAL
-cp Dockerfile $DOCKERFILE_FINAL
-echo "ENV GIT_SHA ${GIT_COMMIT}" >> $DOCKERFILE_FINAL
-
 # build the docker image
-docker build -t "$DOCKER_IMAGE_TAG" --pull="$DOCKER_PULL" --no-cache="$DOCKER_NO_CACHE" -f "$DOCKERFILE_FINAL" "$DOCKER_CTX"
+docker build -t "$DOCKER_IMAGE_TAG" --pull="$DOCKER_PULL" --no-cache="$DOCKER_NO_CACHE" --build-arg "GIT_SHA=${GIT_COMMIT}" "$DOCKER_CTX"

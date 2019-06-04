@@ -24,5 +24,6 @@ function imageExists() {
 }
 
 if ! imageExists; then
-    docker/bin/docker_build.sh --pull
+    # also build builder for docker cache
+    bin/dc.sh build --pull web builder
 fi
