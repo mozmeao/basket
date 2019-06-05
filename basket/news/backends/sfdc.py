@@ -69,6 +69,8 @@ FIELD_MAP = {
     'cv_first_contribution_date': 'cv_first_contr_dt__c',
     'cv_two_day_streak': 'cv_two_day_streak__c',
     'cv_last_active_date': 'cv_last_active_dt__c',
+    'stripe_id': 'Stripe_Cust_Id__c',
+    'fxa_id': 'FxA_Id__c',
 }
 INV_FIELD_MAP = {v: k for k, v in FIELD_MAP.items()}
 FIELD_DEFAULTS = {

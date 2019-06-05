@@ -1,3 +1,4 @@
+import json
 import os
 import re
 from time import time
@@ -35,6 +36,11 @@ from basket.news.tasks import (
     update_user_meta,
     upsert_contact,
     upsert_user,
+    process_subhub_event_credit_card_expiring,
+    process_subhub_event_customer_created,
+    process_subhub_event_customer_updated,
+    process_subhub_event_payment_failed,
+    process_subhub_event_subscription_charge,
 )
 from basket.news.utils import (
     SET,
@@ -68,6 +74,16 @@ PHONE_NUMBER_RATE_LIMIT = getattr(settings, 'PHONE_NUMBER_RATE_LIMIT', '4/5m')
 # four submissions for a set of newsletters per email address per 5 minutes
 EMAIL_SUBSCRIBE_RATE_LIMIT = getattr(settings, 'EMAIL_SUBSCRIBE_RATE_LIMIT', '4/5m')
 sync_route = Route(api_token=settings.SYNC_KEY)
+
+
+SUBHUB_EVENT_TYPES = {
+    'customer.created': process_subhub_event_customer_created,
+    'customer.source.expiring': process_subhub_event_credit_card_expiring,
+    'customer.updated': process_subhub_event_customer_updated,
+    'invoice.finalized': process_subhub_event_subscription_charge,  # used for both new and recurring charges
+    'invoice.payment_failed': process_subhub_event_payment_failed,
+    'invoice.payment_succeeded': process_subhub_event_subscription_charge,  # used for both new and recurring charges
+}
 
 
 def is_token(word):
@@ -939,3 +955,36 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
         return HttpResponseJSON({
             'status': 'ok',
         })
+
+
+@require_POST
+@csrf_exempt
+def subhub_post(request):
+    if not has_valid_api_key(request):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'requires a valid API-key',
+            'code': errors.BASKET_AUTH_ERROR,
+        }, 401)
+
+    try:
+        data = json.loads(request.body)
+    except ValueError as _:
+        statsd.incr('subhub_post.message.json_error')
+        sentry_client.captureException(data={'extra': {'request.body': request.body}})
+
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'JSON error',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 400)  # TODO: find the best status code for this
+    else:
+        etype = data['event_type']
+        processor = SUBHUB_EVENT_TYPES.get(etype)
+
+        if processor:
+            processor.delay(data)
+            return HttpResponseJSON({'status': 'ok'})
+        else:
+            # TODO: set a better HTTP response code? 409?
+            return HttpResponseJSON({'status': 'unknown event type'})

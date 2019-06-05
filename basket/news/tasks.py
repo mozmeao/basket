@@ -718,6 +718,157 @@ def record_source_url(email, source_url, newsletter_id):
 
 
 @et_task
+def process_subhub_event_customer_created(data):
+    """
+    Creates or updates a SFDC customer when a new Stripe customer is created
+    """
+    statsd.incr('news.tasks.process_subhub_event.customer_created')
+
+    first, last = split_name(data['name'])
+    contact_data = {
+        'fxa_id': data['user_id']
+        'stripe_id': data['customer_id']
+    }
+    user_data = get_user_data(email=data['email'])
+
+    # if user was found in sfdc, see if we should update their name(s)
+    if user_data:
+        # if current last name is '_', update it
+        if user_data['last_name'] == '_':
+            contact_data['last_name'] = last
+
+        # if current last name is blank/Null, update it
+        if not user_data['first_name']:
+            contact_data['first_name'] = first
+
+        if 'first_name' in contact_data or 'last_name' in contact_data:
+            sfdc.update(user_data, contact_data)
+    # if no user was found, create new user in sfdc
+    else:
+        contact_data['first_name'] = first
+        contact_data['last_name'] = last
+        contact_data['email'] = data['email']
+
+        # create the user in sfdc
+        sfdc.add(contact_data)
+
+
+@et_task
+def process_subhub_event_customer_updated(data):
+    """
+    Updates customer record in SFDC if Stripe customer changes their name or
+    email address
+    """
+    statsd.incr('news.tasks.process_subhub_event.customer_updated')
+
+    first, last = split_name(data['name'])
+    contact_data = {}
+
+    # find user by their Stripe ID
+    user_data = get_user_data(stripe_id=data['customer_id'])
+
+    # if user was found in sfdc, see if we should update their name(s)
+    if user_data:
+        # if current last name is '_', update it
+        if user_data['last_name'] == '_':
+            contact_data['last_name'] = last
+
+        # if current last name is blank/Null, update it
+        if not user_data['first_name']:
+            contact_data['first_name'] = first
+
+        if 'first_name' in contact_data or 'last_name' in contact_data:
+            sfdc.update(user_data, contact_data)
+
+    # TODO: do we need to do anything if the customer wasn't found?
+
+
+@et_task
+def process_subhub_event_subscription_charge(data):
+    """
+    This method handles both new and recurring charges. New charges will not
+    have data for the current_period_start and current_period_end fields.
+
+    There are two events that trigger this task:
+    - invoice.finalized
+    - invoice.payment_succeeded
+
+    Each of these events contains different information on the charge which
+    will need to be combined. So we need to check for an existing record
+    prior to doing any inserts or updates.
+
+    invoice.finalized *should* be sent first, which is missing the following
+    credit card related fields:
+
+    - brand
+    - last4
+    - exp_month
+    - exp_year
+    """
+
+    # determine if new or recurring payment
+    recurring_charge = True if data['current_period_start'] and data['current_period_end'] else False
+
+    if recurring_charge:
+        statsd.incr('news.tasks.process_subhub_event.new_subscription_charge')
+    else:
+        statsd.incr('news.tasks.process_subhub_event.recurring_subscription_charge')
+
+    # determine which event we're receiving
+    event = 'succeeded' if 'brand' in data and 'last4' in data else 'finalized'
+
+    # try to find the opportunity (in case one of the events already fired)
+    user_data = get_user_data(stripe_id=data['customer_id'])
+
+    if user_data:
+        # see if an opportunity exists with the provided charge_id
+        charge_id = data['charge_id']
+
+        transaction_data = {
+            'Stripe_Cust_Id__c': data['customer_id'],
+            'PMT_Subscription_ID__c': data['subscription_id'],
+            'CloseDate': iso_format_unix_timestamp(data['created']),
+            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['period_end']),
+            'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['period_start']),
+            'Amount': data['amount_paid'],  # TODO: *may* need to divide by 100 to get dollars - check w/marty
+            'currency__c': data['currency'],
+            'Name': 'Subscription Services',
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,  # 012R0000000dQ4dIAE for dev
+            'StageName': 'Closed Won',
+            'Payment_Source__c': 'Stripe',
+            'Invoice_Number__c': data['invoice_id'],
+            'Processors_Fee__c': data['application_fee_amount'],
+            'Net_Amount__c': ''  # TODO: check w/marty if we are getting this or if we need to do math (amount_paid - application_fee_amount)
+            'Conversion_Amount__c': ''  # TODO: check w/marty if we need this
+        }
+
+        if event == 'succeeded':
+            transaction_data['Credit_Card_Type__c'] = data['brand']
+            transaction_data['Last_4_Digits__c'] = data['last4']
+            transaction_data['Credit_Card_Exp__c'] = data['exp_month']
+            transaction_data['Credit_Card_Exp__c'] = data['exp_year']  # TODO: check w/marty on SF field names here - they are duplicated in the doc
+
+        try:
+            # will raise a SalesforceMalformedRequest if not found
+            sfdc.opportunity.update('PMT_Transaction_ID__c/{}'.format(charge_id), transaction_data)
+            # TODO: is this the proper syntax? unsure about the use/purpose of the first param here - is there some magic happening that makes this a key?
+        except sfapi.SalesforceMalformedRequest as e:
+            sfdc.opportunity.create(transaction_data)
+    else:
+        # TODO: do we need to do anything here if the user wasn't found?
+
+
+@et_task
+def process_subhub_event_credit_card_expiring(data):
+    pass
+
+
+@et_task
+def process_subhub_event_payment_failed(data):
+    pass
+
+
+@et_task
 def process_donation_event(data):
     """Process a followup event on a donation"""
     etype = data['event_type']
@@ -796,6 +947,31 @@ DONATION_NEW_FIELDS = {
     'Conversion_Amount__c': 'conversion_amount',
     'Last_4_Digits__c': 'last_4',
 }
+
+
+def split_name(name):
+    """
+    Takes a full name as a string and attempts to make it conform to the narrow
+    "first/last" system Salesforce requires.
+
+    Drops any "jr" or "sr" suffix.
+    """
+
+    # try to make the final bit after the last space the last name
+    names = name.rsplit(None, 1)
+
+    if len(names) == 2:
+        first, last = names
+
+        # if last name is 'jr' or 'sr' and first name has a space in it, do
+        # more splitting
+        if ' ' in first and last.lower() in ['jr', 'sr']:
+            names = first.rsplit(None, 1)
+            first, last = names
+    else:
+        first, last = '', names[0]
+
+    return first, last
 
 
 @et_task
