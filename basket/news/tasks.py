@@ -726,9 +726,10 @@ def process_subhub_event_customer_created(data):
 
     first, last = split_name(data['name'])
     contact_data = {
-        'fxa_id': data['user_id']
+        'fxa_id': data['user_id'],
         'stripe_id': data['customer_id']
     }
+
     user_data = get_user_data(email=data['email'])
 
     # if user was found in sfdc, see if we should update their name(s)
@@ -789,6 +790,8 @@ def process_subhub_event_subscription_charge(data):
     This method handles both new and recurring charges. New charges will not
     have data for the current_period_start and current_period_end fields.
 
+    ^ This is potentially incorrect - waiting for more info from Marty
+
     There are two events that trigger this task:
     - invoice.finalized
     - invoice.payment_succeeded
@@ -807,6 +810,7 @@ def process_subhub_event_subscription_charge(data):
     """
 
     # determine if new or recurring payment
+    # TODO: fix below after hearing from marty
     recurring_charge = True if data['current_period_start'] and data['current_period_end'] else False
 
     if recurring_charge:
@@ -838,7 +842,7 @@ def process_subhub_event_subscription_charge(data):
             'Payment_Source__c': 'Stripe',
             'Invoice_Number__c': data['invoice_id'],
             'Processors_Fee__c': data['application_fee_amount'],
-            'Net_Amount__c': ''  # TODO: check w/marty if we are getting this or if we need to do math (amount_paid - application_fee_amount)
+            'Net_Amount__c': '',  # TODO: check w/marty if we are getting this or if we need to do math (amount_paid - application_fee_amount)
             'Conversion_Amount__c': ''  # TODO: check w/marty if we need this
         }
 
@@ -852,10 +856,11 @@ def process_subhub_event_subscription_charge(data):
             # will raise a SalesforceMalformedRequest if not found
             sfdc.opportunity.update('PMT_Transaction_ID__c/{}'.format(charge_id), transaction_data)
             # TODO: is this the proper syntax? unsure about the use/purpose of the first param here - is there some magic happening that makes this a key?
-        except sfapi.SalesforceMalformedRequest as e:
+        except sfapi.SalesforceMalformedRequest:
             sfdc.opportunity.create(transaction_data)
     else:
         # TODO: do we need to do anything here if the user wasn't found?
+        pass
 
 
 @et_task

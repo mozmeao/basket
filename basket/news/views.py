@@ -969,7 +969,7 @@ def subhub_post(request):
 
     try:
         data = json.loads(request.body)
-    except ValueError as _:
+    except ValueError:
         statsd.incr('subhub_post.message.json_error')
         sentry_client.captureException(data={'extra': {'request.body': request.body}})
 
@@ -987,4 +987,7 @@ def subhub_post(request):
             return HttpResponseJSON({'status': 'ok'})
         else:
             # TODO: set a better HTTP response code? 409?
-            return HttpResponseJSON({'status': 'unknown event type'})
+            return HttpResponseJSON({
+                'desc': 'unknown event type',
+                'status': 'error',
+            }, 400)

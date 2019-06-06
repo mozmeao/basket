@@ -310,17 +310,29 @@ class SFDC(object):
         return self._campaign_member
 
     @time_request
-    def get(self, token=None, email=None):
+    def get(self, token=None, email=None, stripe_id=None):
         """
         Get a contact record.
 
         @param token: external ID
         @param email: email address
+        @param stripe_id: external ID from Stripe
         @return: dict
         """
-        assert token or email, 'token or email is required'
-        id_field = FIELD_MAP['token' if token else 'email']
-        contact = self.contact.get_by_custom_id(id_field, token or email)
+        assert token or email or stripe_id, 'token, email, or stripe_id is required'
+
+        if token:
+            field = 'token'
+            value = token
+        elif email:
+            field = 'email'
+            value = email
+        else:
+            field = 'stripe_id'
+            value = stripe_id
+
+        id_field = FIELD_MAP[field]
+        contact = self.contact.get_by_custom_id(id_field, value)
         return from_vendor(contact)
 
     @time_request
