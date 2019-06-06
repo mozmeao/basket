@@ -21,3 +21,5 @@ celerybeat-schedule
 Dockerfile.jenkins
 test-results
 soap_cache_file.json
+.doit.db.*
+.docker-build*
