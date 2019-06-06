@@ -780,17 +780,22 @@ def process_subhub_event_customer_updated(data):
 
         if 'first_name' in contact_data or 'last_name' in contact_data:
             sfdc.update(user_data, contact_data)
+    # if user wasn't found, add them
+    else:
+        # TODO: should we make another statsd call here?
+        contact_data['first_name'] = first
+        contact_data['last_name'] = last
+        contact_data['email'] = data['email']
+        contact_data['stripe_id'] = data['customer_id']
 
-    # TODO: do we need to do anything if the customer wasn't found?
+        # create the user in sfdc
+        sfdc.add(contact_data)
 
 
 @et_task
 def process_subhub_event_subscription_charge(data):
     """
-    This method handles both new and recurring charges. New charges will not
-    have data for the current_period_start and current_period_end fields.
-
-    ^ This is potentially incorrect - waiting for more info from Marty
+    This method handles both new and recurring charges.
 
     There are two events that trigger this task:
     - invoice.finalized
@@ -799,6 +804,8 @@ def process_subhub_event_subscription_charge(data):
     Each of these events contains different information on the charge which
     will need to be combined. So we need to check for an existing record
     prior to doing any inserts or updates.
+
+    The charge_id field (sent in data) will tie the two events together.
 
     invoice.finalized *should* be sent first, which is missing the following
     credit card related fields:
@@ -809,24 +816,22 @@ def process_subhub_event_subscription_charge(data):
     - exp_year
     """
 
-    # determine if new or recurring payment
-    # TODO: fix below after hearing from marty
-    recurring_charge = True if data['current_period_start'] and data['current_period_end'] else False
+    statsd.incr('news.tasks.process_subhub_event.subscription_charge')
 
-    if recurring_charge:
-        statsd.incr('news.tasks.process_subhub_event.new_subscription_charge')
-    else:
-        statsd.incr('news.tasks.process_subhub_event.recurring_subscription_charge')
-
-    # determine which event we're receiving
-    event = 'succeeded' if 'brand' in data and 'last4' in data else 'finalized'
-
-    # try to find the opportunity (in case one of the events already fired)
     user_data = get_user_data(stripe_id=data['customer_id'])
 
+    # the only user identifiable information available is the Stripe ID, so if
+    # the user wasn't found by that, there's really nothing to be done here
     if user_data:
-        # see if an opportunity exists with the provided charge_id
+        # this is the primary key for the opportunity
         charge_id = data['charge_id']
+
+        # just in case amount data is missing/malformed
+        try:
+            # amount values are cents - convert to dollars
+            amount_paid = int(data['amount']) / 100
+        except ValueError:
+            amount_paid = 0
 
         transaction_data = {
             'Stripe_Cust_Id__c': data['customer_id'],
@@ -834,7 +839,7 @@ def process_subhub_event_subscription_charge(data):
             'CloseDate': iso_format_unix_timestamp(data['created']),
             'Billing_Cycle_End__c': iso_format_unix_timestamp(data['period_end']),
             'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['period_start']),
-            'Amount': data['amount_paid'],  # TODO: *may* need to divide by 100 to get dollars - check w/marty
+            'Amount': amount_paid,
             'currency__c': data['currency'],
             'Name': 'Subscription Services',
             'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,  # 012R0000000dQ4dIAE for dev
@@ -842,35 +847,81 @@ def process_subhub_event_subscription_charge(data):
             'Payment_Source__c': 'Stripe',
             'Invoice_Number__c': data['invoice_id'],
             'Processors_Fee__c': data['application_fee_amount'],
-            'Net_Amount__c': '',  # TODO: check w/marty if we are getting this or if we need to do math (amount_paid - application_fee_amount)
-            'Conversion_Amount__c': ''  # TODO: check w/marty if we need this
         }
 
-        if event == 'succeeded':
+        # these keys will be available for the invoice.payment_succeeded event
+        if all (k in data for k in ('brand', 'last4', 'exp_month', 'exp_year')):
             transaction_data['Credit_Card_Type__c'] = data['brand']
             transaction_data['Last_4_Digits__c'] = data['last4']
-            transaction_data['Credit_Card_Exp__c'] = data['exp_month']
-            transaction_data['Credit_Card_Exp__c'] = data['exp_year']  # TODO: check w/marty on SF field names here - they are duplicated in the doc
+            transaction_data['Credit_Card_Exp_Month__c'] = data['exp_month']
+            transaction_data['Credit_Card_Exp_Year__c'] = data['exp_year']
 
         try:
             # will raise a SalesforceMalformedRequest if not found
             sfdc.opportunity.update('PMT_Transaction_ID__c/{}'.format(charge_id), transaction_data)
-            # TODO: is this the proper syntax? unsure about the use/purpose of the first param here - is there some magic happening that makes this a key?
         except sfapi.SalesforceMalformedRequest:
             sfdc.opportunity.create(transaction_data)
-    else:
-        # TODO: do we need to do anything here if the user wasn't found?
-        pass
+        else:
+            statsd.incr('news.tasks.process_subhub_event.subscription_charge_update')
+
+
+@et_task
+def process_subhub_event_subscription_canceled(data):
+    statsd.incr('news.tasks.process_subhub_event.subscription_updated')
+
+    # it's only a cancellation if cancel_at is populated
+    if (data['cancel_at']):
+        statsd.incr('news.tasks.process_subhub_event.subscription_canceled')
+
+        user_data = get_user_data(stripe_id=data['customer_id'])
+
+        # the only user identifiable information available is the Stripe ID, so if
+        # the user wasn't found by that, there's really nothing to be done here
+        if user_data:
+            transaction_data = {
+                'PMT_Subscription_ID__c': data['subscription_id'],
+                'CloseDate': iso_format_unix_timestamp(data['canceled_at']),
+                'Billing_Cycle_End__c': iso_format_unix_timestamp(data['cancel_at']),
+                'StageName': 'Subscription Canceled',
+                'Amount': data['plan_amount'],
+            }
+
+            sfdc.opportunity.create(transaction_data)
 
 
 @et_task
 def process_subhub_event_credit_card_expiring(data):
-    pass
+    statsd.incr('news.tasks.process_subhub_event.credit_card_expiring')
+
+    # TODO: need the SFMC extension details from Desi/Marty
+    sfmc.add_row('Some_Data_Extension_Name', {
+        'some': 'data'
+    })
 
 
 @et_task
 def process_subhub_event_payment_failed(data):
-    pass
+    statsd.incr('news.tasks.process_subhub_event.subscription_charge')
+
+    user_data = get_user_data(stripe_id=data['customer_id'])
+
+    # the only user identifiable information available is the Stripe ID, so if
+    # the user wasn't found by that, there's really nothing to be done here
+    if user_data:
+        transaction_data = {
+            'PMT_Subscription_ID__c': data['subscription_id'],
+            'Invoice_Number__c': data['number'],
+            'Name': 'Subscription Services',
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+            'StageName': 'Payment Failed',
+            'Payment_Source__c': 'Stripe',
+            'Amount': data['amount_due'],
+            'CloseDate': iso_format_unix_timestamp(data['created']),
+            'PMT_Transaction_ID__c': data['charge_id'],
+            'currency__c': data['currency'],
+        }
+
+        sfdc.opportunity.create(transaction_data)
 
 
 @et_task
