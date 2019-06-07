@@ -720,14 +720,15 @@ def record_source_url(email, source_url, newsletter_id):
 @et_task
 def process_subhub_event_customer_created(data):
     """
-    Creates or updates a SFDC customer when a new Stripe customer is created
+    Creates or updates a SFDC customer when a new payment processor/Stripe
+    customer is created
     """
     statsd.incr('news.tasks.process_subhub_event.customer_created')
 
     first, last = split_name(data['name'])
     contact_data = {
         'fxa_id': data['user_id'],
-        'stripe_id': data['customer_id']
+        'payee_id': data['customer_id']
     }
 
     user_data = get_user_data(email=data['email'])
@@ -757,16 +758,16 @@ def process_subhub_event_customer_created(data):
 @et_task
 def process_subhub_event_customer_updated(data):
     """
-    Updates customer record in SFDC if Stripe customer changes their name or
-    email address
+    Updates customer record in SFDC if payment processor/Stripe customer
+    changes their name or email address
     """
     statsd.incr('news.tasks.process_subhub_event.customer_updated')
 
     first, last = split_name(data['name'])
     contact_data = {}
 
-    # find user by their Stripe ID
-    user_data = get_user_data(stripe_id=data['customer_id'])
+    # find user by their payment processor ID
+    user_data = get_user_data(payee_id=data['customer_id'])
 
     # if user was found in sfdc, see if we should update their name(s)
     if user_data:
@@ -786,7 +787,7 @@ def process_subhub_event_customer_updated(data):
         contact_data['first_name'] = first
         contact_data['last_name'] = last
         contact_data['email'] = data['email']
-        contact_data['stripe_id'] = data['customer_id']
+        contact_data['payee_id'] = data['customer_id']
 
         # create the user in sfdc
         sfdc.add(contact_data)
@@ -814,14 +815,18 @@ def process_subhub_event_subscription_charge(data):
     - last4
     - exp_month
     - exp_year
+
+    We also need to determine if a specific charge is a new/initial charge or
+    a recurring payment.
     """
 
     statsd.incr('news.tasks.process_subhub_event.subscription_charge')
 
-    user_data = get_user_data(stripe_id=data['customer_id'])
+    user_data = get_user_data(payee_id=data['customer_id'])
 
-    # the only user identifiable information available is the Stripe ID, so if
-    # the user wasn't found by that, there's really nothing to be done here
+    # the only user identifiable information available is the payment
+    # processor/Stripe ID, so if the user wasn't found by that, there's really
+    # nothing to be done here
     if user_data:
         # this is the primary key for the opportunity
         charge_id = data['charge_id']
@@ -834,7 +839,7 @@ def process_subhub_event_subscription_charge(data):
             amount_paid = 0
 
         transaction_data = {
-            'Stripe_Cust_Id__c': data['customer_id'],
+            'PMT_Cust_Id__c': data['customer_id'],
             'PMT_Subscription_ID__c': data['subscription_id'],
             'CloseDate': iso_format_unix_timestamp(data['created']),
             'Billing_Cycle_End__c': iso_format_unix_timestamp(data['period_end']),
@@ -850,16 +855,30 @@ def process_subhub_event_subscription_charge(data):
         }
 
         # these keys will be available for the invoice.payment_succeeded event
-        if all (k in data for k in ('brand', 'last4', 'exp_month', 'exp_year')):
+        if all(k in data for k in ('brand', 'last4', 'exp_month', 'exp_year')):
             transaction_data['Credit_Card_Type__c'] = data['brand']
             transaction_data['Last_4_Digits__c'] = data['last4']
             transaction_data['Credit_Card_Exp_Month__c'] = data['exp_month']
             transaction_data['Credit_Card_Exp_Year__c'] = data['exp_year']
 
+        transaction_data['Initial_Purchase__c'] = False if opportunity_data else True
+
         try:
+            # attempt to update the opportunity first (this will happen on the sec)
             # will raise a SalesforceMalformedRequest if not found
             sfdc.opportunity.update('PMT_Transaction_ID__c/{}'.format(charge_id), transaction_data)
         except sfapi.SalesforceMalformedRequest:
+            # if opportunity is not found, add charge_id to the data and see
+            # if any other opportunities exist for this subscription_id
+            transaction_data['PMT_Transaction_ID__c'] = charge_id
+
+            # see if an opportunity with this subscription_id already exists
+            # we need to do this to see if this is a recurring charge or a
+            # new charge
+            # TODO: no idea if this works!
+            opportunity_data = sfdc.opportunity.query("SELECT Id FROM Opportunity WHERE PMT_Subscription_ID__C = {} AND PMT_Transaction_ID__c != {}".format(data['subscription_id'], charge_id))
+            transaction_data['Initial_Purchase__c'] = False if opportunity_data else True
+
             sfdc.opportunity.create(transaction_data)
         else:
             statsd.incr('news.tasks.process_subhub_event.subscription_charge_update')
@@ -873,17 +892,22 @@ def process_subhub_event_subscription_canceled(data):
     if (data['cancel_at']):
         statsd.incr('news.tasks.process_subhub_event.subscription_canceled')
 
-        user_data = get_user_data(stripe_id=data['customer_id'])
+        user_data = get_user_data(payee_id=data['customer_id'])
 
-        # the only user identifiable information available is the Stripe ID, so if
-        # the user wasn't found by that, there's really nothing to be done here
+        # the only user identifiable information available is the payment
+        # processor/Stripe ID, so if the user wasn't found by that, there's
+        # really nothing to be done here
         if user_data:
             transaction_data = {
+                'PMT_Cust_Id__c': data['customer_id'],
                 'PMT_Subscription_ID__c': data['subscription_id'],
                 'CloseDate': iso_format_unix_timestamp(data['canceled_at']),
                 'Billing_Cycle_End__c': iso_format_unix_timestamp(data['cancel_at']),
                 'StageName': 'Subscription Canceled',
                 'Amount': data['plan_amount'],
+                'Name': 'Subscription Services',
+                'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+                'Payment_Source__c': 'Stripe',
             }
 
             sfdc.opportunity.create(transaction_data)
@@ -903,10 +927,11 @@ def process_subhub_event_credit_card_expiring(data):
 def process_subhub_event_payment_failed(data):
     statsd.incr('news.tasks.process_subhub_event.subscription_charge')
 
-    user_data = get_user_data(stripe_id=data['customer_id'])
+    user_data = get_user_data(payee_id=data['customer_id'])
 
-    # the only user identifiable information available is the Stripe ID, so if
-    # the user wasn't found by that, there's really nothing to be done here
+    # the only user identifiable information available is the payment
+    # processor/Stripe ID, so if the user wasn't found by that, there's really
+    # nothing to be done here
     if user_data:
         transaction_data = {
             'PMT_Subscription_ID__c': data['subscription_id'],

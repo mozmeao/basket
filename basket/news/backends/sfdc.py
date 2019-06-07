@@ -69,7 +69,7 @@ FIELD_MAP = {
     'cv_first_contribution_date': 'cv_first_contr_dt__c',
     'cv_two_day_streak': 'cv_two_day_streak__c',
     'cv_last_active_date': 'cv_last_active_dt__c',
-    'stripe_id': 'Stripe_Cust_Id__c',
+    'payee_id': 'PMT_Cust_Id__c',
     'fxa_id': 'FxA_Id__c',
 }
 INV_FIELD_MAP = {v: k for k, v in FIELD_MAP.items()}
@@ -310,16 +310,16 @@ class SFDC(object):
         return self._campaign_member
 
     @time_request
-    def get(self, token=None, email=None, stripe_id=None):
+    def get(self, token=None, email=None, payee_id=None):
         """
         Get a contact record.
 
         @param token: external ID
         @param email: email address
-        @param stripe_id: external ID from Stripe
+        @param payee_id: external ID from Stripe/payment processor
         @return: dict
         """
-        assert token or email or stripe_id, 'token, email, or stripe_id is required'
+        assert token or email or payee_id, 'token, email, or payee_id is required'
 
         if token:
             field = 'token'
@@ -328,12 +328,13 @@ class SFDC(object):
             field = 'email'
             value = email
         else:
-            field = 'stripe_id'
-            value = stripe_id
+            field = 'payee_id'
+            value = payee_id
 
         id_field = FIELD_MAP[field]
         contact = self.contact.get_by_custom_id(id_field, value)
         return from_vendor(contact)
+
 
     @time_request
     def add(self, data):
