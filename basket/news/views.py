@@ -979,7 +979,7 @@ def subhub_post(request):
             'status': 'error',
             'desc': 'JSON error',
             'code': errors.BASKET_USAGE_ERROR,
-        }, 400)  # TODO: find the best status code for this
+        }, 400)
     else:
         etype = data['event_type']
         processor = SUBHUB_EVENT_TYPES.get(etype)
@@ -988,8 +988,8 @@ def subhub_post(request):
             processor.delay(data)
             return HttpResponseJSON({'status': 'ok'})
         else:
-            # TODO: set a better HTTP response code? 409?
             return HttpResponseJSON({
                 'desc': 'unknown event type',
                 'status': 'error',
+                'code': errors.BASKET_USAGE_ERROR
             }, 400)

@@ -335,7 +335,6 @@ class SFDC(object):
         contact = self.contact.get_by_custom_id(id_field, value)
         return from_vendor(contact)
 
-
     @time_request
     def add(self, data):
         """

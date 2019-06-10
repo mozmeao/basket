@@ -783,7 +783,6 @@ def process_subhub_event_customer_updated(data):
             sfdc.update(user_data, contact_data)
     # if user wasn't found, add them
     else:
-        # TODO: should we make another statsd call here?
         contact_data['first_name'] = first
         contact_data['last_name'] = last
         contact_data['email'] = data['email']
