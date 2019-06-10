@@ -391,6 +391,8 @@ FXA_LOGIN_CAMPAIGNS = {
     'membership-tk': 'member-tk',
 }
 
+SUBHUB_OPP_RECORD_TYPE = config('SUBHUB_OPP_RECORD_TYPE', default='')
+
 COMMON_VOICE_NEWSLETTER = config('COMMON_VOICE_NEWSLETTER', default='common-voice')
 
 OIDC_ENABLE = config('OIDC_ENABLE', default=False, cast=bool)

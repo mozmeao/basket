@@ -803,8 +803,7 @@ def process_subhub_event_subscription_charge(data):
     - invoice.payment_succeeded
 
     Each of these events contains different information on the charge which
-    will need to be combined. So we need to check for an existing record
-    prior to doing any inserts or updates.
+    will need to be combined.
 
     The charge_id field (sent in data) will tie the two events together.
 
@@ -816,8 +815,9 @@ def process_subhub_event_subscription_charge(data):
     - exp_month
     - exp_year
 
-    We also need to determine if a specific charge is a new/initial charge or
-    a recurring payment.
+    We also need to determine if this payment (the combination of both events
+    listed above) is the first or is a recurrence. This is done by checking to
+    see if the subscription_id in data already exists in Salesforce.
     """
 
     statsd.incr('news.tasks.process_subhub_event.subscription_charge')
@@ -838,6 +838,7 @@ def process_subhub_event_subscription_charge(data):
         except ValueError:
             amount_paid = 0
 
+        # common data to both events
         transaction_data = {
             'PMT_Cust_Id__c': data['customer_id'],
             'PMT_Subscription_ID__c': data['subscription_id'],
@@ -861,23 +862,33 @@ def process_subhub_event_subscription_charge(data):
             transaction_data['Credit_Card_Exp_Month__c'] = data['exp_month']
             transaction_data['Credit_Card_Exp_Year__c'] = data['exp_year']
 
-        transaction_data['Initial_Purchase__c'] = False if opportunity_data else True
-
         try:
-            # attempt to update the opportunity first (this will happen on the sec)
+            # attempt to update the opportunity first (this will happen on the
+            # second event for the current charge)
             # will raise a SalesforceMalformedRequest if not found
+
+            # if the following succeeds, we don't have to worry about setting
+            # the initial purchase flag - we leave it alone, assuming it was
+            # set properly in the except block below
             sfdc.opportunity.update('PMT_Transaction_ID__c/{}'.format(charge_id), transaction_data)
         except sfapi.SalesforceMalformedRequest:
-            # if opportunity is not found, add charge_id to the data and see
-            # if any other opportunities exist for this subscription_id
+            # we are creating a new opportunity, so put the charge_id in
             transaction_data['PMT_Transaction_ID__c'] = charge_id
 
-            # see if an opportunity with this subscription_id already exists
-            # we need to do this to see if this is a recurring charge or a
-            # new charge
-            # TODO: no idea if this works!
-            opportunity_data = sfdc.opportunity.query("SELECT Id FROM Opportunity WHERE PMT_Subscription_ID__C = {} AND PMT_Transaction_ID__c != {}".format(data['subscription_id'], charge_id))
-            transaction_data['Initial_Purchase__c'] = False if opportunity_data else True
+            # determine if this is an initial or recurring payment
+            try:
+                # look for existing opportunities with the current subscription_id
+                _ = sfdc.opportunity.get_by_custom_id('PMT_Subscription_ID__C', data['subscription_id'])
+            # if no opportunities are found with the current subscription_id,
+            # we know this is an initial purchase
+            except sfapi.SalesforceResourceNotFound:
+                transaction_data['Initial_Purchase__c'] = True
+            # if one or more records are found, we know this is *not* an
+            # initial purchase
+            except sfapi.SalesforceMoreThanOneRecord:
+                transaction_data['Initial_Purchase__c'] = False
+            else:
+                transaction_data['Initial_Purchase__c'] = False
 
             sfdc.opportunity.create(transaction_data)
         else:
