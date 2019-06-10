@@ -743,8 +743,7 @@ def process_subhub_event_customer_created(data):
         if not user_data['first_name']:
             contact_data['first_name'] = first
 
-        if 'first_name' in contact_data or 'last_name' in contact_data:
-            sfdc.update(user_data, contact_data)
+        sfdc.update(user_data, contact_data)
     # if no user was found, create new user in sfdc
     else:
         contact_data['first_name'] = first
@@ -847,7 +846,7 @@ def process_subhub_event_subscription_charge(data):
             'Amount': amount_paid,
             'currency__c': data['currency'],
             'Name': 'Subscription Services',
-            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,  # 012R0000000dQ4dIAE for dev
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
             'StageName': 'Closed Won',
             'Payment_Source__c': 'Stripe',
             'Invoice_Number__c': data['invoice_id'],
@@ -928,14 +927,14 @@ def process_subhub_event_credit_card_expiring(data):
     statsd.incr('news.tasks.process_subhub_event.credit_card_expiring')
 
     # TODO: need the SFMC extension details from Desi/Marty
-    sfmc.add_row('Some_Data_Extension_Name', {
-        'some': 'data'
-    })
+    # sfmc.add_row('Some_Data_Extension_Name', {
+    #    'some': 'data'
+    # })
 
 
 @et_task
 def process_subhub_event_payment_failed(data):
-    statsd.incr('news.tasks.process_subhub_event.subscription_charge')
+    statsd.incr('news.tasks.process_subhub_event.payment_failed')
 
     user_data = get_user_data(payee_id=data['customer_id'])
 
