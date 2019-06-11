@@ -926,10 +926,13 @@ def process_subhub_event_subscription_canceled(data):
 def process_subhub_event_credit_card_expiring(data):
     statsd.incr('news.tasks.process_subhub_event.credit_card_expiring')
 
-    # TODO: need the SFMC extension details from Desi/Marty
-    # sfmc.add_row('Some_Data_Extension_Name', {
-    #    'some': 'data'
-    # })
+    # get the user's email address to send to the extension
+    user_data = get_user_data(payee_id=data['customer_id'])
+
+    if user_data:
+        sfmc.add_row('customer-card-expiring', {
+            'EmailAddress': user_data['email'],
+        })
 
 
 @et_task
