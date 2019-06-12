@@ -273,6 +273,39 @@ class ProcessDonationEventTests(TestCase):
 @override_settings(TASK_LOCKING_ENABLE=False)
 @patch('basket.news.tasks.get_user_data')
 @patch('basket.news.tasks.sfdc')
+class SubHubEventTests(TestCase):
+    def test_customer_created(self, sfdc_mock, gud_mock):
+        pass
+
+    def test_customer_updated_customer_found(self, sfdc_mock, gud_mock):
+        pass
+
+    def test_customer_updated_customer_not_found(self, sfdc_mock, gud_mock):
+        pass
+
+    def test_subscription_charge_finalized(self, sfdc_mock, gud_mock):
+        pass
+
+    def test_subscription_charge_succeeded(self, sfdc_mock, gud_mock):
+        pass
+
+    def test_subscription_canceled(self, sfdc_mock, gud_mock):
+        pass
+
+    def test_subscription_canceled_not_cancelled(self, sfdc_mock, gud_mock):
+        pass
+
+    @patch('basket.news.tasks.sfmc')
+    def test_credit_card_expiring(self, sfdc_mock, gud_mock, sfmc_mock):
+        pass
+
+    def test_payment_failed(self, sfdc_mock, gud_mock):
+        pass
+
+
+@override_settings(TASK_LOCKING_ENABLE=False)
+@patch('basket.news.tasks.get_user_data')
+@patch('basket.news.tasks.sfdc')
 class ProcessDonationTests(TestCase):
     donate_data = {
         'created': 1479746809.327,

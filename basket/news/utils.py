@@ -280,9 +280,10 @@ IGNORE_USER_FIELDS = [
 ]
 
 
-def get_user_data(token=None, email=None, extra_fields=None, get_fxa=False):
+def get_user_data(token=None, email=None, payee_id=None, extra_fields=None, get_fxa=False):
     """Return a dictionary of the user's data from Exact Target.
-    Look them up by their email if given, otherwise by the token.
+    Look them up by their email or payment processor id (e.g. Stripe) if given,
+    otherwise by the token.
 
     If the user was not found, return None instead of a dictionary.
 
@@ -318,7 +319,7 @@ def get_user_data(token=None, email=None, extra_fields=None, get_fxa=False):
     }
     """
     try:
-        user = sfdc.get(token, email)
+        user = sfdc.get(token, email, payee_id)
     except sfapi.SalesforceResourceNotFound:
         return None
     except requests.exceptions.RequestException as e:
