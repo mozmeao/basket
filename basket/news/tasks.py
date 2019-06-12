@@ -383,7 +383,8 @@ def upsert_user(api_call_type, data):
     key = data.get('email') or data.get('token')
     get_lock(key)
     upsert_contact(api_call_type, data,
-                   get_user_data(data.get('token'), data.get('email'),
+                   get_user_data(token=data.get('token'),
+                                 email=data.get('email'),
                                  extra_fields=['id']))
 
 
@@ -832,7 +833,7 @@ def process_subhub_event_subscription_charge(data):
         # just in case amount data is missing/malformed
         try:
             # amount values are cents - convert to dollars
-            amount_paid = int(data['amount']) / 100
+            amount_paid = int(data['amount']) / float(100)
         except ValueError:
             amount_paid = 0
 
@@ -876,7 +877,7 @@ def process_subhub_event_subscription_charge(data):
             # determine if this is an initial or recurring payment
             try:
                 # look for existing opportunities with the current subscription_id
-                _ = sfdc.opportunity.get_by_custom_id('PMT_Subscription_ID__C', data['subscription_id'])
+                sfdc.opportunity.get_by_custom_id('PMT_Subscription_ID__C', data['subscription_id'])
             # if no opportunities are found with the current subscription_id,
             # we know this is an initial purchase
             except sfapi.SalesforceResourceNotFound:
