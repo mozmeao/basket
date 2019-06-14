@@ -164,7 +164,8 @@ def to_vendor(data):
 
     # truncate long data
     for field, length in FIELD_MAX_LENGTHS.items():
-        if field in contact and len(contact[field]) > length:
+        # handle contact[field] is None
+        if len(contact.get(field, '') or '') > length:
             statsd.incr('news.backends.sfdc.data_truncated')
             contact[field] = contact[field][:length]
 
