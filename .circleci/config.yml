@@ -23,6 +23,7 @@ jobs:
       - run:
           name: Run Tests
           command: |
-            bin/dc.sh run -v "$TEST_RESULTS:/app/test-results" test-image
+            bin/dc.sh run --name test-run test-image
+      - run: docker cp test-run:/app/test-results $TEST_RESULTS
       - store_test_results:
           path: /tmp/test-results
