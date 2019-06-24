@@ -144,7 +144,7 @@ def ratelimited(request, e):
 
 
 def generate_fxa_state():
-    return os.urandom(16).encode('hex')
+    return os.urandom(16).hex()
 
 
 def get_fxa_authorization_url(state, redirect_uri, email):
