@@ -275,8 +275,8 @@ class RefreshingSFType(sfapi.SFType):
                 usage = limit = None
 
             if usage:
-                statsd.gauge('news.backends.sfdc.daily_api_used', usage, rate=0.5)
-                statsd.gauge('news.backends.sfdc.daily_api_limit', limit, rate=0.5)
+                statsd.gauge('news.backends.sfdc.daily_api_used', int(usage), rate=0.5)
+                statsd.gauge('news.backends.sfdc.daily_api_limit', int(limit), rate=0.5)
                 percentage = float(usage) / float(limit) * 100
                 statsd.gauge('news.backends.sfdc.percent_daily_api_used', percentage, rate=0.5)
 
