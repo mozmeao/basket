@@ -839,7 +839,6 @@ def process_subhub_event_subscription_charge(data):
 
         # common data to both events
         transaction_data = {
-            'PMT_Cust_Id__c': data['customer_id'],
             'PMT_Subscription_ID__c': data['subscription_id'],
             'CloseDate': iso_format_unix_timestamp(data['created']),
             'Billing_Cycle_End__c': iso_format_unix_timestamp(data['period_end']),
@@ -909,7 +908,6 @@ def process_subhub_event_subscription_canceled(data):
         # really nothing to be done here
         if user_data:
             transaction_data = {
-                'PMT_Cust_Id__c': data['customer_id'],
                 'PMT_Subscription_ID__c': data['subscription_id'],
                 'CloseDate': iso_format_unix_timestamp(data['canceled_at']),
                 'Billing_Cycle_End__c': iso_format_unix_timestamp(data['cancel_at']),
