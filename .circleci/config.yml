@@ -12,16 +12,17 @@ jobs:
       - run:
           name: Setup
           command: |
-            echo "export DOCKER_IMAGE_TAG=mozmeao/basket:${CIRCLE_SHA1}" >> $BASH_ENV
+            echo "export GIT_COMMIT=${CIRCLE_SHA1}" >> $BASH_ENV
+            # required for docker-compose to run
+            touch .env
             mkdir -p $TEST_RESULTS
       - run:
           name: Build Image
           command: |
-            docker build -t "$DOCKER_IMAGE_TAG" --pull=true .
+            bin/dc.sh build --pull web builder
       - run:
           name: Run Tests
           command: |
-            docker run --env-file docker/envfiles/test.env --name test-run "$DOCKER_IMAGE_TAG" bin/run-tests.sh
-      - run: docker cp test-run:/app/test-results $TEST_RESULTS
+            bin/dc.sh run -v "$TEST_RESULTS:/app/test-results" test-image
       - store_test_results:
           path: /tmp/test-results
