@@ -821,7 +821,8 @@ def process_subhub_event_subscription_charge(data):
 
     statsd.incr('news.tasks.process_subhub_event.subscription_charge')
 
-    user_data = get_user_data(payee_id=data['customer_id'])
+    user_data = get_user_data(payee_id=data['customer_id'],
+                              extra_fields=['id'])
 
     # the only user identifiable information available is the payment
     # processor/Stripe ID, so if the user wasn't found by that, there's really
@@ -839,6 +840,7 @@ def process_subhub_event_subscription_charge(data):
 
         # common data to both events
         transaction_data = {
+            'Donation_Contact__c': user_data['id'],
             'PMT_Subscription_ID__c': data['subscription_id'],
             'CloseDate': iso_format_unix_timestamp(data['created']),
             'Billing_Cycle_End__c': iso_format_unix_timestamp(data['period_end']),
@@ -901,13 +903,15 @@ def process_subhub_event_subscription_canceled(data):
     if (data['cancel_at']):
         statsd.incr('news.tasks.process_subhub_event.subscription_canceled')
 
-        user_data = get_user_data(payee_id=data['customer_id'])
+        user_data = get_user_data(payee_id=data['customer_id'],
+                                  extra_fields=['id'])
 
         # the only user identifiable information available is the payment
         # processor/Stripe ID, so if the user wasn't found by that, there's
         # really nothing to be done here
         if user_data:
             transaction_data = {
+                'Donation_Contact__c': user_data['id'],
                 'PMT_Subscription_ID__c': data['subscription_id'],
                 'CloseDate': iso_format_unix_timestamp(data['canceled_at']),
                 'Billing_Cycle_End__c': iso_format_unix_timestamp(data['cancel_at']),
@@ -938,13 +942,15 @@ def process_subhub_event_credit_card_expiring(data):
 def process_subhub_event_payment_failed(data):
     statsd.incr('news.tasks.process_subhub_event.payment_failed')
 
-    user_data = get_user_data(payee_id=data['customer_id'])
+    user_data = get_user_data(payee_id=data['customer_id'],
+                              extra_fields=['id'])
 
     # the only user identifiable information available is the payment
     # processor/Stripe ID, so if the user wasn't found by that, there's really
     # nothing to be done here
     if user_data:
         transaction_data = {
+            'Donation_Contact__c': user_data['id'],
             'PMT_Subscription_ID__c': data['subscription_id'],
             'Invoice_Number__c': data['number'],
             'Name': 'Subscription Services',
