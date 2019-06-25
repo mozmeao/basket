@@ -138,7 +138,7 @@ def to_vendor(data):
             data['lang'] = 'en'
 
     for k, v in data.items():
-        if v != '' and k in FIELD_MAP:
+        if v is not None and v != '' and k in FIELD_MAP:
             if k in PROCESSORS_TO_VENDOR:
                 v = PROCESSORS_TO_VENDOR[k](v)
 
@@ -164,8 +164,7 @@ def to_vendor(data):
 
     # truncate long data
     for field, length in FIELD_MAX_LENGTHS.items():
-        # handle contact[field] is None
-        if len(contact.get(field, '') or '') > length:
+        if field in contact and len(contact[field]) > length:
             statsd.incr('news.backends.sfdc.data_truncated')
             contact[field] = contact[field][:length]
 
