@@ -84,7 +84,7 @@ SUBHUB_EVENT_TYPES = {
     'customer.updated': process_subhub_event_customer_updated,
     'invoice.finalized': process_subhub_event_subscription_charge,  # used for both new and recurring charges
     'invoice.payment_failed': process_subhub_event_payment_failed,
-    'invoice.payment_succeeded': process_subhub_event_subscription_charge,  # used for both new and recurring charges
+    'payment_intent.succeeded': process_subhub_event_subscription_charge,  # used for both new and recurring charges
 }
 
 
