@@ -72,7 +72,7 @@ services:
     command:
       ./bin/run-donate-worker.sh
 
-  test-local:
+  test:
     image: mozmeao/basket:${GIT_COMMIT:-latest}
     volumes:
       - .:/app
