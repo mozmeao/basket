@@ -4,15 +4,17 @@
 
 .. _install:
 
-===========
+=================
 Installing Basket
-===========
+=================
 
 Requirements
 ============
 
-* Python >= 2.7, < 3
-* MySQL (only for prod)
+* Docker
+* Docker-compose
+
+You can install Docker CE for your platform at https://docker.com.
 
 Installation
 ============
@@ -22,47 +24,52 @@ Get the code
 
 ::
 
-    git clone git@github.com:mozmeao/basket.git --recursive
-
-The `--recursive` is important!
-
-
-Make a virtualenv
------------------
-
-Using virtualenvwrapper::
-
-    mkvirtualenv --python=python2.7 basket
-
-
-Install packages
-----------------
-
-::
-
-    pip install -r requirements/default.txt
-
-If you'll be using MySQL for the database::
-
-    pip install -r requirements/compiled.txt
-
-For developers::
-
-    pip install -r requirements/dev.txt
-
+    git clone git@github.com:mozmeao/basket.git
 
 Settings
 --------
 
-Settings are discovered in the environment. You can either provide them via environment variables
-or by providing those variables in a ``.env`` file in the root of the project
-(along side of ``manage.py``). To get started you can copy ``env-dist`` to ``.env`` and that will
+Settings are injected into the Docker container environment via the `.env` file. You can
+get started by copying ``env-dist`` to ``.env`` and that will
 provide the basics you need to run the site and the tests.
 
-Database schema
----------------
+Use Docker
+----------
 
-::
+The steps to get up and running are these:
 
-    ./manage.py migrate
+.. code-block:: bash
+
+    $ # this pulls our latest builds from the docker hub.
+    $ # it's optional but will speed up your builds considerably.
+    $ docker-compose pull
+    $ # this starts the server and dependencies
+    $ docker-compose up web
+
+If you've made changes to the `Dockerfile` or the `requirements/*.txt` files you'll need to rebuild the image to run the app and tests:
+
+.. code-block:: bash
+
+    $ docker-compose build web
+
+Then to run the app you run the `docker-compose up web` command again, or for running tests against your local changes you run:
+
+.. code-block:: bash
+
+    $ docker-compose run test
+
+We use pytest for running tests. So if you'd like to craft your own pytest command to run individual test files or something
+you can do so by passing in a command to the above:
+
+.. code-block:: bash
+
+    $ docker-compose run test py.test basket/news/tests/test_views.py
+
+And if you need to debug a running container, you can open another terminal to your basket code and run the following:
+
+.. code-block:: bash
+
+    $ docker-compose exec web bash
+    $ # or
+    $ docker-compose exec web python manage.py shell
 
