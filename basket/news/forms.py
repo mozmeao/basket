@@ -41,9 +41,14 @@ class NewslettersField(forms.MultipleChoiceField):
     * Includes newsletter group IDs.
     """
     def __init__(self, required=True, widget=None, label=None, initial=None,
-                 help_text='', *args, **kwargs):
-        super(NewslettersField, self).__init__(newsletter_field_choices, required, widget, label,
-                                               initial, help_text, *args, **kwargs)
+                 help_text='', **kwargs):
+        super(NewslettersField, self).__init__(choices=newsletter_field_choices,
+                                               required=required,
+                                               widget=widget,
+                                               label=label,
+                                               initial=initial,
+                                               help_text=help_text,
+                                               **kwargs)
 
     def to_python(self, value):
         value = super(NewslettersField, self).to_python(value)

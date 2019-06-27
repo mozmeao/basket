@@ -228,6 +228,7 @@ def fxa_callback(request):
 @require_POST
 @csrf_exempt
 def confirm(request, token):
+    token = str(token)
     if is_ratelimited(request, group='basket.news.views.confirm',
                       key=lambda x, y: token,
                       rate=EMAIL_SUBSCRIBE_RATE_LIMIT, increment=True):
@@ -612,6 +613,7 @@ def subscribe_sms(request):
 @require_POST
 @csrf_exempt
 def unsubscribe(request, token):
+    token = str(token)
     data = request.POST.dict()
     data['token'] = token
 
@@ -626,6 +628,7 @@ def unsubscribe(request, token):
 @csrf_exempt
 def user_meta(request, token):
     """Only update user metadata, not newsletters"""
+    token = str(token)
     form = UpdateUserMeta(request.POST)
     if form.is_valid():
         # don't send empty values
@@ -645,6 +648,7 @@ def user_meta(request, token):
 @csrf_exempt
 @never_cache
 def user(request, token):
+    token = str(token)
     if request.method == 'POST':
         data = request.POST.dict()
         data['token'] = token

@@ -4,10 +4,10 @@ import json
 
 from django.conf import settings
 from django.core.cache import cache
-from django.core.urlresolvers import reverse
 from django.test import TestCase
 from django.test import override_settings
 from django.test.client import RequestFactory, Client
+from django.urls import reverse
 
 from basket import errors
 from email_validator import EmailSyntaxError
