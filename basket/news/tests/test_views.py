@@ -32,7 +32,6 @@ class UpdateUserMetaTests(TestCase):
         resp = views.user_meta(req, 'the-dudes-token-man')
         assert resp.status_code == 400
         uum_mock.delay.assert_not_called()
-        assert False
 
     def test_valid_uppercase_country(self, uum_mock):
         req = self.rf.post('/', {'country': 'GB'})
