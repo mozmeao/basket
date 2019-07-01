@@ -56,14 +56,14 @@ Then to run the app you run the `docker-compose up web` command again, or for ru
 
 .. code-block:: bash
 
-    $ docker-compose run test
+    $ docker-compose run --rm test
 
 We use pytest for running tests. So if you'd like to craft your own pytest command to run individual test files or something
 you can do so by passing in a command to the above:
 
 .. code-block:: bash
 
-    $ docker-compose run test py.test basket/news/tests/test_views.py
+    $ docker-compose run --rm test py.test basket/news/tests/test_views.py
 
 And if you need to debug a running container, you can open another terminal to your basket code and run the following:
 
