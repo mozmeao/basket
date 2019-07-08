@@ -8,6 +8,7 @@ docs/_build
 docs/_gh-pages
 build.py
 .DS_Store
+.vscode
 /media/img/uploads
 *-min.css
 *-all.css

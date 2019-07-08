@@ -853,6 +853,10 @@ def process_subhub_event_subscription_charge(data):
             'Processors_Fee__c': data['application_fee_amount'],
         }
 
+        # 'description' key is only available in the invoice.finalized event
+        if 'description' in data:
+            transaction_data['Service_Plan__c'] = data['description']
+
         # these keys will be available for the invoice.payment_succeeded event
         if all(k in data for k in ('brand', 'last4', 'exp_month', 'exp_year')):
             transaction_data['Credit_Card_Type__c'] = data['brand']
