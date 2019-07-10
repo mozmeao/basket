@@ -34,23 +34,22 @@ def get_timer_decorator(prefix):
         @wraps(f)
         def wrapped(*args, **kwargs):
             starttime = time()
-            e = None
+
+            def record_timing():
+                totaltime = int((time() - starttime) * 1000)
+                statsd.timing(prefix + '.timing', totaltime)
+                statsd.timing(prefix + '.{}.timing'.format(f.__name__), totaltime)
+                statsd.incr(prefix + '.count')
+                statsd.incr(prefix + '.{}.count'.format(f.__name__))
+
             try:
                 resp = f(*args, **kwargs)
-            except NewsletterException as e:  # noqa
-                pass
-            except Exception:
+            except NewsletterException:
+                record_timing()
                 raise
 
-            totaltime = int((time() - starttime) * 1000)
-            statsd.timing(prefix + '.timing', totaltime)
-            statsd.timing(prefix + '.{}.timing'.format(f.__name__), totaltime)
-            statsd.incr(prefix + '.count')
-            statsd.incr(prefix + '.{}.count'.format(f.__name__))
-            if e:
-                raise
-            else:
-                return resp
+            record_timing()
+            return resp
 
         return wrapped
 
