@@ -37,7 +37,7 @@ def get_timer_decorator(prefix):
             e = None
             try:
                 resp = f(*args, **kwargs)
-            except NewsletterException as e:
+            except NewsletterException as e:  # noqa
                 pass
             except Exception:
                 raise
