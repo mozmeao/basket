@@ -20,6 +20,6 @@ if [[ "$GIT_TAG_DATE_BASED" == true ]]; then
     docker tag "$DOCKER_IMAGE_TAG" "$DOCKER_REPOSITORY:latest"
     docker push "$DOCKER_REPOSITORY:latest"
     # builder latest for cache
-    docker tag "$DOCKER_REPOSITORY:builder-$GIT_TAG" "$DOCKER_REPOSITORY:builder-latest"
+    docker tag "$DOCKER_REPOSITORY:builder-$GIT_COMMIT" "$DOCKER_REPOSITORY:builder-latest"
     docker push "$DOCKER_REPOSITORY:builder-latest"
 fi
