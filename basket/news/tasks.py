@@ -562,7 +562,7 @@ def send_message(message_id, email, subscriber_key, token=None):
     except NewsletterException as e:
         # Better error messages for some cases. Also there's no point in
         # retrying these
-        if 'Invalid Customer Key' in e.message:
+        if 'Invalid Customer Key' in str(e):
             # remember it's a bad message ID so we don't try again during this process.
             BAD_MESSAGE_ID_CACHE.set(message_id, True)
             return

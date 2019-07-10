@@ -10,8 +10,7 @@ class TestSendMessage(TestCase):
     @patch('basket.news.tasks.sfmc')
     def test_caching_bad_message_ids(self, mock_sfmc):
         """Bad message IDs are cached so we don't try to send to them again"""
-        exc = NewsletterException()
-        exc.message = 'Invalid Customer Key'
+        exc = NewsletterException('Invalid Customer Key')
         mock_sfmc.send_mail.side_effect = exc
 
         message_id = "MESSAGE_ID"
