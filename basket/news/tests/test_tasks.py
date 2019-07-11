@@ -1033,10 +1033,11 @@ class CommonVoiceGoalsTests(TestCase):
             'last_active_date': '2019-07-11T10:28:32Z',
             'two_day_streak': False,
         }
+        orig_data = data.copy()
         record_common_voice_goals(data)
         # ensure passed in dict was not modified in place.
         # if it is modified a retry will use the modified dict.
-        assert data == data
+        assert orig_data == data
         sfdc_mock.add.assert_called_with({
             'email': 'dude@example.com',
             'token': ANY,
@@ -1055,10 +1056,11 @@ class CommonVoiceGoalsTests(TestCase):
             'last_active_date': '2019-07-11T10:28:32Z',
             'two_day_streak': False,
         }
+        orig_data = data.copy()
         record_common_voice_goals(data)
         # ensure passed in dict was not modified in place.
         # if it is modified a retry will use the modified dict.
-        assert data == data
+        assert orig_data == data
         sfdc_mock.update.assert_called_with(gud_mock(), {
             'source_url': 'https://voice.mozilla.org',
             'newsletters': [settings.COMMON_VOICE_NEWSLETTER],
