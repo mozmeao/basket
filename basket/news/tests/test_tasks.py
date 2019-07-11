@@ -29,6 +29,7 @@ from basket.news.tasks import (
     process_donation,
     process_donation_event,
     process_petition_signature,
+    record_common_voice_goals,
     RECOVERY_MESSAGE_ID,
     SUBSCRIBE,
     send_recovery_message_task,
@@ -1019,3 +1020,49 @@ class GmttimeTests(TestCase):
         basetime = datetime.fromtimestamp(1473428035.498)
         formatted_time = gmttime(basetime)
         self.assertEqual(formatted_time, 'Fri, 09 Sep 2016 13:43:55 GMT')
+
+
+@patch('basket.news.tasks.sfdc')
+@patch('basket.news.tasks.get_user_data')
+class CommonVoiceGoalsTests(TestCase):
+    def test_new_user(self, gud_mock, sfdc_mock):
+        gud_mock.return_value = None
+        data = {
+            'email': 'dude@example.com',
+            'first_contribution_date': '2018-06-27T14:56:58Z',
+            'last_active_date': '2019-07-11T10:28:32Z',
+            'two_day_streak': False,
+        }
+        record_common_voice_goals(data)
+        # ensure passed in dict was not modified in place.
+        # if it is modified a retry will use the modified dict.
+        assert data == data
+        sfdc_mock.add.assert_called_with({
+            'email': 'dude@example.com',
+            'token': ANY,
+            'source_url': 'https://voice.mozilla.org',
+            'newsletters': [settings.COMMON_VOICE_NEWSLETTER],
+            'cv_first_contribution_date': '2018-06-27T14:56:58Z',
+            'cv_last_active_date': '2019-07-11T10:28:32Z',
+            'cv_two_day_streak': False,
+        })
+
+    def test_existing_user(self, gud_mock, sfdc_mock):
+        gud_mock.return_value = {'id': 'the-duder'}
+        data = {
+            'email': 'dude@example.com',
+            'first_contribution_date': '2018-06-27T14:56:58Z',
+            'last_active_date': '2019-07-11T10:28:32Z',
+            'two_day_streak': False,
+        }
+        record_common_voice_goals(data)
+        # ensure passed in dict was not modified in place.
+        # if it is modified a retry will use the modified dict.
+        assert data == data
+        sfdc_mock.update.assert_called_with(gud_mock(), {
+            'source_url': 'https://voice.mozilla.org',
+            'newsletters': [settings.COMMON_VOICE_NEWSLETTER],
+            'cv_first_contribution_date': '2018-06-27T14:56:58Z',
+            'cv_last_active_date': '2019-07-11T10:28:32Z',
+            'cv_two_day_streak': False,
+        })
