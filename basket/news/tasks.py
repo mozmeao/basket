@@ -672,13 +672,15 @@ def send_recovery_message_task(email):
 
 @et_task
 def record_common_voice_goals(data):
-    email = data.pop('email')
+    # do not change the sent data in place. A retry will use the changed data.
+    dcopy = data.copy()
+    email = dcopy.pop('email')
     user_data = get_user_data(email=email, extra_fields=['id'])
     new_data = {
         'source_url': 'https://voice.mozilla.org',
         'newsletters': [settings.COMMON_VOICE_NEWSLETTER],
     }
-    for k, v in data.items():
+    for k, v in dcopy.items():
         new_data['cv_' + k] = v
 
     if user_data:

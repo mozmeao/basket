@@ -398,13 +398,6 @@ def common_voice_goals(request):
     if form.is_valid():
         # don't send empty values and use ISO formatted date strings
         data = {k: v for k, v in form.cleaned_data.items() if not (v == '' or v is None)}
-        if 'email' not in data:
-            sentry_client.capture('raven.events.Message', request=request)
-            return HttpResponseJSON({
-                'status': 'error',
-                'errors': 'no valid email address'
-            }, 400)
-
         record_common_voice_goals.delay(data)
         return HttpResponseJSON({'status': 'ok'})
     else:
