@@ -276,19 +276,19 @@ def get_default_gateway_linux():
 
 
 HOSTNAME = platform.node()
-DEIS_APP = config('DEIS_APP', default=None)
-DEIS_DOMAIN = config('DEIS_DOMAIN', default=None)
-DEIS_RELEASE = config('DEIS_RELEASE', default=None)
+CLUSTER_NAME = config('CLUSTER_NAME', default=None)
+K8S_NAMESPACE = config('K8S_NAMESPACE', default=None)
+K8S_POD_NAME = config('K8S_POD_NAME', default=None)
 
 RAVEN_CONFIG = {
     'dsn': config('SENTRY_DSN', None),
-    'site': '.'.join(x for x in [DEIS_APP, DEIS_DOMAIN] if x),
+    'site': '.'.join(x for x in [K8S_NAMESPACE, CLUSTER_NAME] if x),
     'release': config('GIT_SHA', None),
 }
 
 STATSD_HOST = config('STATSD_HOST', get_default_gateway_linux())
 STATSD_PORT = config('STATSD_PORT', 8125, cast=int)
-STATSD_PREFIX = config('STATSD_PREFIX', DEIS_APP)
+STATSD_PREFIX = config('STATSD_PREFIX', K8S_NAMESPACE)
 STATSD_CLIENT = config('STATSD_CLIENT', 'django_statsd.clients.null')
 
 LOGGING = {

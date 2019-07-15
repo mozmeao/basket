@@ -32,9 +32,9 @@ class GraphiteViewHitCountMiddleware(GraphiteRequestTimingMiddleware):
 
 class HostnameMiddleware(object):
     def __init__(self, get_response):
-        values = [getattr(settings, x) for x in ['HOSTNAME', 'DEIS_APP',
-                                                 'DEIS_RELEASE', 'DEIS_DOMAIN']]
-        self.backend_server = '.'.join(x for x in values if x)
+        values = [getattr(settings, x) for x in [
+            'CLUSTER_NAME', 'K8S_NAMESPACE', 'K8S_POD_NAME']]
+        self.backend_server = '/'.join(x for x in values if x)
         self.get_response = get_response
 
     def __call__(self, request):
