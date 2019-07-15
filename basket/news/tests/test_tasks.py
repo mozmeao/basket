@@ -481,7 +481,7 @@ class ProcessDonationTests(TestCase):
         }]
         exc = sfapi.SalesforceMalformedRequest('url', 400, 'opportunity', error_content)
         sfdc_mock.opportunity.create.side_effect = exc
-        with self.assertRaises(Retry):
+        with self.assertRaises(sfapi.SalesforceMalformedRequest):
             process_donation(data)
 
 
