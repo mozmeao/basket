@@ -836,7 +836,7 @@ def process_subhub_event_subscription_charge(data):
         # just in case amount data is missing/malformed
         try:
             # amount values are cents - convert to dollars
-            amount_paid = int(data['amount']) / float(100)
+            amount_paid = int(data['amount_paid']) / float(100)
         except ValueError:
             amount_paid = 0
 
@@ -854,7 +854,6 @@ def process_subhub_event_subscription_charge(data):
             'StageName': 'Closed Won',
             'Payment_Source__c': 'Stripe',
             'Invoice_Number__c': data['invoice_id'],
-            'Processors_Fee__c': data['application_fee_amount'],
         }
 
         # these keys will be available for the invoice.payment_succeeded event
