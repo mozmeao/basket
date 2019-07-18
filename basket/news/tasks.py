@@ -29,7 +29,7 @@ from basket.news.models import (FailedTask, Newsletter, Interest,
 from basket.news.newsletters import get_sms_vendor_id, get_transactional_message_ids, newsletter_map
 from basket.news.utils import (generate_token, get_accept_languages, get_best_language, get_user_data,
                                iso_format_unix_timestamp, parse_newsletters, parse_newsletters_csv,
-                               SUBSCRIBE, UNSUBSCRIBE, get_best_supported_lang)
+                               SUBSCRIBE, UNSUBSCRIBE, get_best_supported_lang, split_name)
 
 log = logging.getLogger(__name__)
 
@@ -1047,31 +1047,6 @@ DONATION_NEW_FIELDS = {
     'Conversion_Amount__c': 'conversion_amount',
     'Last_4_Digits__c': 'last_4',
 }
-
-
-def split_name(name):
-    """
-    Takes a full name as a string and attempts to make it conform to the narrow
-    "first/last" system Salesforce requires.
-
-    Drops any "jr" or "sr" suffix.
-    """
-
-    # try to make the final bit after the last space the last name
-    names = name.rsplit(None, 1)
-
-    if len(names) == 2:
-        first, last = names
-
-        # if last name is 'jr' or 'sr' and first name has a space in it, do
-        # more splitting
-        if ' ' in first and last.lower() in ['jr', 'sr']:
-            names = first.rsplit(None, 1)
-            first, last = names
-    else:
-        first, last = '', names[0]
-
-    return first, last
 
 
 @et_task

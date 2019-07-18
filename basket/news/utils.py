@@ -583,3 +583,36 @@ def parse_newsletters(api_call_type, newsletters, cur_newsletters):
             newsletter_map[nl] = False
 
     return newsletter_map
+
+
+def split_name(name):
+    """
+    Takes a full name as a string and attempts to make it conform to the narrow
+    "first/last" system Salesforce requires.
+
+    Drops any "jr" or "sr" suffix.
+    """
+
+    # remove leading/trailing whitespace and periods
+    # also accounts for a string of spaces being provided
+    name = name.strip(' .')
+
+    # if the name is an empty string, we're done
+    if not name:
+        return '', ''
+
+    # try to make the final bit after the last space the last name
+    names = name.rsplit(None, 1)
+
+    if len(names) == 2:
+        first, last = names
+
+        # if last name is 'jr' or 'sr' and first name has a space in it, do
+        # more splitting
+        if ' ' in first and last.lower() in ['jr', 'sr']:
+            names = first.rsplit(None, 1)
+            first, last = names
+    else:
+        first, last = '', names[0]
+
+    return first, last

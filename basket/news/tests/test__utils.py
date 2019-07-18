@@ -21,6 +21,7 @@ from basket.news.utils import (
     parse_newsletters_csv,
     parse_phone_number,
     process_email,
+    split_name,
 )
 
 
@@ -375,3 +376,23 @@ class TestProcessEmail(TestCase):
         self.assertIsNone(process_email('dude@home@example.com'))
         self.assertIsNone(process_email(''))
         self.assertIsNone(process_email(None))
+
+
+class TestSplitName(TestCase):
+    def test_empty_string(self):
+        self.assertEqual(split_name(''), ('', ''))
+
+    def test_only_spaces(self):
+        self.assertEqual(split_name(' '), ('', ''))
+        self.assertEqual(split_name('     '), ('', ''))
+
+    def test_standard_cases(self):
+        self.assertEqual(split_name('Dude'), ('', 'Dude'))
+        self.assertEqual(split_name('Walter Sobchak'), ('Walter', 'Sobchak'))
+        self.assertEqual(split_name('Theodore Donald Kerabatsos'), ('Theodore Donald', 'Kerabatsos'))
+
+    def test_removes_suffixes(self):
+        self.assertEqual(split_name('Jeffrey Lebowski Jr'), ('Jeffrey', 'Lebowski'))
+        self.assertEqual(split_name('Jeffrey Lebowski jr.'), ('Jeffrey', 'Lebowski'))
+        self.assertEqual(split_name('Uli Kunkel Sr.'), ('Uli', 'Kunkel'))
+        self.assertEqual(split_name('Uli Kunkel sr'), ('Uli', 'Kunkel'))
