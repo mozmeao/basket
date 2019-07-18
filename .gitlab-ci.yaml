@@ -1,0 +1,22 @@
+stages:
+  - deploy
+
+.deploy:
+  stage: deploy
+  tags:
+    - meao
+    - aws
+  before_script: # executed together in same shell context as scripts defined below
+    - bin/dc.sh build --pull web builder
+    - bin/dc.sh run --rm test-image
+    - docker/bin/push2dockerhub.sh
+
+dev:
+  extends: .deploy
+  only:
+    - master
+  variables:
+    NAMESPACE: basket-dev
+  script:
+    - CLUSTER_NAME=oregon-a bin/update-config.sh
+    - CLUSTER_NAME=oregon-b bin/update-config.sh
