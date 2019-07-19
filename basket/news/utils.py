@@ -610,8 +610,7 @@ def split_name(name):
         # if last name is 'jr' or 'sr' and first name has a space in it, do
         # more splitting
         if ' ' in first and last.lower() in ['jr', 'sr']:
-            names = first.rsplit(None, 1)
-            first, last = names
+            first, last = first.rsplit(None, 1)
     else:
         first, last = '', names[0]
 
