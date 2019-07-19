@@ -10,7 +10,7 @@ import boto3
 import requests
 from apscheduler.schedulers.blocking import BlockingScheduler
 from django_statsd.clients import statsd
-from pathlib2 import Path
+from pathlib import Path
 from pytz import utc
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
