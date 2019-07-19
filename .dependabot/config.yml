@@ -1,0 +1,12 @@
+version: 1
+update_configs:
+  - package_manager: "python"
+    directory: "/requirements"
+    update_schedule: "weekly"
+    default_labels:
+      - "maintenance"
+      - "dependencies"
+    ignored_updates:
+      - match:
+          dependency_name: "urllib3"
+          version_requirement: "<1.25"
