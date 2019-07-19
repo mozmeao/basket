@@ -8,7 +8,7 @@ from datetime import timedelta
 import dj_database_url
 import django_cache_url
 from decouple import config, Csv, UndefinedValueError
-from pathlib2 import Path
+from pathlib import Path
 
 # Application version.
 VERSION = (0, 1)
