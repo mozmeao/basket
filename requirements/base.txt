@@ -89,9 +89,8 @@ raven==6.10.0 \
 contextlib2==0.5.5 \
     --hash=sha256:509f9419ee91cdd00ba34443217d5ca51f5a364a404e1dce9e8979cea969ca48 \
     --hash=sha256:f5260a6e679d2ff42ec91ec5252f4eeffdcf21053db9113bd0a8e4d953769c00
-simple-salesforce==0.74.2 \
-    --hash=sha256:60b834cf47505171e5bebfdbfcc0ca9676c960266a913014fa63e5db2e399fdc \
-    --hash=sha256:9404c4aa11efd9ea08700a94161ae4f91faa99ae6a6d5a1fe3736fc3b35be831
+simple-salesforce==0.74.3 \
+    --hash=sha256:0bf4065a7769388d8f830bfc31200e6d2d6de50d19034e4113b59831dd72a438
 django-extensions==2.1.7 \
     --hash=sha256:6766c573ffe63693cd485512a02f3b59622c884cbfeca241d1278ffdf0ac39ae \
     --hash=sha256:c43e46cc95985c278afda645480b79f9a85cfe5a82c957accd08b8045793b707
