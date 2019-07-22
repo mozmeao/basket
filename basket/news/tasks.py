@@ -801,7 +801,7 @@ def process_subhub_event_customer_updated(data):
 @et_task
 def process_subhub_event_subscription_charge(data):
     """
-    Event names: invoice.finalized & payment_intent.succeeded
+    Event names: invoice.finalized, payment_intent.succeeded
 
     This method handles both new and recurring charges.
 
@@ -928,8 +928,8 @@ def process_subhub_event_subscription_updated(data):
     if not user_data:
         return
 
-    # it's only a cancellation if cancel_at is populated
-    if (data['cancel_at']):
+    # it's only a cancellation if cancel_at_period_end is truthy
+    if (data['cancel_at_period_end']):
         statsd.incr('news.tasks.process_subhub_event.subscription_updated.cancelled')
 
         transaction_data = {
