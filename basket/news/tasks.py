@@ -723,6 +723,8 @@ def record_source_url(email, source_url, newsletter_id):
 @et_task
 def process_subhub_event_customer_created(data):
     """
+    Event name: customer.created
+
     Creates or updates a SFDC customer when a new payment processor/Stripe
     customer is created
     """
@@ -760,6 +762,8 @@ def process_subhub_event_customer_created(data):
 @et_task
 def process_subhub_event_customer_updated(data):
     """
+    Event name: customer.updated
+
     Updates customer record in SFDC if payment processor/Stripe customer
     changes their name or email address
     """
@@ -797,16 +801,15 @@ def process_subhub_event_customer_updated(data):
 @et_task
 def process_subhub_event_subscription_charge(data):
     """
+    Event names: invoice.finalized & payment_intent.succeeded
+
     This method handles both new and recurring charges.
 
-    There are two events that trigger this task:
-    - invoice.finalized
-    - invoice.payment_succeeded
+    Each of the handled events contains different information on the charge
+    which will need to be combined.
 
-    Each of these events contains different information on the charge which
-    will need to be combined.
-
-    The charge_id field (sent in data) will tie the two events together.
+    The charge_id field (sent in both payloads) will tie the two events
+    together.
 
     invoice.finalized *should* be sent first, which is missing the following
     credit card related fields:
@@ -847,7 +850,6 @@ def process_subhub_event_subscription_charge(data):
             'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['period_start']),
             'CloseDate': iso_format_unix_timestamp(data['created']),
             'Donation_Contact__c': user_data['id'],
-            'Invoice_Number__c': data['invoice_id'],
             'Name': 'Subscription Services',
             'PMT_Subscription_ID__c': data['subscription_id'],
             'Payment_Source__c': 'Stripe',
@@ -855,6 +857,10 @@ def process_subhub_event_subscription_charge(data):
             'StageName': 'Closed Won',
             'currency__c': data['currency'],
         }
+
+        # invoice_number is only available in the invoice.finalized event
+        if 'invoice_number' in data:
+            transaction_data['Invoice_Number__c'] = data['invoice_number']
 
         # these keys will be available for the invoice.payment_succeeded event
         if all(k in data for k in ('brand', 'last4', 'exp_month', 'exp_year')):
@@ -899,6 +905,8 @@ def process_subhub_event_subscription_charge(data):
 @et_task
 def process_subhub_event_subscription_updated(data):
     """
+    Event name: customer.subscription.updated
+
     This method handles three scenarios:
 
     1. subscription created - creates a new subscription opportunity record
@@ -906,6 +914,8 @@ def process_subhub_event_subscription_updated(data):
         of the plan
     3. subscription cancelled - create a new opportunity record of the
         cancellation
+
+    These scenarios are determined by the incoming data.
     """
     statsd.incr('news.tasks.process_subhub_event.subscription_updated')
 
@@ -961,6 +971,9 @@ def process_subhub_event_subscription_updated(data):
 
 @et_task
 def process_subhub_event_credit_card_expiring(data):
+    """
+    Event name: customer.source.expiring
+    """
     statsd.incr('news.tasks.process_subhub_event.credit_card_expiring')
 
     # get the user's email address to send to the extension
@@ -974,6 +987,9 @@ def process_subhub_event_credit_card_expiring(data):
 
 @et_task
 def process_subhub_event_payment_failed(data):
+    """
+    Event name: invoice.payment_failed
+    """
     statsd.incr('news.tasks.process_subhub_event.payment_failed')
 
     user_data = get_user_data(payee_id=data['customer_id'],
@@ -986,7 +1002,7 @@ def process_subhub_event_payment_failed(data):
         transaction_data = {
             'Donation_Contact__c': user_data['id'],
             'PMT_Subscription_ID__c': data['subscription_id'],
-            'Invoice_Number__c': data['number'],
+            'Invoice_Number__c': data['invoice_number'],
             'Name': 'Subscription Services',
             'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
             'StageName': 'Payment Failed',
