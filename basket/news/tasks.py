@@ -928,6 +928,9 @@ def process_subhub_event_subscription_updated(data):
     if not user_data:
         return
 
+    # TODO: remove!
+    sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated", data={'data': data})
+
     # it's only a cancellation if cancel_at_period_end is truthy
     if (data['cancel_at_period_end']):
         statsd.incr('news.tasks.process_subhub_event.subscription_updated.cancelled')
@@ -943,6 +946,9 @@ def process_subhub_event_subscription_updated(data):
             'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
             'StageName': 'Subscription Canceled',
         }
+
+        # TODO: remove!
+        sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated.cancelled", data={'transaction_data': transaction_data})
 
         sfdc.opportunity.create(transaction_data)
     else:
@@ -961,10 +967,16 @@ def process_subhub_event_subscription_updated(data):
             transaction_data['Donation_Contact__c.PMT_Cust_Id__c'] = data['customer_id']
             transaction_data['PMT_Invoice_ID__c'] = data['invoice_id']
 
+            # TODO: remove!
+            sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated.created", data={'transaction_data': transaction_data})
+
             sfdc.opportunity.create(transaction_data)
 
             statsd.incr('news.tasks.process_subhub_event.subscription_updated.created')
         else:
+            # TODO: remove!
+            sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated.updated", data={'transaction_data': transaction_data})
+
             # if update was successful, log it
             statsd.incr('news.tasks.process_subhub_event.subscription_updated.updated')
 
