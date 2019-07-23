@@ -931,8 +931,22 @@ def process_subhub_event_subscription_updated(data):
     # TODO: remove!
     sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated", data={'data': data})
 
+    # TODO: remove!
+    if 'cancel_at_period_end' in data:
+        val = data['cancel_at_period_end']
+
+        if not val:
+            is_cancellation = False
+        else:
+            if val in ['true', True]:
+                is_cancellation = True
+            else:
+                is_cancellation = False
+    else:
+        is_cancellation = False
+
     # it's only a cancellation if cancel_at_period_end is truthy
-    if (data['cancel_at_period_end']):
+    if (is_cancellation):
         statsd.incr('news.tasks.process_subhub_event.subscription_updated.cancelled')
 
         transaction_data = {
