@@ -862,7 +862,10 @@ def process_subhub_event_subscription_charge(data):
         if 'invoice_number' in data:
             transaction_data['Invoice_Number__c'] = data['invoice_number']
 
-        # these keys will be available for the invoice.payment_succeeded event
+        if 'invoice_id' in data:
+            transaction_data['PMT_Invoice_ID__c'] = data['invoice_id']
+
+        # these keys will be available for the payment_intent.succeeded event
         if all(k in data for k in ('brand', 'last4', 'exp_month', 'exp_year')):
             transaction_data['Credit_Card_Exp_Month__c'] = data['exp_month']
             transaction_data['Credit_Card_Exp_Year__c'] = data['exp_year']
