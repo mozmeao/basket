@@ -929,7 +929,7 @@ def process_subhub_event_subscription_updated(data):
         return
 
     # TODO: remove!
-    sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated", data={'data': data})
+    sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated", data=data)
 
     # TODO: remove!
     if 'cancel_at_period_end' in data:
@@ -961,10 +961,10 @@ def process_subhub_event_subscription_updated(data):
             'StageName': 'Subscription Canceled',
         }
 
-        # TODO: remove!
-        sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated.cancelled", data={'transaction_data': transaction_data})
-
         sfdc.opportunity.create(transaction_data)
+
+        # TODO: remove!
+        sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated.cancelled", data=transaction_data)
     else:
         transaction_data = {
             'Amount': data['plan_amount'],
@@ -981,18 +981,18 @@ def process_subhub_event_subscription_updated(data):
             transaction_data['Donation_Contact__c.PMT_Cust_Id__c'] = data['customer_id']
             transaction_data['PMT_Invoice_ID__c'] = data['invoice_id']
 
-            # TODO: remove!
-            sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated.created", data={'transaction_data': transaction_data})
-
             sfdc.opportunity.create(transaction_data)
 
             statsd.incr('news.tasks.process_subhub_event.subscription_updated.created')
-        else:
-            # TODO: remove!
-            sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated.updated", data={'transaction_data': transaction_data})
 
+            # TODO: remove!
+            sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated.created", data=transaction_data)
+        else:
             # if update was successful, log it
             statsd.incr('news.tasks.process_subhub_event.subscription_updated.updated')
+
+            # TODO: remove!
+            sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated.updated", data=transaction_data)
 
 
 @et_task
