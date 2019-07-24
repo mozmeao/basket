@@ -982,6 +982,7 @@ def process_subhub_event_subscription_updated(data):
             'CloseDate': data['created'],
             'PMT_Subscription_ID__c': data['subscription_id'],
             'Service_Plan__c': data['nickname'],
+            'StageName': 'Closed Won',
         }
 
         try:
