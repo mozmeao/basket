@@ -1049,6 +1049,7 @@ def process_subhub_event_payment_failed(data):
             'CloseDate': iso_format_unix_timestamp(data['created']),
             'PMT_Transaction_ID__c': data['charge_id'],
             'currency__c': data['currency'],
+            'Service_Plan__c': data['nickname'],
         }
 
         sfdc.opportunity.create(transaction_data)
