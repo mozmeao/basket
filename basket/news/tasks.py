@@ -952,8 +952,15 @@ def process_subhub_event_subscription_updated(data):
     if (is_cancellation):
         statsd.incr('news.tasks.process_subhub_event.subscription_updated.cancelled')
 
+        # just in case amount data is missing/malformed
+        try:
+            # amount values are cents - convert to dollars
+            plan_amount = int(data['plan_amount']) / float(100)
+        except ValueError:
+            plan_amount = 0
+
         transaction_data = {
-            'Amount': data['plan_amount'],
+            'Amount': plan_amount,
             'Billing_Cycle_End__c': iso_format_unix_timestamp(data['cancel_at']),
             'CloseDate': iso_format_unix_timestamp(data['canceled_at']),
             'Donation_Contact__c': user_data['id'],
@@ -962,6 +969,7 @@ def process_subhub_event_subscription_updated(data):
             'Payment_Source__c': 'Stripe',
             'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
             'StageName': 'Subscription Canceled',
+            'Service_Plan__c': data['nickname'],
         }
 
         sfdc.opportunity.create(transaction_data)
