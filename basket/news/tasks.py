@@ -908,7 +908,7 @@ def process_subhub_event_subscription_charge(data):
 @et_task
 def process_subhub_event_subscription_updated(data):
     """
-    Event name: customer.subscription.updated
+    Event names: customer.subscription.created, customer.subscription.updated
 
     This method handles three scenarios:
 
@@ -971,7 +971,7 @@ def process_subhub_event_subscription_updated(data):
     else:
         transaction_data = {
             'Amount': data['plan_amount'],
-            'Close_Date': data['created'],
+            'CloseDate': data['created'],
             'PMT_Subscription_ID__c': data['subscription_id'],
             'Service_Plan__c': data['nickname'],
         }
