@@ -991,10 +991,6 @@ def subhub_post(request):
 
         if processor:
             processor.delay(data)
-
-            # TODO: remove!
-            sentry_client.capture('raven.events.Message', message="subhub request capture", data={'request': request})
-
             return HttpResponseJSON({'status': 'ok'})
         else:
             return HttpResponseJSON({
