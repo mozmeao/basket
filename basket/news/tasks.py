@@ -931,25 +931,8 @@ def process_subhub_event_subscription_updated(data):
     if not user_data:
         return
 
-    # TODO: remove!
-    sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated", data=data)
-
-    # TODO: remove!
-    if 'cancel_at_period_end' in data:
-        val = data['cancel_at_period_end']
-
-        if not val:
-            is_cancellation = False
-        else:
-            if val in ['true', True]:
-                is_cancellation = True
-            else:
-                is_cancellation = False
-    else:
-        is_cancellation = False
-
     # it's only a cancellation if cancel_at_period_end is truthy
-    if (is_cancellation):
+    if (data['cancel_at_period_end']):
         statsd.incr('news.tasks.process_subhub_event.subscription_updated.cancelled')
 
         transaction_data = {
@@ -965,9 +948,6 @@ def process_subhub_event_subscription_updated(data):
         }
 
         sfdc.opportunity.create(transaction_data)
-
-        # TODO: remove!
-        sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated.cancelled", data=transaction_data)
     else:
         transaction_data = {
             'Amount': data['plan_amount'],
@@ -987,15 +967,9 @@ def process_subhub_event_subscription_updated(data):
             sfdc.opportunity.create(transaction_data)
 
             statsd.incr('news.tasks.process_subhub_event.subscription_updated.created')
-
-            # TODO: remove!
-            sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated.created", data=transaction_data)
         else:
             # if update was successful, log it
             statsd.incr('news.tasks.process_subhub_event.subscription_updated.updated')
-
-            # TODO: remove!
-            sentry_client.capture('raven.events.Message', message="process_subhub_event_subscription_updated.updated", data=transaction_data)
 
 
 @et_task
