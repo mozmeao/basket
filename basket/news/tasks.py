@@ -1050,6 +1050,7 @@ def process_subhub_event_payment_failed(data):
             'PMT_Transaction_ID__c': data['charge_id'],
             'currency__c': data['currency'],
             'Service_Plan__c': data['nickname'],
+            'PMT_Invoice_ID__c' = data['invoice_id'],
         }
 
         sfdc.opportunity.create(transaction_data)
