@@ -989,7 +989,7 @@ def process_subhub_event_subscription_updated(data):
             sfdc.opportunity.update('PMT_Invoice_ID__c/{}'.format(data['invoice_id']), transaction_data)
         except sfapi.SalesforceMalformedRequest:
             # no opportunity found - add identifying fields and create a new one
-            transaction_data['Donation_Contact__c.PMT_Cust_Id__c'] = data['customer_id']
+            transaction_data['Donation_Contact__c'] = data['customer_id']
             transaction_data['PMT_Invoice_ID__c'] = data['invoice_id']
 
             sfdc.opportunity.create(transaction_data)
