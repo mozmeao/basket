@@ -1279,7 +1279,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         # no state
         resp = self.client.get('/fxa/callback/', {'code': 'thecode', 'state': 'thedude'})
         assert resp.status_code == 302
-        fxa_oauth_mock.trade_code.assert_called_with('thecode')
+        fxa_oauth_mock.trade_code.assert_called_with('thecode', ttl=settings.FXA_OAUTH_TOKEN_TTL)
         fxa_profile_mock.get_profile.assert_called_with('access-token')
         self.statsd.incr.assert_not_called()
         assert resp['location'] == 'https://www.mozilla.org/newsletter/existing/the-token/?fxa=1'
@@ -1302,7 +1302,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         # no state
         resp = self.client.get('/fxa/callback/', {'code': 'thecode', 'state': 'thedude'})
         assert resp.status_code == 302
-        fxa_oauth_mock.trade_code.assert_called_with('thecode')
+        fxa_oauth_mock.trade_code.assert_called_with('thecode', ttl=settings.FXA_OAUTH_TOKEN_TTL)
         fxa_profile_mock.get_profile.assert_called_with('access-token')
         self.statsd.incr.assert_not_called()
         assert resp['location'] == 'https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1'
@@ -1332,7 +1332,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         # no state
         resp = self.client.get('/fxa/callback/', {'code': 'thecode', 'state': 'thedude'})
         assert resp.status_code == 302
-        fxa_oauth_mock.trade_code.assert_called_with('thecode')
+        fxa_oauth_mock.trade_code.assert_called_with('thecode', ttl=settings.FXA_OAUTH_TOKEN_TTL)
         fxa_profile_mock.get_profile.assert_called_with('access-token')
         self.statsd.incr.assert_not_called()
         assert resp['location'] == 'https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1'

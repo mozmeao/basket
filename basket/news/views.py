@@ -196,7 +196,7 @@ def fxa_callback(request):
 
     fxa_oauth, fxa_profile = get_fxa_clients()
     try:
-        access_token = fxa_oauth.trade_code(code)['access_token']
+        access_token = fxa_oauth.trade_code(code, ttl=settings.FXA_OAUTH_TOKEN_TTL)['access_token']
         user_profile = fxa_profile.get_profile(access_token)
     except Exception:
         statsd.incr('news.views.fxa_callback.error.fxa_comm')
