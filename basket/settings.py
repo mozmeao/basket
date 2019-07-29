@@ -377,6 +377,7 @@ FXA_SNITCH_URL = config('FXA_SNITCH_URL', default='')
 FXA_OAUTH_SERVER_ENV = config('FXA_OAUTH_SERVER_ENV', default='stable')
 FXA_CLIENT_ID = config('FXA_CLIENT_ID', default='')
 FXA_CLIENT_SECRET = config('FXA_CLIENT_SECRET', default='')
+FXA_OAUTH_TOKEN_TTL = config('FXA_OAUTH_TOKEN_TTL', default=300, cast=int)  # 5 minutes
 
 FXA_EMAIL_PREFS_DOMAIN = config('FXA_EMAIL_PREFS_DOMAIN', default='www.mozilla.org')
 FXA_REGISTER_NEWSLETTER = config('FXA_REGISTER_NEWSLETTER', default='firefox-accounts-journey')
