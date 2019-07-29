@@ -931,39 +931,36 @@ def process_subhub_event_subscription_updated(data):
     if not user_data:
         return
 
+    # just in case amount data is missing/malformed
+    try:
+        # amount values are cents - convert to dollars
+        plan_amount = int(data['plan_amount']) / float(100)
+    except ValueError:
+        plan_amount = 0
+
+    # common transaction data for all three scenarios
+    transaction_data = {
+        'Amount': plan_amount,
+        'PMT_Subscription_ID__c': data['subscription_id'],
+        'Service_Plan__c': data['nickname'],
+    }
+
     # it's only a cancellation if cancel_at_period_end is truthy
     if (data['cancel_at_period_end']):
         statsd.incr('news.tasks.process_subhub_event.subscription_updated.cancelled')
 
-        # just in case amount data is missing/malformed
-        try:
-            # amount values are cents - convert to dollars
-            plan_amount = int(data['plan_amount']) / float(100)
-        except ValueError:
-            plan_amount = 0
-
-        transaction_data = {
-            'Amount': plan_amount,
-            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['cancel_at']),
-            'CloseDate': iso_format_unix_timestamp(data['canceled_at']),
-            'Donation_Contact__c': user_data['id'],
-            'Name': 'Subscription Services',
-            'PMT_Subscription_ID__c': data['subscription_id'],
-            'Payment_Source__c': 'Stripe',
-            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
-            'StageName': 'Subscription Canceled',
-            'Service_Plan__c': data['nickname'],
-        }
+        transaction_data['Billing_Cycle_End__c'] = iso_format_unix_timestamp(data['cancel_at'])
+        transaction_data['Donation_Contact__c'] = user_data['id']
+        transaction_data['Name'] = 'Subscription Services'
+        transaction_data['Payment_Source__c'] = 'Stripe'
+        transaction_data['RecordTypeId'] = settings.SUBHUB_OPP_RECORD_TYPE
+        transaction_data['StageName'] = 'Subscription Canceled'
+        transaction_data['CloseDate'] = iso_format_unix_timestamp(data['canceled_at'])
 
         sfdc.opportunity.create(transaction_data)
     else:
-        transaction_data = {
-            'Amount': data['plan_amount'],
-            'CloseDate': data['created'],
-            'PMT_Subscription_ID__c': data['subscription_id'],
-            'Service_Plan__c': data['nickname'],
-            'StageName': 'Closed Won',
-        }
+        transaction_data['StageName'] = 'Closed Won'
+        transaction_data['CloseDate'] = iso_format_unix_timestamp(data['created'])
 
         try:
             # attempt to update the opportunity identified by the invoice_id
