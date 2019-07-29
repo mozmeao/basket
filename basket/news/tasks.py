@@ -941,6 +941,7 @@ def process_subhub_event_subscription_updated(data):
     # common transaction data for all three scenarios
     transaction_data = {
         'Amount': plan_amount,
+        'Name': 'Subscription Services',
         'PMT_Subscription_ID__c': data['subscription_id'],
         'Service_Plan__c': data['nickname'],
     }
@@ -949,26 +950,31 @@ def process_subhub_event_subscription_updated(data):
     if (data['cancel_at_period_end']):
         statsd.incr('news.tasks.process_subhub_event.subscription_updated.cancelled')
 
-        transaction_data['Billing_Cycle_End__c'] = iso_format_unix_timestamp(data['cancel_at'])
-        transaction_data['Donation_Contact__c'] = user_data['id']
-        transaction_data['Name'] = 'Subscription Services'
-        transaction_data['Payment_Source__c'] = 'Stripe'
-        transaction_data['RecordTypeId'] = settings.SUBHUB_OPP_RECORD_TYPE
-        transaction_data['StageName'] = 'Subscription Canceled'
-        transaction_data['CloseDate'] = iso_format_unix_timestamp(data['canceled_at'])
+        transaction_data.update({
+            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['cancel_at']),
+            'CloseDate': iso_format_unix_timestamp(data['canceled_at']),
+            'Donation_Contact__c': user_data['id'],
+            'Payment_Source__c': 'Stripe',
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+            'StageName': 'Subscription Canceled',
+        })
 
         sfdc.opportunity.create(transaction_data)
     else:
-        transaction_data['StageName'] = 'Closed Won'
-        transaction_data['CloseDate'] = iso_format_unix_timestamp(data['created'])
+        transaction_data.update({
+            'CloseDate': iso_format_unix_timestamp(data['created']),
+            'StageName': 'Closed Won',
+        })
 
         try:
             # attempt to update the opportunity identified by the invoice_id
             sfdc.opportunity.update('PMT_Invoice_ID__c/{}'.format(data['invoice_id']), transaction_data)
         except sfapi.SalesforceMalformedRequest:
             # no opportunity found - add identifying fields and create a new one
-            transaction_data['Donation_Contact__c'] = user_data['id']
-            transaction_data['PMT_Invoice_ID__c'] = data['invoice_id']
+            transaction_data.update({
+                'Donation_Contact__c': user_data['id'],
+                'PMT_Invoice_ID__c': data['invoice_id']
+            })
 
             sfdc.opportunity.create(transaction_data)
 
