@@ -947,7 +947,7 @@ def process_subhub_event_subscription_updated(data):
             'StageName': 'Closed Won',
         })
 
-        transaction_data['Initial_Purchase__c'] = True if data['event_type'] == 'customer.subscription.created' else False
+        transaction_data['Initial_Purchase__c'] = data['event_type'] == 'customer.subscription.created'
 
         try:
             # attempt to update the opportunity identified by the invoice_id
