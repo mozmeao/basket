@@ -818,10 +818,6 @@ def process_subhub_event_subscription_charge(data):
     - last4
     - exp_month
     - exp_year
-
-    We also need to determine if this payment (the combination of both events
-    listed above) is the first or is a recurrence. This is done by checking to
-    see if the subscription_id in data already exists in Salesforce.
     """
 
     statsd.incr('news.tasks.process_subhub_event.subscription_charge')
@@ -884,21 +880,6 @@ def process_subhub_event_subscription_charge(data):
         except sfapi.SalesforceMalformedRequest:
             # we are creating a new opportunity, so put the charge_id in
             transaction_data['PMT_Transaction_ID__c'] = charge_id
-
-            # determine if this is an initial or recurring payment
-            try:
-                # look for existing opportunities with the current subscription_id
-                sfdc.opportunity.get_by_custom_id('PMT_Subscription_ID__C', data['subscription_id'])
-            # if no opportunities are found with the current subscription_id,
-            # we know this is an initial purchase
-            except sfapi.SalesforceResourceNotFound:
-                transaction_data['Initial_Purchase__c'] = True
-            # if one or more records are found, we know this is *not* an
-            # initial purchase
-            except sfapi.SalesforceMoreThanOneRecord:
-                transaction_data['Initial_Purchase__c'] = False
-            else:
-                transaction_data['Initial_Purchase__c'] = False
 
             sfdc.opportunity.create(transaction_data)
         else:
@@ -965,6 +946,8 @@ def process_subhub_event_subscription_updated(data):
             'CloseDate': iso_format_unix_timestamp(data['created']),
             'StageName': 'Closed Won',
         })
+
+        transaction_data['Initial_Purchase__c'] = data['event_type'] == 'customer.subscription.created'
 
         try:
             # attempt to update the opportunity identified by the invoice_id
