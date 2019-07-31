@@ -393,6 +393,7 @@ FXA_LOGIN_CAMPAIGNS = {
 }
 
 SUBHUB_OPP_RECORD_TYPE = config('SUBHUB_OPP_RECORD_TYPE', default='')
+SUBHUB_CC_EXPIRE_TRIGGER = config('SUBHUB_CC_EXPIRE_TRIGGER', default='en_subscription_services_cc_expired')
 
 COMMON_VOICE_NEWSLETTER = config('COMMON_VOICE_NEWSLETTER', default='common-voice')
 
