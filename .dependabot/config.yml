@@ -9,4 +9,3 @@ update_configs:
     ignored_updates:
       - match:
           dependency_name: "urllib3"
-          version_requirement: "<1.25"
