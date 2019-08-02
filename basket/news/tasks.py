@@ -924,6 +924,7 @@ def process_subhub_event_subscription_updated(data):
         'Amount': plan_amount,
         'Name': 'Subscription Services',
         'PMT_Subscription_ID__c': data['subscription_id'],
+        'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
         'Service_Plan__c': data['nickname'],
     }
 
@@ -936,7 +937,6 @@ def process_subhub_event_subscription_updated(data):
             'CloseDate': iso_format_unix_timestamp(data['canceled_at']),
             'Donation_Contact__c': user_data['id'],
             'Payment_Source__c': 'Stripe',
-            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
             'StageName': 'Subscription Canceled',
         })
 
