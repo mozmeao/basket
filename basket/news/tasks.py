@@ -749,6 +749,7 @@ def process_subhub_event_customer_created(data):
             contact_data['first_name'] = first
 
         sfdc.update(user_data, contact_data)
+        statsd.incr('news.tasks.process_subhub_event.customer_created.updated')
     # if no user was found, create new user in sfdc
     else:
         contact_data['email'] = data['email']
@@ -756,6 +757,7 @@ def process_subhub_event_customer_created(data):
         contact_data['last_name'] = last
 
         # create the user in sfdc
+        statsd.incr('news.tasks.process_subhub_event.customer_created.created')
         sfdc.add(contact_data)
 
 
@@ -796,6 +798,7 @@ def process_subhub_event_customer_updated(data):
 
         # create the user in sfdc
         sfdc.add(contact_data)
+        statsd.incr('news.tasks.process_subhub_event.customer_updated.created')
 
 
 @et_task
@@ -884,6 +887,8 @@ def process_subhub_event_subscription_charge(data):
             sfdc.opportunity.create(transaction_data)
         else:
             statsd.incr('news.tasks.process_subhub_event.subscription_charge_update')
+    else:
+        statsd.incr('news.tasks.process_subhub_event.subscription_charge.user_not_found')
 
 
 @et_task
@@ -926,16 +931,17 @@ def process_subhub_event_subscription_updated(data):
         'PMT_Subscription_ID__c': data['subscription_id'],
         'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
         'Service_Plan__c': data['nickname'],
+        'Donation_Contact__c': user_data['id'],
+        'PMT_Invoice_ID__c': data['invoice_id']
     }
 
     # it's only a cancellation if cancel_at_period_end is truthy
-    if (data['cancel_at_period_end']):
+    if data['cancel_at_period_end']:
         statsd.incr('news.tasks.process_subhub_event.subscription_updated.cancelled')
 
         transaction_data.update({
             'Billing_Cycle_End__c': iso_format_unix_timestamp(data['cancel_at']),
             'CloseDate': iso_format_unix_timestamp(data['canceled_at']),
-            'Donation_Contact__c': user_data['id'],
             'Payment_Source__c': 'Stripe',
             'StageName': 'Subscription Canceled',
         })
@@ -946,21 +952,14 @@ def process_subhub_event_subscription_updated(data):
             'CloseDate': iso_format_unix_timestamp(data['created']),
             'StageName': 'Closed Won',
         })
-
         transaction_data['Initial_Purchase__c'] = data['event_type'] == 'customer.subscription.created'
 
         try:
             # attempt to update the opportunity identified by the invoice_id
             sfdc.opportunity.update('PMT_Invoice_ID__c/{}'.format(data['invoice_id']), transaction_data)
         except sfapi.SalesforceMalformedRequest:
-            # no opportunity found - add identifying fields and create a new one
-            transaction_data.update({
-                'Donation_Contact__c': user_data['id'],
-                'PMT_Invoice_ID__c': data['invoice_id']
-            })
-
+            # no opportunity found - create a new one
             sfdc.opportunity.create(transaction_data)
-
             statsd.incr('news.tasks.process_subhub_event.subscription_updated.created')
         else:
             # if update was successful, log it
@@ -1007,6 +1006,8 @@ def process_subhub_event_payment_failed(data):
         }
 
         sfdc.opportunity.create(transaction_data)
+    else:
+        statsd.incr('news.tasks.process_subhub_event.payment_failed.user_not_found')
 
 
 @et_task
