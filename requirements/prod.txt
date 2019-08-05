@@ -54,9 +54,9 @@ josepy==1.1.0 \
 mozilla-django-oidc==1.2.2 \
     --hash=sha256:2ab8b5ee3d46b50a818cbc009043be2d068f80dc093eb1fb3aa3a3af504d749b \
     --hash=sha256:b916dc452408e23b7c4947f3721b46e4f20717298861a4deaa7d2f3f171e9ad1
-packaging==19.0 \
-    --hash=sha256:0c98a5d0be38ed775798ece1b9727178c4469d9c3b4ada66e8e6b7849f8732af \
-    --hash=sha256:9e1cbf8c12b1f1ce0bb5344b8d7ecf66a6f8a6e91bcb0c84593ed6d3ab5c4ab3
+packaging==19.1 \
+    --hash=sha256:a7ac867b97fdc07ee80a8058fe4435ccd274ecc3b0ed61d852d7d53055528cf9 \
+    --hash=sha256:c491ca87294da7cc01902edbe30a5bc6c4c28172b5138ab4e4aa1b9d7bfaeafe
 pyOpenSSL==19.0.0 \
     --hash=sha256:aeca66338f6de19d1aa46ed634c3b9ae519a64b458f8468aec688e7e3c20f200 \
     --hash=sha256:c727930ad54b10fc157015014b666f2d8b41f70c0d03e83ab67624fd3dd5d1e6
