@@ -932,7 +932,6 @@ def process_subhub_event_subscription_updated(data):
         'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
         'Service_Plan__c': data['nickname'],
         'Donation_Contact__c': user_data['id'],
-        'PMT_Invoice_ID__c': data['invoice_id']
     }
 
     # it's only a cancellation if cancel_at_period_end is truthy
@@ -952,6 +951,7 @@ def process_subhub_event_subscription_updated(data):
             'CloseDate': iso_format_unix_timestamp(data['created']),
             'StageName': 'Closed Won',
         })
+
         transaction_data['Initial_Purchase__c'] = data['event_type'] == 'customer.subscription.created'
 
         try:
@@ -959,6 +959,9 @@ def process_subhub_event_subscription_updated(data):
             sfdc.opportunity.update('PMT_Invoice_ID__c/{}'.format(data['invoice_id']), transaction_data)
         except sfapi.SalesforceMalformedRequest:
             # no opportunity found - create a new one
+            # add the invoice id to the payload
+            transaction_data['PMT_Invoice_ID__c'] = data['invoice_id']
+
             sfdc.opportunity.create(transaction_data)
             statsd.incr('news.tasks.process_subhub_event.subscription_updated.created')
         else:
