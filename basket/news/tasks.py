@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from email.utils import formatdate
 from functools import wraps
 from hashlib import sha256
-from time import mktime, time
+from time import mktime, time, sleep
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -952,6 +952,7 @@ def process_subhub_event_subscription_updated(data):
             'CloseDate': iso_format_unix_timestamp(data['created']),
             'StageName': 'Closed Won',
         })
+
         transaction_data['Initial_Purchase__c'] = data['event_type'] == 'customer.subscription.created'
 
         try:
@@ -959,8 +960,26 @@ def process_subhub_event_subscription_updated(data):
             sfdc.opportunity.update('PMT_Invoice_ID__c/{}'.format(data['invoice_id']), transaction_data)
         except sfapi.SalesforceMalformedRequest:
             # no opportunity found - create a new one
-            sfdc.opportunity.create(transaction_data)
-            statsd.incr('news.tasks.process_subhub_event.subscription_updated.created')
+            try:
+                # try to create the opportunity - HOWEVER
+                # because events come in so fast from subhub, it's possible
+                # that concurrency issues will occur - this opportunity may be
+                # in the process of being created already, which means the
+                # below will fail
+                sfdc.opportunity.create(transaction_data)
+            except sfapi.SalesforceMalformedRequest:
+                # if the above fails, wait a few seconds for the potential
+                # in-progress creation to complete, then try again to update
+                sleep(3)
+
+                try:
+                    sfdc.opportunity.update('PMT_Invoice_ID__c/{}'.format(data['invoice_id']), transaction_data)
+                except:
+                    # if the update fails, then create fails, and then update
+                    # fails *again*...we've done all we reasonably can
+                    pass
+            else:
+                statsd.incr('news.tasks.process_subhub_event.subscription_updated.created')
         else:
             # if update was successful, log it
             statsd.incr('news.tasks.process_subhub_event.subscription_updated.updated')
