@@ -1,15 +1,65 @@
+variables:
+  DOCKER_REPOSITORY: "mozmeao/basket"
+  DOCKER_IMAGE_TAG: "${DOCKER_REPOSITORY}:${CI_COMMIT_SHORT_SHA}"
+  # Cannot use $DOCKER_IMAGE_TAG because it contains other variables itself.
+  DOCKER_RUN_CMD: "docker run --env-file .docker-env ${DOCKER_REPOSITORY}:${CI_COMMIT_SHORT_SHA}"
+
 stages:
+  - build
+  - test
   - deploy
+
+build-images:
+  stage: build
+  tags:
+    - meao
+  script:
+    - docker build -t ${DOCKER_IMAGE_TAG} --build-arg GIT_SHA=${CI_COMMIT_SHA} --pull .
+    - docker push ${DOCKER_IMAGE_TAG}
+
+.test-stage:
+  stage: test
+  variables:
+    DOCKER_DEBUG: "False"
+    DOCKER_ALLOWED_HOSTS: "*"
+    DOCKER_SECRET_KEY: "foo"
+    DOCKER_DATABASE_URL: "sqlite:///"
+    DOCKER_SITE_URL: "http://localhost:8000"
+    DOCKER_CACHE_URL: "dummy://"
+    DOCKER_ENABLE_ADMIN: "True"
+    DOCKER_SECURE_SSL_REDIRECT: "False"
+  before_script:
+    - env | grep "^DOCKER" | sed 's/DOCKER_//' > .docker-env
+
+check-migrations:
+  extends: .test-stage
+  tags:
+    - meao
+  script:
+    - ${DOCKER_RUN_CMD} bash -c './manage.py makemigrations  | grep "No changes detected"'
+
+run-flake8:
+  extends: .test-stage
+  tags:
+    - meao
+  script:
+    - ${DOCKER_RUN_CMD} flake8 snippets
+
+run-unit-tests:
+  extends: .test-stage
+  tags:
+    - meao
+  coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
+  script:
+    - ${DOCKER_RUN_CMD} bash -c 'coverage run ./manage.py test --parallel; coverage report'
 
 .deploy:
   stage: deploy
   tags:
     - meao
     - aws
-  before_script: # executed together in same shell context as scripts defined below
-    - bin/dc.sh build --pull web builder
-    - bin/dc.sh run --rm test-image
-    - docker/bin/push2dockerhub.sh
+  script:
+    - bin/update-config.sh
 
 dev:
   extends: .deploy
@@ -17,6 +67,36 @@ dev:
     - master
   variables:
     NAMESPACE: basket-dev
-  script:
-    - CLUSTER_NAME=oregon-a bin/update-config.sh
-    - CLUSTER_NAME=oregon-b bin/update-config.sh
+    CLUSTERS: oregon-a oregon-b
+
+stage:
+  extends: .deploy
+  only:
+    - stage
+  variables:
+    NAMESPACE: basket-stage
+    CLUSTERS: frankfurt oregon-a oregon-b
+
+stage-admin:
+  extends: .deploy
+  only:
+    - stage
+  variables:
+    NAMESPACE: basket-stage-admin
+    CLUSTERS: oregon-a oregon-b
+
+admin:
+  extends: .deploy
+  only:
+    - admin
+  variables:
+    NAMESPACE: basket-admin
+    CLUSTERS: oregon-a oregon-b
+
+prod:
+  extends: .deploy
+  only:
+    - prod
+  variables:
+    NAMESPACE: basket-prod
+    CLUSTERS: frankfurt oregon-a oregon-b
