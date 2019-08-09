@@ -950,6 +950,7 @@ def process_subhub_event_subscription_updated(data):
         transaction_data.update({
             'CloseDate': iso_format_unix_timestamp(data['created']),
             'StageName': 'Closed Won',
+            'PMT_Invoice_ID__c': data['invoice_id'],
         })
 
         transaction_data['Initial_Purchase__c'] = data['event_type'] == 'customer.subscription.created'
@@ -959,9 +960,6 @@ def process_subhub_event_subscription_updated(data):
             sfdc.opportunity.update('PMT_Invoice_ID__c/{}'.format(data['invoice_id']), transaction_data)
         except sfapi.SalesforceMalformedRequest:
             # no opportunity found - create a new one
-            # add the invoice id to the payload
-            transaction_data['PMT_Invoice_ID__c'] = data['invoice_id']
-
             sfdc.opportunity.create(transaction_data)
             statsd.incr('news.tasks.process_subhub_event.subscription_updated.created')
         else:
