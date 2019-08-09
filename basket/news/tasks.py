@@ -173,7 +173,7 @@ def et_task(func):
         except (IOError, NewsletterException, requests.RequestException, RetryTask,
                 sfapi.SalesforceExpiredSession, sfapi.SalesforceGeneralError,
                 sfapi.SalesforceRefusedRequest, sfapi.SalesforceResourceNotFound,
-                sfapi.SalesforceAuthenticationFailed) as e:
+                sfapi.SalesforceAuthenticationFailed, sfapi.SalesforceMalformedRequest) as e:
             # These could all be connection issues, so try again later.
             # IOError covers URLError and SSLError.
             if ignore_error(e):
