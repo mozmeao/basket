@@ -20,16 +20,7 @@ build-images:
 .test-stage:
   stage: test
   variables:
-    DOCKER_DEBUG: "False"
-    DOCKER_ALLOWED_HOSTS: "*"
-    DOCKER_SECRET_KEY: "foo"
-    DOCKER_DATABASE_URL: "sqlite:///"
-    DOCKER_SITE_URL: "http://localhost:8000"
-    DOCKER_CACHE_URL: "dummy://"
-    DOCKER_ENABLE_ADMIN: "True"
-    DOCKER_SECURE_SSL_REDIRECT: "False"
-  before_script:
-    - env | grep "^DOCKER" | sed 's/DOCKER_//' > .docker-env
+      GIT_COMMIT: ${CI_COMMIT_SHORT_SHA}
 
 check-migrations:
   extends: .test-stage
@@ -50,7 +41,7 @@ run-unit-tests:
   tags:
     - meao
   script:
-    - ${DOCKER_RUN_CMD} py.test basket
+    - docker-compose run --rm test
 
 .deploy:
   stage: deploy
