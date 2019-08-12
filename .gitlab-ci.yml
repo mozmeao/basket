@@ -50,6 +50,8 @@ run-unit-tests:
   extends: .test-stage
   tags:
     - meao
+  before_script:
+    - touch .env
   script:
     - docker-compose run --rm test
 
