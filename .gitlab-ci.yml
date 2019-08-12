@@ -53,7 +53,7 @@ run-unit-tests:
   before_script:
     - touch .env
   script:
-    - docker-compose run --rm test
+    - docker-compose run --rm test py.test basket
 
 .deploy:
   stage: deploy
