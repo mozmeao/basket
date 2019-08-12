@@ -3,10 +3,10 @@ regions:
   - oregon-b
   - frankfurt
 apps:
-  - basket-dev
+  # - basket-dev
   - basket-stage
 apps_rw:
   - basket-admin-stage
 apps_post_deploy:
-  - basket-dev
+  # - basket-dev
   - basket-admin-stage
