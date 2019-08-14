@@ -10,7 +10,7 @@ from django.test.utils import override_settings
 
 import simple_salesforce as sfapi
 from celery.exceptions import Retry
-from mock import ANY, Mock, patch
+from mock import ANY, Mock, call, patch
 
 from basket.news.celery import app as celery_app
 from basket.news.models import FailedTask
@@ -18,6 +18,8 @@ from basket.news.newsletters import clear_sms_cache
 from basket.news.tasks import (
     _add_fxa_activity,
     add_sms_user,
+    amo_sync_addon,
+    amo_sync_user,
     et_task,
     fxa_email_changed,
     fxa_login,
@@ -512,9 +514,7 @@ class ProcessDonationTests(TestCase):
         gud_mock.return_value = None
         del data['first_name']
         data['last_name'] = 'Theodore Donald Kerabatsos'
-        with self.assertRaises(Retry):
-            # raises retry b/c the 2nd call to get_user_data returns None
-            process_donation(data)
+        process_donation(data)
         sfdc_mock.add.assert_called_with({
             '_set_subscriber': False,
             'token': ANY,
@@ -533,9 +533,7 @@ class ProcessDonationTests(TestCase):
         gud_mock.return_value = None
         del data['first_name']
         data['last_name'] = '  '
-        with self.assertRaises(Retry):
-            # raises retry b/c the 2nd call to get_user_data returns None
-            process_donation(data)
+        process_donation(data)
         sfdc_mock.add.assert_called_with({
             '_set_subscriber': False,
             'token': ANY,
@@ -552,9 +550,7 @@ class ProcessDonationTests(TestCase):
         gud_mock.return_value = None
         del data['first_name']
         data['last_name'] = None
-        with self.assertRaises(Retry):
-            # raises retry b/c the 2nd call to get_user_data returns None
-            process_donation(data)
+        process_donation(data)
         sfdc_mock.add.assert_called_with({
             '_set_subscriber': False,
             'token': ANY,
@@ -1232,4 +1228,191 @@ class CommonVoiceGoalsTests(TestCase):
             'cv_first_contribution_date': '2018-06-27T14:56:58Z',
             'cv_last_active_date': '2019-07-11T10:28:32Z',
             'cv_two_day_streak': False,
+        })
+
+
+@patch('basket.news.tasks.sfdc')
+@patch('basket.news.tasks.upsert_amo_user_data')
+class AMOSyncAddonTests(TestCase):
+    def setUp(self):
+        # test data from
+        # https://addons-server.readthedocs.io/en/latest/topics/basket.html#example-data
+        self.amo_data = {
+            'authors': [
+                {
+                    'id': 12345,
+                    'display_name': 'His Dudeness',
+                    'email': 'dude@example.com',
+                    'homepage': 'https://elduder.io',
+                    'last_login': '2019-08-06T10:39:44Z',
+                    'location': 'California, USA, Earth',
+                    'deleted': False,
+                },
+                {
+                    'display_name': 'serses',
+                    'email': 'mozilla@virgule.net',
+                    'homepage': '',
+                    'id': 11263,
+                    'last_login': '2019-08-06T10:39:44Z',
+                    'location': '',
+                    'deleted': False,
+                },
+            ],
+            'average_daily_users': 0,
+            'categories': {
+                'firefox': ['games-entertainment'],
+            },
+            'current_version': {
+                'compatibility': {
+                    'firefox': {'max': '*', 'min': '48.0'},
+                },
+                'id': 35900,
+                'is_strict_compatibility_enabled': False,
+                'version': '2.0',
+            },
+            'default_locale': 'en-US',
+            'guid': '{85ee4a2a-51b6-4f5e-a99c-6d9abcf6782d}',
+            'id': 35896,
+            'is_disabled': False,
+            'is_recommended': False,
+            'last_updated': '2019-06-26T11:38:13Z',
+            'latest_unlisted_version': {
+                'compatibility': {
+                    'firefox': {
+                        'max': '*',
+                        'min': '48.0',
+                    }
+                },
+                'id': 35899,
+                'is_strict_compatibility_enabled': False,
+                'version': '1.0',
+            },
+            'name': 'Ibird Jelewt Boartrica',
+            'ratings': {
+                'average': 4.1,
+                'bayesian_average': 4.2,
+                'count': 43,
+                'text_count': 40,
+            },
+            'slug': 'ibird-jelewt-boartrica',
+            'status': 'nominated',
+            'type': 'extension',
+        }
+        self.users_data = [
+            {
+                'id': 'A1234',
+                'amo_id': 12345,
+                'email': 'the-dude@example.com'
+            },
+            {
+                'id': 'A4321',
+                'amo_id': 11263,
+                'email': 'the-dude@example.com'
+            },
+        ]
+
+    def test_update_addon(self, uaud_mock, sfdc_mock):
+        uaud_mock.side_effect = self.users_data
+        sfdc_mock.addon.get_by_custom_id.return_value = {'Id': 'B5678'}
+        amo_sync_addon(self.amo_data)
+        uaud_mock.assert_has_calls([call(self.amo_data['authors'][0]),
+                                    call(self.amo_data['authors'][1])])
+        sfdc_mock.addon.upsert.assert_called_with(f'AMO_AddOn_Id__c/{self.amo_data["id"]}', {
+            'AMO_Category__c': 'firefox-games-entertainment',
+            'AMO_Current_Version__c': '2.0',
+            'AMO_Current_Version_Unlisted__c': '1.0',
+            'AMO_Default_Language__c': 'en-US',
+            'AMO_GUID__c': '{85ee4a2a-51b6-4f5e-a99c-6d9abcf6782d}',
+            'AMO_Rating__c': 4.1,
+            'AMO_Slug__c': 'ibird-jelewt-boartrica',
+            'AMO_Status__c': 'nominated',
+            'AMO_Type__c': 'extension',
+            'AMO_Update__c': '2019-06-26T11:38:13Z',
+            'Average_Daily_Users__c': 0,
+            'Dev_Disabled__c': 'No',
+            'Name': 'Ibird Jelewt Boartrica',
+        })
+        sfdc_mock.dev_addon.upsert.assert_has_calls([
+            call('ConcatenateAMOID__c/12345-35896', {
+                'AMO_AddOn_ID__c': 'B5678',
+                'AMO_Contact_ID__c': 'A1234',
+            }),
+            call('ConcatenateAMOID__c/11263-35896', {
+                'AMO_AddOn_ID__c': 'B5678',
+                'AMO_Contact_ID__c': 'A4321',
+            })
+        ])
+
+
+@patch('basket.news.tasks.sfdc')
+@patch('basket.news.tasks.get_user_data')
+class AMOSyncUserTests(TestCase):
+    def setUp(self):
+        self.amo_data = {
+            'id': 1234,
+            'display_name': 'His Dudeness',
+            'email': 'dude@example.com',
+            'homepage': 'https://elduder.io',
+            'last_login': '2019-08-06T10:39:44Z',
+            'location': 'California, USA, Earth',
+            'deleted': False,
+        }
+        self.user_data = {
+            'id': 'A1234',
+            'amo_id': 1234,
+            'email': 'the-dude@example.com'
+        }
+
+    def test_existing_user_with_amo_id(self, gud_mock, sfdc_mock):
+        gud_mock.return_value = self.user_data
+        amo_sync_user(self.amo_data)
+        # does not include email or amo_id
+        sfdc_mock.update.assert_called_with(self.user_data, {
+            'amo_display_name': 'His Dudeness',
+            'amo_homepage': 'https://elduder.io',
+            'amo_last_login': '2019-08-06T10:39:44Z',
+            'amo_location': 'California, USA, Earth',
+            'amo_user': True,
+        })
+
+    def test_existing_user_no_amo_id(self, gud_mock, sfdc_mock):
+        gud_mock.side_effect = [None, self.user_data]
+        amo_sync_user(self.amo_data)
+        # does not include email
+        sfdc_mock.update.assert_called_with(self.user_data, {
+            'amo_id': 1234,
+            'amo_display_name': 'His Dudeness',
+            'amo_homepage': 'https://elduder.io',
+            'amo_last_login': '2019-08-06T10:39:44Z',
+            'amo_location': 'California, USA, Earth',
+            'amo_user': True,
+        })
+
+    def test_new_user(self, gud_mock, sfdc_mock):
+        gud_mock.return_value = None
+        amo_sync_user(self.amo_data)
+        sfdc_mock.update.assert_not_called()
+        # includes email and amo_id
+        sfdc_mock.add.assert_called_with({
+            'email': 'dude@example.com',
+            'amo_id': 1234,
+            'amo_display_name': 'His Dudeness',
+            'amo_homepage': 'https://elduder.io',
+            'amo_last_login': '2019-08-06T10:39:44Z',
+            'amo_location': 'California, USA, Earth',
+            'source_url': 'https://addons.mozilla.org/',
+            'amo_user': True,
+        })
+
+    def test_deleted_user(self, gud_mock, sfdc_mock):
+        self.amo_data['deleted'] = True
+        gud_mock.return_value = self.user_data
+        amo_sync_user(self.amo_data)
+        # does not include email or amo_id
+        sfdc_mock.update.assert_called_with(self.user_data, {
+            'amo_display_name': 'His Dudeness',
+            'amo_homepage': 'https://elduder.io',
+            'amo_last_login': '2019-08-06T10:39:44Z',
+            'amo_location': 'California, USA, Earth',
+            'amo_user': False,
         })

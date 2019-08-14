@@ -27,6 +27,8 @@ from basket.news.newsletters import get_sms_vendor_id, newsletter_slugs, newslet
     newsletter_private_slugs, get_transactional_message_ids
 from basket.news.tasks import (
     add_sms_user,
+    amo_sync_addon,
+    amo_sync_user,
     confirm_user,
     record_common_voice_goals,
     record_fxa_concerts_rsvp,
@@ -74,8 +76,6 @@ PHONE_NUMBER_RATE_LIMIT = getattr(settings, 'PHONE_NUMBER_RATE_LIMIT', '4/5m')
 # four submissions for a set of newsletters per email address per 5 minutes
 EMAIL_SUBSCRIBE_RATE_LIMIT = getattr(settings, 'EMAIL_SUBSCRIBE_RATE_LIMIT', '4/5m')
 sync_route = Route(api_token=settings.SYNC_KEY)
-
-
 SUBHUB_EVENT_TYPES = {
     'customer.created': process_subhub_event_customer_created,
     'customer.recurring_charge': process_subhub_event_subscription_charge,  # subscriptioin creations & recurring charges
@@ -83,6 +83,10 @@ SUBHUB_EVENT_TYPES = {
     'customer.subscription.created': process_subhub_event_subscription_charge,  # subscriptioin creations & recurring charges
     'customer.subscription_cancelled': process_subhub_event_subscription_cancel,
     'invoice.payment_failed': process_subhub_event_payment_failed,
+}
+AMO_SYNC_TYPES = {
+    'addon': amo_sync_addon,
+    'userprofile': amo_sync_user,
 }
 
 
@@ -995,3 +999,36 @@ def subhub_post(request):
                 'status': 'error',
                 'code': errors.BASKET_USAGE_ERROR
             }, 400)
+
+
+@require_POST
+@csrf_exempt
+def amo_sync(request, post_type):
+    if post_type not in AMO_SYNC_TYPES:
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'API URL not found',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 404)
+
+    if not has_valid_api_key(request):
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'requires a valid API-key',
+            'code': errors.BASKET_AUTH_ERROR,
+        }, 401)
+
+    try:
+        data = json.loads(request.body)
+    except ValueError:
+        statsd.incr(f'amo_sync.{post_type}.message.json_error')
+        sentry_client.captureException(data={'extra': {'request.body': request.body}})
+
+        return HttpResponseJSON({
+            'status': 'error',
+            'desc': 'JSON error',
+            'code': errors.BASKET_USAGE_ERROR,
+        }, 400)
+
+    AMO_SYNC_TYPES[post_type].delay(data)
+    return HttpResponseJSON({'status': 'ok'})

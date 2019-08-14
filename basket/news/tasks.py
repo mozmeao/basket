@@ -1,5 +1,6 @@
 import json
 import logging
+from copy import deepcopy
 from datetime import datetime, timedelta
 from email.utils import formatdate
 from functools import wraps
@@ -997,11 +998,9 @@ def process_donation(data):
         contact_data['email'] = data['email']
         contact_data['record_type'] = settings.DONATE_CONTACT_RECORD_TYPE
 
-        sfdc.add(contact_data)
-        # fetch again to get ID
-        user_data = get_user_data(email=data.get('email'),
-                                  extra_fields=['id'])
-        if not user_data:
+        # returns a dict with the new ID but no other user data, but that's enough here
+        user_data = sfdc.add(contact_data)
+        if not user_data.get('id'):
             # retry here to make sure we associate the donation data with the proper account
             raise RetryTask('User not yet available')
 
@@ -1116,6 +1115,86 @@ def process_petition_signature(data):
             pass
         else:
             raise
+
+
+def upsert_amo_user_data(data):
+    """
+    Update AMO user data in the SFDC contact, or create a contact.
+    Return the Contact data (the contact ID at a minimum).
+
+    :param data: dict of amo user data
+    :return: dict of SFDC contact data
+    """
+    email = data.pop('email')
+    amo_id = data.pop('id')
+    amo_deleted = data.pop('deleted', False)
+    amo_data = {f'amo_{k}': v for k, v in data.items()}
+    amo_data['amo_user'] = not amo_deleted
+    user = get_user_data(amo_id=amo_id, extra_fields=['id', 'amo_id'])
+    if user:
+        sfdc.update(user, amo_data)
+        return user
+
+    # include the ID in update or add since we couldn't find
+    # the user with this ID above
+    amo_data['amo_id'] = amo_id
+    user = get_user_data(email=email, extra_fields=['id'])
+    if user:
+        sfdc.update(user, amo_data)
+        # need amo_id for linking addons and authors
+        user['amo_id'] = amo_id
+        return user
+
+    amo_data['email'] = email
+    amo_data['source_url'] = 'https://addons.mozilla.org/'
+    # returns only the new user ID in a dict, but that will work
+    # when passed to e.g. `sfdc.update()`
+    user = sfdc.add(amo_data)
+    # need amo_id for linking addons and authors
+    user['amo_id'] = amo_id
+    return user
+
+
+def amo_compress_categories(categories):
+    cats_list = []
+    for product, cats in categories.items():
+        cats_list.extend([f'{product}-{cat}' for cat in cats])
+
+    return ','.join(cats_list)
+
+
+@et_task
+def amo_sync_addon(data):
+    data = deepcopy(data)
+    users = [upsert_amo_user_data(author) for author in data['authors']]
+    addon_data = {
+        'AMO_Category__c': amo_compress_categories(data['categories']),
+        'AMO_Current_Version__c': data['current_version']['version'],
+        'AMO_Current_Version_Unlisted__c': data['latest_unlisted_version']['version'],
+        'AMO_Default_Language__c': data['default_locale'],
+        'AMO_GUID__c': data['guid'],
+        'AMO_Rating__c': data['ratings']['average'],
+        'AMO_Slug__c': data['slug'],
+        'AMO_Status__c': data['status'],
+        'AMO_Type__c': data['type'],
+        'AMO_Update__c': data['last_updated'],
+        'Average_Daily_Users__c': data['average_daily_users'],
+        'Dev_Disabled__c': 'Yes' if data['is_disabled'] else 'No',
+        'Name': data['name'],
+    }
+    sfdc.addon.upsert(f'AMO_AddOn_Id__c/{data["id"]}', addon_data)
+    addon_record = sfdc.addon.get_by_custom_id('AMO_AddOn_Id__c', data['id'])
+    for user in users:
+        sfdc.dev_addon.upsert(f'ConcatenateAMOID__c/{user["amo_id"]}-{data["id"]}', {
+            'AMO_AddOn_ID__c': addon_record['Id'],
+            'AMO_Contact_ID__c': user['id'],
+        })
+
+
+@et_task
+def amo_sync_user(data):
+    # copy input so it's not modified for retry
+    upsert_amo_user_data(data.copy())
 
 
 @celery_app.task()
