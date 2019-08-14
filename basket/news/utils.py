@@ -277,10 +277,25 @@ IGNORE_USER_FIELDS = [
     'fsa_city',
     'fsa_current_status',
     'fsa_allow_share',
+    'cv_days_interval',
+    'cv_created_at',
+    'cv_goal_reached_at',
+    'cv_first_contribution_date',
+    'cv_two_day_streak',
+    'cv_last_active_date',
+    'amo_id',
+    'amo_user',
+    'amo_display_name',
+    'amo_last_login',
+    'amo_location',
+    'amo_homepage',
+    'payee_id',
+    'fxa_id',
 ]
 
 
-def get_user_data(token=None, email=None, payee_id=None, extra_fields=None, get_fxa=False):
+def get_user_data(token=None, email=None, payee_id=None, amo_id=None,
+                  extra_fields=None, get_fxa=False):
     """Return a dictionary of the user's data from Exact Target.
     Look them up by their email or payment processor id (e.g. Stripe) if given,
     otherwise by the token.
@@ -319,7 +334,7 @@ def get_user_data(token=None, email=None, payee_id=None, extra_fields=None, get_
     }
     """
     try:
-        user = sfdc.get(token, email, payee_id)
+        user = sfdc.get(token, email, payee_id, amo_id)
     except sfapi.SalesforceResourceNotFound:
         return None
     except requests.exceptions.RequestException as e:

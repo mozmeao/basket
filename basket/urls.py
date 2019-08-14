@@ -5,7 +5,14 @@ from django.views.generic import RedirectView, TemplateView
 
 from watchman import views as watchman_views
 
-from basket.news.views import subscribe_main, subscribe_json, fxa_start, fxa_callback, subhub_post
+from basket.news.views import (
+    amo_sync,
+    fxa_callback,
+    fxa_start,
+    subhub_post,
+    subscribe_main,
+    subscribe_json,
+)
 
 
 urlpatterns = [
@@ -23,6 +30,7 @@ if not settings.ADMIN_ONLY_MODE:
         path('fxa/', fxa_start),
         path('fxa/callback/', fxa_callback),
         path('subhub/', subhub_post),
+        path('amo-sync/<post_type>/', amo_sync),
     ])
 
 if settings.DISABLE_ADMIN:

@@ -69,6 +69,12 @@ FIELD_MAP = {
     'cv_first_contribution_date': 'cv_first_contr_dt__c',
     'cv_two_day_streak': 'cv_two_day_streak__c',
     'cv_last_active_date': 'cv_last_active_dt__c',
+    'amo_id': 'AMO_User_ID__c',
+    'amo_user': 'AMO_User__c',
+    'amo_display_name': 'AMO_Display_Name__c',
+    'amo_last_login': 'AMO_Last_Login__c',
+    'amo_location': 'AMO_Location__c',
+    'amo_homepage': 'AMO_Homepage_URL__c',
     'payee_id': 'PMT_Cust_Id__c',
     'fxa_id': 'FxA_Id__c',
 }
@@ -287,6 +293,8 @@ class SFDC(object):
     _contact = None
     _opportunity = None
     _campaign_member = None
+    _addon = None
+    _dev_addon = None
 
     @property
     def contact(self):
@@ -309,17 +317,32 @@ class SFDC(object):
 
         return self._campaign_member
 
+    @property
+    def addon(self):
+        if self._addon is None and settings.SFDC_SETTINGS.get('username'):
+            self._addon = RefreshingSFType('Add_On__c')
+
+        return self._addon
+
+    @property
+    def dev_addon(self):
+        if self._dev_addon is None and settings.SFDC_SETTINGS.get('username'):
+            self._dev_addon = RefreshingSFType('DevAddOn__c')
+
+        return self._dev_addon
+
     @time_request
-    def get(self, token=None, email=None, payee_id=None):
+    def get(self, token=None, email=None, payee_id=None, amo_id=None):
         """
         Get a contact record.
 
         @param token: external ID
         @param email: email address
         @param payee_id: external ID from Stripe/payment processor
+        @param amo_id: external ID from AMO
         @return: dict
         """
-        assert token or email or payee_id, 'token, email, or payee_id is required'
+        assert token or email or payee_id or amo_id, 'token, email, amo_id, or payee_id is required'
 
         if token:
             field = 'token'
@@ -327,9 +350,12 @@ class SFDC(object):
         elif email:
             field = 'email'
             value = email
-        else:
+        elif payee_id:
             field = 'payee_id'
             value = payee_id
+        elif amo_id:
+            field = 'amo_id'
+            value = amo_id
 
         id_field = FIELD_MAP[field]
         contact = self.contact.get_by_custom_id(id_field, value)
@@ -345,7 +371,8 @@ class SFDC(object):
         """
         if not data.get('last_name', '').strip():
             data['last_name'] = LAST_NAME_DEFAULT_VALUE
-        self.contact.create(to_vendor(data))
+
+        return self.contact.create(to_vendor(data))
 
     @time_request
     def update(self, record, data):
@@ -380,7 +407,7 @@ class SFDC(object):
         if record.get('last_name') != LAST_NAME_DEFAULT_VALUE and 'last_name' in data:
             del data['last_name']
 
-        self.contact.update(contact_id, to_vendor(data))
+        return self.contact.update(contact_id, to_vendor(data))
 
     @time_request
     def delete(self, record):
