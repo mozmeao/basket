@@ -8,6 +8,7 @@ from datetime import timedelta
 import dj_database_url
 import django_cache_url
 from decouple import config, Csv, UndefinedValueError
+from kombu.utils.url import quote
 from pathlib import Path
 
 # Application version.
@@ -231,6 +232,10 @@ SFDC_SETTINGS = {
 SFDC_SESSION_TIMEOUT = config('SFDC_SESSION_TIMEOUT', 60 * 60 * 4, cast=int)
 SFDC_REQUEST_TIMEOUT = config('SFDC_REQUEST_TIMEOUT', 10, cast=int)
 
+HOSTNAME = platform.node()
+CLUSTER_NAME = config('CLUSTER_NAME', default=None)
+K8S_NAMESPACE = config('K8S_NAMESPACE', default=None)
+K8S_POD_NAME = config('K8S_POD_NAME', default=None)
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_URLS_REGEX = r'^/(news/|subscribe)'
@@ -238,13 +243,27 @@ CORS_URLS_REGEX = r'^/(news/|subscribe)'
 # view rate limiting
 RATELIMIT_VIEW = 'basket.news.views.ratelimited'
 
+CELERY_BROKER_ACCESS_KEY_ID = config('CELERY_BROKER_ACCESS_KEY_ID', None)
+CELERY_BROKER_SECRET_ACCESS_KEY = config('CELERY_BROKER_SECRET_ACCESS_KEY', None)
+if CELERY_BROKER_ACCESS_KEY_ID and CELERY_BROKER_SECRET_ACCESS_KEY:
+    CELERY_BROKER_URL = f'sqs://{quote(CELERY_BROKER_ACCESS_KEY_ID)}:' \
+                        f'{quote(CELERY_BROKER_SECRET_ACCESS_KEY)}@'
+else:
+    CELERY_BROKER_URL = config('CELERY_BROKER_URL', 'sqs://')
+
 CELERY_TASK_ALWAYS_EAGER = config('CELERY_TASK_ALWAYS_EAGER', DEBUG, cast=bool)
-CELERY_BROKER_URL = config('CELERY_BROKER_URL', None)
 CELERY_REDIS_MAX_CONNECTIONS = config('CELERY_REDIS_MAX_CONNECTIONS', 2, cast=int)
 CELERY_WORKER_DISABLE_RATE_LIMITS = True
 CELERY_TASK_IGNORE_RESULT = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = config('CELERY_WORKER_PREFETCH_MULTIPLIER', 1, cast=int)
 CELERY_TASK_COMPRESSION = 'gzip'
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    # increase this number to save money on SQS requests
+    # see http://docs.celeryproject.org/en/latest/getting-started/brokers/sqs.html#polling-interval
+    'polling_interval': config('CELERY_BROKER_POLLING_INTERVAL', 1, cast=int),
+    'queue_name_prefix': f'{K8S_NAMESPACE or "basket"}-celery-',
+    'region': config('CELERY_BROKER_REGION', 'us-west-2'),
+}
 CELERY_TASK_ROUTES = {
     'basket.news.tasks.snitch': {'queue': 'snitch'},
 }
@@ -274,11 +293,6 @@ def get_default_gateway_linux():
     except IOError:
         return 'localhost'
 
-
-HOSTNAME = platform.node()
-CLUSTER_NAME = config('CLUSTER_NAME', default=None)
-K8S_NAMESPACE = config('K8S_NAMESPACE', default=None)
-K8S_POD_NAME = config('K8S_POD_NAME', default=None)
 
 RAVEN_CONFIG = {
     'dsn': config('SENTRY_DSN', None),
