@@ -7,6 +7,7 @@ variables:
 stages:
   - build
   - test
+  - deploy-admin
   - deploy
 
 build-images:
@@ -82,6 +83,7 @@ stage:
 
 stage-admin:
   extends: .deploy
+  stage: deploy-admin
   only:
     - master
     - stage
@@ -91,6 +93,7 @@ stage-admin:
 
 admin:
   extends: .deploy
+  stage: deploy-admin
   only:
     - admin
     - prod
