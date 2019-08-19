@@ -5,13 +5,16 @@ URLS=(
     "/"
     "/healthz/"
     "/readiness/"
+)
+ADMIN_URL="/admin/"
+NEWSLETTER_URLS=(
     "/news/"
     "/news/newsletters/"
 )
 
 function check_http_code {
     echo -n "Checking URL ${1} "
-    curl -k -L -s -o /dev/null -I -w "%{http_code}" $1 | grep ${2:-200} > /dev/null
+    curl -k -s -o /dev/null -I -w "%{http_code}" $1 | grep ${2:-200} > /dev/null
     if [ $? -eq 0 ];
     then
         echo "OK"
@@ -52,5 +55,17 @@ done
 
 # Check a page that throws 404. Not ideal but will surface 500s
 check_http_code ${BASE_URL}/foo 404
+
+if [[ "$BASE_URL" =~ "admin" ]]; then
+    check_http_code ${BASE_URL}/admin/ 302
+    for url in ${NEWSLETTER_URLS[*]}; do
+        check_http_code ${BASE_URL}${url} 404
+    done
+else
+    check_http_code ${BASE_URL}/admin/ 301
+    for url in ${NEWSLETTER_URLS[*]}; do
+        check_http_code ${BASE_URL}${url}
+    done
+fi
 
 exit ${EXIT}
