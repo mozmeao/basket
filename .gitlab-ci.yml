@@ -74,6 +74,7 @@ dev:
 stage:
   extends: .deploy
   only:
+    - master
     - stage
   variables:
     NAMESPACE: basket-stage
