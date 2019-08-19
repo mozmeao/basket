@@ -58,11 +58,20 @@ check_http_code ${BASE_URL}/foo 404
 
 if [[ "$BASE_URL" =~ "admin" ]]; then
     check_http_code ${BASE_URL}/admin/ 302
+    check_http_code ${BASE_URL}/admin/login/
     for url in ${NEWSLETTER_URLS[*]}; do
         check_http_code ${BASE_URL}${url} 404
     done
+elif [[ "$BASE_URL" =~ "dev" ]]; then
+    # admin & newsletters are both enabled in dev
+    check_http_code ${BASE_URL}/admin/ 302
+    check_http_code ${BASE_URL}/admin/login/
+    for url in ${NEWSLETTER_URLS[*]}; do
+        check_http_code ${BASE_URL}${url}
+    done
 else
     check_http_code ${BASE_URL}/admin/ 301
+    check_http_code ${BASE_URL}/admin/login/ 404
     for url in ${NEWSLETTER_URLS[*]}; do
         check_http_code ${BASE_URL}${url}
     done
