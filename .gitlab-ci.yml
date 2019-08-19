@@ -83,15 +83,17 @@ stage:
 stage-admin:
   extends: .deploy
   only:
+    - master
     - stage
   variables:
-    NAMESPACE: basket-stage-admin
+    NAMESPACE: basket-admin-stage
     CLUSTERS: oregon-a oregon-b
 
 admin:
   extends: .deploy
   only:
     - admin
+    - prod
   variables:
     NAMESPACE: basket-admin
     CLUSTERS: oregon-a oregon-b
