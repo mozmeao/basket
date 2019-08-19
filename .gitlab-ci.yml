@@ -8,6 +8,7 @@ stages:
   - build
   - test
   - deploy-admin
+  - deploy-dev
   - deploy
 
 build-images:
@@ -66,6 +67,7 @@ run-unit-tests:
 
 dev:
   extends: .deploy
+  stage: deploy-dev
   only:
     - master
   variables:
