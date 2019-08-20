@@ -27,8 +27,8 @@ from basket.news.celery import app as celery_app
 from basket.news.models import (FailedTask, Newsletter, Interest,
                                 QueuedTask, TransactionalEmailMessage)
 from basket.news.newsletters import get_sms_vendor_id, get_transactional_message_ids, newsletter_map
-from basket.news.utils import (generate_token, get_accept_languages, get_best_language, get_user_data,
-                               iso_format_unix_timestamp, parse_newsletters, parse_newsletters_csv,
+from basket.news.utils import (cents_to_dollars, generate_token, get_accept_languages, get_best_language,
+                               get_user_data, iso_format_unix_timestamp, parse_newsletters, parse_newsletters_csv,
                                SUBSCRIBE, UNSUBSCRIBE, get_best_supported_lang, split_name)
 
 log = logging.getLogger(__name__)
@@ -733,7 +733,7 @@ def process_subhub_event_customer_created(data):
     first, last = split_name(data['name'])
     contact_data = {
         'fxa_id': data['user_id'],
-        'payee_id': data['customer_id']
+        'payee_id': data['cust_id']
     }
 
     user_data = get_user_data(email=data['email'])
@@ -762,212 +762,78 @@ def process_subhub_event_customer_created(data):
 
 
 @et_task
-def process_subhub_event_customer_updated(data):
-    """
-    Event name: customer.updated
-
-    Updates customer record in SFDC if payment processor/Stripe customer
-    changes their name or email address
-    """
-    statsd.incr('news.tasks.process_subhub_event.customer_updated')
-
-    first, last = split_name(data['name'])
-    contact_data = {}
-
-    # find user by their payment processor ID
-    user_data = get_user_data(payee_id=data['customer_id'])
-
-    # if user was found in sfdc, see if we should update their name(s)
-    if user_data:
-        # if current last name is '_', update it
-        if user_data['last_name'] == '_':
-            contact_data['last_name'] = last
-
-        # if current last name is blank/Null, update it
-        if not user_data['first_name']:
-            contact_data['first_name'] = first
-
-        if 'first_name' in contact_data or 'last_name' in contact_data:
-            sfdc.update(user_data, contact_data)
-    # if user wasn't found, add them
-    else:
-        contact_data['email'] = data['email']
-        contact_data['first_name'] = first
-        contact_data['last_name'] = last
-        contact_data['payee_id'] = data['customer_id']
-
-        # create the user in sfdc
-        sfdc.add(contact_data)
-        statsd.incr('news.tasks.process_subhub_event.customer_updated.created')
-
-
-@et_task
 def process_subhub_event_subscription_charge(data):
     """
-    Event names: invoice.finalized, payment_intent.succeeded
+    Event names: customer.subscription.created, customer.recurring_charge
 
     This method handles both new and recurring charges.
 
-    Each of the handled events contains different information on the charge
-    which will need to be combined.
-
-    The charge_id field (sent in both payloads) will tie the two events
-    together.
-
-    invoice.finalized *should* be sent first, which is missing the following
-    credit card related fields:
-
-    - brand
-    - last4
-    - exp_month
-    - exp_year
+    Each of the handled events contains the same payload data. The only variation below
+    is in regards to Initial_Purchase__c, which will be True for the
+    `customer.subscription.created` event, and False for the `customer.recurring_charge`
+    event.
     """
 
     statsd.incr('news.tasks.process_subhub_event.subscription_charge')
 
-    user_data = get_user_data(payee_id=data['customer_id'],
+    user_data = get_user_data(payee_id=data['customer'],
                               extra_fields=['id'])
 
-    # the only user identifiable information available is the payment
-    # processor/Stripe ID, so if the user wasn't found by that, there's really
-    # nothing to be done here
     if user_data:
-        # this is the primary key for the opportunity
-        charge_id = data['charge_id']
-
-        # just in case amount data is missing/malformed
-        try:
-            # amount values are cents - convert to dollars
-            amount_paid = int(data['amount_paid']) / float(100)
-        except ValueError:
-            amount_paid = 0
-
-        # common data to both events
         transaction_data = {
-            'Amount': amount_paid,
-            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['period_end']),
-            'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['period_start']),
+            'Amount': cents_to_dollars(data['plan_amount']),
+            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
+            'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
             'CloseDate': iso_format_unix_timestamp(data['created']),
-            'Donation_Contact__c': user_data['id'],
-            'Name': 'Subscription Services',
-            'PMT_Subscription_ID__c': data['subscription_id'],
-            'Payment_Source__c': 'Stripe',
-            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
-            'StageName': 'Closed Won',
+            'Credit_Card_Type__c': data['brand'],
             'currency__c': data['currency'],
+            'Donation_Contact__c': user_data['id'],
+            'Initial_Purchase__c': data['event_type'] == 'customer.subscription.created',
+            'Invoice_Number__c': data['invoice_number'],
+            'Last_4_Digits__c': data['last4'],
+            'Name': 'Subscription Services',
+            'Payment_Source__c': 'Stripe',
+            'PMT_Invoice_ID__c': data['invoice_id'],
+            'PMT_Subscription_ID__c': data['subscription_id'],
+            'PMT_Transaction_ID__c': data['charge'],
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+            'Service_Plan__c': data['nickname'],
+            'StageName': 'Closed Won',
         }
 
-        # invoice_number is only available in the invoice.finalized event
-        if 'invoice_number' in data:
-            transaction_data['Invoice_Number__c'] = data['invoice_number']
-
-        if 'invoice_id' in data:
-            transaction_data['PMT_Invoice_ID__c'] = data['invoice_id']
-
-        # these keys will be available for the payment_intent.succeeded event
-        if all(k in data for k in ('brand', 'last4', 'exp_month', 'exp_year')):
-            transaction_data['Credit_Card_Exp_Month__c'] = data['exp_month']
-            transaction_data['Credit_Card_Exp_Year__c'] = data['exp_year']
-            transaction_data['Credit_Card_Type__c'] = data['brand']
-            transaction_data['Last_4_Digits__c'] = data['last4']
-
-        try:
-            # attempt to update the opportunity first (this will happen on the
-            # second event for the current charge)
-            # will raise a SalesforceMalformedRequest if not found
-
-            # if the following succeeds, we don't have to worry about setting
-            # the initial purchase flag - we leave it alone, assuming it was
-            # set properly in the except block below
-            sfdc.opportunity.update('PMT_Transaction_ID__c/{}'.format(charge_id), transaction_data)
-        except sfapi.SalesforceMalformedRequest:
-            # we are creating a new opportunity, so put the charge_id in
-            transaction_data['PMT_Transaction_ID__c'] = charge_id
-
-            sfdc.opportunity.create(transaction_data)
-        else:
-            statsd.incr('news.tasks.process_subhub_event.subscription_charge_update')
+        sfdc.opportunity.create(transaction_data)
     else:
         statsd.incr('news.tasks.process_subhub_event.subscription_charge.user_not_found')
 
 
 @et_task
-def process_subhub_event_subscription_updated(data):
+def process_subhub_event_subscription_cancel(data):
     """
-    Event names: customer.subscription.created, customer.subscription.updated
-
-    This method handles three scenarios:
-
-    1. subscription created - creates a new subscription opportunity record
-    2. subscription updated - updates a subscription - specifically the name
-        of the plan
-    3. subscription cancelled - create a new opportunity record of the
-        cancellation
-
-    These scenarios are determined by the incoming data.
+    Event name: customer.subscription_cancelled
     """
-    statsd.incr('news.tasks.process_subhub_event.subscription_updated')
+    statsd.incr('news.tasks.process_subhub_event.subscription_cancel')
 
     user_data = get_user_data(payee_id=data['customer_id'],
                               extra_fields=['id'])
 
-    # the only user identifiable information available is the payment
-    # processor/Stripe ID, so if the user wasn't found by that, there's
-    # really nothing to be done here
-    if not user_data:
-        return
-
-    # just in case amount data is missing/malformed
-    try:
-        # amount values are cents - convert to dollars
-        plan_amount = int(data['plan_amount']) / float(100)
-    except ValueError:
-        plan_amount = 0
-
-    # common transaction data for all three scenarios
-    transaction_data = {
-        'Amount': plan_amount,
-        'Name': 'Subscription Services',
-        'PMT_Subscription_ID__c': data['subscription_id'],
-        'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
-        'Service_Plan__c': data['nickname'],
-        'Donation_Contact__c': user_data['id'],
-    }
-
-    # it's only a cancellation if cancel_at_period_end is truthy
-    if data['cancel_at_period_end']:
-        statsd.incr('news.tasks.process_subhub_event.subscription_updated.cancelled')
-
-        transaction_data.update({
-            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['cancel_at']),
-            'CloseDate': iso_format_unix_timestamp(data['canceled_at']),
+    if user_data:
+        transaction_data = {
+            'Amount': cents_to_dollars(data['plan_amount']),
+            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
+            'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
+            'CloseDate': iso_format_unix_timestamp(data['cancel_at']),
+            'Donation_Contact__c': user_data['id'],
+            'Name': 'Subscription Services',
             'Payment_Source__c': 'Stripe',
+            'PMT_Subscription_ID__c': data['subscriptionId'],
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+            'Service_Plan__c': data['nickname'],
             'StageName': 'Subscription Canceled',
-        })
+        }
 
         sfdc.opportunity.create(transaction_data)
     else:
-        transaction_data.update({
-            'CloseDate': iso_format_unix_timestamp(data['created']),
-            'StageName': 'Closed Won',
-        })
-
-        transaction_data['Initial_Purchase__c'] = data['event_type'] == 'customer.subscription.created'
-
-        try:
-            # attempt to update the opportunity identified by the invoice_id
-            sfdc.opportunity.update('PMT_Invoice_ID__c/{}'.format(data['invoice_id']), transaction_data)
-        except sfapi.SalesforceMalformedRequest:
-            # no opportunity found - create a new one
-            sentry_client.captureException()
-
-            # add invoice_id to the payload
-            transaction_data['PMT_Invoice_ID__c'] = data['invoice_id']
-            sfdc.opportunity.create(transaction_data)
-            statsd.incr('news.tasks.process_subhub_event.subscription_updated.created')
-        else:
-            # if update was successful, log it
-            statsd.incr('news.tasks.process_subhub_event.subscription_updated.updated')
+        statsd.incr('news.tasks.process_subhub_event_subscription_cancel.user_not_found')
 
 
 @et_task
@@ -994,19 +860,19 @@ def process_subhub_event_payment_failed(data):
     # nothing to be done here
     if user_data:
         transaction_data = {
+            'Amount': cents_to_dollars(data['amount_due']),
+            'CloseDate': iso_format_unix_timestamp(data['created']),
             'Donation_Contact__c': user_data['id'],
-            'PMT_Subscription_ID__c': data['subscription_id'],
             'Invoice_Number__c': data['invoice_number'],
             'Name': 'Subscription Services',
-            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
-            'StageName': 'Payment Failed',
-            'Payment_Source__c': 'Stripe',
-            'Amount': data['amount_due'],
-            'CloseDate': iso_format_unix_timestamp(data['created']),
-            'PMT_Transaction_ID__c': data['charge_id'],
-            'currency__c': data['currency'],
-            'Service_Plan__c': data['nickname'],
             'PMT_Invoice_ID__c': data['invoice_id'],
+            'PMT_Subscription_ID__c': data['subscription_id'],
+            'PMT_Transaction_ID__c': data['charge_id'],
+            'Payment_Source__c': 'Stripe',
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+            'Service_Plan__c': data['nickname'],
+            'StageName': 'Payment Failed',
+            'currency__c': data['currency'],
         }
 
         sfdc.opportunity.create(transaction_data)

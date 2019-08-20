@@ -615,3 +615,12 @@ def split_name(name):
         first, last = '', names[0]
 
     return first, last
+
+
+def cents_to_dollars(cents):
+    try:
+        dollars = int(cents) / float(100)
+    except ValueError:
+        dollars = 0
+
+    return dollars
