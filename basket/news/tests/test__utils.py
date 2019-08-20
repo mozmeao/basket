@@ -8,6 +8,7 @@ from mock import Mock, patch
 
 from basket.news.models import BlockedEmail
 from basket.news.utils import (
+    cents_to_dollars,
     email_block_list_cache,
     email_is_blocked,
     get_accept_languages,
@@ -396,3 +397,14 @@ class TestSplitName(TestCase):
         self.assertEqual(split_name('Jeffrey Lebowski jr.'), ('Jeffrey', 'Lebowski'))
         self.assertEqual(split_name('Uli Kunkel Sr.'), ('Uli', 'Kunkel'))
         self.assertEqual(split_name('Uli Kunkel sr'), ('Uli', 'Kunkel'))
+
+
+class TestCentsToDollars(TestCase):
+    def test_valid_int_data(self):
+        self.assertEqual(cents_to_dollars(5005), 50.05)
+
+    def test_valid_string_data(self):
+        self.assertEqual(cents_to_dollars('5005'), 50.05)
+
+    def test_invalid_data(self):
+        self.assertEqual(cents_to_dollars('briefcase'), 0)

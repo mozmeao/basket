@@ -21,3 +21,4 @@ celerybeat-schedule
 Dockerfile.jenkins
 test-results
 soap_cache_file.json
+.vscode/

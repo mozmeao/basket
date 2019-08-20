@@ -29,6 +29,7 @@ from basket.news.tasks import (
     process_donation,
     process_donation_event,
     process_petition_signature,
+    process_subhub_event_credit_card_expiring,
     record_common_voice_goals,
     RECOVERY_MESSAGE_ID,
     SUBSCRIBE,
@@ -275,32 +276,28 @@ class ProcessDonationEventTests(TestCase):
 @patch('basket.news.tasks.get_user_data')
 @patch('basket.news.tasks.sfdc')
 class SubHubEventTests(TestCase):
-    def test_customer_created(self, sfdc_mock, gud_mock):
-        pass
-
-    def test_customer_updated_customer_found(self, sfdc_mock, gud_mock):
-        pass
-
-    def test_customer_updated_customer_not_found(self, sfdc_mock, gud_mock):
-        pass
-
-    def test_subscription_charge_finalized(self, sfdc_mock, gud_mock):
-        pass
-
-    def test_subscription_charge_succeeded(self, sfdc_mock, gud_mock):
-        pass
-
-    def test_subscription_canceled(self, sfdc_mock, gud_mock):
-        pass
-
-    def test_subscription_canceled_not_cancelled(self, sfdc_mock, gud_mock):
-        pass
-
     @patch('basket.news.tasks.sfmc')
-    def test_credit_card_expiring(self, sfdc_mock, gud_mock, sfmc_mock):
+    def test_credit_card_expiring(self, sfmc_mock, sfdc_mock, gud_mock):
+        process_subhub_event_credit_card_expiring({
+            'email': 'dude@example.com',
+        })
+
+        sfmc_mock.send_mail.assert_called_with(settings.SUBHUB_CC_EXPIRE_TRIGGER,
+            'dude@example.com', 'dude@example.com')
+
+    def test_customer_created_customer_found(self, sfdc_mock, gud_mock):
+        pass
+
+    def test_customer_created_customer_not_found(self, sfdc_mock, gud_mock):
         pass
 
     def test_payment_failed(self, sfdc_mock, gud_mock):
+        pass
+
+    def test_subscription_cancel(self, sfdc_mock, gud_mock):
+        pass
+
+    def test_subscription_charge(self, sfdc_mock, gud_mock):
         pass
 
 
