@@ -733,7 +733,7 @@ def process_subhub_event_customer_created(data):
     first, last = split_name(data['name'])
     contact_data = {
         'fxa_id': data['user_id'],
-        'payee_id': data['cust_id']
+        'payee_id': data['customer_id']
     }
 
     user_data = get_user_data(email=data['email'])
@@ -776,7 +776,7 @@ def process_subhub_event_subscription_charge(data):
 
     statsd.incr('news.tasks.process_subhub_event.subscription_charge')
 
-    user_data = get_user_data(payee_id=data['customer'],
+    user_data = get_user_data(payee_id=data['customer_id'],
                               extra_fields=['id'])
 
     if user_data:
