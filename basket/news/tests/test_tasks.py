@@ -30,6 +30,10 @@ from basket.news.tasks import (
     process_donation_event,
     process_petition_signature,
     process_subhub_event_credit_card_expiring,
+    process_subhub_event_customer_created,
+    process_subhub_event_payment_failed,
+    process_subhub_event_subscription_cancel,
+    process_subhub_event_subscription_charge,
     record_common_voice_goals,
     RECOVERY_MESSAGE_ID,
     SUBSCRIBE,
@@ -37,6 +41,10 @@ from basket.news.tasks import (
     send_message,
     get_lock,
     RetryTask,
+)
+from basket.news.utils import (
+    cents_to_dollars,
+    iso_format_unix_timestamp,
 )
 
 
@@ -276,6 +284,22 @@ class ProcessDonationEventTests(TestCase):
 @patch('basket.news.tasks.get_user_data')
 @patch('basket.news.tasks.sfdc')
 class SubHubEventTests(TestCase):
+    charge_data = {
+        'customer_id': 'cus_1234',
+        'plan_amount': '1000',
+        'current_period_end': '1566305505',
+        'current_period_start': '1566305502',
+        'created': '1566305509',
+        'brand': 'visa',
+        'last4': '1111',
+        'currency': 'us',
+        'invoice_number': 'abc123',
+        'invoice_id': 'inv_abc123',
+        'subscription_id': 'sub_123',
+        'charge': '8675309',
+        'nickname': 'bowling',
+    }
+
     @patch('basket.news.tasks.sfmc')
     def test_credit_card_expiring(self, sfmc_mock, sfdc_mock, gud_mock):
         process_subhub_event_credit_card_expiring({
@@ -286,19 +310,173 @@ class SubHubEventTests(TestCase):
             'dude@example.com', 'dude@example.com')
 
     def test_customer_created_customer_found(self, sfdc_mock, gud_mock):
-        pass
+        user_data = {
+            'first_name': 'Jeffrey',
+            'last_name': '_',
+        }
+
+        gud_mock.return_value = user_data
+
+        process_subhub_event_customer_created({
+            'name': 'Jeffrey Lebowski',
+            'email': 'thedude@thedude.io',
+            'user_id': '1234',
+            'customer_id': 'cus_1234',
+        })
+
+        sfdc_mock.update.assert_called_with(user_data, {
+            'fxa_id': '1234',
+            'payee_id': 'cus_1234',
+            'last_name': 'Lebowski',
+        })
 
     def test_customer_created_customer_not_found(self, sfdc_mock, gud_mock):
-        pass
+        gud_mock.return_value = None
+
+        process_subhub_event_customer_created({
+            'name': 'Walter Sobchak',
+            'email': 'water@thedude.io',
+            'user_id': '1234',
+            'customer_id': 'cus_1234',
+        })
+
+        sfdc_mock.update.assert_not_called()
+
+        sfdc_mock.add.assert_called_with({
+            'fxa_id': '1234',
+            'payee_id': 'cus_1234',
+            'first_name': 'Walter',
+            'last_name': 'Sobchak',
+            'email': 'water@thedude.io',
+        })
 
     def test_payment_failed(self, sfdc_mock, gud_mock):
-        pass
+        gud_mock.return_value = {'id': '1234'}
+
+        data = {
+            'customer_id': 'cus_1234',
+            'amount_due': '1000',
+            'created': '1566305505',
+            'invoice_number': 'abc123',
+            'invoice_id': 'inv_abc123',
+            'subscription_id': 'sub_123',
+            'charge_id': '8675309',
+            'nickname': 'bowling',
+            'currency': 'us',
+        }
+
+        process_subhub_event_payment_failed(data)
+
+        gud_mock.assert_called_with(payee_id=data['customer_id'], extra_fields=['id'])
+
+        sfdc_mock.opportunity.create.assert_called_with({
+            'Amount': cents_to_dollars(data['amount_due']),
+            'CloseDate': iso_format_unix_timestamp(data['created']),
+            'Donation_Contact__c': '1234',
+            'Invoice_Number__c': data['invoice_number'],
+            'Name': 'Subscription Services',
+            'PMT_Invoice_ID__c': data['invoice_id'],
+            'PMT_Subscription_ID__c': data['subscription_id'],
+            'PMT_Transaction_ID__c': data['charge_id'],
+            'Payment_Source__c': 'Stripe',
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+            'Service_Plan__c': data['nickname'],
+            'StageName': 'Payment Failed',
+            'currency__c': data['currency'],
+        })
 
     def test_subscription_cancel(self, sfdc_mock, gud_mock):
-        pass
+        gud_mock.return_value = {'id': '1234'}
 
-    def test_subscription_charge(self, sfdc_mock, gud_mock):
-        pass
+        data = {
+            'customer_id': 'cus_1234',
+            'plan_amount': '1000',
+            'current_period_end': '1566305505',
+            'current_period_start': '1566305502',
+            'cancel_at': '1566305509',
+            'subscriptionId': 'sub_123',
+            'nickname': 'bowling',
+        }
+
+        process_subhub_event_subscription_cancel(data)
+
+        gud_mock.assert_called_with(payee_id=data['customer_id'], extra_fields=['id'])
+
+        sfdc_mock.opportunity.create.assert_called_with({
+            'Amount': cents_to_dollars(data['plan_amount']),
+            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
+            'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
+            'CloseDate': iso_format_unix_timestamp(data['cancel_at']),
+            'Donation_Contact__c': '1234',
+            'Name': 'Subscription Services',
+            'Payment_Source__c': 'Stripe',
+            'PMT_Subscription_ID__c': data['subscriptionId'],
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+            'Service_Plan__c': data['nickname'],
+            'StageName': 'Subscription Canceled',
+        })
+
+    def test_subscription_charge_initial(self, sfdc_mock, gud_mock):
+        gud_mock.return_value = {'id': '1234'}
+
+        data = self.charge_data.copy()
+        data['event_type'] = 'customer.subscription.created'
+
+        process_subhub_event_subscription_charge(data)
+
+        gud_mock.assert_called_with(payee_id=data['customer_id'], extra_fields=['id'])
+
+        sfdc_mock.opportunity.create.assert_called_with({
+            'Amount': cents_to_dollars(data['plan_amount']),
+            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
+            'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
+            'CloseDate': iso_format_unix_timestamp(data['created']),
+            'Credit_Card_Type__c': data['brand'],
+            'currency__c': data['currency'],
+            'Donation_Contact__c': '1234',
+            'Initial_Purchase__c': True,
+            'Invoice_Number__c': data['invoice_number'],
+            'Last_4_Digits__c': data['last4'],
+            'Name': 'Subscription Services',
+            'Payment_Source__c': 'Stripe',
+            'PMT_Invoice_ID__c': data['invoice_id'],
+            'PMT_Subscription_ID__c': data['subscription_id'],
+            'PMT_Transaction_ID__c': data['charge'],
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+            'Service_Plan__c': data['nickname'],
+            'StageName': 'Closed Won',
+        })
+
+    def test_subscription_charge_recurring(self, sfdc_mock, gud_mock):
+        gud_mock.return_value = {'id': '1234'}
+
+        data = self.charge_data.copy()
+        data['event_type'] = 'customer.recurring_charge'
+
+        process_subhub_event_subscription_charge(data)
+
+        gud_mock.assert_called_with(payee_id=data['customer_id'], extra_fields=['id'])
+
+        sfdc_mock.opportunity.create.assert_called_with({
+            'Amount': cents_to_dollars(data['plan_amount']),
+            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
+            'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
+            'CloseDate': iso_format_unix_timestamp(data['created']),
+            'Credit_Card_Type__c': data['brand'],
+            'currency__c': data['currency'],
+            'Donation_Contact__c': '1234',
+            'Initial_Purchase__c': False,
+            'Invoice_Number__c': data['invoice_number'],
+            'Last_4_Digits__c': data['last4'],
+            'Name': 'Subscription Services',
+            'Payment_Source__c': 'Stripe',
+            'PMT_Invoice_ID__c': data['invoice_id'],
+            'PMT_Subscription_ID__c': data['subscription_id'],
+            'PMT_Transaction_ID__c': data['charge'],
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+            'Service_Plan__c': data['nickname'],
+            'StageName': 'Closed Won',
+        })
 
 
 @override_settings(TASK_LOCKING_ENABLE=False)
