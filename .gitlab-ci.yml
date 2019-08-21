@@ -13,6 +13,11 @@ stages:
 
 build-images:
   stage: build
+  only:
+    - master
+    - stage
+    - prod
+    - admin
   tags:
     - meao
   script:
@@ -21,16 +26,21 @@ build-images:
 
 .test-stage:
   stage: test
+  only:
+    - master
+    - stage
+    - prod
+    - admin
   variables:
-      DOCKER_DEBUG: "False"
-      DOCKER_ALLOWED_HOSTS: "*"
-      DOCKER_SECRET_KEY: "foo"
-      DOCKER_DATABASE_URL: "sqlite:///"
-      DOCKER_SITE_URL: "http://localhost:8000"
-      DOCKER_CACHE_URL: "dummy://"
-      DOCKER_ENABLE_ADMIN: "True"
-      DOCKER_SECURE_SSL_REDIRECT: "False"
-      GIT_COMMIT: ${CI_COMMIT_SHORT_SHA}
+    DOCKER_DEBUG: "False"
+    DOCKER_ALLOWED_HOSTS: "*"
+    DOCKER_SECRET_KEY: "foo"
+    DOCKER_DATABASE_URL: "sqlite:///"
+    DOCKER_SITE_URL: "http://localhost:8000"
+    DOCKER_CACHE_URL: "dummy://"
+    DOCKER_ENABLE_ADMIN: "True"
+    DOCKER_SECURE_SSL_REDIRECT: "False"
+    GIT_COMMIT: ${CI_COMMIT_SHORT_SHA}
   before_script:
     - env | grep "^DOCKER" | sed 's/DOCKER_//' > .docker-env
 
