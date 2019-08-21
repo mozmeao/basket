@@ -825,7 +825,7 @@ def process_subhub_event_subscription_cancel(data):
             'Donation_Contact__c': user_data['id'],
             'Name': 'Subscription Services',
             'Payment_Source__c': 'Stripe',
-            'PMT_Subscription_ID__c': data['subscriptionId'],
+            'PMT_Subscription_ID__c': data['subscription_id'],
             'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
             'Service_Plan__c': data['nickname'],
             'StageName': 'Subscription Canceled',
