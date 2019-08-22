@@ -793,7 +793,6 @@ def process_subhub_event_subscription_charge(data):
             'Last_4_Digits__c': data['last4'],
             'Name': 'Subscription Services',
             'Payment_Source__c': 'Stripe',
-            'PMT_Invoice_ID__c': data['invoice_id'],
             'PMT_Subscription_ID__c': data['subscription_id'],
             'PMT_Transaction_ID__c': data['charge'],
             'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
@@ -801,7 +800,10 @@ def process_subhub_event_subscription_charge(data):
             'StageName': 'Closed Won',
         }
 
-        sfdc.opportunity.create(transaction_data)
+        # if a customer re-instates service after a cancellation, the record needs to be
+        # updated
+        sfdc.opportunity.upsert(f'PMT_Invoice_ID__c/{data["invoice_id"]}',
+                                transaction_data)
     else:
         statsd.incr('news.tasks.process_subhub_event.subscription_charge.user_not_found')
 
