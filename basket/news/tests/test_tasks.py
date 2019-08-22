@@ -42,10 +42,6 @@ from basket.news.tasks import (
     get_lock,
     RetryTask,
 )
-from basket.news.utils import (
-    cents_to_dollars,
-    iso_format_unix_timestamp,
-)
 
 
 @override_settings(TASK_LOCKING_ENABLE=False)
@@ -370,8 +366,8 @@ class SubHubEventTests(TestCase):
         gud_mock.assert_called_with(payee_id=data['customer_id'], extra_fields=['id'])
 
         sfdc_mock.opportunity.create.assert_called_with({
-            'Amount': cents_to_dollars(data['amount_due']),
-            'CloseDate': iso_format_unix_timestamp(data['created']),
+            'Amount': 10.00,
+            'CloseDate': '2019-08-20T12:51:45',
             'Donation_Contact__c': '1234',
             'Invoice_Number__c': data['invoice_number'],
             'Name': 'Subscription Services',
@@ -403,10 +399,10 @@ class SubHubEventTests(TestCase):
         gud_mock.assert_called_with(payee_id=data['customer_id'], extra_fields=['id'])
 
         sfdc_mock.opportunity.create.assert_called_with({
-            'Amount': cents_to_dollars(data['plan_amount']),
-            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
-            'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
-            'CloseDate': iso_format_unix_timestamp(data['cancel_at']),
+            'Amount': 10.00,
+            'Billing_Cycle_End__c': '2019-08-20T12:51:45',
+            'Billing_Cycle_Start__c': '2019-08-20T12:51:42',
+            'CloseDate': '2019-08-20T12:51:49',
             'Donation_Contact__c': '1234',
             'Name': 'Subscription Services',
             'Payment_Source__c': 'Stripe',
@@ -427,10 +423,10 @@ class SubHubEventTests(TestCase):
         gud_mock.assert_called_with(payee_id=data['customer_id'], extra_fields=['id'])
 
         sfdc_mock.opportunity.create.assert_called_with({
-            'Amount': cents_to_dollars(data['plan_amount']),
-            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
-            'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
-            'CloseDate': iso_format_unix_timestamp(data['created']),
+            'Amount': 10.00,
+            'Billing_Cycle_End__c': '2019-08-20T12:51:45',
+            'Billing_Cycle_Start__c': '2019-08-20T12:51:42',
+            'CloseDate': '2019-08-20T12:51:49',
             'Credit_Card_Type__c': data['brand'],
             'currency__c': data['currency'],
             'Donation_Contact__c': '1234',
@@ -458,10 +454,10 @@ class SubHubEventTests(TestCase):
         gud_mock.assert_called_with(payee_id=data['customer_id'], extra_fields=['id'])
 
         sfdc_mock.opportunity.create.assert_called_with({
-            'Amount': cents_to_dollars(data['plan_amount']),
-            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
-            'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
-            'CloseDate': iso_format_unix_timestamp(data['created']),
+            'Amount': 10.00,
+            'Billing_Cycle_End__c': '2019-08-20T12:51:45',
+            'Billing_Cycle_Start__c': '2019-08-20T12:51:42',
+            'CloseDate': '2019-08-20T12:51:49',
             'Credit_Card_Type__c': data['brand'],
             'currency__c': data['currency'],
             'Donation_Contact__c': '1234',
