@@ -238,7 +238,12 @@ CORS_URLS_REGEX = r'^/(news/|subscribe)'
 # view rate limiting
 RATELIMIT_VIEW = 'basket.news.views.ratelimited'
 
+KOMBU_FERNET_KEY = config('KOMBU_FERNET_KEY', None)
+# for key rotation
+KOMBU_FERNET_KEY_PREVIOUS = config('KOMBU_FERNET_KEY_PREVIOUS', None)
 CELERY_TASK_ALWAYS_EAGER = config('CELERY_TASK_ALWAYS_EAGER', DEBUG, cast=bool)
+CELERY_TASK_SERIALIZER = 'fernet_json' if KOMBU_FERNET_KEY else 'json'
+CELERY_ACCEPT_CONTENT = ['json', 'fernet_json']
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', None)
 CELERY_REDIS_MAX_CONNECTIONS = config('CELERY_REDIS_MAX_CONNECTIONS', 2, cast=int)
 CELERY_WORKER_DISABLE_RATE_LIMITS = True

@@ -5,9 +5,42 @@ import os
 # set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'basket.settings')
 
+from django.conf import settings
+from django.utils.encoding import force_bytes
+
 from celery import Celery as CeleryBase
+from cryptography.fernet import Fernet, MultiFernet, InvalidToken
+from kombu import serialization
+from kombu.utils import json
 from raven.contrib.celery import register_signal, register_logger_signal
 from raven.contrib.django.raven_compat.models import client
+
+
+FERNET = None
+
+if settings.KOMBU_FERNET_KEY:
+    FERNET = Fernet(settings.KOMBU_FERNET_KEY)
+    if settings.KOMBU_FERNET_KEY_PREVIOUS:
+        # this will try both keys. for key rotation.
+        FERNET = MultiFernet([FERNET, Fernet(settings.KOMBU_FERNET_KEY_PREVIOUS)])
+
+
+def fernet_dumps(message):
+    message = json.dumps(message)
+    return FERNET.encrypt(force_bytes(message))
+
+
+def fernet_loads(encoded_message):
+    try:
+        encoded_message = FERNET.decrypt(force_bytes(encoded_message))
+    except InvalidToken:
+        # likely a message that was not encrypted
+        pass
+
+    return json.loads(encoded_message)
+
+
+serialization.register('fernet_json', fernet_dumps, fernet_loads, 'application/x-fernet-json')
 
 
 class Celery(CeleryBase):
