@@ -390,7 +390,7 @@ class SubHubEventTests(TestCase):
             'current_period_end': '1566305505',
             'current_period_start': '1566305502',
             'cancel_at': '1566305509',
-            'subscriptionId': 'sub_123',
+            'subscription_id': 'sub_123',
             'nickname': 'bowling',
         }
 
@@ -406,7 +406,7 @@ class SubHubEventTests(TestCase):
             'Donation_Contact__c': '1234',
             'Name': 'Subscription Services',
             'Payment_Source__c': 'Stripe',
-            'PMT_Subscription_ID__c': data['subscriptionId'],
+            'PMT_Subscription_ID__c': data['subscription_id'],
             'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
             'Service_Plan__c': data['nickname'],
             'StageName': 'Subscription Canceled',
@@ -422,7 +422,7 @@ class SubHubEventTests(TestCase):
 
         gud_mock.assert_called_with(payee_id=data['customer_id'], extra_fields=['id'])
 
-        sfdc_mock.opportunity.create.assert_called_with({
+        sfdc_mock.opportunity.upsert.assert_called_with('PMT_Invoice_ID__c/inv_abc123', {
             'Amount': 10.00,
             'Billing_Cycle_End__c': '2019-08-20T12:51:45',
             'Billing_Cycle_Start__c': '2019-08-20T12:51:42',
@@ -435,7 +435,6 @@ class SubHubEventTests(TestCase):
             'Last_4_Digits__c': data['last4'],
             'Name': 'Subscription Services',
             'Payment_Source__c': 'Stripe',
-            'PMT_Invoice_ID__c': data['invoice_id'],
             'PMT_Subscription_ID__c': data['subscription_id'],
             'PMT_Transaction_ID__c': data['charge'],
             'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
@@ -453,7 +452,7 @@ class SubHubEventTests(TestCase):
 
         gud_mock.assert_called_with(payee_id=data['customer_id'], extra_fields=['id'])
 
-        sfdc_mock.opportunity.create.assert_called_with({
+        sfdc_mock.opportunity.upsert.assert_called_with('PMT_Invoice_ID__c/inv_abc123', {
             'Amount': 10.00,
             'Billing_Cycle_End__c': '2019-08-20T12:51:45',
             'Billing_Cycle_Start__c': '2019-08-20T12:51:42',
@@ -466,7 +465,6 @@ class SubHubEventTests(TestCase):
             'Last_4_Digits__c': data['last4'],
             'Name': 'Subscription Services',
             'Payment_Source__c': 'Stripe',
-            'PMT_Invoice_ID__c': data['invoice_id'],
             'PMT_Subscription_ID__c': data['subscription_id'],
             'PMT_Transaction_ID__c': data['charge'],
             'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
