@@ -78,6 +78,9 @@ FIELD_MAP = {
     'payee_id': 'PMT_Cust_Id__c',
     'fxa_id': 'FxA_Id__c',
     'fxa_deleted': 'FxA_Account_Deleted__c',
+    'fxa_lang': 'FxA_Language__c',
+    'fxa_service': 'FirstService__c',
+    'fxa_create_date': 'FxA_Created_Date__c',
     'fpn_country': 'FPN_Waitlist_Geo__c',
     'fpn_platform': 'FPN_Waitlist_Platform__c',
 }

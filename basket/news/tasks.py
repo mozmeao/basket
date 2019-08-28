@@ -248,9 +248,6 @@ def fxa_verified(data):
     email = data['email']
     fxa_id = data['uid']
     create_date = data.get('createDate')
-    if create_date:
-        create_date = datetime.fromtimestamp(create_date)
-
     locale = data.get('locale')
     subscribe = data.get('marketingOptIn')
     newsletters = data.get('newsletters')
@@ -270,7 +267,16 @@ def fxa_verified(data):
     if not lang:
         return
 
-    _update_fxa_info(email, lang, fxa_id, service, create_date)
+    user_data = {
+        'email': email,
+        'source_url': fxa_source_url(metrics),
+        'country': country,
+        'fxa_lang': lang,
+        'fxa_service': service,
+        'fxa_id': fxa_id,
+    }
+    if create_date:
+        user_data['fxa_create_date'] = iso_format_unix_timestamp(create_date)
 
     add_news = None
     if newsletters:
@@ -282,15 +288,10 @@ def fxa_verified(data):
         add_news = settings.FXA_REGISTER_NEWSLETTER
 
     if add_news:
-        upsert_user.delay(SUBSCRIBE, {
-            'email': email,
-            'lang': lang,
-            'newsletters': add_news,
-            'source_url': fxa_source_url(metrics),
-            'country': country,
-        })
-    else:
-        record_source_url(email, fxa_source_url(metrics), 'fxa-no-optin')
+        user_data['newsletters'] = add_news
+
+    upsert_contact(SUBSCRIBE, user_data,
+                   get_user_data(email=email, extra_fields=['id']))
 
 
 @et_task
@@ -339,21 +340,6 @@ def _add_fxa_activity(data):
         'DEVICE_NAME': user_agent.device.family,
         'DEVICE_TYPE': device_type,
     })
-
-
-def _update_fxa_info(email, lang, fxa_id, service, create_date=None):
-    # leaving here because easier to test
-    try:
-        apply_updates('Firefox_Account_ID', {
-            'EMAIL_ADDRESS_': email,
-            'CREATED_DATE_': gmttime(create_date),
-            'FXA_ID': fxa_id,
-            'FXA_LANGUAGE_ISO2': lang,
-            'SERVICE': service,
-        })
-    except NewsletterException as e:
-        # don't report these errors to sentry until retries exhausted
-        raise RetryTask(str(e))
 
 
 @et_task
@@ -464,6 +450,10 @@ def upsert_contact(api_call_type, data, user_data):
     if user_data is None:
         # no user found. create new one.
         update_data['token'] = generate_token()
+        if 'fxa_lang' in update_data:
+            # set the main lang if we're creating a new user from FxA data
+            update_data.setdefault('lang', update_data['fxa_lang'])
+
         if settings.MAINTENANCE_MODE:
             sfdc_add_update.delay(update_data)
         else:
