@@ -1128,7 +1128,7 @@ def upsert_amo_user_data(data):
     email = data.pop('email')
     amo_id = data.pop('id')
     amo_deleted = data.pop('deleted', False)
-    amo_data = {f'amo_{k}': v for k, v in data.items()}
+    amo_data = {f'amo_{k}': v for k, v in data.items() if v}
     amo_data['amo_user'] = not amo_deleted
     user = get_user_data(amo_id=amo_id, extra_fields=['id', 'amo_id'])
     if user:
@@ -1169,8 +1169,6 @@ def amo_sync_addon(data):
     users = [upsert_amo_user_data(author) for author in data['authors']]
     addon_data = {
         'AMO_Category__c': amo_compress_categories(data['categories']),
-        'AMO_Current_Version__c': data['current_version']['version'],
-        'AMO_Current_Version_Unlisted__c': data['latest_unlisted_version']['version'],
         'AMO_Default_Language__c': data['default_locale'],
         'AMO_GUID__c': data['guid'],
         'AMO_Rating__c': data['ratings']['average'],
@@ -1180,8 +1178,17 @@ def amo_sync_addon(data):
         'AMO_Update__c': data['last_updated'],
         'Average_Daily_Users__c': data['average_daily_users'],
         'Dev_Disabled__c': 'Yes' if data['is_disabled'] else 'No',
-        'Name': data['name'],
     }
+    # check for possible None or empty values
+    if data['name']:
+        addon_data['Name'] = data['name']
+
+    if data['current_version']:
+        addon_data['AMO_Current_Version__c'] = data['current_version']['version']
+
+    if data['latest_unlisted_version']:
+        addon_data['AMO_Current_Version_Unlisted__c'] = data['latest_unlisted_version']['version']
+
     sfdc.addon.upsert(f'AMO_AddOn_Id__c/{data["id"]}', addon_data)
     addon_record = sfdc.addon.get_by_custom_id('AMO_AddOn_Id__c', data['id'])
     for user in users:
