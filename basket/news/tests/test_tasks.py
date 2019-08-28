@@ -1343,6 +1343,38 @@ class AMOSyncAddonTests(TestCase):
             })
         ])
 
+    def test_null_values(self, uaud_mock, sfdc_mock):
+        uaud_mock.side_effect = self.users_data
+        sfdc_mock.addon.get_by_custom_id.return_value = {'Id': 'B5678'}
+        self.amo_data['current_version'] = None
+        self.amo_data['latest_unlisted_version'] = None
+        amo_sync_addon(self.amo_data)
+        uaud_mock.assert_has_calls([call(self.amo_data['authors'][0]),
+                                    call(self.amo_data['authors'][1])])
+        sfdc_mock.addon.upsert.assert_called_with(f'AMO_AddOn_Id__c/{self.amo_data["id"]}', {
+            'AMO_Category__c': 'firefox-games-entertainment',
+            'AMO_Default_Language__c': 'en-US',
+            'AMO_GUID__c': '{85ee4a2a-51b6-4f5e-a99c-6d9abcf6782d}',
+            'AMO_Rating__c': 4.1,
+            'AMO_Slug__c': 'ibird-jelewt-boartrica',
+            'AMO_Status__c': 'nominated',
+            'AMO_Type__c': 'extension',
+            'AMO_Update__c': '2019-06-26T11:38:13Z',
+            'Average_Daily_Users__c': 0,
+            'Dev_Disabled__c': 'No',
+            'Name': 'Ibird Jelewt Boartrica',
+        })
+        sfdc_mock.dev_addon.upsert.assert_has_calls([
+            call('ConcatenateAMOID__c/12345-35896', {
+                'AMO_AddOn_ID__c': 'B5678',
+                'AMO_Contact_ID__c': 'A1234',
+            }),
+            call('ConcatenateAMOID__c/11263-35896', {
+                'AMO_AddOn_ID__c': 'B5678',
+                'AMO_Contact_ID__c': 'A4321',
+            })
+        ])
+
 
 @patch('basket.news.tasks.sfdc')
 @patch('basket.news.tasks.get_user_data')
@@ -1415,4 +1447,18 @@ class AMOSyncUserTests(TestCase):
             'amo_last_login': '2019-08-06T10:39:44Z',
             'amo_location': 'California, USA, Earth',
             'amo_user': False,
+        })
+
+    def test_null_values(self, gud_mock, sfdc_mock):
+        gud_mock.return_value = None
+        self.amo_data['display_name'] = None
+        self.amo_data['last_login'] = None
+        self.amo_data['location'] = None
+        amo_sync_user(self.amo_data)
+        sfdc_mock.add.assert_called_with({
+            'email': 'dude@example.com',
+            'amo_id': 1234,
+            'amo_homepage': 'https://elduder.io',
+            'source_url': 'https://addons.mozilla.org/',
+            'amo_user': True,
         })
