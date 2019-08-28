@@ -48,6 +48,9 @@ function check_empty_json {
     fi
 }
 
+# wait a few seconds for the servers to be ready
+sleep 10
+
 for url in ${URLS[*]}
 do
     check_http_code ${BASE_URL}${url}
