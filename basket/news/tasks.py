@@ -27,7 +27,8 @@ from basket.news.backends.sfmc import sfmc
 from basket.news.celery import app as celery_app
 from basket.news.models import (FailedTask, Newsletter, Interest,
                                 QueuedTask, TransactionalEmailMessage)
-from basket.news.newsletters import get_sms_vendor_id, get_transactional_message_ids, newsletter_map
+from basket.news.newsletters import (get_sms_vendor_id, get_transactional_message_ids, newsletter_map,
+                                     newsletter_languages)
 from basket.news.utils import (cents_to_dollars, generate_token, get_accept_languages, get_best_language,
                                get_user_data, iso_format_unix_timestamp, parse_newsletters, parse_newsletters_csv,
                                SUBSCRIBE, UNSUBSCRIBE, get_best_supported_lang, split_name)
@@ -244,34 +245,48 @@ def fxa_delete(data):
 
 @et_task
 def fxa_verified(data):
-    """Add new FxA users to an SFMC data extension"""
-    # used to be handled by the fxa_register view
+    """Add new FxA users to an SFMC data extension and SFDC"""
+    # if we're not using the sandbox ignore testing domains
+    if email_is_testing(data['email']):
+        return
+
+    lang = get_best_language(get_accept_languages(data.get('locale')))
+    if not lang or lang not in newsletter_languages():
+        lang = 'other'
+
+    # avoid modifying the passed in dict
+    new_data = deepcopy(data)
+    new_data['lang'] = lang
+
+    # add the data to SFMC
+    # do this part async so that it can retry independent of the SFDC parts
+    fxa_verified_sfmc.delay(new_data)
+
+    # add the data to SFDC
+    # do this part async so that it can retry independent of the SFMC parts
+    if settings.FXA_EVENTS_VERIFIED_SFDC_ENABLE:
+        fxa_verified_sfdc.delay(new_data)
+
+
+@et_task
+def fxa_verified_sfdc(data):
     email = data['email']
     fxa_id = data['uid']
+    lang = data['lang']
     create_date = data.get('createDate')
-    if create_date:
-        create_date = datetime.fromtimestamp(create_date)
-
-    locale = data.get('locale')
     subscribe = data.get('marketingOptIn')
     newsletters = data.get('newsletters')
     metrics = data.get('metricsContext', {})
-    service = data.get('service', '')
-    country = data.get('countryCode', '')
-
-    if not locale:
-        statsd.incr('fxa_verified.ignored.no_locale')
-        return
-
-    # if we're not using the sandbox ignore testing domains
-    if email_is_testing(email):
-        return
-
-    lang = get_best_language(get_accept_languages(locale))
-    if not lang:
-        return
-
-    _update_fxa_info(email, lang, fxa_id, service, create_date)
+    new_data = {
+        'email': email,
+        'source_url': fxa_source_url(metrics),
+        'country': data.get('countryCode', ''),
+        'fxa_lang': data.get('locale'),
+        'fxa_service': data.get('service', ''),
+        'fxa_id': fxa_id,
+    }
+    if create_date:
+        new_data['fxa_create_date'] = iso_format_unix_timestamp(create_date)
 
     add_news = None
     if newsletters:
@@ -283,15 +298,32 @@ def fxa_verified(data):
         add_news = settings.FXA_REGISTER_NEWSLETTER
 
     if add_news:
-        upsert_user.delay(SUBSCRIBE, {
-            'email': email,
-            'lang': lang,
-            'newsletters': add_news,
-            'source_url': fxa_source_url(metrics),
-            'country': country,
+        new_data['newsletters'] = add_news
+
+    user_data = get_fxa_user_data(fxa_id, email)
+    # don't overwrite the user's language if already set
+    if not (user_data and user_data.get('lang')):
+        new_data['lang'] = lang
+
+    upsert_contact(SUBSCRIBE, new_data, user_data)
+
+
+@et_task
+def fxa_verified_sfmc(data):
+    create_date = data.get('createDate')
+    if create_date:
+        create_date = datetime.fromtimestamp(create_date)
+    try:
+        apply_updates('Firefox_Account_ID', {
+            'EMAIL_ADDRESS_': data['email'],
+            'CREATED_DATE_': gmttime(create_date),
+            'FXA_ID': data['uid'],
+            'FXA_LANGUAGE_ISO2': data['lang'],
+            'SERVICE': data.get('service', ''),
         })
-    else:
-        record_source_url(email, fxa_source_url(metrics), 'fxa-no-optin')
+    except NewsletterException as e:
+        # don't report these errors to sentry until retries exhausted
+        raise RetryTask(str(e))
 
 
 @et_task
@@ -340,21 +372,6 @@ def _add_fxa_activity(data):
         'DEVICE_NAME': user_agent.device.family,
         'DEVICE_TYPE': device_type,
     })
-
-
-def _update_fxa_info(email, lang, fxa_id, service, create_date=None):
-    # leaving here because easier to test
-    try:
-        apply_updates('Firefox_Account_ID', {
-            'EMAIL_ADDRESS_': email,
-            'CREATED_DATE_': gmttime(create_date),
-            'FXA_ID': fxa_id,
-            'FXA_LANGUAGE_ISO2': lang,
-            'SERVICE': service,
-        })
-    except NewsletterException as e:
-        # don't report these errors to sentry until retries exhausted
-        raise RetryTask(str(e))
 
 
 @et_task
@@ -741,28 +758,7 @@ def process_subhub_event_customer_created(data):
         'fxa_id': data['user_id'],
         'payee_id': data['customer_id']
     }
-
-    user_data = None
-    # try getting user data with the fxa_id first
-    user_data_fxa = get_user_data(fxa_id=contact_data['fxa_id'],
-                                  extra_fields=['id'])
-    if user_data_fxa:
-        # if the email matches what we got from subhub, which got it from fxa, we're good
-        if user_data_fxa['email'] == data['email']:
-            user_data = user_data_fxa
-        # otherwise we've gotta make sure this one doesn't interfere with us updating or creating
-        # the one with the right email address below
-        else:
-            statsd.incr('news.tasks.process_subhub_event.customer_created.fxa_id_dupe')
-            sfdc.update(user_data_fxa, {
-                'fxa_id': f"DUPE:{contact_data['fxa_id']}",
-                'fxa_deleted': True,
-            })
-
-    # if we still don't have user data try again with email this time
-    if not user_data:
-        user_data = get_user_data(email=data['email'], extra_fields=['id'])
-
+    user_data = get_fxa_user_data(data['user_id'], data['email'])
     if user_data:
         # if user was found in sfdc, see if we should update their name(s)
         # if current last name is '_', update it
@@ -1350,3 +1346,34 @@ def snitch(start_time=None):
     requests.post('https://nosnch.in/{}'.format(snitch_id), data={
         'm': totalms,
     })
+
+
+def get_fxa_user_data(fxa_id, email):
+    """Return a user data dict, just like `get_user_data` below, but ensure we have a good FxA contact
+
+    First look for a user by FxA ID. If we get a user, and the email matches what was passed in, return it.
+    If the email doesn't match, set the first user's FxA_ID to "DUPE:<fxa_id>" so that we don't run into dupe
+    issues, and set "fxa_deleted" to True. Then look up a user with the email address and return that or None.
+    """
+    user_data = None
+    # try getting user data with the fxa_id first
+    user_data_fxa = get_user_data(fxa_id=fxa_id,
+                                  extra_fields=['id'])
+    if user_data_fxa:
+        # if the email matches what we got from subhub, which got it from fxa, we're good
+        if user_data_fxa['email'] == email:
+            user_data = user_data_fxa
+        # otherwise we've gotta make sure this one doesn't interfere with us updating or creating
+        # the one with the right email address below
+        else:
+            statsd.incr('news.utils.get_fxa_user_data.fxa_id_dupe')
+            sfdc.update(user_data_fxa, {
+                'fxa_id': f"DUPE:{fxa_id}",
+                'fxa_deleted': True,
+            })
+
+    # if we still don't have user data try again with email this time
+    if not user_data:
+        user_data = get_user_data(email=email, extra_fields=['id'])
+
+    return user_data
