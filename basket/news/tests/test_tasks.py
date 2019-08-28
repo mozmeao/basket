@@ -1363,6 +1363,8 @@ class AMOSyncAddonTests(TestCase):
             'Average_Daily_Users__c': 0,
             'Dev_Disabled__c': 'No',
             'Name': 'Ibird Jelewt Boartrica',
+            'AMO_Current_Version__c': '',
+            'AMO_Current_Version_Unlisted__c': '',
         })
         sfdc_mock.dev_addon.upsert.assert_has_calls([
             call('ConcatenateAMOID__c/12345-35896', {
