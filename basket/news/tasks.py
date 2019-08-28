@@ -1183,11 +1183,16 @@ def amo_sync_addon(data):
     if data['name']:
         addon_data['Name'] = data['name']
 
+    # versions can be removed, so they should be removed if they are null
     if data['current_version']:
         addon_data['AMO_Current_Version__c'] = data['current_version']['version']
+    else:
+        addon_data['AMO_Current_Version__c'] = ''
 
     if data['latest_unlisted_version']:
         addon_data['AMO_Current_Version_Unlisted__c'] = data['latest_unlisted_version']['version']
+    else:
+        addon_data['AMO_Current_Version_Unlisted__c'] = ''
 
     sfdc.addon.upsert(f'AMO_AddOn_Id__c/{data["id"]}', addon_data)
     addon_record = sfdc.addon.get_by_custom_id('AMO_AddOn_Id__c', data['id'])
