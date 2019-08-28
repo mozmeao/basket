@@ -83,15 +83,13 @@ services:
       - DATABASE_URL=mysql://root@db/basket
       - DEBUG=True
       - ALLOWED_HOSTS=localhost,127.0.0.1,
-      - REDIS_URL=redis://redis:6379
-      - CELERY_TASK_ALWAYS_EAGER=False
+      - CELERY_TASK_ALWAYS_EAGER=True
       - CELERY_LOG_LEVEL=debug
       - DJANGO_LOG_LEVEL=DEBUG
       - URLWAIT_TIMEOUT=30
     env_file: docker/envfiles/test.env
     depends_on:
       - db
-      - redis
     command:
       ./bin/run-tests.sh
 
@@ -101,15 +99,13 @@ services:
       - DATABASE_URL=mysql://root@db/basket
       - DEBUG=True
       - ALLOWED_HOSTS=localhost,127.0.0.1,
-      - REDIS_URL=redis://redis:6379
-      - CELERY_TASK_ALWAYS_EAGER=False
+      - CELERY_TASK_ALWAYS_EAGER=True
       - CELERY_LOG_LEVEL=debug
       - DJANGO_LOG_LEVEL=DEBUG
       - URLWAIT_TIMEOUT=30
     env_file: docker/envfiles/test.env
     depends_on:
       - db
-      - redis
     command:
       ./bin/run-tests.sh
 

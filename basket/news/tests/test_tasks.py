@@ -45,6 +45,7 @@ from basket.news.tasks import (
     get_lock,
     RetryTask,
 )
+from basket.news.utils import iso_format_unix_timestamp
 
 
 @override_settings(TASK_LOCKING_ENABLE=False)
@@ -1189,11 +1190,15 @@ class AddFxaActivityTests(TestCase):
         self.assertEqual(record['DEVICE_TYPE'], 'T')
 
 
-@patch('basket.news.tasks._update_fxa_info')
-@patch('basket.news.tasks.upsert_user')
+@override_settings(FXA_EVENTS_VERIFIED_SFDC_ENABLE=True)
+@patch('basket.news.tasks.get_best_language', Mock(return_value='en-US'))
+@patch('basket.news.tasks.newsletter_languages', Mock(return_value=['en-US']))
+@patch('basket.news.tasks.apply_updates')
+@patch('basket.news.tasks.upsert_contact')
+@patch('basket.news.tasks.get_fxa_user_data')
 class FxAVerifiedTests(TestCase):
-    @patch('basket.news.tasks.sfmc')
-    def test_no_subscribe(self, sfmc_mock, upsert_mock, fxa_info_mock):
+    def test_no_subscribe(self, fxa_data_mock, upsert_mock, apply_mock):
+        fxa_data_mock.return_value = None
         data = {
             'email': 'thedude@example.com',
             'uid': 'the-fxa-id',
@@ -1201,10 +1206,25 @@ class FxAVerifiedTests(TestCase):
             'marketingOptIn': False,
         }
         fxa_verified(data)
-        upsert_mock.delay.assert_not_called()
-        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], '', None)
+        upsert_mock.assert_called_with(SUBSCRIBE, {
+            'email': data['email'],
+            'source_url': settings.FXA_REGISTER_SOURCE_URL,
+            'country': '',
+            'lang': 'en-US',
+            'fxa_lang': data['locale'],
+            'fxa_service': '',
+            'fxa_id': 'the-fxa-id',
+        }, None)
+        apply_mock.assert_called_with('Firefox_Account_ID', {
+            'EMAIL_ADDRESS_': data['email'],
+            'CREATED_DATE_': gmttime(None),
+            'FXA_ID': 'the-fxa-id',
+            'FXA_LANGUAGE_ISO2': 'en-US',
+            'SERVICE': '',
+        })
 
-    def test_with_subscribe(self, upsert_mock, fxa_info_mock):
+    def test_with_subscribe(self, fxa_data_mock, upsert_mock, apply_mock):
+        fxa_data_mock.return_value = {'lang': 'en-US'}
         data = {
             'email': 'thedude@example.com',
             'uid': 'the-fxa-id',
@@ -1213,16 +1233,25 @@ class FxAVerifiedTests(TestCase):
             'service': 'sync',
         }
         fxa_verified(data)
-        upsert_mock.delay.assert_called_once_with(SUBSCRIBE, {
+        upsert_mock.assert_called_with(SUBSCRIBE, {
             'email': data['email'],
-            'lang': 'en-US',
             'newsletters': settings.FXA_REGISTER_NEWSLETTER,
             'source_url': settings.FXA_REGISTER_SOURCE_URL,
             'country': '',
+            'fxa_lang': data['locale'],
+            'fxa_service': 'sync',
+            'fxa_id': 'the-fxa-id',
+        }, fxa_data_mock())
+        apply_mock.assert_called_with('Firefox_Account_ID', {
+            'EMAIL_ADDRESS_': data['email'],
+            'CREATED_DATE_': gmttime(None),
+            'FXA_ID': 'the-fxa-id',
+            'FXA_LANGUAGE_ISO2': 'en-US',
+            'SERVICE': 'sync',
         })
-        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], 'sync', None)
 
-    def test_with_newsletters(self, upsert_mock, fxa_info_mock):
+    def test_with_newsletters(self, fxa_data_mock, upsert_mock, apply_mock):
+        fxa_data_mock.return_value = None
         data = {
             'email': 'thedude@example.com',
             'uid': 'the-fxa-id',
@@ -1232,16 +1261,26 @@ class FxAVerifiedTests(TestCase):
             'service': 'sync',
         }
         fxa_verified(data)
-        upsert_mock.delay.assert_called_once_with(SUBSCRIBE, {
+        upsert_mock.assert_called_with(SUBSCRIBE, {
             'email': data['email'],
-            'lang': 'en-US',
             'newsletters': 'test-pilot,take-action-for-the-internet,' + settings.FXA_REGISTER_NEWSLETTER,
             'source_url': settings.FXA_REGISTER_SOURCE_URL,
             'country': '',
+            'lang': 'en-US',
+            'fxa_lang': data['locale'],
+            'fxa_service': 'sync',
+            'fxa_id': 'the-fxa-id',
+        }, None)
+        apply_mock.assert_called_with('Firefox_Account_ID', {
+            'EMAIL_ADDRESS_': data['email'],
+            'CREATED_DATE_': gmttime(None),
+            'FXA_ID': 'the-fxa-id',
+            'FXA_LANGUAGE_ISO2': 'en-US',
+            'SERVICE': 'sync',
         })
-        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], 'sync', None)
 
-    def test_with_subscribe_and_metrics(self, upsert_mock, fxa_info_mock):
+    def test_with_subscribe_and_metrics(self, fxa_data_mock, upsert_mock, apply_mock):
+        fxa_data_mock.return_value = None
         data = {
             'email': 'thedude@example.com',
             'uid': 'the-fxa-id',
@@ -1255,27 +1294,51 @@ class FxAVerifiedTests(TestCase):
             'countryCode': 'DE',
         }
         fxa_verified(data)
-        upsert_mock.delay.assert_called_with(SUBSCRIBE, {
+        upsert_mock.assert_called_with(SUBSCRIBE, {
             'email': data['email'],
-            'lang': 'en-US',
             'newsletters': settings.FXA_REGISTER_NEWSLETTER,
             'source_url': settings.FXA_REGISTER_SOURCE_URL + '?utm_campaign=bowling',
             'country': 'DE',
+            'lang': 'en-US',
+            'fxa_lang': data['locale'],
+            'fxa_service': 'monitor',
+            'fxa_id': 'the-fxa-id',
+        }, None)
+        apply_mock.assert_called_with('Firefox_Account_ID', {
+            'EMAIL_ADDRESS_': data['email'],
+            'CREATED_DATE_': gmttime(None),
+            'FXA_ID': 'the-fxa-id',
+            'FXA_LANGUAGE_ISO2': 'en-US',
+            'SERVICE': 'monitor',
         })
-        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], 'monitor', None)
 
-    @patch('basket.news.tasks.sfmc')
-    def test_with_createDate(self, sfmc_mock, upsert_mock, fxa_info_mock):
-        create_date_float = 1526996035.498
-        create_date = datetime.fromtimestamp(create_date_float)
+    def test_with_createDate(self, fxa_data_mock, upsert_mock, apply_mock):
+        fxa_data_mock.return_value = None
+        create_date = 1526996035.498
         data = {
-            'createDate': create_date_float,
+            'createDate': create_date,
             'email': 'thedude@example.com',
             'uid': 'the-fxa-id',
             'locale': 'en-US,en'
         }
         fxa_verified(data)
-        fxa_info_mock.assert_called_with(data['email'], 'en-US', data['uid'], '', create_date)
+        upsert_mock.assert_called_with(SUBSCRIBE, {
+            'email': data['email'],
+            'source_url': settings.FXA_REGISTER_SOURCE_URL,
+            'country': '',
+            'lang': 'en-US',
+            'fxa_lang': data['locale'],
+            'fxa_service': '',
+            'fxa_id': 'the-fxa-id',
+            'fxa_create_date': iso_format_unix_timestamp(create_date)
+        }, None)
+        apply_mock.assert_called_with('Firefox_Account_ID', {
+            'EMAIL_ADDRESS_': data['email'],
+            'CREATED_DATE_': gmttime(datetime.fromtimestamp(create_date)),
+            'FXA_ID': 'the-fxa-id',
+            'FXA_LANGUAGE_ISO2': 'en-US',
+            'SERVICE': '',
+        })
 
 
 @patch('basket.news.tasks.upsert_user')
