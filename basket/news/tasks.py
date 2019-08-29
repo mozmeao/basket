@@ -1191,10 +1191,21 @@ def amo_sync_addon(data):
     sfdc.addon.upsert(f'AMO_AddOn_Id__c/{data["id"]}', addon_data)
     addon_record = sfdc.addon.get_by_custom_id('AMO_AddOn_Id__c', data['id'])
     for user in users:
-        sfdc.dev_addon.upsert(f'ConcatenateAMOID__c/{user["amo_id"]}-{data["id"]}', {
-            'AMO_AddOn_ID__c': addon_record['Id'],
-            'AMO_Contact_ID__c': user['id'],
-        })
+        try:
+            sfdc.dev_addon.upsert(f'ConcatenateAMOID__c/{user["amo_id"]}-{data["id"]}', {
+                'AMO_AddOn_ID__c': addon_record['Id'],
+                'AMO_Contact_ID__c': user['id'],
+            })
+        except sfapi.SalesforceMalformedRequest as e:
+            try:
+                if e.content[0]['errorCode'] == 'DUPLICATE_VALUE':
+                    # dupe error, so we don't need to do this again
+                    pass
+                else:
+                    raise e
+            except Exception:
+                # if anything else goes wrong just retry
+                raise e
 
 
 @et_task
