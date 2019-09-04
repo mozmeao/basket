@@ -29,16 +29,33 @@ if settings.KOMBU_FERNET_KEY:
 def fernet_dumps(message):
     statsd.incr('basket.news.celery.fernet_dumps')
     message = json.dumps(message)
-    return FERNET.encrypt(force_bytes(message))
+    if FERNET:
+        statsd.incr('basket.news.celery.fernet_dumps.encrypted')
+        return FERNET.encrypt(force_bytes(message))
+
+    statsd.incr('basket.news.celery.fernet_dumps.unencrypted')
+    return message
 
 
 def fernet_loads(encoded_message):
     statsd.incr('basket.news.celery.fernet_loads')
-    encoded_message = FERNET.decrypt(force_bytes(encoded_message))
+    if FERNET:
+        try:
+            encoded_message = FERNET.decrypt(force_bytes(encoded_message))
+        except InvalidToken:
+            statsd.incr('basket.news.celery.fernet_loads.unencrypted')
+        else:
+            statsd.incr('basket.news.celery.fernet_loads.encrypted')
+    else:
+        statsd.incr('basket.news.celery.fernet_loads.unencrypted')
+
     return json.loads(encoded_message)
 
 
-serialization.register('fernet_json', fernet_dumps, fernet_loads, 'application/x-fernet-json')
+serialization.unregister('json')
+serialization.register('json', fernet_dumps, fernet_loads,
+                       content_type='application/json',
+                       content_encoding='utf-8')
 
 
 class Celery(CeleryBase):
