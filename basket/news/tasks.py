@@ -146,7 +146,7 @@ def et_task(func):
     @celery_app.task(name=full_task_name,
                      bind=True,
                      default_retry_delay=300,  # 5 min
-                     max_retries=8)
+                     max_retries=11)
     @wraps(func)
     def wrapped(self, *args, **kwargs):
         start_time = kwargs.pop('start_time', None)
@@ -184,6 +184,7 @@ def et_task(func):
                 if not (isinstance(e, RetryTask) or ignore_error_post_retry(e)):
                     sentry_client.captureException(tags={'action': 'retried'})
 
+                # ~68 hr at 11 retries
                 raise self.retry(countdown=2 ** (self.request.retries + 1) * 60)
             except self.MaxRetriesExceededError:
                 statsd.incr(self.name + '.retry_max')
