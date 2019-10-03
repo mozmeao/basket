@@ -77,10 +77,6 @@ FIELD_MAP = {
     'amo_homepage': 'AMO_Homepage_URL__c',
     'payee_id': 'PMT_Cust_Id__c',
     'fxa_id': 'FxA_Id__c',
-    'fxa_deleted': 'FxA_Account_Deleted__c',
-    'fxa_lang': 'FxA_Language__c',
-    'fxa_service': 'FirstService__c',
-    'fxa_create_date': 'FxA_Created_Date__c',
 }
 INV_FIELD_MAP = {v: k for k, v in FIELD_MAP.items()}
 FIELD_DEFAULTS = {
