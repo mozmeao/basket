@@ -77,6 +77,7 @@ FIELD_MAP = {
     'amo_homepage': 'AMO_Homepage_URL__c',
     'payee_id': 'PMT_Cust_Id__c',
     'fxa_id': 'FxA_Id__c',
+    'fxa_deleted': 'FxA_Account_Deleted__c',
 }
 INV_FIELD_MAP = {v: k for k, v in FIELD_MAP.items()}
 FIELD_DEFAULTS = {
@@ -332,30 +333,29 @@ class SFDC(object):
         return self._dev_addon
 
     @time_request
-    def get(self, token=None, email=None, payee_id=None, amo_id=None):
+    def get(self, token=None, email=None, payee_id=None, amo_id=None, fxa_id=None):
         """
-        Get a contact record.
+        Get a contact record. One of the arguments is required.
 
         @param token: external ID
         @param email: email address
         @param payee_id: external ID from Stripe/payment processor
         @param amo_id: external ID from AMO
+        @param fxa_id: external ID from FxA
         @return: dict
         """
-        assert token or email or payee_id or amo_id, 'token, email, amo_id, or payee_id is required'
+        arg_values = locals()
+        args = ('token', 'email', 'payee_id', 'amo_id', 'fxa_id')
+        field = None
+        value = None
+        for arg in args:
+            if arg_values[arg] is not None:
+                field = arg
+                value = arg_values[arg]
+                break
 
-        if token:
-            field = 'token'
-            value = token
-        elif email:
-            field = 'email'
-            value = email
-        elif payee_id:
-            field = 'payee_id'
-            value = payee_id
-        elif amo_id:
-            field = 'amo_id'
-            value = amo_id
+        if field is None:
+            raise RuntimeError('One of the arguments is required: ' + ', '.join(args))
 
         id_field = FIELD_MAP[field]
         contact = self.contact.get_by_custom_id(id_field, value)

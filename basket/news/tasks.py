@@ -236,6 +236,9 @@ def fxa_email_changed(data):
 @et_task
 def fxa_delete(data):
     sfmc.upsert_row('FXA_Deleted', {'FXA_ID': data['uid']})
+    user_data = get_user_data(fxa_id=data['uid'], extra_fields=['id'])
+    if user_data:
+        sfdc.update(user_data, {'fxa_deleted': True})
 
 
 @et_task
