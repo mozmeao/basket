@@ -283,6 +283,8 @@ class ProcessDonationEventTests(TestCase):
 @patch('basket.news.tasks.sfdc')
 class SubHubEventTests(TestCase):
     charge_data = {
+        'event_id': 'the-event-id',
+        'event_type': 'customer.source.expiring',
         'customer_id': 'cus_1234',
         'plan_amount': '1000',
         'current_period_end': '1566305505',
@@ -352,6 +354,8 @@ class SubHubEventTests(TestCase):
         gud_mock.return_value = {'id': '1234'}
 
         data = {
+            'event_id': 'the-event-id',
+            'event_type': 'invoice.payment_failed',
             'customer_id': 'cus_1234',
             'amount_due': '1000',
             'created': '1566305505',
@@ -369,6 +373,8 @@ class SubHubEventTests(TestCase):
             'Amount': 10.00,
             'CloseDate': '2019-08-20T12:51:45',
             'Donation_Contact__c': '1234',
+            'Event_Id__c': data['event_id'],
+            'Event_Name__c': data['event_type'],
             'Name': 'Subscription Services',
             'PMT_Subscription_ID__c': data['subscription_id'],
             'PMT_Transaction_ID__c': data['charge_id'],
@@ -383,6 +389,8 @@ class SubHubEventTests(TestCase):
         gud_mock.return_value = {'id': '1234'}
 
         data = {
+            'event_id': 'the-event-id',
+            'event_type': 'customer.subscription_cancelled',
             'customer_id': 'cus_1234',
             'plan_amount': '1000',
             'current_period_end': '1566305505',
@@ -402,6 +410,8 @@ class SubHubEventTests(TestCase):
             'Billing_Cycle_Start__c': '2019-08-20T12:51:42',
             'CloseDate': '2019-08-20T12:51:49',
             'Donation_Contact__c': '1234',
+            'Event_Id__c': data['event_id'],
+            'Event_Name__c': data['event_type'],
             'Name': 'Subscription Services',
             'Payment_Source__c': 'Stripe',
             'PMT_Subscription_ID__c': data['subscription_id'],
@@ -428,6 +438,8 @@ class SubHubEventTests(TestCase):
             'Credit_Card_Type__c': data['brand'],
             'currency__c': data['currency'],
             'Donation_Contact__c': '1234',
+            'Event_Id__c': data['event_id'],
+            'Event_Name__c': data['event_type'],
             'Initial_Purchase__c': True,
             'Invoice_Number__c': data['invoice_number'],
             'Last_4_Digits__c': data['last4'],
@@ -458,6 +470,8 @@ class SubHubEventTests(TestCase):
             'Credit_Card_Type__c': data['brand'],
             'currency__c': data['currency'],
             'Donation_Contact__c': '1234',
+            'Event_Id__c': data['event_id'],
+            'Event_Name__c': data['event_type'],
             'Initial_Purchase__c': False,
             'Invoice_Number__c': data['invoice_number'],
             'Last_4_Digits__c': data['last4'],
