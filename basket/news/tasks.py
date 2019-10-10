@@ -1098,7 +1098,7 @@ def process_petition_signature(data):
     if data.get('email_subscription', False):
         upsert_user.delay(SUBSCRIBE, {
             'token': user_data['token'],
-            'lang': 'en-US',
+            'lang': data.get('lang', 'en-US'),
             'newsletters': 'mozilla-foundation',
             'source_url': data['source_url'],
         })
