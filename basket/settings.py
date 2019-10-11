@@ -254,6 +254,9 @@ CELERY_TASK_ROUTES = {
     'basket.news.tasks.snitch': {'queue': 'snitch'},
 }
 
+# size in kb
+CELERY_WORKER_MAX_MEMORY_PER_CHILD = config('CELERY_WORKER_MAX_MEMORY_PER_CHILD', 600000, cast=int)
+
 SNITCH_ID = config('SNITCH_ID', None)
 
 CELERY_BEAT_SCHEDULE = {}
