@@ -82,6 +82,7 @@ SUBHUB_EVENT_TYPES = {
     'customer.source.expiring': process_subhub_event_credit_card_expiring,
     'customer.subscription.created': process_subhub_event_subscription_charge,  # subscriptioin creations & recurring charges
     'customer.subscription_cancelled': process_subhub_event_subscription_cancel,
+    'customer.deleted': process_subhub_event_subscription_cancel,
     'invoice.payment_failed': process_subhub_event_payment_failed,
 }
 AMO_SYNC_TYPES = {

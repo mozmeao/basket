@@ -815,16 +815,21 @@ def process_subhub_event_subscription_charge(data):
         statsd.incr('news.tasks.process_subhub_event.subscription_charge.user_not_found')
 
 
+SUB_STAGE_NAMES = {
+    'customer.subscription_cancelled': 'Subscription Canceled',
+    'customer.deleted': 'Account Deleted',
+}
+
+
 @et_task
 def process_subhub_event_subscription_cancel(data):
     """
-    Event name: customer.subscription_cancelled
+    Event name: customer.subscription_cancelled or customer.deleted
     """
     statsd.incr('news.tasks.process_subhub_event.subscription_cancel')
 
     user_data = get_user_data(payee_id=data['customer_id'],
                               extra_fields=['id'])
-
     if user_data:
         transaction_data = {
             'Amount': cents_to_dollars(data['plan_amount']),
@@ -839,7 +844,7 @@ def process_subhub_event_subscription_cancel(data):
             'PMT_Subscription_ID__c': data['subscription_id'],
             'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
             'Service_Plan__c': data['nickname'],
-            'StageName': 'Subscription Canceled',
+            'StageName': SUB_STAGE_NAMES[data['event_type']],
         }
 
         sfdc.opportunity.create(transaction_data)
