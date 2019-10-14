@@ -7,9 +7,19 @@ from django.http.request import split_domain_port
 
 from django_statsd.clients import statsd
 from django_statsd.middleware import GraphiteRequestTimingMiddleware
+from mozilla_django_oidc.middleware import SessionRefresh
 
 
 IP_RE = re.compile(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+
+
+class OIDCSessionRefreshMiddleware(SessionRefresh):
+    def is_refreshable_url(self, request):
+        # only do OIDC session checking in admin URLs
+        if not request.path.startswith('/admin/'):
+            return False
+
+        return super().is_refreshable_url(request)
 
 
 class GraphiteViewHitCountMiddleware(GraphiteRequestTimingMiddleware):
