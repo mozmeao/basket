@@ -780,39 +780,34 @@ def process_subhub_event_subscription_charge(data):
     """
 
     statsd.incr('news.tasks.process_subhub_event.subscription_charge')
-
     user_data = get_user_data(payee_id=data['customer_id'],
                               extra_fields=['id'])
-
-    if user_data:
-        transaction_data = {
-            'Amount': cents_to_dollars(data['plan_amount']),
-            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
-            'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
-            'CloseDate': iso_format_unix_timestamp(data['created']),
-            'Credit_Card_Type__c': data['brand'],
-            'currency__c': data['currency'],
-            'Donation_Contact__c': user_data['id'],
-            'Event_Id__c': data['event_id'],
-            'Event_Name__c': data['event_type'],
-            'Initial_Purchase__c': data['event_type'] == 'customer.subscription.created',
-            'Invoice_Number__c': data['invoice_number'],
-            'Last_4_Digits__c': data['last4'],
-            'Name': 'Subscription Services',
-            'Payment_Source__c': 'Stripe',
-            'PMT_Subscription_ID__c': data['subscription_id'],
-            'PMT_Transaction_ID__c': data['charge'],
-            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
-            'Service_Plan__c': data['nickname'],
-            'StageName': 'Closed Won',
-        }
-
-        # if a customer re-instates service after a cancellation, the record needs to be
-        # updated
-        sfdc.opportunity.upsert(f'PMT_Invoice_ID__c/{data["invoice_id"]}',
-                                transaction_data)
-    else:
+    if not user_data:
         statsd.incr('news.tasks.process_subhub_event.subscription_charge.user_not_found')
+        raise RetryTask('Could not find user. Try again.')
+
+    # if a customer re-instates service after a cancellation, the record needs to be updated
+    sfdc.opportunity.upsert(f'PMT_Invoice_ID__c/{data["invoice_id"]}', {
+        'Amount': cents_to_dollars(data['plan_amount']),
+        'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
+        'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
+        'CloseDate': iso_format_unix_timestamp(data['created']),
+        'Credit_Card_Type__c': data['brand'],
+        'currency__c': data['currency'],
+        'Donation_Contact__c': user_data['id'],
+        'Event_Id__c': data['event_id'],
+        'Event_Name__c': data['event_type'],
+        'Initial_Purchase__c': data['event_type'] == 'customer.subscription.created',
+        'Invoice_Number__c': data['invoice_number'],
+        'Last_4_Digits__c': data['last4'],
+        'Name': 'Subscription Services',
+        'Payment_Source__c': 'Stripe',
+        'PMT_Subscription_ID__c': data['subscription_id'],
+        'PMT_Transaction_ID__c': data['charge'],
+        'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+        'Service_Plan__c': data['nickname'],
+        'StageName': 'Closed Won',
+    })
 
 
 SUB_STAGE_NAMES = {
@@ -827,29 +822,27 @@ def process_subhub_event_subscription_cancel(data):
     Event name: customer.subscription_cancelled or customer.deleted
     """
     statsd.incr('news.tasks.process_subhub_event.subscription_cancel')
-
     user_data = get_user_data(payee_id=data['customer_id'],
                               extra_fields=['id'])
-    if user_data:
-        transaction_data = {
-            'Amount': cents_to_dollars(data['plan_amount']),
-            'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
-            'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
-            'CloseDate': iso_format_unix_timestamp(data['cancel_at']),
-            'Donation_Contact__c': user_data['id'],
-            'Event_Id__c': data['event_id'],
-            'Event_Name__c': data['event_type'],
-            'Name': 'Subscription Services',
-            'Payment_Source__c': 'Stripe',
-            'PMT_Subscription_ID__c': data['subscription_id'],
-            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
-            'Service_Plan__c': data['nickname'],
-            'StageName': SUB_STAGE_NAMES[data['event_type']],
-        }
-
-        sfdc.opportunity.create(transaction_data)
-    else:
+    if not user_data:
         statsd.incr('news.tasks.process_subhub_event_subscription_cancel.user_not_found')
+        raise RetryTask('Could not find user. Try again.')
+
+    sfdc.opportunity.create({
+        'Amount': cents_to_dollars(data['plan_amount']),
+        'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
+        'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
+        'CloseDate': iso_format_unix_timestamp(data['cancel_at']),
+        'Donation_Contact__c': user_data['id'],
+        'Event_Id__c': data['event_id'],
+        'Event_Name__c': data['event_type'],
+        'Name': 'Subscription Services',
+        'Payment_Source__c': 'Stripe',
+        'PMT_Subscription_ID__c': data['subscription_id'],
+        'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+        'Service_Plan__c': data['nickname'],
+        'StageName': SUB_STAGE_NAMES[data['event_type']],
+    })
 
 
 @et_task
@@ -870,30 +863,28 @@ def process_subhub_event_payment_failed(data):
 
     user_data = get_user_data(payee_id=data['customer_id'],
                               extra_fields=['id'])
-
     # the only user identifiable information available is the payment
     # processor/Stripe ID, so if the user wasn't found by that, there's really
-    # nothing to be done here
-    if user_data:
-        transaction_data = {
-            'Amount': cents_to_dollars(data['amount_due']),
-            'CloseDate': iso_format_unix_timestamp(data['created']),
-            'Donation_Contact__c': user_data['id'],
-            'Event_Id__c': data['event_id'],
-            'Event_Name__c': data['event_type'],
-            'Name': 'Subscription Services',
-            'PMT_Subscription_ID__c': data['subscription_id'],
-            'PMT_Transaction_ID__c': data['charge_id'],
-            'Payment_Source__c': 'Stripe',
-            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
-            'Service_Plan__c': data['nickname'],
-            'StageName': 'Payment Failed',
-            'currency__c': data['currency'],
-        }
-
-        sfdc.opportunity.create(transaction_data)
-    else:
+    # nothing to be done here but retry.
+    if not user_data:
         statsd.incr('news.tasks.process_subhub_event.payment_failed.user_not_found')
+        raise RetryTask('Could not find user. Try again.')
+
+    sfdc.opportunity.create({
+        'Amount': cents_to_dollars(data['amount_due']),
+        'CloseDate': iso_format_unix_timestamp(data['created']),
+        'Donation_Contact__c': user_data['id'],
+        'Event_Id__c': data['event_id'],
+        'Event_Name__c': data['event_type'],
+        'Name': 'Subscription Services',
+        'PMT_Subscription_ID__c': data['subscription_id'],
+        'PMT_Transaction_ID__c': data['charge_id'],
+        'Payment_Source__c': 'Stripe',
+        'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+        'Service_Plan__c': data['nickname'],
+        'StageName': 'Payment Failed',
+        'currency__c': data['currency'],
+    })
 
 
 @et_task
