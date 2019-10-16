@@ -848,6 +848,9 @@ def process_subhub_event_subscription_cancel(data):
         'StageName': SUB_STAGE_NAMES[data['event_type']],
     })
 
+    if data['event_type'] == 'customer.deleted':
+        sfdc.update(user_data, {'fxa_deleted': True})
+
 
 @et_task
 def process_subhub_event_credit_card_expiring(data):
