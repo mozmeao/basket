@@ -828,11 +828,15 @@ def process_subhub_event_subscription_cancel(data):
         statsd.incr('news.tasks.process_subhub_event_subscription_cancel.user_not_found')
         raise RetryTask('Could not find user. Try again.')
 
+    nickname = data['nickname']
+    if isinstance(nickname, list):
+        nickname = nickname[0]
+
     sfdc.opportunity.create({
         'Amount': cents_to_dollars(data['plan_amount']),
         'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
         'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
-        'CloseDate': iso_format_unix_timestamp(data['cancel_at']),
+        'CloseDate': iso_format_unix_timestamp(data.get('cancel_at', time())),
         'Donation_Contact__c': user_data['id'],
         'Event_Id__c': data['event_id'],
         'Event_Name__c': data['event_type'],
@@ -840,7 +844,7 @@ def process_subhub_event_subscription_cancel(data):
         'Payment_Source__c': 'Stripe',
         'PMT_Subscription_ID__c': data['subscription_id'],
         'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
-        'Service_Plan__c': data['nickname'],
+        'Service_Plan__c': nickname,
         'StageName': SUB_STAGE_NAMES[data['event_type']],
     })
 
