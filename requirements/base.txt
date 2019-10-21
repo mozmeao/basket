@@ -91,9 +91,9 @@ contextlib2==0.5.5 \
     --hash=sha256:f5260a6e679d2ff42ec91ec5252f4eeffdcf21053db9113bd0a8e4d953769c00
 simple-salesforce==0.74.3 \
     --hash=sha256:0bf4065a7769388d8f830bfc31200e6d2d6de50d19034e4113b59831dd72a438
-django-extensions==2.1.7 \
-    --hash=sha256:6766c573ffe63693cd485512a02f3b59622c884cbfeca241d1278ffdf0ac39ae \
-    --hash=sha256:c43e46cc95985c278afda645480b79f9a85cfe5a82c957accd08b8045793b707
+django-extensions==2.2.5 \
+    --hash=sha256:a9db7c56a556d244184f589f2437b4228de86ee45e5ebb837fb20c6d54e95ea5 \
+    --hash=sha256:b58320d3fe3d6ae7d1d8e38959713fa92272f4921e662d689058d942a5b444f7
 email_validator==1.0.4 \
     --hash=sha256:79966e318d6d68fed359c90f8f19d242bcc178b724011f1c07145bd093da6cc7
 idna==2.8 \
