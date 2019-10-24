@@ -786,6 +786,10 @@ def process_subhub_event_subscription_charge(data):
         statsd.incr('news.tasks.process_subhub_event.subscription_charge.user_not_found')
         raise RetryTask('Could not find user. Try again.')
 
+    nickname = data['nickname']
+    if isinstance(nickname, list):
+        nickname = nickname[0]
+
     # if a customer re-instates service after a cancellation, the record needs to be updated
     sfdc.opportunity.upsert(f'PMT_Invoice_ID__c/{data["invoice_id"]}', {
         'Amount': cents_to_dollars(data['plan_amount']),
@@ -805,8 +809,39 @@ def process_subhub_event_subscription_charge(data):
         'PMT_Subscription_ID__c': data['subscription_id'],
         'PMT_Transaction_ID__c': data['charge'],
         'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
-        'Service_Plan__c': data['nickname'],
+        'Service_Plan__c': nickname,
         'StageName': 'Closed Won',
+    })
+
+
+@et_task
+def process_subhub_event_subscription_reactivated(data):
+    statsd.incr('news.tasks.process_subhub_event.subscription_reactivated')
+    user_data = get_user_data(payee_id=data['customer_id'],
+                              extra_fields=['id'])
+    if not user_data:
+        statsd.incr('news.tasks.process_subhub_event.subscription_reactivated.user_not_found')
+        raise RetryTask('Could not find user. Try again.')
+
+    nickname = data['nickname']
+    if isinstance(nickname, list):
+        nickname = nickname[0]
+
+    sfdc.opportunity.create({
+        'Amount': cents_to_dollars(data['plan_amount']),
+        'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
+        'CloseDate': iso_format_unix_timestamp(data.get('close_date', time())),
+        'Credit_Card_Type__c': data['brand'],
+        'Last_4_Digits__c': data['last4'],
+        'Donation_Contact__c': user_data['id'],
+        'Event_Id__c': data['event_id'],
+        'Event_Name__c': data['event_type'],
+        'Name': 'Subscription Services',
+        'Payment_Source__c': 'Stripe',
+        'PMT_Subscription_ID__c': data['subscription_id'],
+        'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+        'Service_Plan__c': nickname,
+        'StageName': 'Reactivation',
     })
 
 
@@ -877,6 +912,10 @@ def process_subhub_event_payment_failed(data):
         statsd.incr('news.tasks.process_subhub_event.payment_failed.user_not_found')
         raise RetryTask('Could not find user. Try again.')
 
+    nickname = data['nickname']
+    if isinstance(nickname, list):
+        nickname = nickname[0]
+
     sfdc.opportunity.create({
         'Amount': cents_to_dollars(data['amount_due']),
         'CloseDate': iso_format_unix_timestamp(data['created']),
@@ -888,7 +927,7 @@ def process_subhub_event_payment_failed(data):
         'PMT_Transaction_ID__c': data['charge_id'],
         'Payment_Source__c': 'Stripe',
         'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
-        'Service_Plan__c': data['nickname'],
+        'Service_Plan__c': nickname,
         'StageName': 'Payment Failed',
         'currency__c': data['currency'],
     })

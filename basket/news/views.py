@@ -43,6 +43,7 @@ from basket.news.tasks import (
     process_subhub_event_payment_failed,
     process_subhub_event_subscription_cancel,
     process_subhub_event_subscription_charge,
+    process_subhub_event_subscription_reactivated,
 )
 from basket.news.utils import (
     SET,
@@ -82,6 +83,7 @@ SUBHUB_EVENT_TYPES = {
     'customer.source.expiring': process_subhub_event_credit_card_expiring,
     'customer.subscription.created': process_subhub_event_subscription_charge,  # subscriptioin creations & recurring charges
     'customer.subscription_cancelled': process_subhub_event_subscription_cancel,
+    'customer.subscription.reactivated': process_subhub_event_subscription_reactivated,
     'customer.deleted': process_subhub_event_subscription_cancel,
     'invoice.payment_failed': process_subhub_event_payment_failed,
 }
