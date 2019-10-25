@@ -1,5 +1,5 @@
 # BUILDER IMAGE
-FROM python:3-slim-stretch AS builder
+FROM python:3.7-slim-buster AS builder
 
 # Extra python env
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -8,7 +8,7 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV PATH="/venv/bin:$PATH"
 
 COPY docker/bin/apt-install /usr/local/bin/
-RUN apt-install build-essential libmariadbclient-dev mariadb-client libxslt1.1 libxml2 libxml2-dev libxslt1-dev
+RUN apt-install build-essential default-libmysqlclient-dev default-mysql-client libxslt1.1 libxml2 libxml2-dev libxslt1-dev
 
 RUN python -m venv /venv
 
@@ -25,7 +25,7 @@ RUN DEBUG=False SECRET_KEY=foo ALLOWED_HOSTS=localhost, DATABASE_URL=sqlite:// \
 # END BUILDER IMAGE
 
 # FINAL IMAGE
-FROM python:3-slim-stretch
+FROM python:3.7-slim-buster
 
 # Extra python env
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -38,7 +38,7 @@ WORKDIR /app
 ENV DJANGO_SETTINGS_MODULE=basket.settings
 
 COPY docker/bin/apt-install /usr/local/bin/
-RUN apt-install libmariadbclient18 mariadb-client libxslt1.1 libxml2
+RUN apt-install default-mysql-client libxslt1.1 libxml2
 
 ARG GIT_SHA=latest
 ENV GIT_SHA=${GIT_SHA}
