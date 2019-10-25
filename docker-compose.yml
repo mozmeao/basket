@@ -25,6 +25,7 @@ services:
       - CELERY_TASK_ALWAYS_EAGER=False
       - CELERY_LOG_LEVEL=debug
       - DJANGO_LOG_LEVEL=DEBUG
+      - URLWAIT_TIMEOUT=30
     env_file: .env
     ports:
       - "8000:8000"
@@ -46,6 +47,7 @@ services:
       - CELERY_TASK_ALWAYS_EAGER=False
       - CELERY_LOG_LEVEL=debug
       - DJANGO_LOG_LEVEL=DEBUG
+      - URLWAIT_TIMEOUT=30
     env_file: .env
     depends_on:
       - db
@@ -65,6 +67,7 @@ services:
       - CELERY_TASK_ALWAYS_EAGER=False
       - CELERY_LOG_LEVEL=debug
       - DJANGO_LOG_LEVEL=DEBUG
+      - URLWAIT_TIMEOUT=30
     env_file: .env
     depends_on:
       - db
@@ -84,6 +87,7 @@ services:
       - CELERY_TASK_ALWAYS_EAGER=False
       - CELERY_LOG_LEVEL=debug
       - DJANGO_LOG_LEVEL=DEBUG
+      - URLWAIT_TIMEOUT=30
     env_file: docker/envfiles/test.env
     depends_on:
       - db
@@ -101,6 +105,7 @@ services:
       - CELERY_TASK_ALWAYS_EAGER=False
       - CELERY_LOG_LEVEL=debug
       - DJANGO_LOG_LEVEL=DEBUG
+      - URLWAIT_TIMEOUT=30
     env_file: docker/envfiles/test.env
     depends_on:
       - db
