@@ -8,7 +8,7 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV PATH="/venv/bin:$PATH"
 
 COPY docker/bin/apt-install /usr/local/bin/
-RUN apt-install build-essential default-libmysqlclient-dev default-mysql-client libxslt1.1 libxml2 libxml2-dev libxslt1-dev
+RUN apt-install build-essential default-libmysqlclient-dev libxslt1.1 libxml2 libxml2-dev libxslt1-dev
 
 RUN python -m venv /venv
 
@@ -38,7 +38,7 @@ WORKDIR /app
 ENV DJANGO_SETTINGS_MODULE=basket.settings
 
 COPY docker/bin/apt-install /usr/local/bin/
-RUN apt-install default-mysql-client libxslt1.1 libxml2
+RUN apt-install default-libmysqlclient-dev libxslt1.1 libxml2
 
 ARG GIT_SHA=latest
 ENV GIT_SHA=${GIT_SHA}
