@@ -1078,7 +1078,7 @@ def process_donation(data):
             donation[dest_name] = data[source_name]
 
     for dest_name, source_name in DONATION_OPTIONAL_FIELDS.items():
-        if source_name in data:
+        if data.get(source_name):
             # truncate at 2000 chars as that's the max for
             # a SFDC text field. We may do more granular
             # truncation per field in future.

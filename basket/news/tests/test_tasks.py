@@ -625,6 +625,40 @@ class ProcessDonationTests(TestCase):
             'Last_4_Digits__c': data['last_4'],
         })
 
+    def test_donation_data_optional_null(self, sfdc_mock, gud_mock):
+        """Having a `None` in an optional field used to throw a TypeError.
+
+        https://github.com/mozmeao/basket/issues/366
+        """
+        data = self.donate_data.copy()
+        data['subscription_id'] = None
+        gud_mock.return_value = {
+            'id': '1234',
+            'first_name': 'Jeffery',
+            'last_name': 'Lebowski',
+        }
+        process_donation(data)
+        sfdc_mock.opportunity.create.assert_called_with({
+            'RecordTypeId': ANY,
+            'Name': 'Foundation Donation',
+            'Donation_Contact__c': '1234',
+            'StageName': 'Closed Won',
+            # calculated from data['created']
+            'CloseDate': '2016-11-21T16:46:49.327000',
+            'Amount': float(data['donation_amount']),
+            'Currency__c': 'USD',
+            'Payment_Source__c': 'paypal',
+            'PMT_Transaction_ID__c': data['transaction_id'],
+            'Payment_Type__c': 'Recurring',
+            'SourceURL__c': data['source_url'],
+            'Project__c': data['project'],
+            'Donation_Locale__c': data['locale'],
+            'Processors_Fee__c': data['transaction_fee'],
+            'Net_Amount__c': data['net_amount'],
+            'Conversion_Amount__c': data['conversion_amount'],
+            'Last_4_Digits__c': data['last_4'],
+        })
+
     def test_donation_silent_failure_on_dupe(self, sfdc_mock, gud_mock):
         data = self.donate_data.copy()
         gud_mock.return_value = {
