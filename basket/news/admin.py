@@ -112,6 +112,11 @@ class FailedTaskAdmin(admin.ModelAdmin):
     retry_task_action.short_description = 'Retry task(s)'
 
 
+class LogEntryAdmin(admin.ModelAdmin):
+    list_display = ('user', 'content_type', 'object_id', 'object_repr', 'change_message')
+    list_filter = ('user', 'content_type')
+
+
 admin.site.register(TransactionalEmailMessage, TransactionalEmailAdmin)
 admin.site.register(LocalizedSMSMessage, LocalizedSMSMessageAdmin)
 admin.site.register(APIUser, APIUserAdmin)
@@ -121,3 +126,4 @@ admin.site.register(QueuedTask, QueuedTaskAdmin)
 admin.site.register(Interest, InterestAdmin)
 admin.site.register(Newsletter, NewsletterAdmin)
 admin.site.register(NewsletterGroup, NewsletterGroupAdmin)
+admin.site.register(admin.models.LogEntry, LogEntryAdmin)
