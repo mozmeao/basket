@@ -845,6 +845,39 @@ def process_subhub_event_subscription_reactivated(data):
     })
 
 
+@et_task
+def process_subhub_event_subscription_updated(data):
+    statsd.incr('news.tasks.process_subhub_event.subscription_updated')
+    user_data = get_user_data(payee_id=data['customer_id'],
+                              extra_fields=['id'])
+    if not user_data:
+        statsd.incr('news.tasks.process_subhub_event.subscription_updated.user_not_found')
+        raise RetryTask('Could not find user. Try again.')
+
+    direction = 'Down' if data['event_type'].endswith('downgrade') else 'Up'
+    stage_name = f'Subscription {direction}grade'
+    sfdc.opportunity.create({
+        'Amount': cents_to_dollars(data['plan_amount_new']),
+        'Plan_Amount_Old__c': cents_to_dollars(data['plan_amount_old']),
+        'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
+        'CloseDate': iso_format_unix_timestamp(data.get('close_date', time())),
+        'Donation_Contact__c': user_data['id'],
+        'Event_Id__c': data['event_id'],
+        'Event_Name__c': data['event_type'],
+        'Invoice_Number__c': data['invoice_number'],
+        'Name': 'Subscription Services',
+        'Payment_Interval__c': data['interval'],
+        'Payment_Source__c': 'Stripe',
+        'PMT_Invoice_ID__c': data['invoice_id'],
+        'PMT_Subscription_ID__c': data['subscription_id'],
+        'Proration_Amount__c': data['proration_amount'],
+        'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+        'Service_Plan__c': data['nickname_new'],
+        'Nickname_Old__c': data['nickname_old'],
+        'StageName': stage_name,
+    })
+
+
 SUB_STAGE_NAMES = {
     'customer.subscription_cancelled': 'Subscription Canceled',
     'customer.deleted': 'Account Deleted',

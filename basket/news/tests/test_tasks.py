@@ -36,6 +36,7 @@ from basket.news.tasks import (
     process_subhub_event_payment_failed,
     process_subhub_event_subscription_cancel,
     process_subhub_event_subscription_charge,
+    process_subhub_event_subscription_updated,
     record_common_voice_goals,
     RECOVERY_MESSAGE_ID,
     SUBSCRIBE,
@@ -275,6 +276,80 @@ class ProcessDonationEventTests(TestCase):
             'PMT_Type_Lost__c': 'charge.dispute.closed',
             'PMT_Reason_Lost__c': 'fraudulent',
             'StageName': 'Closed Lost',
+        })
+
+
+@override_settings(TASK_LOCKING_ENABLE=False)
+@patch('basket.news.tasks.get_user_data')
+@patch('basket.news.tasks.sfdc')
+class SubHubEventSubUpdatedTests(TestCase):
+    def _get_data(self, direction='up'):
+        return {
+            'event_id': 'the-event-id',
+            'event_type': f'customer.subscription.{direction}grade',
+            'customer_id': 'cus_1234',
+            'plan_amount_new': '1000',
+            'plan_amount_old': '100',
+            'current_period_end': '1566305505',
+            'close_date': '1566305509',
+            'interval': 'monthly',
+            'invoice_number': 'abc123',
+            'invoice_id': 'inv_abc123',
+            'proration_amount': '5',
+            'subscription_id': 'sub_123',
+            'charge': '8675309',
+            'nickname_old': 'bowling',
+            'nickname_new': 'abide',
+        }
+
+    def test_upgrade(self, sfdc_mock, gud_mock):
+        gud_mock.return_value = {'id': '1234'}
+        data = self._get_data()
+        process_subhub_event_subscription_updated(data)
+        sfdc_mock.opportunity.create.assert_called_with({
+            'Amount': 10.0,
+            'Plan_Amount_Old__c': 1.0,
+            'Billing_Cycle_End__c': '2019-08-20T12:51:45',
+            'CloseDate': '2019-08-20T12:51:49',
+            'Donation_Contact__c': '1234',
+            'Event_Id__c': 'the-event-id',
+            'Event_Name__c': 'customer.subscription.upgrade',
+            'Invoice_Number__c': data['invoice_number'],
+            'Name': 'Subscription Services',
+            'Payment_Interval__c': data['interval'],
+            'Payment_Source__c': 'Stripe',
+            'PMT_Invoice_ID__c': data['invoice_id'],
+            'PMT_Subscription_ID__c': data['subscription_id'],
+            'Proration_Amount__c': data['proration_amount'],
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+            'Service_Plan__c': data['nickname_new'],
+            'Nickname_Old__c': data['nickname_old'],
+            'StageName': 'Subscription Upgrade',
+        })
+
+    def test_downgrade(self, sfdc_mock, gud_mock):
+        gud_mock.return_value = {'id': '1234'}
+        data = self._get_data('down')
+        process_subhub_event_subscription_updated(data)
+        sfdc_mock.opportunity.create.assert_called_with({
+            'Amount': 10.0,
+            'Plan_Amount_Old__c': 1.0,
+            'Billing_Cycle_End__c': '2019-08-20T12:51:45',
+            'CloseDate': '2019-08-20T12:51:49',
+            'Donation_Contact__c': '1234',
+            'Event_Id__c': 'the-event-id',
+            'Event_Name__c': 'customer.subscription.downgrade',
+            'Invoice_Number__c': data['invoice_number'],
+            'Name': 'Subscription Services',
+            'Payment_Interval__c': data['interval'],
+            'Payment_Source__c': 'Stripe',
+            'PMT_Invoice_ID__c': data['invoice_id'],
+            'PMT_Subscription_ID__c': data['subscription_id'],
+            'Proration_Amount__c': data['proration_amount'],
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+            'Service_Plan__c': data['nickname_new'],
+            'Nickname_Old__c': data['nickname_old'],
+            'StageName': 'Subscription Downgrade',
         })
 
 
