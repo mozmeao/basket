@@ -1,7 +1,7 @@
 DC_CI = bin/dc.sh
 DC = docker-compose
 
-all: run
+all: help
 
 .env:
 	@if [ ! -f .env ]; then \
@@ -81,12 +81,11 @@ test-ci: .make.docker.build.ci
 	${DC_CI} run --name test-run test-image
 
 push-ci: .make.docker.build.ci
-	${DC_CI} push web builder
+	docker/bin/push2dockerhub.sh
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
 	@echo "  run           - docker-compose up the entire system for dev"
-	@echo
 	@echo "  build         - build docker images for dev"
 	@echo "  pull          - pull the latest production images from Docker Hub"
 	@echo "  run-shell     - open a bash shell in a fresh container"

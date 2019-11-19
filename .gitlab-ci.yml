@@ -20,7 +20,8 @@ build-images:
   tags:
     - meao
   script:
-    - make clean build-ci
+    - make clean
+    - make build-ci
     - make push-ci
     - make test-ci
 
