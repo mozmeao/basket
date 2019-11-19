@@ -14,7 +14,7 @@ services:
       context: .
       args:
         GIT_SHA: ${GIT_COMMIT:-latest}
-    image: mozmeao/basket:${GIT_COMMIT:-latest}
+    image: mozmeao/basket:${GIT_COMMIT_SHORT:-latest}
     volumes:
       - .:/app
     environment:
@@ -36,7 +36,7 @@ services:
       ./bin/run-dev.sh
 
   worker:
-    image: mozmeao/basket:${GIT_COMMIT:-latest}
+    image: mozmeao/basket:${GIT_COMMIT_SHORT:-latest}
     volumes:
       - .:/app
     environment:
@@ -56,7 +56,7 @@ services:
       ./bin/run-worker.sh
 
   donate-worker:
-    image: mozmeao/basket:${GIT_COMMIT:-latest}
+    image: mozmeao/basket:${GIT_COMMIT_SHORT:-latest}
     volumes:
       - .:/app
     environment:
@@ -76,7 +76,7 @@ services:
       ./bin/run-donate-worker.sh
 
   test:
-    image: mozmeao/basket:${GIT_COMMIT:-latest}
+    image: mozmeao/basket:${GIT_COMMIT_SHORT:-latest}
     volumes:
       - .:/app
     environment:
@@ -96,7 +96,7 @@ services:
       ./bin/run-tests.sh
 
   test-image:
-    image: mozmeao/basket:${GIT_COMMIT:-latest}
+    image: mozmeao/basket:${GIT_COMMIT_SHORT:-latest}
     environment:
       - DATABASE_URL=mysql://root@db/basket
       - DEBUG=True
@@ -117,4 +117,4 @@ services:
     build:
       context: .
       target: builder
-    image: mozmeao/basket:builder-${GIT_COMMIT:-latest}
+    image: mozmeao/basket:builder-${GIT_COMMIT_SHORT:-latest}
