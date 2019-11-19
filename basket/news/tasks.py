@@ -805,6 +805,7 @@ def process_subhub_event_subscription_charge(data):
         'Invoice_Number__c': data['invoice_number'],
         'Last_4_Digits__c': data['last4'],
         'Name': 'Subscription Services',
+        'Next_Invoice_Date__c': iso_format_unix_timestamp(data['next_invoice_date']),
         'Payment_Source__c': 'Stripe',
         'PMT_Subscription_ID__c': data['subscription_id'],
         'PMT_Transaction_ID__c': data['charge'],
