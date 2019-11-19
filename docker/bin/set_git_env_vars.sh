@@ -12,12 +12,16 @@ if [[ "$GIT_TAG" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}(\.[0-9])?$ ]]; then
     export GIT_TAG_DATE_BASED=true
 fi
 if [[ -z "$GIT_BRANCH" ]]; then
-    export GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [[ -n "$CI_COMMIT_REF_NAME" ]]; then
+        export GIT_BRANCH="$CI_COMMIT_REF_NAME"
+    else
+        export GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    fi
     export BRANCH_NAME="$GIT_BRANCH"
 fi
 if [[ -z "$DOCKER_REPOSITORY" ]]; then
     export DOCKER_REPOSITORY="mozmeao/basket"
 fi
 if [[ -z "$DOCKER_IMAGE_TAG" ]]; then
-    export DOCKER_IMAGE_TAG="${DOCKER_REPOSITORY}:${GIT_COMMIT}"
+    export DOCKER_IMAGE_TAG="${DOCKER_REPOSITORY}:${GIT_COMMIT_SHORT}"
 fi
