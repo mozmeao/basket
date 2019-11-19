@@ -16,12 +16,10 @@ jobs:
             mkdir -p $TEST_RESULTS
       - run:
           name: Build Image
-          command: |
-            bin/dc.sh build --pull web builder
+          command: make build-ci
       - run:
           name: Run Tests
-          command: |
-            bin/dc.sh run --name test-run test-image
+          command: make test-ci
       - run: docker cp test-run:/app/test-results $TEST_RESULTS
       - store_test_results:
           path: /tmp/test-results

@@ -4,7 +4,7 @@
 if [[ -z "$GIT_COMMIT" ]]; then
     export GIT_COMMIT=$(git rev-parse HEAD)
 fi
-export GIT_COMMIT_SHORT="${GIT_COMMIT:0:9}"
+export GIT_COMMIT_SHORT="${GIT_COMMIT:0:8}"
 if [[ -z "$GIT_TAG" ]]; then
     export GIT_TAG=$(git describe --tags --exact-match $GIT_COMMIT 2> /dev/null)
 fi
