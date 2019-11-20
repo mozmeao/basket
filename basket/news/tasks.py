@@ -810,7 +810,7 @@ def process_subhub_event_subscription_charge(data):
         nickname = nickname[0]
 
     # if a customer re-instates service after a cancellation, the record needs to be updated
-    sfdc.opportunity.upsert(f'PMT_Invoice_ID__c/{data["invoice_id"]}', {
+    oppy_data = {
         'Amount': cents_to_dollars(data['plan_amount']),
         'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
         'Billing_Cycle_Start__c': iso_format_unix_timestamp(data['current_period_start']),
@@ -831,7 +831,14 @@ def process_subhub_event_subscription_charge(data):
         'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
         'Service_Plan__c': nickname,
         'StageName': 'Closed Won',
-    })
+    }
+    if 'proration_amount' in data:
+        oppy_data['Proration_Amount__c'] = cents_to_dollars(data['proration_amount'])
+
+    if 'total_amount' in data:
+        oppy_data['Total_Amount__c'] = cents_to_dollars(data['total_amount'])
+
+    sfdc.opportunity.upsert(f'PMT_Invoice_ID__c/{data["invoice_id"]}', oppy_data)
 
 
 @et_task
