@@ -533,7 +533,11 @@ class SubHubEventTests(TestCase):
         gud_mock.return_value = {'id': '1234'}
 
         data = self.charge_data.copy()
-        data['event_type'] = 'customer.recurring_charge'
+        data.update({
+            'event_type': 'customer.recurring_charge',
+            'proration_amount': 250,
+            'total_amount': 350,
+        })
 
         process_subhub_event_subscription_charge(data)
 
@@ -557,9 +561,11 @@ class SubHubEventTests(TestCase):
             'Payment_Source__c': 'Stripe',
             'PMT_Subscription_ID__c': data['subscription_id'],
             'PMT_Transaction_ID__c': data['charge'],
+            'Proration_Amount__c': 2.5,
             'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
             'Service_Plan__c': data['nickname'],
             'StageName': 'Closed Won',
+            'Total_Amount__c': 3.5,
         })
 
 
