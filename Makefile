@@ -78,7 +78,7 @@ build-ci: .make.docker.pull
 	touch .make.docker.build.ci
 
 test-ci: .make.docker.build.ci
-	${DC_CI} run --name test-run test-image
+	${DC_CI} run test-image
 
 push-ci: .make.docker.build.ci
 	docker/bin/push2dockerhub.sh

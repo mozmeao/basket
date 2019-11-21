@@ -3,8 +3,6 @@ jobs:
   build:
     docker:
       - image: circleci/python:3.6
-    environment:
-      TEST_RESULTS: /tmp/test-results
     steps:
       - checkout
       - setup_remote_docker:
@@ -13,13 +11,9 @@ jobs:
           name: Setup
           command: |
             echo "export GIT_COMMIT=${CIRCLE_SHA1}" >> $BASH_ENV
-            mkdir -p $TEST_RESULTS
       - run:
           name: Build Image
           command: make build-ci
       - run:
           name: Run Tests
           command: make test-ci
-      - run: docker cp test-run:/app/test-results $TEST_RESULTS
-      - store_test_results:
-          path: /tmp/test-results
