@@ -18,6 +18,7 @@ from django_statsd.clients import statsd
 from ratelimit.exceptions import Ratelimited
 from ratelimit.utils import is_ratelimited
 from raven.contrib.django.raven_compat.models import client as sentry_client
+from simple_salesforce import SalesforceError
 from synctool.routing import Route
 
 from basket.news.forms import CommonVoiceForm, SubscribeForm, UpdateUserMeta, SOURCE_URL_RE
@@ -185,7 +186,7 @@ def fxa_start(request):
 @require_safe
 def fxa_callback(request):
     # remove state from session to prevent multiple attempts
-    error_url = 'https://{}/newsletter/fxa-error/'.format(settings.FXA_EMAIL_PREFS_DOMAIN)
+    error_url = f'https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/fxa-error/'
     sess_state = request.session.pop('fxa_state', None)
     if sess_state is None:
         statsd.incr('news.views.fxa_callback.error.no_state')
@@ -211,7 +212,13 @@ def fxa_callback(request):
         return HttpResponseRedirect(error_url)
 
     email = user_profile['email']
-    user_data = get_user_data(email=email)
+    try:
+        user_data = get_user_data(email=email)
+    except SalesforceError:
+        statsd.incr('news.views.fxa_callback.error.get_user_data')
+        sentry_client.captureException()
+        return HttpResponseRedirect(error_url)
+
     if user_data:
         token = user_data['token']
     else:
@@ -220,16 +227,21 @@ def fxa_callback(request):
             'optin': True,
             'format': 'H',
             'newsletters': [settings.FXA_REGISTER_NEWSLETTER],
-            'source_url': settings.FXA_REGISTER_SOURCE_URL + '?utm_source=basket-fxa-oauth',
+            'source_url': f'{settings.FXA_REGISTER_SOURCE_URL}?utm_source=basket-fxa-oauth',
         }
         lang = user_profile.get('locale')
         if lang:
             lang = get_best_language(get_accept_languages(lang))
             new_user_data['lang'] = lang
 
-        token = upsert_contact(SUBSCRIBE, new_user_data, None)[0]
+        try:
+            token = upsert_contact(SUBSCRIBE, new_user_data, None)[0]
+        except SalesforceError:
+            statsd.incr('news.views.fxa_callback.error.upsert_contact')
+            sentry_client.captureException()
+            return HttpResponseRedirect(error_url)
 
-    redirect_to = 'https://{}/newsletter/existing/{}/?fxa=1'.format(settings.FXA_EMAIL_PREFS_DOMAIN, token)
+    redirect_to = f'https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/existing/{token}/?fxa=1'
     return HttpResponseRedirect(redirect_to)
 
 
