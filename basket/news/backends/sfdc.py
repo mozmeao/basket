@@ -78,6 +78,8 @@ FIELD_MAP = {
     'payee_id': 'PMT_Cust_Id__c',
     'fxa_id': 'FxA_Id__c',
     'fxa_deleted': 'FxA_Account_Deleted__c',
+    'fpn_country': 'FPN_Waitlist_Geo__c',
+    'fpn_platform': 'FPN_Waitlist_Platform__c',
 }
 INV_FIELD_MAP = {v: k for k, v in FIELD_MAP.items()}
 FIELD_DEFAULTS = {
@@ -104,6 +106,8 @@ FIELD_MAX_LENGTHS = {
     'FSA_Grad_Year__c': 4,
     'FSA_Major__c': 100,
     'MailingCity': 100,
+    'FPN_Waitlist_Geo__c': 120,
+    'FPN_Waitlist_Platform__c': 120,
 }
 
 
