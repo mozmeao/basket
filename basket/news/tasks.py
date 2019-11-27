@@ -1042,6 +1042,7 @@ DONATION_OPTIONAL_FIELDS = {
     'Donation_Form_URL__c': 'donation_url',
     'Project__c': 'project',
     'PMT_Subscription_ID__c': 'subscription_id',
+    'Credit_Card_Type__c': 'card_type',
 }
 # Add these fields as optional for now as some messages
 # could still come through without them. Mix of string
