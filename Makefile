@@ -4,10 +4,7 @@ DC = docker-compose
 all: help
 
 .env:
-	@if [ ! -f .env ]; then \
-		echo "Copying env-dist to .env..."; \
-		cp env-dist .env; \
-	fi
+	@touch .env
 
 .make.docker.build:
 	${MAKE} build
@@ -17,11 +14,11 @@ all: help
 
 build: .make.docker.pull
 	${DC} build --pull web
-	touch .make.docker.build
+	@touch .make.docker.build
 
 pull: .env
 	-GIT_COMMIT= ${DC} pull db redis web builder
-	touch .make.docker.pull
+	@touch .make.docker.pull
 
 run: .make.docker.pull
 	${DC} up web
@@ -75,7 +72,7 @@ build-ci: .make.docker.pull
 	${DC_CI} build --pull web
 #	tag intermediate images using cache
 	${DC_CI} build builder
-	touch .make.docker.build.ci
+	@touch .make.docker.build.ci
 
 test-ci: .make.docker.build.ci
 	${DC_CI} run test-image

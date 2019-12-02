@@ -3,7 +3,7 @@ DEBUG=1
 # change this to something secret when deployed
 SECRET_KEY=sssssssshhhhhhhhhh
 
-# this is so you don't need a real queue for development
-CELERY_TASK_ALWAYS_EAGER=1
+# uncomment this if you aren't using the full docker environment
+#CELERY_TASK_ALWAYS_EAGER=1
 
 ALLOWED_HOSTS='*'
