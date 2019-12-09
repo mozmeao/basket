@@ -32,6 +32,7 @@ build-images:
     - aws
   script:
     - bin/update-config.sh
+  retry: 2
 
 dev:
   extends: .deploy
