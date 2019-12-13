@@ -741,10 +741,29 @@ def process_subhub_event_customer_created(data):
         'payee_id': data['customer_id']
     }
 
-    user_data = get_user_data(email=data['email'])
+    user_data = None
+    # try getting user data with the fxa_id first
+    user_data_fxa = get_user_data(fxa_id=contact_data['fxa_id'],
+                                  extra_fields=['id'])
+    if user_data_fxa:
+        # if the email matches what we got from subhub, which got it from fxa, we're good
+        if user_data_fxa['email'] == data['email']:
+            user_data = user_data_fxa
+        # otherwise we've gotta make sure this one doesn't interfere with us updating or creating
+        # the one with the right email address below
+        else:
+            statsd.incr('news.tasks.process_subhub_event.customer_created.fxa_id_dupe')
+            sfdc.update(user_data_fxa, {
+                'fxa_id': f"DUPE:{contact_data['fxa_id']}",
+                'fxa_deleted': True,
+            })
 
-    # if user was found in sfdc, see if we should update their name(s)
+    # if we still don't have user data try again with email this time
+    if not user_data:
+        user_data = get_user_data(email=data['email'], extra_fields=['id'])
+
     if user_data:
+        # if user was found in sfdc, see if we should update their name(s)
         # if current last name is '_', update it
         if user_data['last_name'] == '_':
             contact_data['last_name'] = last
