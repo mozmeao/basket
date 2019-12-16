@@ -13,9 +13,9 @@ django-cache-url==3.0.0 \
 django-cors-headers==3.0.2 \
     --hash=sha256:5b80bf0f8d7fc6e2bcb4f40781d5ff3661961bbf1982e52daec77241dea3b890 \
     --hash=sha256:ebf3e2cf25aa6993b959a8e6a87828ebb3c8fe5bc3ec4a2d6e65f3b8d9b4212c
-django-jsonfield==1.2.0 \
-    --hash=sha256:af7938ebf0eb945d29648d80bad4845973f1ab1d9fea67f65a963753e913e271 \
-    --hash=sha256:f357e196565daa503e914b6bdbeeaa104288a5e3b3f982a928a8de46f54e55ea
+django-jsonfield==1.3.1 \
+    --hash=sha256:431caef3d6a93ad2b1844d26520cd104c474c7dd9dacf3dcb2f72888bf17e284 \
+    --hash=sha256:df2a0cefa4daeb56b074cf178b59ced0d1b4f31e6bbfdfb488755507eabfbf93
 django-mozilla-product-details==0.14.1 \
     --hash=sha256:5fa2a8c3f2b9489aeb39b42c3612a43b0be5e778ffab07a5a2cf23b1eced4d64 \
     --hash=sha256:b7428e2dae653c4b0e35fa15363dd26b74dba821bf384c5cd835da0f1566b841
