@@ -1129,6 +1129,10 @@ def process_donation(data):
         'PMT_Transaction_ID__c': data['transaction_id'],
         'Payment_Type__c': 'Recurring' if data['recurring'] else 'One-Time',
     }
+    # https://github.com/mozmeao/basket/issues/364
+    if 'campaign_id' in data:
+        donation['CampaignId'] = data['campaign_id']
+
     # this is a unix timestamp in ms since epoc
     timestamp = data.get('created')
     if timestamp:

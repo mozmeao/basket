@@ -686,6 +686,7 @@ class ProcessDonationTests(TestCase):
         'recurring': True,
         'service': 'paypal',
         'transaction_id': 'NLEKFRBED3BQ614797468093.25',
+        'campaign_id': 'were-you-listening-to-the-dudes-story',
     }
 
     def test_one_name(self, sfdc_mock, gud_mock):
@@ -803,6 +804,7 @@ class ProcessDonationTests(TestCase):
             'Net_Amount__c': data['net_amount'],
             'Conversion_Amount__c': data['conversion_amount'],
             'Last_4_Digits__c': data['last_4'],
+            'CampaignId': data['campaign_id'],
         })
 
     def test_donation_data_optional_null(self, sfdc_mock, gud_mock):
@@ -837,6 +839,7 @@ class ProcessDonationTests(TestCase):
             'Net_Amount__c': data['net_amount'],
             'Conversion_Amount__c': data['conversion_amount'],
             'Last_4_Digits__c': data['last_4'],
+            'CampaignId': data['campaign_id'],
         })
 
     def test_donation_silent_failure_on_dupe(self, sfdc_mock, gud_mock):
