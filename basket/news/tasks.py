@@ -886,6 +886,7 @@ def process_subhub_event_subscription_updated(data):
     sfdc.opportunity.create({
         'Amount': cents_to_dollars(data['plan_amount_new']),
         'Plan_Amount_Old__c': cents_to_dollars(data['plan_amount_old']),
+        'Proration_Amount__c': cents_to_dollars(data['proration_amount']),
         'Billing_Cycle_End__c': iso_format_unix_timestamp(data['current_period_end']),
         'CloseDate': iso_format_unix_timestamp(data.get('close_date', time())),
         'Donation_Contact__c': user_data['id'],
@@ -897,7 +898,6 @@ def process_subhub_event_subscription_updated(data):
         'Payment_Source__c': 'Stripe',
         'PMT_Invoice_ID__c': data['invoice_id'],
         'PMT_Subscription_ID__c': data['subscription_id'],
-        'Proration_Amount__c': data['proration_amount'],
         'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
         'Service_Plan__c': data['nickname_new'],
         'Nickname_Old__c': data['nickname_old'],
