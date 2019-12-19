@@ -46,6 +46,7 @@ FXACCOUNT_WELCOME = 'FxAccounts_Welcome'
 
 # don't propagate and don't retry if these are the error messages
 IGNORE_ERROR_MSGS = [
+    'INVALID_EMAIL_ADDRESS',
     'InvalidEmailAddress',
     'An invalid phone number was provided',
 ]
