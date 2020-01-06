@@ -805,7 +805,10 @@ def process_subhub_event_subscription_charge(data):
 
     nickname = data['nickname']
     if isinstance(nickname, list):
-        nickname = nickname[0]
+        try:
+            nickname = nickname[0]
+        except IndexError:
+            nickname = ''
 
     # if a customer re-instates service after a cancellation, the record needs to be updated
     oppy_data = {
@@ -850,7 +853,10 @@ def process_subhub_event_subscription_reactivated(data):
 
     nickname = data['nickname']
     if isinstance(nickname, list):
-        nickname = nickname[0]
+        try:
+            nickname = nickname[0]
+        except IndexError:
+            nickname = ''
 
     sfdc.opportunity.create({
         'Amount': cents_to_dollars(data['plan_amount']),
@@ -923,7 +929,10 @@ def process_subhub_event_subscription_cancel(data):
 
     nickname = data['nickname']
     if isinstance(nickname, list):
-        nickname = nickname[0]
+        try:
+            nickname = nickname[0]
+        except IndexError:
+            nickname = ''
 
     sfdc.opportunity.create({
         'Amount': cents_to_dollars(data['plan_amount']),
@@ -972,7 +981,10 @@ def process_subhub_event_payment_failed(data):
 
     nickname = data['nickname']
     if isinstance(nickname, list):
-        nickname = nickname[0]
+        try:
+            nickname = nickname[0]
+        except IndexError:
+            nickname = ''
 
     sfdc.opportunity.create({
         'Amount': cents_to_dollars(data['amount_due']),
