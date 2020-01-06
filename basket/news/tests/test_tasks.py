@@ -593,6 +593,76 @@ class SubHubEventTests(TestCase):
             'StageName': 'Subscription Canceled',
         })
 
+    def test_subscription_cancel_list_nickname(self, sfdc_mock, gud_mock):
+        gud_mock.return_value = {'id': '1234'}
+
+        data = {
+            'event_id': 'the-event-id',
+            'event_type': 'customer.subscription_cancelled',
+            'customer_id': 'cus_1234',
+            'plan_amount': '1000',
+            'current_period_end': '1566305505',
+            'current_period_start': '1566305502',
+            'cancel_at': '1566305509',
+            'subscription_id': 'sub_123',
+            'nickname': ['bowling', 'golfing'],
+        }
+
+        process_subhub_event_subscription_cancel(data)
+
+        gud_mock.assert_called_with(payee_id=data['customer_id'], extra_fields=['id'])
+
+        sfdc_mock.opportunity.create.assert_called_with({
+            'Amount': 10.00,
+            'Billing_Cycle_End__c': '2019-08-20T12:51:45',
+            'Billing_Cycle_Start__c': '2019-08-20T12:51:42',
+            'CloseDate': '2019-08-20T12:51:49',
+            'Donation_Contact__c': '1234',
+            'Event_Id__c': data['event_id'],
+            'Event_Name__c': data['event_type'],
+            'Name': 'Subscription Services',
+            'Payment_Source__c': 'Stripe',
+            'PMT_Subscription_ID__c': data['subscription_id'],
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+            'Service_Plan__c': data['nickname'][0],
+            'StageName': 'Subscription Canceled',
+        })
+
+    def test_subscription_cancel_empty_list_nickname(self, sfdc_mock, gud_mock):
+        gud_mock.return_value = {'id': '1234'}
+
+        data = {
+            'event_id': 'the-event-id',
+            'event_type': 'customer.subscription_cancelled',
+            'customer_id': 'cus_1234',
+            'plan_amount': '1000',
+            'current_period_end': '1566305505',
+            'current_period_start': '1566305502',
+            'cancel_at': '1566305509',
+            'subscription_id': 'sub_123',
+            'nickname': [],
+        }
+
+        process_subhub_event_subscription_cancel(data)
+
+        gud_mock.assert_called_with(payee_id=data['customer_id'], extra_fields=['id'])
+
+        sfdc_mock.opportunity.create.assert_called_with({
+            'Amount': 10.00,
+            'Billing_Cycle_End__c': '2019-08-20T12:51:45',
+            'Billing_Cycle_Start__c': '2019-08-20T12:51:42',
+            'CloseDate': '2019-08-20T12:51:49',
+            'Donation_Contact__c': '1234',
+            'Event_Id__c': data['event_id'],
+            'Event_Name__c': data['event_type'],
+            'Name': 'Subscription Services',
+            'Payment_Source__c': 'Stripe',
+            'PMT_Subscription_ID__c': data['subscription_id'],
+            'RecordTypeId': settings.SUBHUB_OPP_RECORD_TYPE,
+            'Service_Plan__c': '',
+            'StageName': 'Subscription Canceled',
+        })
+
     def test_subscription_charge_initial(self, sfdc_mock, gud_mock):
         gud_mock.return_value = {'id': '1234'}
 
