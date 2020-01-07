@@ -1260,46 +1260,20 @@ class AddFxaActivityTests(TestCase):
         self.assertEqual(record['DEVICE_TYPE'], 'T')
 
 
-@override_settings(FXA_EVENTS_VERIFIED_SFDC_ENABLE=True)
+@override_settings(FXA_EVENTS_VERIFIED_SFDC_ENABLE=True,
+                   FXA_REGISTER_NEWSLETTER='firefox-accounts-journey')
 @patch('basket.news.tasks.get_best_language', Mock(return_value='en-US'))
 @patch('basket.news.tasks.newsletter_languages', Mock(return_value=['en-US']))
 @patch('basket.news.tasks.apply_updates')
 @patch('basket.news.tasks.upsert_contact')
 @patch('basket.news.tasks.get_fxa_user_data')
 class FxAVerifiedTests(TestCase):
-    def test_no_subscribe(self, fxa_data_mock, upsert_mock, apply_mock):
-        fxa_data_mock.return_value = None
-        data = {
-            'email': 'thedude@example.com',
-            'uid': 'the-fxa-id',
-            'locale': 'en-US,en',
-            'marketingOptIn': False,
-        }
-        fxa_verified(data)
-        upsert_mock.assert_called_with(SUBSCRIBE, {
-            'email': data['email'],
-            'source_url': settings.FXA_REGISTER_SOURCE_URL,
-            'country': '',
-            'lang': 'en-US',
-            'fxa_lang': data['locale'],
-            'fxa_service': '',
-            'fxa_id': 'the-fxa-id',
-        }, None)
-        apply_mock.assert_called_with('Firefox_Account_ID', {
-            'EMAIL_ADDRESS_': data['email'],
-            'CREATED_DATE_': gmttime(None),
-            'FXA_ID': 'the-fxa-id',
-            'FXA_LANGUAGE_ISO2': 'en-US',
-            'SERVICE': '',
-        })
-
-    def test_with_subscribe(self, fxa_data_mock, upsert_mock, apply_mock):
+    def test_success(self, fxa_data_mock, upsert_mock, apply_mock):
         fxa_data_mock.return_value = {'lang': 'en-US'}
         data = {
             'email': 'thedude@example.com',
             'uid': 'the-fxa-id',
             'locale': 'en-US,en',
-            'marketingOptIn': True,
             'service': 'sync',
         }
         fxa_verified(data)
@@ -1311,10 +1285,12 @@ class FxAVerifiedTests(TestCase):
             'fxa_lang': data['locale'],
             'fxa_service': 'sync',
             'fxa_id': 'the-fxa-id',
+            'optin': True,
+            'format': 'H',
         }, fxa_data_mock())
         apply_mock.assert_called_with('Firefox_Account_ID', {
             'EMAIL_ADDRESS_': data['email'],
-            'CREATED_DATE_': gmttime(None),
+            'CREATED_DATE_': ANY,
             'FXA_ID': 'the-fxa-id',
             'FXA_LANGUAGE_ISO2': 'en-US',
             'SERVICE': 'sync',
@@ -1326,7 +1302,6 @@ class FxAVerifiedTests(TestCase):
             'email': 'thedude@example.com',
             'uid': 'the-fxa-id',
             'locale': 'en-US,en',
-            'marketingOptIn': True,
             'newsletters': ['test-pilot', 'take-action-for-the-internet'],
             'service': 'sync',
         }
@@ -1340,10 +1315,12 @@ class FxAVerifiedTests(TestCase):
             'fxa_lang': data['locale'],
             'fxa_service': 'sync',
             'fxa_id': 'the-fxa-id',
+            'optin': True,
+            'format': 'H',
         }, None)
         apply_mock.assert_called_with('Firefox_Account_ID', {
             'EMAIL_ADDRESS_': data['email'],
-            'CREATED_DATE_': gmttime(None),
+            'CREATED_DATE_': ANY,
             'FXA_ID': 'the-fxa-id',
             'FXA_LANGUAGE_ISO2': 'en-US',
             'SERVICE': 'sync',
@@ -1355,7 +1332,6 @@ class FxAVerifiedTests(TestCase):
             'email': 'thedude@example.com',
             'uid': 'the-fxa-id',
             'locale': 'en-US,en',
-            'marketingOptIn': True,
             'metricsContext': {
                 'utm_campaign': 'bowling',
                 'some_other_thing': 'Donnie',
@@ -1373,10 +1349,12 @@ class FxAVerifiedTests(TestCase):
             'fxa_lang': data['locale'],
             'fxa_service': 'monitor',
             'fxa_id': 'the-fxa-id',
+            'optin': True,
+            'format': 'H',
         }, None)
         apply_mock.assert_called_with('Firefox_Account_ID', {
             'EMAIL_ADDRESS_': data['email'],
-            'CREATED_DATE_': gmttime(None),
+            'CREATED_DATE_': ANY,
             'FXA_ID': 'the-fxa-id',
             'FXA_LANGUAGE_ISO2': 'en-US',
             'SERVICE': 'monitor',
@@ -1394,13 +1372,16 @@ class FxAVerifiedTests(TestCase):
         fxa_verified(data)
         upsert_mock.assert_called_with(SUBSCRIBE, {
             'email': data['email'],
+            'newsletters': settings.FXA_REGISTER_NEWSLETTER,
             'source_url': settings.FXA_REGISTER_SOURCE_URL,
             'country': '',
             'lang': 'en-US',
             'fxa_lang': data['locale'],
             'fxa_service': '',
             'fxa_id': 'the-fxa-id',
-            'fxa_create_date': iso_format_unix_timestamp(create_date)
+            'fxa_create_date': iso_format_unix_timestamp(create_date),
+            'optin': True,
+            'format': 'H',
         }, None)
         apply_mock.assert_called_with('Firefox_Account_ID', {
             'EMAIL_ADDRESS_': data['email'],

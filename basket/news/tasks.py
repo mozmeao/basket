@@ -276,7 +276,6 @@ def fxa_verified_sfdc(data):
     fxa_id = data['uid']
     lang = data['lang']
     create_date = data.get('createDate')
-    subscribe = data.get('marketingOptIn')
     newsletters = data.get('newsletters')
     metrics = data.get('metricsContext', {})
     new_data = {
@@ -286,21 +285,15 @@ def fxa_verified_sfdc(data):
         'fxa_lang': data.get('locale'),
         'fxa_service': data.get('service', ''),
         'fxa_id': fxa_id,
+        'optin': True,
+        'format': 'H',
     }
     if create_date:
         new_data['fxa_create_date'] = iso_format_unix_timestamp(create_date)
 
-    add_news = None
-    if newsletters:
-        if settings.FXA_REGISTER_NEWSLETTER not in newsletters:
-            newsletters.append(settings.FXA_REGISTER_NEWSLETTER)
-
-        add_news = ','.join(newsletters)
-    elif subscribe:
-        add_news = settings.FXA_REGISTER_NEWSLETTER
-
-    if add_news:
-        new_data['newsletters'] = add_news
+    newsletters = newsletters or []
+    newsletters.append(settings.FXA_REGISTER_NEWSLETTER)
+    new_data['newsletters'] = ','.join(newsletters)
 
     user_data = get_fxa_user_data(fxa_id, email)
     # don't overwrite the user's language if already set
