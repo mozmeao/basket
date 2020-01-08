@@ -50,6 +50,7 @@ IGNORE_ERROR_MSGS = [
     'INVALID_EMAIL_ADDRESS',
     'InvalidEmailAddress',
     'An invalid phone number was provided',
+    'No valid subscribers were provided',
 ]
 # don't propagate after max retries if these are the error messages
 IGNORE_ERROR_MSGS_POST_RETRY = [
