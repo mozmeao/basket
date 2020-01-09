@@ -1,0 +1,13 @@
+#!/bin/bash
+set -eo pipefail
+
+DOCKER_IMAGE="mozmeao/slack-notify:latest"
+docker pull "$DOCKER_IMAGE"
+docker run --rm \
+           --pull \
+           --env SLACK_TOKEN \
+           --env SLACK_CHANNEL \
+           --env CI_PROJECT_NAME \
+           --env CI_PIPELINE_URL \
+           --env CI_COMMIT_BRANCH \
+           "$DOCKER_IMAGE" "$@"

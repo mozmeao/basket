@@ -20,10 +20,12 @@ build-images:
   tags:
     - meao
   script:
+    - bin/slack-notify --stage build --status starting
     - make clean
     - make build-ci
     - make push-ci
     - make test-ci
+    - bin/slack-notify --stage build --status success
 
 .deploy:
   stage: deploy
