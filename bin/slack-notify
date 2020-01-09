@@ -4,7 +4,6 @@ set -eo pipefail
 DOCKER_IMAGE="mozmeao/slack-notify-script:latest"
 docker pull "$DOCKER_IMAGE"
 docker run --rm \
-           --pull \
            --env SLACK_TOKEN \
            --env SLACK_CHANNEL \
            --env CI_PROJECT_NAME \
