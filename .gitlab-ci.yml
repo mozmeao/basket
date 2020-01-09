@@ -17,6 +17,7 @@ build-images:
     - stage
     - prod
     - admin
+    - slack-notify
   tags:
     - meao
   script:
