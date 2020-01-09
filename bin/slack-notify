@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 
-DOCKER_IMAGE="mozmeao/slack-notify:latest"
+DOCKER_IMAGE="mozmeao/slack-notify-script:latest"
 docker pull "$DOCKER_IMAGE"
 docker run --rm \
            --pull \
