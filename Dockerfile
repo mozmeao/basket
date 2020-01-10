@@ -1,5 +1,5 @@
 # BUILDER IMAGE
-FROM python:3.7-slim-buster AS builder
+FROM python:3.8-slim-buster AS builder
 
 # Extra python env
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -25,7 +25,7 @@ RUN DEBUG=False SECRET_KEY=foo ALLOWED_HOSTS=localhost, DATABASE_URL=sqlite:// \
 # END BUILDER IMAGE
 
 # FINAL IMAGE
-FROM python:3.7-slim-buster
+FROM python:3.8-slim-buster
 
 # Extra python env
 ENV PYTHONDONTWRITEBYTECODE=1
