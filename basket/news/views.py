@@ -25,7 +25,7 @@ from basket.news.forms import CommonVoiceForm, SubscribeForm, UpdateUserMeta, SO
 from basket.news.models import Newsletter, Interest, LocaleStewards, NewsletterGroup, LocalizedSMSMessage, \
     TransactionalEmailMessage
 from basket.news.newsletters import get_sms_vendor_id, newsletter_slugs, newsletter_and_group_slugs, \
-    newsletter_private_slugs, get_transactional_message_ids
+    newsletter_private_slugs, get_transactional_message_ids, newsletter_languages
 from basket.news.tasks import (
     add_sms_user,
     amo_sync_addon,
@@ -229,9 +229,13 @@ def fxa_callback(request):
             'newsletters': [settings.FXA_REGISTER_NEWSLETTER],
             'source_url': f'{settings.FXA_REGISTER_SOURCE_URL}?utm_source=basket-fxa-oauth',
         }
-        lang = user_profile.get('locale')
-        if lang:
-            lang = get_best_language(get_accept_languages(lang))
+        locale = user_profile.get('locale')
+        if locale:
+            new_user_data['fxa_lang'] = locale
+            lang = get_best_language(get_accept_languages(locale))
+            if lang not in newsletter_languages():
+                lang = 'other'
+
             new_user_data['lang'] = lang
 
         try:
