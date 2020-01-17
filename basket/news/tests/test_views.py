@@ -1313,7 +1313,8 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
             'format': 'H',
             'newsletters': [settings.FXA_REGISTER_NEWSLETTER],
             'source_url': settings.FXA_REGISTER_SOURCE_URL + '?utm_source=basket-fxa-oauth',
-            'lang': 'en',
+            'lang': 'other',
+            'fxa_lang': 'en,en-US',
         }, None)
 
     def test_new_user_without_locale(self):
