@@ -63,9 +63,9 @@ ua-parser==0.8.0 \
 user-agents==2.0 \
     --hash=sha256:792869b990a244f71efea1cb410ecaba99a270a64c5ac37d365bde5d70d6a2fa \
     --hash=sha256:7af7419d61ce8f72ad487cc77ea3b4d1dcaa4cbb7b6df533a7c7aa3ccc44e5b3
-amqp==2.5.0 \
-    --hash=sha256:aa4409446139676943a2eaa27d5f58caf750f4ca5a89f888c452afd86be6a67d \
-    --hash=sha256:cbb6f87d53cac612a594f982b717cc1c54c6a1e17943a0a0d32dc6cc9e2120c8
+amqp==2.5.2 \
+    --hash=sha256:6e649ca13a7df3faacdc8bbb280aa9a6602d22fd9d545336077e573a1f4ff3b8 \
+    --hash=sha256:77f1aef9410698d20eaeac5b73a87817365f457a507d82edf292e12cbb83b08d
 anyjson==0.3.3 \
     --hash=sha256:37812d863c9ad3e35c0734c42e0bf0320ce8c3bed82cd20ad54cb34d158157ba
 billiard==3.6.1.0 \
