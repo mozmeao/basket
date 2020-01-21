@@ -327,13 +327,15 @@ def fxa_login(data):
     if email_is_testing(email):
         return
 
-    new_data = {
-        'user_agent': data['userAgent'],
-        'fxa_id': data['uid'],
-        'first_device': data['deviceCount'] == 1,
-        'service': data.get('service', '')
-    }
-    _add_fxa_activity(new_data)
+    ua = data.get('userAgent')
+    if ua:
+        new_data = {
+            'user_agent': ua,
+            'fxa_id': data['uid'],
+            'first_device': data['deviceCount'] == 1,
+            'service': data.get('service', '')
+        }
+        _add_fxa_activity(new_data)
 
     metrics = data.get('metricsContext', {})
     newsletter = settings.FXA_LOGIN_CAMPAIGNS.get(metrics.get('utm_campaign'))
