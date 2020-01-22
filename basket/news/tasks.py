@@ -696,6 +696,7 @@ def record_common_voice_goals(data):
     # do not change the sent data in place. A retry will use the changed data.
     dcopy = data.copy()
     email = dcopy.pop('email')
+    get_lock(data['email'])
     user_data = get_user_data(email=email, extra_fields=['id'])
     new_data = {
         'source_url': 'https://voice.mozilla.org',
