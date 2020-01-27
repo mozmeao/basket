@@ -63,9 +63,9 @@ urlwait==0.4 \
 josepy==1.2.0 \
     --hash=sha256:8ea15573203f28653c00f4ac0142520777b1c59d9eddd8da3f256c6ba3cac916 \
     --hash=sha256:9cec9a839fe9520f0420e4f38e7219525daccce4813296627436fe444cd002d3
-mozilla-django-oidc==1.2.2 \
-    --hash=sha256:2ab8b5ee3d46b50a818cbc009043be2d068f80dc093eb1fb3aa3a3af504d749b \
-    --hash=sha256:b916dc452408e23b7c4947f3721b46e4f20717298861a4deaa7d2f3f171e9ad1
+mozilla-django-oidc==1.2.3 \
+    --hash=sha256:03e15ea449b66ba3be9f8321a66237fd0cc7b570d4feeb893de58a2d8696b70b \
+    --hash=sha256:ba6171ebac91f0a9679bfd5fb73d0d41c90f0711f0c06f595f219537a0a6bae0
 packaging==19.1 \
     --hash=sha256:a7ac867b97fdc07ee80a8058fe4435ccd274ecc3b0ed61d852d7d53055528cf9 \
     --hash=sha256:c491ca87294da7cc01902edbe30a5bc6c4c28172b5138ab4e4aa1b9d7bfaeafe
