@@ -13,6 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_safe
 
 import fxa.constants
+import requests
 from basket import errors
 from django_statsd.clients import statsd
 from ratelimit.exceptions import Ratelimited
@@ -22,8 +23,15 @@ from simple_salesforce import SalesforceError
 from synctool.routing import Route
 
 from basket.news.forms import CommonVoiceForm, SubscribeForm, UpdateUserMeta, SOURCE_URL_RE
-from basket.news.models import Newsletter, Interest, LocaleStewards, NewsletterGroup, LocalizedSMSMessage, \
-    TransactionalEmailMessage
+from basket.news.models import (
+    CommonVoiceUpdate,
+    Interest,
+    LocaleStewards,
+    LocalizedSMSMessage,
+    Newsletter,
+    NewsletterGroup,
+    TransactionalEmailMessage,
+)
 from basket.news.newsletters import get_sms_vendor_id, newsletter_slugs, newsletter_and_group_slugs, \
     newsletter_private_slugs, get_transactional_message_ids, newsletter_languages
 from basket.news.tasks import (
@@ -422,7 +430,18 @@ def common_voice_goals(request):
     if form.is_valid():
         # don't send empty values and use ISO formatted date strings
         data = {k: v for k, v in form.cleaned_data.items() if not (v == '' or v is None)}
-        record_common_voice_goals.delay(data)
+        if settings.COMMON_VOICE_BATCH_UPDATES:
+            if settings.READ_ONLY_MODE:
+                api_key = request.META['HTTP_X_API_KEY']
+                # forward to basket with r/w DB
+                requests.post(f'{settings.BASKET_RW_URL}/news/common-voice-goals/',
+                              data=request.POST,
+                              headers={'x-api-key': api_key})
+            else:
+                CommonVoiceUpdate.objects.create(data=data)
+        else:
+            record_common_voice_goals.delay(data)
+
         return HttpResponseJSON({'status': 'ok'})
     else:
         # form is invalid

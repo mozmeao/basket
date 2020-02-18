@@ -359,3 +359,12 @@ class TransactionalEmailMessage(models.Model):
     def language_list(self):
         """Return language codes for this newsletter as a list"""
         return [x.strip() for x in self.languages.split(',') if x.strip()]
+
+
+class CommonVoiceUpdate(models.Model):
+    when = models.DateTimeField(editable=False, default=now)
+    data = JSONField()
+    ack = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['pk']

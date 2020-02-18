@@ -1,19 +1,20 @@
 import json
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.error import URLError
 
 from django.conf import settings
 from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
+from django.utils.timezone import now
 
 import simple_salesforce as sfapi
 from celery.exceptions import Retry
 from mock import ANY, Mock, call, patch
 
 from basket.news.celery import app as celery_app
-from basket.news.models import FailedTask
+from basket.news.models import FailedTask, CommonVoiceUpdate
 from basket.news.newsletters import clear_sms_cache
 from basket.news.tasks import (
     _add_fxa_activity,
@@ -28,6 +29,7 @@ from basket.news.tasks import (
     mogrify_message_id,
     NewsletterException,
     PETITION_CONTACT_FIELDS,
+    process_common_voice_batch,
     process_donation,
     process_donation_event,
     process_petition_signature,
@@ -1809,3 +1811,41 @@ class AMOSyncUserTests(TestCase):
             'source_url': 'https://addons.mozilla.org/',
             'amo_user': True,
         })
+
+
+@patch('basket.news.tasks.record_common_voice_goals')
+class TestCommonVoiceBatch(TestCase):
+    def setUp(self):
+        CommonVoiceUpdate.objects.create(
+            data={'email': 'dude@example.com', 'last_active_date': '2020-02-18T14:52:30Z'}
+        )
+        CommonVoiceUpdate.objects.create(
+            data={'email': 'dude@example.com', 'last_active_date': '2020-02-17T14:52:30Z'}
+        )
+        CommonVoiceUpdate.objects.create(
+            data={'email': 'dude@example.com', 'last_active_date': '2020-02-16T14:52:30Z'}
+        )
+        CommonVoiceUpdate.objects.create(
+            data={'email': 'donny@example.com', 'last_active_date': '2020-02-15T14:52:30Z'}
+        )
+        CommonVoiceUpdate.objects.create(
+            data={'email': 'donny@example.com', 'last_active_date': '2020-02-14T14:52:30Z'}
+        )
+
+    def test_batch(self, mock_rcvg):
+        assert CommonVoiceUpdate.objects.filter(ack=False).count() == 5
+        assert CommonVoiceUpdate.objects.filter(ack=True).count() == 0
+        process_common_voice_batch()
+        assert CommonVoiceUpdate.objects.filter(ack=False).count() == 0
+        assert CommonVoiceUpdate.objects.filter(ack=True).count() == 5
+        assert mock_rcvg.delay.call_count == 2
+        assert mock_rcvg.delay.has_calls([
+            call({'email': 'dude@example.com', 'last_active_date': '2020-02-18T14:52:30Z'}),
+            call({'email': 'donny@example.com', 'last_active_date': '2020-02-15T14:52:30Z'})
+        ])
+
+    def test_batch_cleanup(self, mock_rcvg):
+        CommonVoiceUpdate.objects.update(ack=True, when=now() - timedelta(hours=25))
+        assert CommonVoiceUpdate.objects.count() == 5
+        process_common_voice_batch()
+        assert CommonVoiceUpdate.objects.count() == 0

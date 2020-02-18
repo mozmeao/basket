@@ -36,6 +36,7 @@ TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 READ_ONLY_MODE = config('READ_ONLY_MODE', False, cast=bool)
 # Disables the API and changes redirects
 ADMIN_ONLY_MODE = config('ADMIN_ONLY_MODE', False, cast=bool)
+BASKET_RW_URL = config('BASKET_RW_URL', default='https://prod-oregon-b.basket.moz.works')
 
 REDIS_URL = config('REDIS_URL', None)
 if REDIS_URL:
@@ -269,6 +270,12 @@ if SNITCH_ID:
         'schedule': timedelta(minutes=5),
     }
 
+if not READ_ONLY_MODE:
+    CELERY_BEAT_SCHEDULE['common-voice'] = {
+        'task': 'basket.news.tasks.process_common_voice_batch',
+        'schedule': timedelta(hours=1),
+    }
+
 
 # via http://stackoverflow.com/a/6556951/107114
 def get_default_gateway_linux():
@@ -407,6 +414,7 @@ SUBHUB_OPP_RECORD_TYPE = config('SUBHUB_OPP_RECORD_TYPE', default='')
 SUBHUB_CC_EXPIRE_TRIGGER = config('SUBHUB_CC_EXPIRE_TRIGGER', default='en_subscription_services_cc_expired')
 
 COMMON_VOICE_NEWSLETTER = config('COMMON_VOICE_NEWSLETTER', default='common-voice')
+COMMON_VOICE_BATCH_UPDATES = config('COMMON_VOICE_BATCH_UPDATES', default=False, cast=bool)
 
 OIDC_ENABLE = config('OIDC_ENABLE', default=False, cast=bool)
 if OIDC_ENABLE:

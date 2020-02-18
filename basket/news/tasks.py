@@ -12,11 +12,13 @@ from django.conf import settings
 from django.core.cache import cache, caches
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
+from django.utils.timezone import now
 
 import requests
 import simple_salesforce as sfapi
 import user_agents
 from celery.signals import task_failure, task_retry, task_success
+from dateutil.parser import isoparse
 from django_statsd.clients import statsd
 from raven.contrib.django.raven_compat.models import client as sentry_client
 
@@ -26,7 +28,7 @@ from basket.news.backends.sfdc import sfdc
 from basket.news.backends.sfmc import sfmc
 from basket.news.celery import app as celery_app
 from basket.news.models import (FailedTask, Newsletter, Interest,
-                                QueuedTask, TransactionalEmailMessage)
+                                QueuedTask, TransactionalEmailMessage, CommonVoiceUpdate)
 from basket.news.newsletters import (get_sms_vendor_id, get_transactional_message_ids, newsletter_map,
                                      newsletter_languages)
 from basket.news.utils import (cents_to_dollars, generate_token, get_accept_languages, get_best_language,
@@ -696,7 +698,6 @@ def record_common_voice_goals(data):
     # do not change the sent data in place. A retry will use the changed data.
     dcopy = data.copy()
     email = dcopy.pop('email')
-    get_lock(data['email'])
     user_data = get_user_data(email=email, extra_fields=['id'])
     new_data = {
         'source_url': 'https://voice.mozilla.org',
@@ -713,6 +714,36 @@ def record_common_voice_goals(data):
             'token': generate_token(),
         })
         sfdc.add(new_data)
+
+
+@et_task
+def process_common_voice_batch():
+    updates = CommonVoiceUpdate.objects.filter(ack=False)
+    per_user = {}
+    for update in updates:
+        # last_active_date is when the update was sent basically, so we can use it for ordering
+        data = update.data
+        last_active = isoparse(data['last_active_date'])
+        if data['email'] in per_user and per_user[data['email']]['last_active'] > last_active:
+            continue
+
+        per_user[data['email']] = {
+            'last_active': last_active,
+            'data': data,
+        }
+
+    for info in per_user.values():
+        record_common_voice_goals.delay(info['data'])
+
+    for update in updates:
+        # do them one at a time to ensure that we don't ack new ones that have
+        # come in since we started
+        update.ack = True
+        update.save()
+
+    # delete ack'd updates more than 24 hours old
+    when = now() - timedelta(hours=24)
+    CommonVoiceUpdate.objects.filter(ack=True, when__lte=when).delete()
 
 
 @et_task
