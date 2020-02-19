@@ -39,7 +39,7 @@ from basket.news.tasks import (
     process_subhub_event_subscription_cancel,
     process_subhub_event_subscription_charge,
     process_subhub_event_subscription_updated,
-    record_common_voice_goals,
+    record_common_voice_update,
     RECOVERY_MESSAGE_ID,
     SUBSCRIBE,
     send_recovery_message_task,
@@ -1542,7 +1542,7 @@ class CommonVoiceGoalsTests(TestCase):
             'two_day_streak': False,
         }
         orig_data = data.copy()
-        record_common_voice_goals(data)
+        record_common_voice_update(data)
         # ensure passed in dict was not modified in place.
         # if it is modified a retry will use the modified dict.
         assert orig_data == data
@@ -1565,7 +1565,7 @@ class CommonVoiceGoalsTests(TestCase):
             'two_day_streak': False,
         }
         orig_data = data.copy()
-        record_common_voice_goals(data)
+        record_common_voice_update(data)
         # ensure passed in dict was not modified in place.
         # if it is modified a retry will use the modified dict.
         assert orig_data == data
@@ -1813,7 +1813,7 @@ class AMOSyncUserTests(TestCase):
         })
 
 
-@patch('basket.news.tasks.record_common_voice_goals')
+@patch('basket.news.tasks.record_common_voice_update')
 class TestCommonVoiceBatch(TestCase):
     def setUp(self):
         CommonVoiceUpdate.objects.create(

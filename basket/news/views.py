@@ -39,7 +39,7 @@ from basket.news.tasks import (
     amo_sync_addon,
     amo_sync_user,
     confirm_user,
-    record_common_voice_goals,
+    record_common_voice_update,
     record_fxa_concerts_rsvp,
     send_recovery_message_task,
     update_custom_unsub,
@@ -440,7 +440,7 @@ def common_voice_goals(request):
             else:
                 CommonVoiceUpdate.objects.create(data=data)
         else:
-            record_common_voice_goals.delay(data)
+            record_common_voice_update.delay(data)
 
         return HttpResponseJSON({'status': 'ok'})
     else:

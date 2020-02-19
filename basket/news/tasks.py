@@ -695,6 +695,13 @@ def send_recovery_message_task(email):
 
 @et_task
 def record_common_voice_goals(data):
+    # send currently queued tasks to the DB for processing
+    # TODO delete once we're done
+    CommonVoiceUpdate.objects.create(data=data)
+
+
+@et_task
+def record_common_voice_update(data):
     # do not change the sent data in place. A retry will use the changed data.
     dcopy = data.copy()
     email = dcopy.pop('email')
@@ -734,7 +741,7 @@ def process_common_voice_batch():
         }
 
     for info in per_user.values():
-        record_common_voice_goals.delay(info['data'])
+        record_common_voice_update.delay(info['data'])
         statsd.incr('news.tasks.process_common_voice_batch.recorded')
 
     for update in updates:

@@ -1097,7 +1097,7 @@ class CommonVoiceGoalsTests(ViewsPatcherMixin, TestCase):
         self.rf = RequestFactory()
 
         self._patch_views('has_valid_api_key')
-        self._patch_views('record_common_voice_goals')
+        self._patch_views('record_common_voice_update')
 
     def test_valid_submission(self):
         self.has_valid_api_key.return_value = True
@@ -1108,7 +1108,7 @@ class CommonVoiceGoalsTests(ViewsPatcherMixin, TestCase):
             'goal_reached_at': '',
         })
         resp = views.common_voice_goals(req)
-        self.record_common_voice_goals.delay.assert_called_with({
+        self.record_common_voice_update.delay.assert_called_with({
             'email': 'dude@example.com',
             'days_interval': 1,
             'created_at': '2019-04-07T12:42:34Z',
@@ -1127,7 +1127,7 @@ class CommonVoiceGoalsTests(ViewsPatcherMixin, TestCase):
             'two_day_streak': 'True',
         })
         resp = views.common_voice_goals(req)
-        self.record_common_voice_goals.delay.assert_called_with({
+        self.record_common_voice_update.delay.assert_called_with({
             'email': 'dude@example.com',
             'days_interval': 1,
             'created_at': '2019-04-07T12:42:34Z',
@@ -1147,7 +1147,7 @@ class CommonVoiceGoalsTests(ViewsPatcherMixin, TestCase):
             'created_at': '2019-04-07 12:42:34',
         })
         resp = views.common_voice_goals(req)
-        self.record_common_voice_goals.delay.assert_not_called()
+        self.record_common_voice_update.delay.assert_not_called()
         self.assertEqual(resp.status_code, 400, resp.content)
         data = json.loads(resp.content)
         self.assertEqual('error', data['status'])
