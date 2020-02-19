@@ -1813,6 +1813,8 @@ class AMOSyncUserTests(TestCase):
         })
 
 
+@override_settings(COMMON_VOICE_BATCH_PROCESSING=True,
+                   COMMON_VOICE_BATCH_CHUNK_SIZE=5)
 @patch('basket.news.tasks.record_common_voice_update')
 class TestCommonVoiceBatch(TestCase):
     def setUp(self):
@@ -1849,3 +1851,29 @@ class TestCommonVoiceBatch(TestCase):
         assert CommonVoiceUpdate.objects.count() == 5
         process_common_voice_batch()
         assert CommonVoiceUpdate.objects.count() == 0
+
+    def test_batch_chunking(self, mock_rcvg):
+        obj = CommonVoiceUpdate.objects.create(
+            data={'email': 'dude@example.com', 'last_active_date': '2020-02-19T14:52:30Z'}
+        )
+        CommonVoiceUpdate.objects.create(
+            data={'email': 'dude@example.com', 'last_active_date': '2020-02-19T14:53:30Z'}
+        )
+        CommonVoiceUpdate.objects.create(
+            data={'email': 'dude@example.com', 'last_active_date': '2020-02-19T14:54:30Z'}
+        )
+        CommonVoiceUpdate.objects.create(
+            data={'email': 'donny@example.com', 'last_active_date': '2020-02-19T14:55:30Z'}
+        )
+        CommonVoiceUpdate.objects.create(
+            data={'email': 'donny@example.com', 'last_active_date': '2020-02-19T14:56:30Z'}
+        )
+        assert CommonVoiceUpdate.objects.filter(ack=False).count() == 10
+        assert CommonVoiceUpdate.objects.filter(ack=True).count() == 0
+        process_common_voice_batch()
+        assert obj in CommonVoiceUpdate.objects.filter(ack=False)
+        assert CommonVoiceUpdate.objects.filter(ack=False).count() == 5
+        assert CommonVoiceUpdate.objects.filter(ack=True).count() == 5
+        process_common_voice_batch()
+        assert CommonVoiceUpdate.objects.filter(ack=False).count() == 0
+        assert CommonVoiceUpdate.objects.filter(ack=True).count() == 10

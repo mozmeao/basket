@@ -725,7 +725,10 @@ def record_common_voice_update(data):
 
 @et_task
 def process_common_voice_batch():
-    updates = CommonVoiceUpdate.objects.filter(ack=False)
+    if not settings.COMMON_VOICE_BATCH_PROCESSING:
+        return
+
+    updates = CommonVoiceUpdate.objects.filter(ack=False)[:settings.COMMON_VOICE_BATCH_CHUNK_SIZE]
     per_user = {}
     for update in updates:
         statsd.incr('news.tasks.process_common_voice_batch.all_updates')

@@ -270,11 +270,11 @@ if SNITCH_ID:
         'schedule': timedelta(minutes=5),
     }
 
-# if not READ_ONLY_MODE:
-#     CELERY_BEAT_SCHEDULE['common-voice'] = {
-#         'task': 'basket.news.tasks.process_common_voice_batch',
-#         'schedule': timedelta(hours=1),
-#     }
+if not READ_ONLY_MODE:
+    CELERY_BEAT_SCHEDULE['common-voice'] = {
+        'task': 'basket.news.tasks.process_common_voice_batch',
+        'schedule': timedelta(hours=1),
+    }
 
 
 # via http://stackoverflow.com/a/6556951/107114
@@ -415,6 +415,8 @@ SUBHUB_CC_EXPIRE_TRIGGER = config('SUBHUB_CC_EXPIRE_TRIGGER', default='en_subscr
 
 COMMON_VOICE_NEWSLETTER = config('COMMON_VOICE_NEWSLETTER', default='common-voice')
 COMMON_VOICE_BATCH_UPDATES = config('COMMON_VOICE_BATCH_UPDATES', default=False, cast=bool)
+COMMON_VOICE_BATCH_PROCESSING = config('COMMON_VOICE_BATCH_PROCESSING', default=False, cast=bool)
+COMMON_VOICE_BATCH_CHUNK_SIZE = config('COMMON_VOICE_BATCH_CHUNK_SIZE', default=1000, cast=int)
 
 OIDC_ENABLE = config('OIDC_ENABLE', default=False, cast=bool)
 if OIDC_ENABLE:
