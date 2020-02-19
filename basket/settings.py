@@ -270,11 +270,11 @@ if SNITCH_ID:
         'schedule': timedelta(minutes=5),
     }
 
-if not READ_ONLY_MODE:
-    CELERY_BEAT_SCHEDULE['common-voice'] = {
-        'task': 'basket.news.tasks.process_common_voice_batch',
-        'schedule': timedelta(hours=1),
-    }
+# if not READ_ONLY_MODE:
+#     CELERY_BEAT_SCHEDULE['common-voice'] = {
+#         'task': 'basket.news.tasks.process_common_voice_batch',
+#         'schedule': timedelta(hours=1),
+#     }
 
 
 # via http://stackoverflow.com/a/6556951/107114
