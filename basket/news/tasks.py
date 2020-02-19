@@ -721,6 +721,7 @@ def process_common_voice_batch():
     updates = CommonVoiceUpdate.objects.filter(ack=False)
     per_user = {}
     for update in updates:
+        statsd.incr('news.tasks.process_common_voice_batch.all_updates')
         # last_active_date is when the update was sent basically, so we can use it for ordering
         data = update.data
         last_active = isoparse(data['last_active_date'])
@@ -734,6 +735,7 @@ def process_common_voice_batch():
 
     for info in per_user.values():
         record_common_voice_goals.delay(info['data'])
+        statsd.incr('news.tasks.process_common_voice_batch.recorded')
 
     for update in updates:
         # do them one at a time to ensure that we don't ack new ones that have
