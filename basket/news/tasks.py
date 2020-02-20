@@ -756,6 +756,8 @@ def process_common_voice_batch():
     when = now() - timedelta(hours=24)
     deleted, _ = CommonVoiceUpdate.objects.filter(ack=True, when__lte=when).delete()
     statsd.incr('news.tasks.process_common_voice_batch.deleted', deleted)
+    statsd.gauge('news.tasks.process_common_voice_batch.queue_volume',
+                 CommonVoiceUpdate.objects.filter(ack=True).count())
 
 
 @et_task
