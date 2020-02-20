@@ -723,7 +723,7 @@ def record_common_voice_update(data):
         sfdc.add(new_data)
 
 
-@et_task
+@celery_app.task()
 def process_common_voice_batch():
     if not settings.COMMON_VOICE_BATCH_PROCESSING:
         return
