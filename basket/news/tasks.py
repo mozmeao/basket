@@ -731,7 +731,6 @@ def process_common_voice_batch():
     updates = CommonVoiceUpdate.objects.filter(ack=False)[:settings.COMMON_VOICE_BATCH_CHUNK_SIZE]
     per_user = {}
     for update in updates:
-        statsd.incr('news.tasks.process_common_voice_batch.all_updates')
         # last_active_date is when the update was sent basically, so we can use it for ordering
         data = update.data
         last_active = isoparse(data['last_active_date'])
@@ -745,7 +744,6 @@ def process_common_voice_batch():
 
     for info in per_user.values():
         record_common_voice_update.delay(info['data'])
-        statsd.incr('news.tasks.process_common_voice_batch.recorded')
 
     for update in updates:
         # do them one at a time to ensure that we don't ack new ones that have
@@ -753,9 +751,11 @@ def process_common_voice_batch():
         update.ack = True
         update.save()
 
+    statsd.incr('news.tasks.process_common_voice_batch.all_updates', len(updates))
     # delete ack'd updates more than 24 hours old
     when = now() - timedelta(hours=24)
-    CommonVoiceUpdate.objects.filter(ack=True, when__lte=when).delete()
+    deleted, _ = CommonVoiceUpdate.objects.filter(ack=True, when__lte=when).delete()
+    statsd.incr('news.tasks.process_common_voice_batch.deleted', deleted)
 
 
 @et_task
