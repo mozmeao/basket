@@ -1078,6 +1078,8 @@ def process_donation_event(data):
             'StageName': 'Closed Lost',
         })
     except sfapi.SalesforceMalformedRequest as e:
+        statsd.incr('news.tasks.process_donation_event.not_found')
+        sentry_client.captureException(tags={'action': 'ignored'})
         # we don't know about this tx_id. Let someone know.
         do_notify = cache.add('donate-notify-{}'.format(txn_id), 1, 86400)
         if do_notify and settings.DONATE_UPDATE_FAIL_DE:
@@ -1102,8 +1104,8 @@ def process_donation_event(data):
                 send_mail('Donation Record Not Found', body,
                           'noreply@mozilla.com', [settings.DONATE_NOTIFY_EMAIL])
 
-        # retry
-        raise
+        # uncomment below to retry
+        # raise
 
 
 # all strings and truncated at 2000 chars
