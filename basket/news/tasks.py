@@ -276,7 +276,7 @@ def fxa_verified_sfdc(data):
     email = data['email']
     fxa_id = data['uid']
     lang = data['lang']
-    create_date = data.get('createDate')
+    create_date = data.get('createDate', data.get('ts'))
     newsletters = data.get('newsletters')
     metrics = data.get('metricsContext', {})
     new_data = {
