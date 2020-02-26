@@ -190,6 +190,8 @@ def et_task(func):
                     sentry_client.captureException(tags={'action': 'retried'})
 
                 # ~68 hr at 11 retries
+                statsd.incr(f'{self.name}.retries.{self.request.retries}')
+                statsd.incr(f'news.tasks.retries.{self.request.retries}')
                 raise self.retry(countdown=2 ** (self.request.retries + 1) * 60)
             except self.MaxRetriesExceededError:
                 statsd.incr(self.name + '.retry_max')
