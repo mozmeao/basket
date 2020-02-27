@@ -1106,7 +1106,8 @@ def process_donation_event(data):
                 send_mail('Donation Record Not Found', body,
                           'noreply@mozilla.com', [settings.DONATE_NOTIFY_EMAIL])
 
-        raise
+        # uncomment below to retry
+        # raise
 
 
 # all strings and truncated at 2000 chars
