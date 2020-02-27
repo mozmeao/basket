@@ -6,8 +6,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "basket.settings")
 from django.core.handlers.wsgi import WSGIRequest
 from django.core.wsgi import get_wsgi_application
 
-from raven.contrib.django.raven_compat.middleware.wsgi import Sentry
-
 
 IS_HTTPS = os.environ.get('HTTPS', '').strip() == 'on'
 
@@ -22,4 +20,3 @@ class WSGIHTTPSRequest(WSGIRequest):
 
 application = get_wsgi_application()
 application.request_class = WSGIHTTPSRequest
-application = Sentry(application)

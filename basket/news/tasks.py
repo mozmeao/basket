@@ -15,13 +15,13 @@ from django.template.loader import render_to_string
 from django.utils.timezone import now
 
 import requests
+import sentry_sdk
 import simple_salesforce as sfapi
 import user_agents
 from celery.signals import task_failure, task_retry, task_success
 from celery.utils.time import get_exponential_backoff_interval
 from dateutil.parser import isoparse
 from django_statsd.clients import statsd
-from raven.contrib.django.raven_compat.models import client as sentry_client
 
 from basket.base.utils import email_is_testing
 from basket.news.backends.common import NewsletterException
@@ -208,7 +208,9 @@ def et_task(func):
 
             try:
                 if not (isinstance(e, RetryTask) or ignore_error_post_retry(e)):
-                    sentry_client.captureException(tags={'action': 'retried'})
+                    with sentry_sdk.configure_scope() as scope:
+                        scope.set_tag('action', 'retried')
+                        sentry_sdk.capture_exception()
 
                 # ~68 hr at 11 retries
                 statsd.incr(f'{self.name}.retries.{self.request.retries}')
@@ -221,7 +223,7 @@ def et_task(func):
                 if ignore_error_post_retry(e):
                     return
 
-                sentry_client.captureException()
+                sentry_sdk.capture_exception()
 
     return wrapped
 
@@ -1102,7 +1104,9 @@ def process_donation_event(data):
         })
     except sfapi.SalesforceMalformedRequest as e:
         statsd.incr('news.tasks.process_donation_event.not_found')
-        sentry_client.captureException(tags={'action': 'ignored'})
+        with sentry_sdk.configure_scope() as scope:
+            scope.set_tag('action', 'ignored')
+            sentry_sdk.capture_exception()
         # we don't know about this tx_id. Let someone know.
         do_notify = cache.add('donate-notify-{}'.format(txn_id), 1, 86400)
         if do_notify and settings.DONATE_UPDATE_FAIL_DE:

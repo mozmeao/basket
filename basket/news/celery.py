@@ -8,13 +8,11 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'basket.settings')
 from django.conf import settings
 from django.utils.encoding import force_bytes
 
-from celery import Celery as CeleryBase
+from celery import Celery
 from cryptography.fernet import Fernet, MultiFernet, InvalidToken
 from django_statsd.clients import statsd
 from kombu import serialization
 from kombu.utils import json
-from raven.contrib.celery import register_signal, register_logger_signal
-from raven.contrib.django.raven_compat.models import client
 
 
 FERNET = None
@@ -56,15 +54,6 @@ serialization.unregister('json')
 serialization.register('json', fernet_dumps, fernet_loads,
                        content_type='application/json',
                        content_encoding='utf-8')
-
-
-class Celery(CeleryBase):
-    def on_configure(self):
-        # register a custom filter to filter out duplicate logs
-        register_logger_signal(client)
-
-        # hook into the Celery error handler
-        register_signal(client)
 
 
 app = Celery('basket')

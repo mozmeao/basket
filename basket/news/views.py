@@ -14,11 +14,11 @@ from django.views.decorators.http import require_POST, require_safe
 
 import fxa.constants
 import requests
+import sentry_sdk
 from basket import errors
 from django_statsd.clients import statsd
 from ratelimit.exceptions import Ratelimited
 from ratelimit.utils import is_ratelimited
-from raven.contrib.django.raven_compat.models import client as sentry_client
 from simple_salesforce import SalesforceError
 from synctool.routing import Route
 
@@ -216,7 +216,7 @@ def fxa_callback(request):
         user_profile = fxa_profile.get_profile(access_token)
     except Exception:
         statsd.incr('news.views.fxa_callback.error.fxa_comm')
-        sentry_client.captureException()
+        sentry_sdk.capture_exception()
         return HttpResponseRedirect(error_url)
 
     email = user_profile['email']
@@ -224,7 +224,7 @@ def fxa_callback(request):
         user_data = get_user_data(email=email)
     except SalesforceError:
         statsd.incr('news.views.fxa_callback.error.get_user_data')
-        sentry_client.captureException()
+        sentry_sdk.capture_exception()
         return HttpResponseRedirect(error_url)
 
     if user_data:
@@ -250,7 +250,7 @@ def fxa_callback(request):
             token = upsert_contact(SUBSCRIBE, new_user_data, None)[0]
         except SalesforceError:
             statsd.incr('news.views.fxa_callback.error.upsert_contact')
-            sentry_client.captureException()
+            sentry_sdk.capture_exception()
             return HttpResponseRedirect(error_url)
 
     redirect_to = f'https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/existing/{token}/?fxa=1'
@@ -1020,7 +1020,9 @@ def subhub_post(request):
         data = json.loads(request.body)
     except ValueError:
         statsd.incr('subhub_post.message.json_error')
-        sentry_client.captureException(data={'extra': {'request.body': request.body}})
+        with sentry_sdk.configure_scope() as scope:
+            scope.set_extra('request.body', request.body)
+            sentry_sdk.capture_exception()
 
         return HttpResponseJSON({
             'status': 'error',
@@ -1063,7 +1065,9 @@ def amo_sync(request, post_type):
         data = json.loads(request.body)
     except ValueError:
         statsd.incr(f'amo_sync.{post_type}.message.json_error')
-        sentry_client.captureException(data={'extra': {'request.body': request.body}})
+        with sentry_sdk.configure_scope() as scope:
+            scope.set_extra('request.body', request.body)
+            sentry_sdk.capture_exception()
 
         return HttpResponseJSON({
             'status': 'error',

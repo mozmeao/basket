@@ -7,8 +7,8 @@ from django.core.management import BaseCommand, CommandError
 
 import boto3
 import requests
+import sentry_sdk
 from django_statsd.clients import statsd
-from raven.contrib.django.raven_compat.models import client as sentry_client
 
 from basket.news.tasks import (
     process_donation,
@@ -68,11 +68,13 @@ class Command(BaseCommand):
                     statsd.incr('mofo.donations.message.received')
                     try:
                         data = json.loads(msg.body)
-                    except ValueError as e:
+                    except ValueError:
                         # body was not JSON
                         statsd.incr('mofo.donations.message.json_error')
-                        sentry_client.captureException(data={'extra': {'msg.body': msg.body}})
-                        print('ERROR:', e, '::', msg.body)
+                        with sentry_sdk.configure_scope() as scope:
+                            scope.set_extra('msg.body', msg.body)
+                            sentry_sdk.capture_exception()
+
                         msg.delete()
                         continue
 
@@ -84,7 +86,10 @@ class Command(BaseCommand):
                     except Exception:
                         # something's wrong with the queue. try again.
                         statsd.incr('mofo.donations.message.queue_error')
-                        sentry_client.captureException(tags={'action': 'retried'})
+                        with sentry_sdk.configure_scope() as scope:
+                            scope.set_tag('action', 'retried')
+                            sentry_sdk.capture_exception()
+
                         continue
 
                     statsd.incr('mofo.donations.message.success')

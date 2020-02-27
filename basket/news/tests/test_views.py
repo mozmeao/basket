@@ -1210,7 +1210,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         self._patch_views('get_user_data')
         self._patch_views('get_fxa_clients')
         self._patch_views('statsd')
-        self._patch_views('sentry_client')
+        self._patch_views('sentry_sdk')
         self._patch_views('upsert_contact')
 
     def test_no_session_state(self):
@@ -1264,7 +1264,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         assert resp.status_code == 302
         assert resp['location'] == 'https://www.mozilla.org/newsletter/fxa-error/'
         self.statsd.incr.assert_called_with('news.views.fxa_callback.error.fxa_comm')
-        self.sentry_client.captureException.assert_called()
+        self.sentry_sdk.capture_exception.assert_called()
 
     def test_existing_user(self):
         """Should return a redirect to email pref center"""

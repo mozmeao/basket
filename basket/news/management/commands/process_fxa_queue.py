@@ -7,8 +7,8 @@ from django.core.management import BaseCommand, CommandError
 
 import boto3
 import requests
+import sentry_sdk
 from django_statsd.clients import statsd
-from raven.contrib.django.raven_compat.models import client as sentry_client
 
 from basket.news.tasks import fxa_delete, fxa_email_changed, fxa_login, fxa_verified
 
@@ -62,11 +62,13 @@ class Command(BaseCommand):
                     try:
                         data = json.loads(msg.body)
                         event = json.loads(data['Message'])
-                    except ValueError as e:
+                    except ValueError:
                         # body was not JSON
                         statsd.incr('fxa.events.message.json_error')
-                        sentry_client.captureException(data={'extra': {'msg.body': msg.body}})
-                        print('ERROR:', e, '::', msg.body)
+                        with sentry_sdk.configure_scope() as scope:
+                            scope.set_extra('msg.body', msg.body)
+                            sentry_sdk.capture_exception()
+
                         msg.delete()
                         continue
 
@@ -84,7 +86,10 @@ class Command(BaseCommand):
                     except Exception:
                         # something's wrong with the queue. try again.
                         statsd.incr('fxa.events.message.queue_error')
-                        sentry_client.captureException(tags={'action': 'retried'})
+                        with sentry_sdk.configure_scope() as scope:
+                            scope.set_tag('action', 'retried')
+                            sentry_sdk.capture_exception()
+
                         continue
 
                     statsd.incr('fxa.events.message.success')

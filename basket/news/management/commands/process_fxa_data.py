@@ -8,11 +8,11 @@ from django.core.management import BaseCommand, CommandError
 
 import boto3
 import requests
+import sentry_sdk
 from apscheduler.schedulers.blocking import BlockingScheduler
 from django_statsd.clients import statsd
 from pathlib import Path
 from pytz import utc
-from raven.contrib.django.raven_compat.models import client as sentry_client
 
 from basket.news.backends.sfmc import sfmc
 
@@ -82,7 +82,7 @@ def update_fxa_records(timestamp_chunk):
         sfmc.bulk_upsert_rows(settings.FXA_SFMC_DE, formatted_chunk)
     except Exception as e:
         log('error updating chunk: %r' % e)
-        sentry_client.captureException()
+        sentry_sdk.capture_exception()
         # try again later
         return
 

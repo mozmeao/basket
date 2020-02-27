@@ -16,12 +16,12 @@ import fxa.oauth
 import fxa.profile
 import phonenumbers
 import requests
+import sentry_sdk
 import simple_salesforce as sfapi
 # Get error codes from basket-client so users see the same definitions
 from basket import errors
 from django_statsd.clients import statsd
 from email_validator import validate_email, EmailNotValidError
-from raven.contrib.django.raven_compat.models import client as sentry_client
 
 from basket.news.backends.common import NewsletterException, NewsletterNoResultsException
 from basket.news.backends.sfdc import sfdc
@@ -167,14 +167,14 @@ def has_valid_fxa_oauth(request, email):
         oauth.verify_token(token, scope=['basket', 'profile:email'])
     except fxa.errors.Error:
         # security failure or server problem. can't validate. return invalid
-        sentry_client.captureException()
+        sentry_sdk.capture_exception()
         return False
 
     try:
         fxa_email = profile.get_email(token)
     except fxa.errors.Error:
         # security failure or server problem. can't validate. return invalid
-        sentry_client.captureException()
+        sentry_sdk.capture_exception()
         return False
 
     return email == fxa_email
@@ -358,7 +358,7 @@ def get_user_data(token=None, email=None, payee_id=None, amo_id=None, fxa_id=Non
             fxa_user = False
         except Exception:
             # some error happened, but we should return the user data anyway
-            sentry_client.captureException()
+            sentry_sdk.capture_exception()
             fxa_user = None
         else:
             fxa_user = True

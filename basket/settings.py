@@ -7,8 +7,11 @@ from datetime import timedelta
 
 import dj_database_url
 import django_cache_url
+import sentry_sdk
 from decouple import config, Csv, UndefinedValueError
 from pathlib import Path
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.django import DjangoIntegration
 
 # Application version.
 VERSION = (0, 1)
@@ -164,7 +167,6 @@ INSTALLED_APPS = (
 
     'corsheaders',
     'product_details',
-    'raven.contrib.django.raven_compat',
     'django_extensions',
     'mozilla_django_oidc',
     'watchman',
@@ -299,11 +301,15 @@ CLUSTER_NAME = config('CLUSTER_NAME', default=None)
 K8S_NAMESPACE = config('K8S_NAMESPACE', default=None)
 K8S_POD_NAME = config('K8S_POD_NAME', default=None)
 
-RAVEN_CONFIG = {
-    'dsn': config('SENTRY_DSN', None),
-    'site': '.'.join(x for x in [K8S_NAMESPACE, CLUSTER_NAME] if x),
-    'release': config('GIT_SHA', None),
-}
+sentry_sdk.init(
+    dsn=config('SENTRY_DSN', None),
+    release=config('GIT_SHA', None),
+    server_name='.'.join(x for x in [K8S_NAMESPACE, CLUSTER_NAME, HOSTNAME] if x),
+    integrations=[
+        CeleryIntegration(),
+        DjangoIntegration(),
+    ],
+)
 
 STATSD_HOST = config('STATSD_HOST', get_default_gateway_linux())
 STATSD_PORT = config('STATSD_PORT', 8125, cast=int)
