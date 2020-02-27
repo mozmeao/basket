@@ -1128,7 +1128,8 @@ class AddSMSUserTests(TestCase):
 
 
 class ETTaskTests(TestCase):
-    def test_retry_increase(self):
+    @patch('basket.news.tasks.exponential_backoff')
+    def test_retry_increase(self, mock_backoff):
         """
         The delay for retrying a task should increase geometrically by a
         power of 2. I really hope I said that correctly.
@@ -1145,7 +1146,8 @@ class ETTaskTests(TestCase):
         with self.assertRaises(Exception):
             myfunc.run()
 
-        myfunc.retry.assert_called_with(countdown=32 * 60)
+        mock_backoff.assert_called_with(4)
+        myfunc.retry.assert_called_with(countdown=mock_backoff())
 
 
 class AddFxaActivityTests(TestCase):

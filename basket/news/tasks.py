@@ -18,6 +18,7 @@ import requests
 import simple_salesforce as sfapi
 import user_agents
 from celery.signals import task_failure, task_retry, task_success
+from celery.utils.time import get_exponential_backoff_interval
 from dateutil.parser import isoparse
 from django_statsd.clients import statsd
 from raven.contrib.django.raven_compat.models import client as sentry_client
@@ -62,6 +63,26 @@ MAINTENANCE_EXEMPT = [
     'news.tasks.add_sms_user',
     'news.tasks.add_sms_user_optin',
 ]
+
+
+def exponential_backoff(retries):
+    """
+    Return a number of seconds to delay the next task attempt using
+    an exponential back-off algorithm with jitter.
+
+    See https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/
+
+    :param retries: Number of retries so far
+    :return: number of seconds to delay the next try
+    """
+    backoff_minutes = get_exponential_backoff_interval(
+        factor=2,
+        retries=retries,
+        maximum=settings.CELERY_MAX_RETRY_DELAY_MINUTES,
+        full_jitter=True,
+    )
+    # wait for a minimum of 1 minute
+    return max(1, backoff_minutes) * 60
 
 
 def ignore_error(exc, to_ignore=IGNORE_ERROR_MSGS):
@@ -150,7 +171,7 @@ def et_task(func):
     @celery_app.task(name=full_task_name,
                      bind=True,
                      default_retry_delay=300,  # 5 min
-                     max_retries=11)
+                     max_retries=12)
     @wraps(func)
     def wrapped(self, *args, **kwargs):
         start_time = kwargs.pop('start_time', None)
@@ -192,7 +213,7 @@ def et_task(func):
                 # ~68 hr at 11 retries
                 statsd.incr(f'{self.name}.retries.{self.request.retries}')
                 statsd.incr(f'news.tasks.retries.{self.request.retries}')
-                raise self.retry(countdown=2 ** (self.request.retries + 1) * 60)
+                raise self.retry(countdown=exponential_backoff(self.request.retries))
             except self.MaxRetriesExceededError:
                 statsd.incr(self.name + '.retry_max')
                 statsd.incr('news.tasks.retry_max_total')
