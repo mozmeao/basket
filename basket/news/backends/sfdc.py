@@ -282,16 +282,14 @@ class RefreshingSFType(sfapi.SFType):
             self.refresh_session()
             resp = super(RefreshingSFType, self)._call_salesforce(method, url, **kwargs)
 
-        if 'sforce-limit-info' in resp.headers:
-            try:
-                usage, limit = resp.headers['sforce-limit-info'].split('=')[1].split('/')
-            except Exception:
-                usage = limit = None
-
+        limit_info = resp.headers.get('sforce-limit-info')
+        if limit_info:
+            usages = sfapi.Salesforce.parse_api_usage(limit_info)
+            usage = usages.get('api-usage')
             if usage:
-                statsd.gauge('news.backends.sfdc.daily_api_used', int(usage), rate=0.5)
-                statsd.gauge('news.backends.sfdc.daily_api_limit', int(limit), rate=0.5)
-                percentage = float(usage) / float(limit) * 100
+                statsd.gauge('news.backends.sfdc.daily_api_used', int(usage.used), rate=0.5)
+                statsd.gauge('news.backends.sfdc.daily_api_limit', int(usage.total), rate=0.5)
+                percentage = float(usage.used) / float(usage.total) * 100
                 statsd.gauge('news.backends.sfdc.percent_daily_api_used', percentage, rate=0.5)
 
         return resp
