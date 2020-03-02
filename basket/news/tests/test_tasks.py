@@ -1199,7 +1199,7 @@ class AddFxaActivityTests(TestCase):
         self.assertEqual(record['OS'], 'Mac OS X')
         self.assertEqual(record['OS_VERSION'], '10.6')
         self.assertEqual(record['BROWSER'], 'Firefox 30.2')
-        self.assertEqual(record['DEVICE_NAME'], 'Other')
+        self.assertEqual(record['DEVICE_NAME'], 'Mac')
         self.assertEqual(record['DEVICE_TYPE'], 'D')
 
     def test_linux(self):
