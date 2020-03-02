@@ -95,8 +95,8 @@ simple-salesforce==0.74.3 \
 django-extensions==2.2.6 \
     --hash=sha256:4524eca892d23fa6e93b0620901983b287ff5dc806f1b978d6a98541f06b9471 \
     --hash=sha256:936e8e3962024d3c75ea54f4e0248002404ca7ca7fb698430e60b06b5555b4e7
-email_validator==1.0.4 \
-    --hash=sha256:79966e318d6d68fed359c90f8f19d242bcc178b724011f1c07145bd093da6cc7
+email_validator==1.0.5 \
+    --hash=sha256:e3e6ede1765d7c1e580d2050d834b2689361f7da2d50ce74df6a5968fca7cb13
 idna==2.8 \
     --hash=sha256:c357b3f628cf53ae2c4c05627ecc484553142ca23264e593d327bcde5e9c3407 \
     --hash=sha256:ea8b7f6188e6fa117537c3df7da9fc686d485087abf6ac197f9c46432f7e4a3c
