@@ -7,6 +7,7 @@ from time import time
 
 from django.conf import settings
 from django.core.cache import cache
+from django.utils.encoding import force_str
 
 import requests
 from django_statsd.clients import statsd
@@ -89,7 +90,7 @@ class ETRefreshClient(ET_Client):
         try:
             token_response = r.json()
         except ValueError:
-            raise NewsletterException('SFMC Error During Auth: ' + r.content,
+            raise NewsletterException('SFMC Error During Auth: ' + force_str(r.content),
                                       status_code=r.status_code)
 
         if 'accessToken' in token_response:
@@ -102,7 +103,7 @@ class ETRefreshClient(ET_Client):
             del payload['refreshToken']
             return self.request_token(payload)
 
-        raise NewsletterException('SFMC Error During Auth: ' + r.content,
+        raise NewsletterException('SFMC Error During Auth: ' + force_str(r.content),
                                   status_code=r.status_code)
 
     def refresh_token(self, force_refresh=False):
@@ -302,11 +303,11 @@ class SFMC(object):
         url = self.sms_api_url.format(message_id)
         response = requests.post(url, json=data, headers=self.auth_header, timeout=10)
         if response.status_code >= 500:
-            raise NewsletterException('SFMC Server Error: {}'.format(response.content),
+            raise NewsletterException('SFMC Server Error: {}'.format(force_str(response.content)),
                                       status_code=response.status_code)
 
         if response.status_code >= 400:
-            raise NewsletterException('SFMC Request Error: {}'.format(response.content),
+            raise NewsletterException('SFMC Request Error: {}'.format(force_str(response.content)),
                                       status_code=response.status_code)
 
     @time_request
@@ -314,11 +315,11 @@ class SFMC(object):
         url = self.rowset_api_url.format(de_name)
         response = requests.post(url, json=values, headers=self.auth_header, timeout=30)
         if response.status_code >= 500:
-            raise NewsletterException('SFMC Server Error: {}'.format(response.content),
+            raise NewsletterException('SFMC Server Error: {}'.format(force_str(response.content)),
                                       status_code=response.status_code)
 
         if response.status_code >= 400:
-            raise NewsletterException(response.content, status_code=response.status_code)
+            raise NewsletterException(force_str(response.content), status_code=response.status_code)
 
 
 sfmc = SFMC()
