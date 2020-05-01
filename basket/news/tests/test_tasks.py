@@ -33,7 +33,6 @@ from basket.news.tasks import (
     process_donation,
     process_donation_event,
     process_petition_signature,
-    process_subhub_event_credit_card_expiring,
     process_subhub_event_customer_created,
     process_subhub_event_payment_failed,
     process_subhub_event_subscription_cancel,
@@ -362,7 +361,7 @@ class SubHubEventSubUpdatedTests(TestCase):
 class SubHubEventTests(TestCase):
     charge_data = {
         'event_id': 'the-event-id',
-        'event_type': 'customer.source.expiring',
+        'event_type': 'customer.created',
         'customer_id': 'cus_1234',
         'plan_amount': '1000',
         'current_period_end': '1566305505',
@@ -378,15 +377,6 @@ class SubHubEventTests(TestCase):
         'charge': '8675309',
         'nickname': 'bowling',
     }
-
-    @patch('basket.news.tasks.sfmc')
-    def test_credit_card_expiring(self, sfmc_mock, sfdc_mock, gud_mock):
-        process_subhub_event_credit_card_expiring({
-            'email': 'dude@example.com',
-        })
-
-        sfmc_mock.send_mail.assert_called_with(settings.SUBHUB_CC_EXPIRE_TRIGGER,
-            'dude@example.com', 'dude@example.com')
 
     def test_customer_created_customer_found(self, sfdc_mock, gud_mock):
         """

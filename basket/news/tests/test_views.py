@@ -1380,7 +1380,6 @@ class SubHubAPITests(ViewsPatcherMixin, TestCase):
         self.client = Client()
 
         self._patch_views('process_subhub_event_customer_created')
-        self._patch_views('process_subhub_event_credit_card_expiring')
         self._patch_views('process_subhub_event_subscription_charge')
         self._patch_views('process_subhub_event_subscription_cancel')
         self._patch_views('process_subhub_event_payment_failed')
@@ -1390,7 +1389,6 @@ class SubHubAPITests(ViewsPatcherMixin, TestCase):
         views.SUBHUB_EVENT_TYPES.update({
             'customer.created': self.process_subhub_event_customer_created,
             'customer.recurring_charge': self.process_subhub_event_subscription_charge,
-            'customer.source.expiring': self.process_subhub_event_credit_card_expiring,
             'customer.subscription.created': self.process_subhub_event_subscription_charge,
             'customer.subscription.cancelled': self.process_subhub_event_subscription_cancel,
             'invoice.payment_failed': self.process_subhub_event_payment_failed,
@@ -1422,15 +1420,6 @@ class SubHubAPITests(ViewsPatcherMixin, TestCase):
                                 content_type='application/json')
         assert resp.status_code == 200
         self.process_subhub_event_subscription_charge.delay.assert_called_with(data)
-
-    def test_customer_source_expiring_task(self):
-        self.has_valid_api_key.return_value = True
-        data = {'event_type': 'customer.source.expiring'}
-        resp = self.client.post('/subhub/',
-                                data=json.dumps(data),
-                                content_type='application/json')
-        assert resp.status_code == 200
-        self.process_subhub_event_credit_card_expiring.delay.assert_called_with(data)
 
     def test_customer_subscription_created_task(self):
         self.has_valid_api_key.return_value = True
