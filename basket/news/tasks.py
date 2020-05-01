@@ -1021,15 +1021,6 @@ def process_subhub_event_subscription_cancel(data):
 
 
 @et_task
-def process_subhub_event_credit_card_expiring(data):
-    """
-    Event name: customer.source.expiring
-    """
-    statsd.incr('news.tasks.process_subhub_event.credit_card_expiring')
-    sfmc.send_mail(settings.SUBHUB_CC_EXPIRE_TRIGGER, data['email'], data['email'])
-
-
-@et_task
 def process_subhub_event_payment_failed(data):
     """
     Event name: invoice.payment_failed

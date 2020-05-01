@@ -47,7 +47,6 @@ from basket.news.tasks import (
     update_user_meta,
     upsert_contact,
     upsert_user,
-    process_subhub_event_credit_card_expiring,
     process_subhub_event_customer_created,
     process_subhub_event_payment_failed,
     process_subhub_event_subscription_cancel,
@@ -90,7 +89,6 @@ sync_route = Route(api_token=settings.SYNC_KEY)
 SUBHUB_EVENT_TYPES = {
     'customer.created': process_subhub_event_customer_created,
     'customer.recurring_charge': process_subhub_event_subscription_charge,  # subscriptioin creations & recurring charges
-    'customer.source.expiring': process_subhub_event_credit_card_expiring,
     'customer.subscription.created': process_subhub_event_subscription_charge,  # subscriptioin creations & recurring charges
     'customer.subscription_cancelled': process_subhub_event_subscription_cancel,
     'customer.subscription.reactivated': process_subhub_event_subscription_reactivated,
