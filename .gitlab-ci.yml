@@ -18,7 +18,7 @@ build-images:
     - prod
     - admin
   tags:
-    - meao
+    - mozmeao
   script:
     - bin/slack-notify --stage build --status starting
     - make clean
@@ -30,7 +30,7 @@ build-images:
 .deploy:
   stage: deploy
   tags:
-    - meao
+    - mozmeao
     - aws
   script:
     - bin/update-config.sh
