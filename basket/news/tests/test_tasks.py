@@ -1627,7 +1627,7 @@ class AMOSyncAddonTests(TestCase):
             'guid': '{85ee4a2a-51b6-4f5e-a99c-6d9abcf6782d}',
             'id': 35896,
             'is_disabled': False,
-            'is_recommended': False,
+            'is_recommended': True,
             'last_updated': '2019-06-26T11:38:13Z',
             'latest_unlisted_version': {
                 'compatibility': {
@@ -1683,6 +1683,7 @@ class AMOSyncAddonTests(TestCase):
             'AMO_Update__c': '2019-06-26T11:38:13Z',
             'Average_Daily_Users__c': 0,
             'Dev_Disabled__c': 'No',
+            'AMO_Recommended__c': True,
             'Name': 'Ibird Jelewt Boartrica',
         })
         sfdc_mock.dev_addon.upsert.assert_has_calls([
@@ -1715,6 +1716,7 @@ class AMOSyncAddonTests(TestCase):
             'AMO_Update__c': '2019-06-26T11:38:13Z',
             'Average_Daily_Users__c': 0,
             'Dev_Disabled__c': 'No',
+            'AMO_Recommended__c': True,
             'Name': 'Ibird Jelewt Boartrica',
             'AMO_Current_Version__c': '',
             'AMO_Current_Version_Unlisted__c': '',
@@ -1738,7 +1740,7 @@ class AMOSyncUserTests(TestCase):
         self.amo_data = {
             'id': 1234,
             'display_name': 'His Dudeness',
-            'email': 'dude@example.com',
+            'fxa_id': 'fxa_id_of_dude',
             'homepage': 'https://elduder.io',
             'last_login': '2019-08-06T10:39:44Z',
             'location': 'California, USA, Earth',
@@ -1747,7 +1749,7 @@ class AMOSyncUserTests(TestCase):
         self.user_data = {
             'id': 'A1234',
             'amo_id': 1234,
-            'email': 'the-dude@example.com'
+            'fxa_id': 'fxa_id_of_dude'
         }
 
     def test_existing_user_with_amo_id(self, gud_mock, sfdc_mock):
@@ -1755,6 +1757,7 @@ class AMOSyncUserTests(TestCase):
         amo_sync_user(self.amo_data)
         # does not include email or amo_id
         sfdc_mock.update.assert_called_with(self.user_data, {
+            'amo_id': 1234,
             'amo_display_name': 'His Dudeness',
             'amo_homepage': 'https://elduder.io',
             'amo_last_login': '2019-08-06T10:39:44Z',
@@ -1777,45 +1780,50 @@ class AMOSyncUserTests(TestCase):
 
     def test_new_user(self, gud_mock, sfdc_mock):
         gud_mock.return_value = None
-        amo_sync_user(self.amo_data)
+        user = amo_sync_user(self.amo_data)
         sfdc_mock.update.assert_not_called()
-        # includes email and amo_id
-        sfdc_mock.add.assert_called_with({
-            'email': 'dude@example.com',
-            'amo_id': 1234,
-            'amo_display_name': 'His Dudeness',
-            'amo_homepage': 'https://elduder.io',
-            'amo_last_login': '2019-08-06T10:39:44Z',
-            'amo_location': 'California, USA, Earth',
-            'source_url': 'https://addons.mozilla.org/',
-            'amo_user': True,
-        })
+        assert user is None
 
-    def test_deleted_user(self, gud_mock, sfdc_mock):
+    def test_deleted_user_matching_fxa_id(self, gud_mock, sfdc_mock):
         self.amo_data['deleted'] = True
         gud_mock.return_value = self.user_data
         amo_sync_user(self.amo_data)
-        # does not include email or amo_id
         sfdc_mock.update.assert_called_with(self.user_data, {
             'amo_display_name': 'His Dudeness',
             'amo_homepage': 'https://elduder.io',
             'amo_last_login': '2019-08-06T10:39:44Z',
             'amo_location': 'California, USA, Earth',
-            'amo_user': False,
+            'amo_user': True,
+            'amo_deleted': True,
+            'amo_id': 1234,
         })
 
-    def test_null_values(self, gud_mock, sfdc_mock):
-        gud_mock.return_value = None
-        self.amo_data['display_name'] = None
-        self.amo_data['last_login'] = None
-        self.amo_data['location'] = None
+    def test_deleted_user_fxa_id_is_None(self, gud_mock, sfdc_mock):
+        self.amo_data['deleted'] = True
+        self.amo_data['fxa_id'] = None
+        gud_mock.return_value = self.user_data
         amo_sync_user(self.amo_data)
-        sfdc_mock.add.assert_called_with({
-            'email': 'dude@example.com',
-            'amo_id': 1234,
+        sfdc_mock.update.assert_called_with(self.user_data, {
+            'amo_display_name': 'His Dudeness',
             'amo_homepage': 'https://elduder.io',
-            'source_url': 'https://addons.mozilla.org/',
+            'amo_last_login': '2019-08-06T10:39:44Z',
+            'amo_location': 'California, USA, Earth',
             'amo_user': True,
+            'amo_deleted': True,
+            'amo_id': None
+        })
+
+    def test_not_deleted_user_fxa_id_is_None(self, gud_mock, sfdc_mock):
+        self.amo_data['fxa_id'] = None
+        gud_mock.return_value = self.user_data
+        amo_sync_user(self.amo_data)
+        sfdc_mock.update.assert_called_with(self.user_data, {
+            'amo_display_name': 'His Dudeness',
+            'amo_homepage': 'https://elduder.io',
+            'amo_last_login': '2019-08-06T10:39:44Z',
+            'amo_location': 'California, USA, Earth',
+            'amo_user': True,
+            'amo_id': None,
         })
 
 

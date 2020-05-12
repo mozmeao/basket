@@ -75,6 +75,7 @@ FIELD_MAP = {
     'amo_last_login': 'AMO_Last_Login__c',
     'amo_location': 'AMO_Location__c',
     'amo_homepage': 'AMO_Homepage_URL__c',
+    'amo_deleted': 'AMO_Account_Deleted__c',
     'payee_id': 'PMT_Cust_Id__c',
     'fxa_id': 'FxA_Id__c',
     'fxa_deleted': 'FxA_Account_Deleted__c',

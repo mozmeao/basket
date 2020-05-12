@@ -1345,33 +1345,41 @@ def upsert_amo_user_data(data):
     :param data: dict of amo user data
     :return: dict of SFDC contact data
     """
-    email = data.pop('email')
+    fxa_id = data.pop('fxa_id')
     amo_id = data.pop('id')
+
+    user = get_user_data(amo_id=amo_id, extra_fields=['id', 'amo_id', 'fxa_id'])
+    if not user:
+        # Try to find user with fxa_id
+        user = get_user_data(fxa_id=fxa_id, extra_fields=['id', 'amo_id', 'fxa_id'])
+
+    if not user:
+        # Cannot find user with FxA ID or AMO ID, ignore the update
+        return None
+
     amo_deleted = data.pop('deleted', False)
     amo_data = {f'amo_{k}': v for k, v in data.items() if v}
-    amo_data['amo_user'] = not amo_deleted
-    user = get_user_data(amo_id=amo_id, extra_fields=['id', 'amo_id'])
-    if user:
-        sfdc.update(user, amo_data)
-        return user
-
-    # include the ID in update or add since we couldn't find
-    # the user with this ID above
+    amo_data['amo_user'] = True
     amo_data['amo_id'] = amo_id
-    user = get_user_data(email=email, extra_fields=['id'])
-    if user:
-        sfdc.update(user, amo_data)
-        # need amo_id for linking addons and authors
-        user['amo_id'] = amo_id
-        return user
 
-    amo_data['email'] = email
-    amo_data['source_url'] = 'https://addons.mozilla.org/'
-    # returns only the new user ID in a dict, but that will work
-    # when passed to e.g. `sfdc.update()`
-    user = sfdc.add(amo_data)
-    # need amo_id for linking addons and authors
-    user['amo_id'] = amo_id
+    if amo_deleted:
+        if fxa_id is None:
+            # Deleted user, we don't want do keep linking that AMO account with
+            # that FxA account in Salesforce, they might re-create a new AMO
+            # account from their previous FxA account.
+            amo_data['amo_id'] = None
+            amo_data['amo_deleted'] = amo_deleted
+        if user['fxa_id'] == fxa_id:
+            # Banned AMO user. They can't re-use that FxA account to create
+            # another AMO account so we can leave the link.
+            amo_data['amo_deleted'] = amo_deleted
+    else:
+        if fxa_id is None:
+            # User takeover protection, we don't want do keep linking that AMO
+            # account with that FxA account in Salesforce
+            amo_data['amo_id'] = None
+
+    sfdc.update(user, amo_data)
     return user
 
 
@@ -1398,6 +1406,7 @@ def amo_sync_addon(data):
         'AMO_Update__c': data['last_updated'],
         'Average_Daily_Users__c': data['average_daily_users'],
         'Dev_Disabled__c': 'Yes' if data['is_disabled'] else 'No',
+        'AMO_Recommended__c': data['is_recommended'],
     }
     # check for possible None or empty values
     if data['name']:
