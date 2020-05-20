@@ -10,14 +10,21 @@ import requests
 import sentry_sdk
 from django_statsd.clients import statsd
 
-from basket.news.tasks import fxa_delete, fxa_email_changed, fxa_login, fxa_verified
+from basket.news.tasks import (
+    fxa_delete,
+    fxa_email_changed,
+    fxa_login,
+    fxa_newsletters_update,
+    fxa_verified,
+)
 
 
 FXA_EVENT_TYPES = {
     'delete': fxa_delete,
-    'verified': fxa_verified,
-    'primaryEmailChanged': fxa_email_changed,
     'login': fxa_login,
+    'newsletters:update': fxa_newsletters_update,
+    'primaryEmailChanged': fxa_email_changed,
+    'verified': fxa_verified,
 }
 
 

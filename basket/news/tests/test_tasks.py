@@ -1283,7 +1283,7 @@ class FxAVerifiedTests(TestCase):
         fxa_verified(data)
         upsert_mock.assert_called_with(SUBSCRIBE, {
             'email': data['email'],
-            'newsletters': settings.FXA_REGISTER_NEWSLETTER,
+            'newsletters': [settings.FXA_REGISTER_NEWSLETTER],
             'source_url': settings.FXA_REGISTER_SOURCE_URL,
             'country': '',
             'fxa_lang': data['locale'],
@@ -1312,7 +1312,11 @@ class FxAVerifiedTests(TestCase):
         fxa_verified(data)
         upsert_mock.assert_called_with(SUBSCRIBE, {
             'email': data['email'],
-            'newsletters': 'test-pilot,take-action-for-the-internet,' + settings.FXA_REGISTER_NEWSLETTER,
+            'newsletters': [
+                'test-pilot',
+                'take-action-for-the-internet',
+                settings.FXA_REGISTER_NEWSLETTER
+            ],
             'source_url': settings.FXA_REGISTER_SOURCE_URL,
             'country': '',
             'lang': 'en-US',
@@ -1346,7 +1350,7 @@ class FxAVerifiedTests(TestCase):
         fxa_verified(data)
         upsert_mock.assert_called_with(SUBSCRIBE, {
             'email': data['email'],
-            'newsletters': settings.FXA_REGISTER_NEWSLETTER,
+            'newsletters': [settings.FXA_REGISTER_NEWSLETTER],
             'source_url': settings.FXA_REGISTER_SOURCE_URL + '?utm_campaign=bowling',
             'country': 'DE',
             'lang': 'en-US',
@@ -1376,7 +1380,7 @@ class FxAVerifiedTests(TestCase):
         fxa_verified(data)
         upsert_mock.assert_called_with(SUBSCRIBE, {
             'email': data['email'],
-            'newsletters': settings.FXA_REGISTER_NEWSLETTER,
+            'newsletters': [settings.FXA_REGISTER_NEWSLETTER],
             'source_url': settings.FXA_REGISTER_SOURCE_URL,
             'country': '',
             'lang': 'en-US',

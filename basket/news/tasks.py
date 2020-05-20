@@ -319,7 +319,7 @@ def fxa_verified_sfdc(data):
 
     newsletters = newsletters or []
     newsletters.append(settings.FXA_REGISTER_NEWSLETTER)
-    new_data['newsletters'] = ','.join(newsletters)
+    new_data['newsletters'] = newsletters
 
     user_data = get_fxa_user_data(fxa_id, email)
     # don't overwrite the user's language if already set
@@ -345,6 +345,23 @@ def fxa_verified_sfmc(data):
     except NewsletterException as e:
         # don't report these errors to sentry until retries exhausted
         raise RetryTask(str(e))
+
+
+@et_task
+def fxa_newsletters_update(data):
+    email = data['email']
+    fxa_id = data['uid']
+    new_data = {
+        'email': email,
+        'newsletters': data['newsletters'],
+        'source_url': settings.FXA_REGISTER_SOURCE_URL,
+        'country': data.get('countryCode', ''),
+        'fxa_lang': data.get('locale'),
+        'fxa_id': fxa_id,
+        'optin': True,
+        'format': 'H',
+    }
+    upsert_contact(SUBSCRIBE, new_data, get_fxa_user_data(fxa_id, email))
 
 
 @et_task
