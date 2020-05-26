@@ -23,7 +23,7 @@ from basket.news.tasks import (
 FXA_EVENT_TYPES = {
     'delete': fxa_delete,
     'login': fxa_login,
-    'newsletters:update': fxa_newsletters_update,
+    'newsletters-update': fxa_newsletters_update,
     'primaryEmailChanged': fxa_email_changed,
     'verified': fxa_verified,
 }
