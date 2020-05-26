@@ -1,4 +1,5 @@
 import json
+import logging
 import sys
 from time import time
 
@@ -26,6 +27,7 @@ FXA_EVENT_TYPES = {
     'primaryEmailChanged': fxa_email_changed,
     'verified': fxa_verified,
 }
+log = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -83,6 +85,7 @@ class Command(BaseCommand):
                     statsd.incr('fxa.events.message.received.{}'.format(event_type))
                     if event_type not in FXA_EVENT_TYPES:
                         statsd.incr('fxa.events.message.received.{}.IGNORED'.format(event_type))
+                        log.debug('IGNORED: %s' % event)
                         # we can safely remove from the queue message types we don't need
                         # this keeps the queue from filling up with old messages
                         msg.delete()
