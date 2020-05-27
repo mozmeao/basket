@@ -1030,13 +1030,14 @@ def subhub_post(request):
             'code': errors.BASKET_USAGE_ERROR,
         }, 400)
     else:
-        etype = data['event_type']
+        etype = data.get('event_type')
         processor = SUBHUB_EVENT_TYPES.get(etype)
 
         if processor:
             processor.delay(data)
             return HttpResponseJSON({'status': 'ok'})
         else:
+            statsd.incr('subhub_post.message.IGNORED')
             return HttpResponseJSON({
                 'desc': 'unknown event type',
                 'status': 'error',
