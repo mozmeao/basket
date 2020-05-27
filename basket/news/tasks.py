@@ -256,10 +256,25 @@ def fxa_email_changed(data):
         # message older than our last update for this UID
         return
 
+    # Update SFDC
+    user_data = get_user_data(fxa_id=fxa_id, extra_fields=['id'])
+    if user_data:
+        sfdc.update(user_data, {'fxa_primary_email': email})
+    else:
+        # FxA record not found, try email
+        user_data = get_user_data(email=email, extra_fields=['id'])
+        if user_data:
+            sfdc.update(user_data, {'fxa_id': fxa_id, 'fxa_primary_email': email})
+        else:
+            # No matching record for Email or FxA ID. Create one.
+            sfdc.add({'email': email, 'fxa_id': fxa_id, 'fxa_primary_email': email})
+            statsd.incr('news.tasks.fxa_email_changed.user_not_found')
+
     sfmc.upsert_row('FXA_EmailUpdated', {
         'FXA_ID': fxa_id,
         'NewEmailAddress': email,
     })
+
     cache.set(cache_key, ts, 7200)  # 2 hr
 
 
@@ -1451,16 +1466,11 @@ def get_fxa_user_data(fxa_id, email):
     user_data_fxa = get_user_data(fxa_id=fxa_id,
                                   extra_fields=['id'])
     if user_data_fxa:
-        # if the email matches what we got from subhub, which got it from fxa, we're good
-        if user_data_fxa['email'] == email:
-            user_data = user_data_fxa
-        # otherwise we've gotta make sure this one doesn't interfere with us updating or creating
-        # the one with the right email address below
-        else:
-            statsd.incr('news.utils.get_fxa_user_data.fxa_id_dupe')
+        user_data = user_data_fxa
+        # If email doesn't match, update FxA primary email field with the new email.
+        if user_data_fxa['email'] != email:
             sfdc.update(user_data_fxa, {
-                'fxa_id': f"DUPE:{fxa_id}",
-                'fxa_deleted': True,
+                'fxa_primary_email': email,
             })
 
     # if we still don't have user data try again with email this time

@@ -475,8 +475,7 @@ class SubHubEventTests(TestCase):
 
         sfdc_mock.update.assert_has_calls([
             call(user_data_fxa, {
-                'fxa_id': 'DUPE:1234',
-                'fxa_deleted': True,
+                'fxa_primary_email': user_data_fxa['email']
             }),
             call(user_data, {
                 'fxa_id': '1234',
@@ -504,8 +503,7 @@ class SubHubEventTests(TestCase):
         })
 
         sfdc_mock.update.assert_called_once_with(user_data_fxa, {
-            'fxa_id': 'DUPE:1234',
-            'fxa_deleted': True,
+            'fxa_primary_email': user_data_fxa['email'],
         })
         sfdc_mock.add.assert_called_with({
             'fxa_id': '1234',
@@ -1470,9 +1468,11 @@ class FxALoginTests(TestCase):
 
 
 @patch('basket.news.tasks.sfmc')
+@patch('basket.news.tasks.sfdc')
+@patch('basket.news.tasks.get_user_data')
 @patch('basket.news.tasks.cache')
 class FxAEmailChangedTests(TestCase):
-    def test_timestamps_older_message(self, cache_mock, sfmc_mock):
+    def test_timestamps_older_message(self, cache_mock, gud_mock, sfdc_mock, sfmc_mock):
         data = {
             'ts': 1234.567,
             'uid': 'the-fxa-id-for-el-dudarino',
@@ -1480,34 +1480,78 @@ class FxAEmailChangedTests(TestCase):
         }
         cache_mock.get.return_value = 1234.678
         # ts higher in cache, should no-op
+        gud_mock.return_value = {'id': '1234'}
         fxa_email_changed(data)
         sfmc_mock.upsert_row.assert_not_called()
+        sfdc_mock.upsert_row.assert_not_called()
 
-    def test_timestamps_newer_message(self, cache_mock, sfmc_mock):
+    def test_timestamps_newer_message(self, cache_mock, gud_mock, sfdc_mock, sfmc_mock):
         data = {
             'ts': 1234.567,
             'uid': 'the-fxa-id-for-el-dudarino',
             'email': 'the-dudes-new-email@example.com',
         }
         cache_mock.get.return_value = 1234.456
+        gud_mock.return_value = {'id': '1234'}
         # ts higher in message, do the things
         fxa_email_changed(data)
         sfmc_mock.upsert_row.assert_called_with('FXA_EmailUpdated', {
             'FXA_ID': data['uid'],
             'NewEmailAddress': data['email'],
         })
+        sfdc_mock.update.assert_called_with(ANY, {'fxa_primary_email': data['email']})
 
-    def test_timestamps_nothin_cached(self, cache_mock, sfmc_mock):
+    def test_timestamps_nothin_cached(self, cache_mock, gud_mock, sfdc_mock, sfmc_mock):
         data = {
             'ts': 1234.567,
             'uid': 'the-fxa-id-for-el-dudarino',
             'email': 'the-dudes-new-email@example.com',
         }
         cache_mock.get.return_value = 0
+        gud_mock.return_value = {'id': '1234'}
         fxa_email_changed(data)
         sfmc_mock.upsert_row.assert_called_with('FXA_EmailUpdated', {
             'FXA_ID': data['uid'],
             'NewEmailAddress': data['email'],
+        })
+        sfdc_mock.update.assert_called_with(ANY, {'fxa_primary_email': data['email']})
+
+    def test_fxa_id_not_found(self, cache_mock, gud_mock, sfdc_mock, sfmc_mock):
+        data = {
+            'ts': 1234.567,
+            'uid': 'the-fxa-id-for-el-dudarino',
+            'email': 'the-dudes-new-email@example.com',
+        }
+        cache_mock.get.return_value = 0
+        gud_mock.side_effect = [None, {'id': '1234'}]
+        fxa_email_changed(data)
+        gud_mock.assert_has_calls([
+            call(fxa_id=data['uid'], extra_fields=['id']),
+            call(email=data['email'], extra_fields=['id'])
+        ])
+        sfdc_mock.update.assert_called_with(
+            {'id': '1234'},
+            {'fxa_id': data['uid'], 'fxa_primary_email': data['email']}
+        )
+
+    def test_fxa_id_nor_email_found(self, cache_mock, gud_mock, sfdc_mock, sfmc_mock):
+        data = {
+            'ts': 1234.567,
+            'uid': 'the-fxa-id-for-el-dudarino',
+            'email': 'the-dudes-new-email@example.com',
+        }
+        cache_mock.get.return_value = 0
+        gud_mock.return_value = None
+        fxa_email_changed(data)
+        gud_mock.assert_has_calls([
+            call(fxa_id=data['uid'], extra_fields=['id']),
+            call(email=data['email'], extra_fields=['id'])
+        ])
+        sfdc_mock.update.assert_not_called()
+        sfdc_mock.add.assert_called_with({
+            'email': data['email'],
+            'fxa_id': data['uid'],
+            'fxa_primary_email': data['email']
         })
 
 

@@ -81,6 +81,7 @@ FIELD_MAP = {
     'fxa_lang': 'FxA_Language__c',
     'fxa_service': 'FirstService__c',
     'fxa_create_date': 'FxA_Created_Date__c',
+    'fxa_primary_email': 'FxA_Primary_Email__c',
     'fpn_country': 'FPN_Waitlist_Geo__c',
     'fpn_platform': 'FPN_Waitlist_Platform__c',
 }
