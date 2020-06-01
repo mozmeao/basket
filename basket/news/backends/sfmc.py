@@ -149,7 +149,7 @@ def build_attributes(data):
     return [{'Name': key, 'Value': value} for key, value in data.items()]
 
 
-class SFMC(object):
+class SFMC:
     _client = None
     sms_api_url = 'https://www.exacttargetapis.com/sms/v1/messageContact/{}/send'
     rowset_api_url = 'https://www.exacttargetapis.com/hub/v1/dataevents/key:{}/rowset'
@@ -163,10 +163,16 @@ class SFMC(object):
 
     @property
     def auth_header(self):
+        if self.client is None:
+            return
+
         self.client.refresh_token()
         return {'Authorization': 'Bearer {0}'.format(self.client.authToken)}
 
     def _get_row_obj(self, de_name, props):
+        if self.client is None:
+            return
+
         row = ET_DataExtension_Row()
         row.auth_stub = self.client
         row.CustomerKey = row.Name = de_name
@@ -184,6 +190,9 @@ class SFMC(object):
         @param email: the user's email address
         @return: dict of user data
         """
+        if self.client is None:
+            return
+
         assert token or email, 'token or email required'
         row = self._get_row_obj(de_name, fields)
         if token:
@@ -214,6 +223,9 @@ class SFMC(object):
         @param values: dict containing the COLUMN: VALUE pairs
         @return: None
         """
+        if self.client is None:
+            return
+
         row = self._get_row_obj(de_name, values)
         resp = row.post()
         assert_response(resp)
@@ -228,6 +240,9 @@ class SFMC(object):
             Must contain TOKEN or EMAIL_ADDRESS_.
         @return: None
         """
+        if self.client is None:
+            return
+
         row = self._get_row_obj(de_name, values)
         resp = row.patch()
         assert_response(resp)
@@ -242,6 +257,9 @@ class SFMC(object):
             Must contain TOKEN or EMAIL_ADDRESS_.
         @return: None
         """
+        if self.client is None:
+            return
+
         row = self._get_row_obj(de_name, values)
         resp = row.patch(True)
         assert_response(resp)
@@ -256,6 +274,9 @@ class SFMC(object):
         @param email: user's email address
         @return: None
         """
+        if self.client is None:
+            return
+
         row = self._get_row_obj(de_name, {column: value})
         resp = row.delete()
         assert_response(resp)
@@ -272,6 +293,9 @@ class SFMC(object):
         @param token: optional token if a recovery message
         @return: None
         """
+        if self.client is None:
+            return
+
         ts = ET_TriggeredSend()
         ts.auth_stub = self.client
         ts.props = {'CustomerKey': ts_name}
@@ -290,6 +314,9 @@ class SFMC(object):
 
     @time_request
     def send_sms(self, phone_numbers, message_id):
+        if self.client is None:
+            return
+
         if isinstance(phone_numbers, str):
             phone_numbers = [phone_numbers]
 
@@ -312,6 +339,9 @@ class SFMC(object):
 
     @time_request
     def bulk_upsert_rows(self, de_name, values):
+        if self.client is None:
+            return
+
         url = self.rowset_api_url.format(de_name)
         response = requests.post(url, json=values, headers=self.auth_header, timeout=30)
         if response.status_code >= 500:
