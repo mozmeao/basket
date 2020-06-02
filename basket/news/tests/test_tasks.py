@@ -452,66 +452,32 @@ class SubHubEventTests(TestCase):
 
     def test_customer_created_customer_fxa_found_no_match_yes_other(self, sfdc_mock, gud_mock):
         """
-        Contact found by FxA_ID and email does not match, and other found by email
+        Contact found by FxA_ID and email does not match
         """
         user_data_fxa = {
             'first_name': 'Jeffrey',
             'last_name': '_',
             'email': 'dude@thedude.io'
         }
-        user_data = {
-            'first_name': 'Jeffrey',
-            'last_name': '_',
-            'email': 'walter@thedude.io'
-        }
-        gud_mock.side_effect = [user_data_fxa, user_data]
+        gud_mock.return_value = user_data_fxa
 
         process_subhub_event_customer_created({
             'name': 'Walter Sobchak',
-            'email': 'water@thedude.io',
+            'email': 'walter@thedude.io',
             'user_id': '1234',
             'customer_id': 'cus_1234',
         })
 
         sfdc_mock.update.assert_has_calls([
             call(user_data_fxa, {
-                'fxa_primary_email': user_data_fxa['email']
+                'fxa_primary_email': 'walter@thedude.io',
             }),
-            call(user_data, {
+            call(user_data_fxa, {
                 'fxa_id': '1234',
                 'payee_id': 'cus_1234',
                 'last_name': 'Sobchak',
             })
         ])
-
-    def test_customer_created_customer_fxa_found_no_match_no_other(self, sfdc_mock, gud_mock):
-        """
-        Contact found by FxA_ID and email does not match, and no other found by email
-        """
-        user_data_fxa = {
-            'first_name': 'Jeffrey',
-            'last_name': '_',
-            'email': 'dude@thedude.io'
-        }
-        gud_mock.side_effect = [user_data_fxa, None]
-
-        process_subhub_event_customer_created({
-            'name': 'Walter Sobchak',
-            'email': 'water@thedude.io',
-            'user_id': '1234',
-            'customer_id': 'cus_1234',
-        })
-
-        sfdc_mock.update.assert_called_once_with(user_data_fxa, {
-            'fxa_primary_email': user_data_fxa['email'],
-        })
-        sfdc_mock.add.assert_called_with({
-            'fxa_id': '1234',
-            'payee_id': 'cus_1234',
-            'first_name': 'Walter',
-            'last_name': 'Sobchak',
-            'email': 'water@thedude.io',
-        })
 
     def test_payment_failed(self, sfdc_mock, gud_mock):
         gud_mock.return_value = {'id': '1234'}
