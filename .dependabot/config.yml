@@ -9,3 +9,6 @@ update_configs:
     ignored_updates:
       - match:
           dependency_name: "urllib3"
+      - match:
+          dependency_name: "Django"
+          version_requirement: ">=3.0"
