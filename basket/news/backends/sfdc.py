@@ -35,6 +35,16 @@ def cast_lower(value):
     return value.lower()
 
 
+def strip_whitespace(value):
+    """if the value can be stripped of leading/trailing whitespace, do it"""
+    try:
+        value = value.strip()
+    except AttributeError:
+        pass
+
+    return value
+
+
 time_request = get_timer_decorator('news.backends.sfdc')
 LAST_NAME_DEFAULT_VALUE = '_'
 SFDC_SESSION_CACHE_KEY = 'backends:sfdc:auth:sessionid'
@@ -133,7 +143,7 @@ def to_vendor(data):
             contact['UAT_Test_Data__c'] = True
 
     if 'country' in data:
-        data['country'] = data['country'].lower()
+        data['country'] = data['country'].strip().lower()
         if len(data['country']) == 3:
             new_country = convert_country_3_to_2(data['country'])
             if new_country:
@@ -145,6 +155,7 @@ def to_vendor(data):
 
     lang = data.get('lang')
     if lang:
+        lang = lang.strip()
         if lang.lower() in settings.EXTRA_SUPPORTED_LANGS:
             pass
         elif is_supported_newsletter_language(lang):
@@ -154,6 +165,7 @@ def to_vendor(data):
             data['lang'] = 'en'
 
     for k, v in data.items():
+        v = strip_whitespace(v)
         if v is not None and v != '' and k in FIELD_MAP:
             if k in PROCESSORS_TO_VENDOR:
                 v = PROCESSORS_TO_VENDOR[k](v)
