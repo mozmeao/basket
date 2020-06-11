@@ -16,11 +16,11 @@ class VendorConversionTests(TestCase):
             'white-russian-recipes': 'Sub_Caucasians__c',
         }
         data = {
-            'email': 'dude@example.com',
-            'token': 'totally-token-man',
+            'email': 'dude@example.com ',
+            'token': '    totally-token-man',
             'format': 'H',
-            'country': 'US',
-            'lang': 'en',
+            'country': 'US   ',
+            'lang': '  en',
             'source_url': 'https://www.example.com',
             'first_name': 'The',
             'last_name': 'Dude',
