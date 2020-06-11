@@ -1426,6 +1426,8 @@ def amo_sync_addon(data):
     sfdc.addon.upsert(f'AMO_AddOn_Id__c/{data["id"]}', addon_data)
     addon_record = sfdc.addon.get_by_custom_id('AMO_AddOn_Id__c', data['id'])
     for user in users:
+        if not user:
+            continue
         try:
             sfdc.dev_addon.upsert(f'ConcatenateAMOID__c/{user["amo_id"]}-{data["id"]}', {
                 'AMO_AddOn_ID__c': addon_record['Id'],
