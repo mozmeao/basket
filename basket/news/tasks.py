@@ -1361,6 +1361,7 @@ def upsert_amo_user_data(data):
     amo_data = {f'amo_{k}': v for k, v in data.items() if v}
     amo_data['amo_user'] = True
     amo_data['amo_id'] = amo_id
+    amo_data['amo_deleted'] = amo_deleted
 
     if amo_deleted:
         if fxa_id is None:
@@ -1368,11 +1369,6 @@ def upsert_amo_user_data(data):
             # that FxA account in Salesforce, they might re-create a new AMO
             # account from their previous FxA account.
             amo_data['amo_id'] = None
-            amo_data['amo_deleted'] = amo_deleted
-        if user['fxa_id'] == fxa_id:
-            # Banned AMO user. They can't re-use that FxA account to create
-            # another AMO account so we can leave the link.
-            amo_data['amo_deleted'] = amo_deleted
     else:
         if fxa_id is None:
             # User takeover protection, we don't want do keep linking that AMO

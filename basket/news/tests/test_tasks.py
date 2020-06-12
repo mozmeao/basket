@@ -1763,6 +1763,7 @@ class AMOSyncUserTests(TestCase):
             'amo_last_login': '2019-08-06T10:39:44Z',
             'amo_location': 'California, USA, Earth',
             'amo_user': True,
+            'amo_deleted': False,
         })
 
     def test_existing_user_no_amo_id(self, gud_mock, sfdc_mock):
@@ -1776,6 +1777,7 @@ class AMOSyncUserTests(TestCase):
             'amo_last_login': '2019-08-06T10:39:44Z',
             'amo_location': 'California, USA, Earth',
             'amo_user': True,
+            'amo_deleted': False,
         })
 
     def test_new_user(self, gud_mock, sfdc_mock):
@@ -1824,6 +1826,7 @@ class AMOSyncUserTests(TestCase):
             'amo_location': 'California, USA, Earth',
             'amo_user': True,
             'amo_id': None,
+            'amo_deleted': False,
         })
 
 
