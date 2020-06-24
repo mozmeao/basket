@@ -1,0 +1,17 @@
+version: 2
+updates:
+- package-ecosystem: pip
+  directory: "/requirements"
+  schedule:
+    interval: weekly
+  open-pull-requests-limit: 10
+  labels:
+  - maintenance
+  - dependencies
+  ignore:
+  - dependency-name: Django
+    versions:
+    - ">= 3.0"
+  - dependency-name: urllib3
+    versions:
+    - ">= 0"
