@@ -33,6 +33,12 @@ Settings are injected into the Docker container environment via the `.env` file.
 get started by copying ``env-dist`` to ``.env`` and that will
 provide the basics you need to run the site and the tests.
 
+Git Hooks
+---------
+
+Install `pre-commit <https://pre-commit.com/#install>`_, and then run ``pre-commit install`` and you'll be setup to auto format your
+code according to our style and check for errors for every commit.
+
 Use Docker
 ----------
 

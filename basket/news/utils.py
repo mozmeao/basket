@@ -18,12 +18,16 @@ import phonenumbers
 import requests
 import sentry_sdk
 import simple_salesforce as sfapi
+
 # Get error codes from basket-client so users see the same definitions
 from basket import errors
 from django_statsd.clients import statsd
 from email_validator import validate_email, EmailNotValidError
 
-from basket.news.backends.common import NewsletterException, NewsletterNoResultsException
+from basket.news.backends.common import (
+    NewsletterException,
+    NewsletterNoResultsException,
+)
 from basket.news.backends.sfdc import sfdc
 from basket.news.backends.sfmc import sfmc
 from basket.news.models import APIUser, BlockedEmail
@@ -35,18 +39,18 @@ from basket.news.newsletters import (
 
 
 # Error messages
-MSG_TOKEN_REQUIRED = 'Must have valid token for this request'
-MSG_EMAIL_OR_TOKEN_REQUIRED = 'Must have valid token OR email for this request'
-MSG_USER_NOT_FOUND = 'User not found'
+MSG_TOKEN_REQUIRED = "Must have valid token for this request"
+MSG_EMAIL_OR_TOKEN_REQUIRED = "Must have valid token OR email for this request"
+MSG_USER_NOT_FOUND = "User not found"
 
 # A few constants to indicate the type of action to take
 # on a user with a list of newsletters
 # (Use strings so when we log function args, they make sense.)
-SUBSCRIBE = 'SUBSCRIBE'
-UNSUBSCRIBE = 'UNSUBSCRIBE'
-SET = 'SET'
+SUBSCRIBE = "SUBSCRIBE"
+UNSUBSCRIBE = "UNSUBSCRIBE"
+SET = "SET"
 
-email_block_list_cache = caches['email_block_list']
+email_block_list_cache = caches["email_block_list"]
 
 
 def iso_format_unix_timestamp(timestamp):
@@ -64,12 +68,12 @@ def generate_token():
 
 class HttpResponseJSON(HttpResponse):
     def __init__(self, data, status=None):
-        super(HttpResponseJSON, self).__init__(content=json.dumps(data),
-                                               content_type='application/json',
-                                               status=status)
+        super(HttpResponseJSON, self).__init__(
+            content=json.dumps(data), content_type="application/json", status=status,
+        )
 
 
-def parse_phone_number(pnum, country='us'):
+def parse_phone_number(pnum, country="us"):
     """Parse and validate phone number input and return an E164 formatted number or None if invalid."""
     region_code = country.upper()
     try:
@@ -85,10 +89,10 @@ def parse_phone_number(pnum, country='us'):
 
 def get_email_block_list():
     """Return a list of blocked email domains."""
-    cache_key = 'email_block_list'
+    cache_key = "email_block_list"
     block_list = email_block_list_cache.get(cache_key)
     if block_list is None:
-        block_list = list(BlockedEmail.objects.values_list('email_domain', flat=True))
+        block_list = list(BlockedEmail.objects.values_list("email_domain", flat=True))
         email_block_list_cache.set(cache_key, block_list)
 
     return block_list
@@ -98,7 +102,7 @@ def email_is_blocked(email):
     """Check an email and return True if blocked."""
     for blocked in get_email_block_list():
         if email.endswith(blocked):
-            statsd.incr('basket.news.utils.email_blocked.' + blocked)
+            statsd.incr("basket.news.utils.email_blocked." + blocked)
             return True
 
     return False
@@ -117,11 +121,13 @@ def is_authorized(request, email=None):
 def has_valid_api_key(request):
     # The API key could be the query parameter 'api-key' or the
     # request header 'X-api-key'.
-    api_key = (request.POST.get('api-key', None) or
-               request.POST.get('api_key', None) or
-               request.GET.get('api-key', None) or
-               request.GET.get('api_key', None) or
-               request.META.get('HTTP_X_API_KEY', None))
+    api_key = (
+        request.POST.get("api-key", None)
+        or request.POST.get("api_key", None)
+        or request.GET.get("api-key", None)
+        or request.GET.get("api_key", None)
+        or request.META.get("HTTP_X_API_KEY", None)
+    )
     if api_key:
         return APIUser.is_valid(api_key)
 
@@ -129,21 +135,23 @@ def has_valid_api_key(request):
 
 
 FXA_CLIENTS = {
-    'oauth': None,
-    'profile': None,
+    "oauth": None,
+    "profile": None,
 }
 
 
 def get_fxa_clients():
     """Return and/or create FxA OAuth client instances"""
-    if FXA_CLIENTS['oauth'] is None:
+    if FXA_CLIENTS["oauth"] is None:
         server_urls = fxa.constants.ENVIRONMENT_URLS.get(settings.FXA_OAUTH_SERVER_ENV)
-        FXA_CLIENTS['oauth'] = fxa.oauth.Client(server_url=server_urls['oauth'],
-                                                client_id=settings.FXA_CLIENT_ID,
-                                                client_secret=settings.FXA_CLIENT_SECRET)
-        FXA_CLIENTS['profile'] = fxa.profile.Client(server_url=server_urls['profile'])
+        FXA_CLIENTS["oauth"] = fxa.oauth.Client(
+            server_url=server_urls["oauth"],
+            client_id=settings.FXA_CLIENT_ID,
+            client_secret=settings.FXA_CLIENT_SECRET,
+        )
+        FXA_CLIENTS["profile"] = fxa.profile.Client(server_url=server_urls["profile"])
 
-    return FXA_CLIENTS['oauth'], FXA_CLIENTS['profile']
+    return FXA_CLIENTS["oauth"], FXA_CLIENTS["profile"]
 
 
 def has_valid_fxa_oauth(request, email):
@@ -151,12 +159,12 @@ def has_valid_fxa_oauth(request, email):
         return False
 
     # Grab the token out of the Authorization header
-    authorization = request.META.get('HTTP_AUTHORIZATION')
+    authorization = request.META.get("HTTP_AUTHORIZATION")
     if not authorization:
         return False
 
     authorization = authorization.split(None, 1)
-    if authorization[0].lower() != 'bearer' or len(authorization) != 2:
+    if authorization[0].lower() != "bearer" or len(authorization) != 2:
         return False
 
     token = authorization[1].strip()
@@ -164,7 +172,7 @@ def has_valid_fxa_oauth(request, email):
     # Validate the token with oauth-server and check for appropriate scope.
     # This will raise an exception if things are not as they should be.
     try:
-        oauth.verify_token(token, scope=['basket', 'profile:email'])
+        oauth.verify_token(token, scope=["basket", "profile:email"])
     except fxa.errors.Error:
         # security failure or server problem. can't validate. return invalid
         sentry_sdk.capture_exception()
@@ -204,9 +212,9 @@ def get_or_create_user_data(token=None, email=None):
     """
     kwargs = {}
     if token:
-        kwargs['token'] = token
+        kwargs["token"] = token
     elif email:
-        kwargs['email'] = email
+        kwargs["email"] = email
     else:
         raise Exception(MSG_EMAIL_OR_TOKEN_REQUIRED)
 
@@ -214,20 +222,20 @@ def get_or_create_user_data(token=None, email=None):
 
     # NewsletterException uncaught here on purpose
     user_data = get_user_data(**kwargs)
-    if user_data and user_data['status'] == 'ok':
+    if user_data and user_data["status"] == "ok":
         # Found them in ET and updated subscriber db locally
         created = False
 
     # Not in ET. If we have an email, generate a token.
     elif email:
         user_data = {
-            'email': email,
-            'token': generate_token(),
-            'master': False,
-            'pending': False,
-            'confirmed': False,
-            'lang': '',
-            'status': 'ok',
+            "email": email,
+            "token": generate_token(),
+            "master": False,
+            "pending": False,
+            "confirmed": False,
+            "lang": "",
+            "status": "ok",
         }
         created = True
     else:
@@ -240,14 +248,17 @@ def get_or_create_user_data(token=None, email=None):
 
 def newsletter_exception_response(exc):
     """Convert a NewsletterException into a JSON HTTP response."""
-    return HttpResponseJSON({
-        'status': 'error',
-        'code': exc.error_code or errors.BASKET_UNKNOWN_ERROR,
-        'desc': str(exc),
-    }, exc.status_code or 400)
+    return HttpResponseJSON(
+        {
+            "status": "error",
+            "code": exc.error_code or errors.BASKET_UNKNOWN_ERROR,
+            "desc": str(exc),
+        },
+        exc.status_code or 400,
+    )
 
 
-LANG_RE = re.compile(r'^[a-z]{2,3}(?:-[a-z]{2})?$', re.IGNORECASE)
+LANG_RE = re.compile(r"^[a-z]{2,3}(?:-[a-z]{2})?$", re.IGNORECASE)
 
 
 def language_code_is_valid(code):
@@ -262,40 +273,47 @@ def language_code_is_valid(code):
     if not isinstance(code, str):
         raise TypeError("Language code must be a string")
 
-    if code == '':
+    if code == "":
         return True
     else:
         return bool(LANG_RE.match(code))
 
 
 IGNORE_USER_FIELDS = [
-    'id',
-    'reason',
-    'fsa_school',
-    'fsa_grad_year',
-    'fsa_major',
-    'fsa_city',
-    'fsa_current_status',
-    'fsa_allow_share',
-    'cv_days_interval',
-    'cv_created_at',
-    'cv_goal_reached_at',
-    'cv_first_contribution_date',
-    'cv_two_day_streak',
-    'cv_last_active_date',
-    'amo_id',
-    'amo_user',
-    'amo_display_name',
-    'amo_last_login',
-    'amo_location',
-    'amo_homepage',
-    'payee_id',
-    'fxa_id',
+    "id",
+    "reason",
+    "fsa_school",
+    "fsa_grad_year",
+    "fsa_major",
+    "fsa_city",
+    "fsa_current_status",
+    "fsa_allow_share",
+    "cv_days_interval",
+    "cv_created_at",
+    "cv_goal_reached_at",
+    "cv_first_contribution_date",
+    "cv_two_day_streak",
+    "cv_last_active_date",
+    "amo_id",
+    "amo_user",
+    "amo_display_name",
+    "amo_last_login",
+    "amo_location",
+    "amo_homepage",
+    "payee_id",
+    "fxa_id",
 ]
 
 
-def get_user_data(token=None, email=None, payee_id=None, amo_id=None, fxa_id=None,
-                  extra_fields=None, get_fxa=False):
+def get_user_data(
+    token=None,
+    email=None,
+    payee_id=None,
+    amo_id=None,
+    fxa_id=None,
+    extra_fields=None,
+    get_fxa=False,
+):
     """Return a dictionary of the user's data from Exact Target.
     Look them up by their email or payment processor id (e.g. Stripe) if given,
     otherwise by the token.
@@ -338,13 +356,15 @@ def get_user_data(token=None, email=None, payee_id=None, amo_id=None, fxa_id=Non
     except sfapi.SalesforceResourceNotFound:
         return None
     except requests.exceptions.RequestException as e:
-        raise NewsletterException(str(e),
-                                  error_code=errors.BASKET_NETWORK_FAILURE,
-                                  status_code=400)
+        raise NewsletterException(
+            str(e), error_code=errors.BASKET_NETWORK_FAILURE, status_code=400,
+        )
     except sfapi.SalesforceAuthenticationFailed:
-        raise NewsletterException('Email service provider auth failure',
-                                  error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
-                                  status_code=500)
+        raise NewsletterException(
+            "Email service provider auth failure",
+            error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
+            status_code=500,
+        )
 
     # don't send some of the returned data
     for fn in IGNORE_USER_FIELDS:
@@ -353,7 +373,7 @@ def get_user_data(token=None, email=None, payee_id=None, amo_id=None, fxa_id=Non
 
     if get_fxa:
         try:
-            sfmc.get_row('Firefox_Account_ID', ['FXA_ID'], email=user['email'])
+            sfmc.get_row("Firefox_Account_ID", ["FXA_ID"], email=user["email"])
         except NewsletterNoResultsException:
             fxa_user = False
         except Exception:
@@ -364,20 +384,23 @@ def get_user_data(token=None, email=None, payee_id=None, amo_id=None, fxa_id=Non
             fxa_user = True
 
         if fxa_user is not None:
-            user['has_fxa'] = fxa_user
+            user["has_fxa"] = fxa_user
 
-    user['status'] = 'ok'
+    user["status"] = "ok"
     return user
 
 
 def get_user(token=None, email=None, get_fxa=False):
     if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
         # can't return user data during maintenance
-        return HttpResponseJSON({
-            'status': 'error',
-            'desc': 'user data is not available in maintenance mode',
-            'code': errors.BASKET_NETWORK_FAILURE,
-        }, 400)
+        return HttpResponseJSON(
+            {
+                "status": "error",
+                "desc": "user data is not available in maintenance mode",
+                "code": errors.BASKET_NETWORK_FAILURE,
+            },
+            400,
+        )
 
     try:
         user_data = get_user_data(token, email, get_fxa=get_fxa)
@@ -387,9 +410,11 @@ def get_user(token=None, email=None, get_fxa=False):
 
     if user_data is None:
         user_data = {
-            'status': 'error',
-            'code': errors.BASKET_UNKNOWN_EMAIL if email else errors.BASKET_UNKNOWN_TOKEN,
-            'desc': MSG_USER_NOT_FOUND,
+            "status": "error",
+            "code": errors.BASKET_UNKNOWN_EMAIL
+            if email
+            else errors.BASKET_UNKNOWN_TOKEN,
+            "desc": MSG_USER_NOT_FOUND,
         }
         status_code = 404
     return HttpResponseJSON(user_data, status_code)
@@ -403,17 +428,17 @@ def get_accept_languages(header_value):
     if not header_value:
         return []
     languages = []
-    pattern = re.compile(r'^([A-Za-z]{2,3})(?:-([A-Za-z]{2})(?:-[A-Za-z0-9]+)?)?$')
+    pattern = re.compile(r"^([A-Za-z]{2,3})(?:-([A-Za-z]{2})(?:-[A-Za-z0-9]+)?)?$")
 
     # bug 1102652
-    header_value = header_value.replace('_', '-')
+    header_value = header_value.replace("_", "-")
 
     try:
         parsed = parse_accept_lang_header(header_value)
     except ValueError:  # see https://code.djangoproject.com/ticket/21078
         return languages
 
-    for lang, priority in parsed:
+    for lang, _priority in parsed:
         m = pattern.match(lang)
 
         if not m:
@@ -424,7 +449,7 @@ def get_accept_languages(header_value):
         # Check if the shorter code is supported. This covers obsolete long
         # codes like fr-FR (should match fr) or ja-JP (should match ja)
         if m.group(2) and lang not in newsletter_languages():
-            lang += '-' + m.group(2).upper()
+            lang += "-" + m.group(2).upper()
 
         if lang not in languages:
             languages.append(lang)
@@ -454,7 +479,7 @@ def get_best_language(languages):
 
 
 def get_best_request_lang(request):
-    accept_lang = request.META.get('HTTP_ACCEPT_LANGUAGE')
+    accept_lang = request.META.get("HTTP_ACCEPT_LANGUAGE")
     if accept_lang:
         lang = get_best_language(get_accept_languages(accept_lang))
         if lang:
@@ -467,9 +492,9 @@ def _fix_supported_lang(code):
     """
     If there's a dash in the locale the second half should be upper case.
     """
-    if '-' in code:
-        codebits = code.split('-')
-        code = '{}-{}'.format(codebits[0], codebits[1].upper())
+    if "-" in code:
+        codebits = code.split("-")
+        code = "{}-{}".format(codebits[0], codebits[1].upper())
 
     return code
 
@@ -480,7 +505,7 @@ def get_best_supported_lang(code):
     we support for newsletters.
     """
     code = str(code).lower()
-    all_langs = [l.lower() for l in newsletter_languages()]
+    all_langs = [lang.lower() for lang in newsletter_languages()]
     if code in all_langs:
         return _fix_supported_lang(code)
 
@@ -492,7 +517,7 @@ def get_best_supported_lang(code):
         if code2 in all_langs_2char:
             return _fix_supported_lang(all_langs_2char[code2])
 
-    return 'en'
+    return "en"
 
 
 def process_email(email):
@@ -507,12 +532,11 @@ def process_email(email):
     try:
         # NOTE SFDC doesn't support SMPTUTF8, so we cannot enable support
         #      here until they do or we switch providers
-        info = validate_email(email, allow_smtputf8=False,
-                              check_deliverability=False)
+        info = validate_email(email, allow_smtputf8=False, check_deliverability=False)
     except EmailNotValidError:
         return None
 
-    return info.get('email_ascii', None)
+    return info.get("email_ascii", None)
 
 
 def parse_newsletters_csv(newsletters):
@@ -523,7 +547,7 @@ def parse_newsletters_csv(newsletters):
     if not isinstance(newsletters, str):
         return []
 
-    return [x.strip() for x in newsletters.split(',') if x.strip()]
+    return [x.strip() for x in newsletters.split(",") if x.strip()]
 
 
 def parse_newsletters(api_call_type, newsletters, cur_newsletters):
@@ -610,11 +634,11 @@ def split_name(name):
 
     # remove leading/trailing whitespace and periods
     # also accounts for a string of spaces being provided
-    name = name.strip(' .')
+    name = name.strip(" .")
 
     # if the name is an empty string, we're done
     if not name:
-        return '', ''
+        return "", ""
 
     # try to make the final bit after the last space the last name
     names = name.rsplit(None, 1)
@@ -624,10 +648,10 @@ def split_name(name):
 
         # if last name is 'jr' or 'sr' and first name has a space in it, do
         # more splitting
-        if ' ' in first and last.lower() in ['jr', 'sr']:
+        if " " in first and last.lower() in ["jr", "sr"]:
             first, last = first.rsplit(None, 1)
     else:
-        first, last = '', names[0]
+        first, last = "", names[0]
 
     return first, last
 

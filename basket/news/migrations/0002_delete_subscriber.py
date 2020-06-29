@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
 
 
-from django.db import models, migrations
+from django.db import migrations
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('news', '0001_initial'),
+        ("news", "0001_initial"),
     ]
 
     operations = [
-        migrations.DeleteModel(
-            name='Subscriber',
-        ),
+        migrations.DeleteModel(name="Subscriber"),
     ]

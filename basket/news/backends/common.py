@@ -6,6 +6,7 @@ from django_statsd.clients import statsd
 
 class UnauthorizedException(Exception):
     """Failure to log into the email server."""
+
     pass
 
 
@@ -23,6 +24,7 @@ class NewsletterNoResultsException(NewsletterException):
     No results were returned from the mail server (but the request
     didn't report any errors)
     """
+
     pass
 
 
@@ -30,6 +32,7 @@ def get_timer_decorator(prefix):
     """
     Decorator for timing and counting requests to the API
     """
+
     def decorator(f):
         @wraps(f)
         def wrapped(*args, **kwargs):
@@ -37,10 +40,10 @@ def get_timer_decorator(prefix):
 
             def record_timing():
                 totaltime = int((time() - starttime) * 1000)
-                statsd.timing(prefix + '.timing', totaltime)
-                statsd.timing(prefix + '.{}.timing'.format(f.__name__), totaltime)
-                statsd.incr(prefix + '.count')
-                statsd.incr(prefix + '.{}.count'.format(f.__name__))
+                statsd.timing(prefix + ".timing", totaltime)
+                statsd.timing(prefix + ".{}.timing".format(f.__name__), totaltime)
+                statsd.incr(prefix + ".count")
+                statsd.incr(prefix + ".{}.count".format(f.__name__))
 
             try:
                 resp = f(*args, **kwargs)

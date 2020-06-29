@@ -7,13 +7,13 @@ from django.core.handlers.wsgi import WSGIRequest
 from django.core.wsgi import get_wsgi_application
 
 
-IS_HTTPS = os.environ.get('HTTPS', '').strip() == 'on'
+IS_HTTPS = os.environ.get("HTTPS", "").strip() == "on"
 
 
 class WSGIHTTPSRequest(WSGIRequest):
     def _get_scheme(self):
         if IS_HTTPS:
-            return 'https'
+            return "https"
 
         return super(WSGIHTTPSRequest, self)._get_scheme()
 

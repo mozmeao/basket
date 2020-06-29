@@ -13,11 +13,14 @@ import requests
 from django_statsd.clients import statsd
 from FuelSDK import ET_Client, ET_DataExtension_Row, ET_TriggeredSend
 
-from basket.news.backends.common import get_timer_decorator, NewsletterException, \
-                                 NewsletterNoResultsException
+from basket.news.backends.common import (
+    get_timer_decorator,
+    NewsletterException,
+    NewsletterNoResultsException,
+)
 
 
-time_request = get_timer_decorator('news.backends.sfmc')
+time_request = get_timer_decorator("news.backends.sfmc")
 
 
 HERD_TIMEOUT = 60
@@ -26,22 +29,22 @@ MAX_BUFFER = HERD_TIMEOUT + AUTH_BUFFER
 
 
 class ETRefreshClient(ET_Client):
-    token_cache_key = 'backends:sfmc:auth:tokens'
+    token_cache_key = "backends:sfmc:auth:tokens"
     authTokenExpiresIn = None
     token_property_names = [
-        'authToken',
-        'authTokenExpiration',
-        'internalAuthToken',
-        'refreshKey',
+        "authToken",
+        "authTokenExpiration",
+        "internalAuthToken",
+        "refreshKey",
     ]
     _old_authToken = None
 
     def __init__(self, get_server_wsdl=False, debug=False, params=None):
         # setting this manually as it has thrown errors and doesn't change
         if settings.USE_SANDBOX_BACKEND:
-            self.endpoint = 'https://webservice.test.exacttarget.com/Service.asmx'
+            self.endpoint = "https://webservice.test.exacttarget.com/Service.asmx"
         else:
-            self.endpoint = 'https://webservice.s4.exacttarget.com/Service.asmx'
+            self.endpoint = "https://webservice.s4.exacttarget.com/Service.asmx"
 
         super(ETRefreshClient, self).__init__(get_server_wsdl, debug, params)
 
@@ -60,7 +63,10 @@ class ETRefreshClient(ET_Client):
 
     def refresh_auth_tokens_from_cache(self):
         """Refresh the auth token and other values from cache"""
-        if self.authToken is not None and time() + MAX_BUFFER < self.authTokenExpiration:
+        if (
+            self.authToken is not None
+            and time() + MAX_BUFFER < self.authTokenExpiration
+        ):
             # no need to refresh if the current tokens are still good
             return
 
@@ -81,7 +87,9 @@ class ETRefreshClient(ET_Client):
 
     def cache_auth_tokens(self):
         if self.authToken is not None and self.authToken != self._old_authToken:
-            new_tokens = {prop: getattr(self, prop) for prop in self.token_property_names}
+            new_tokens = {
+                prop: getattr(self, prop) for prop in self.token_property_names
+            }
             # 10 min longer than expiration so that refreshKey can be used
             cache.set(self.token_cache_key, new_tokens, self.authTokenExpiresIn + 600)
 
@@ -90,21 +98,25 @@ class ETRefreshClient(ET_Client):
         try:
             token_response = r.json()
         except ValueError:
-            raise NewsletterException('SFMC Error During Auth: ' + force_str(r.content),
-                                      status_code=r.status_code)
+            raise NewsletterException(
+                "SFMC Error During Auth: " + force_str(r.content),
+                status_code=r.status_code,
+            )
 
-        if 'accessToken' in token_response:
+        if "accessToken" in token_response:
             return token_response
 
         # try again without refreshToken
-        if 'refreshToken' in payload:
+        if "refreshToken" in payload:
             # not strictly required, makes testing easier
             payload = payload.copy()
-            del payload['refreshToken']
+            del payload["refreshToken"]
             return self.request_token(payload)
 
-        raise NewsletterException('SFMC Error During Auth: ' + force_str(r.content),
-                                  status_code=r.status_code)
+        raise NewsletterException(
+            "SFMC Error During Auth: " + force_str(r.content),
+            status_code=r.status_code,
+        )
 
     def refresh_token(self, force_refresh=False):
         """
@@ -114,21 +126,21 @@ class ETRefreshClient(ET_Client):
         self.refresh_auth_tokens_from_cache()
         if force_refresh or self.authToken is None or self.token_is_expired():
             payload = {
-                'clientId': self.client_id,
-                'clientSecret': self.client_secret,
-                'accessType': 'offline',
+                "clientId": self.client_id,
+                "clientSecret": self.client_secret,
+                "accessType": "offline",
             }
             if self.refreshKey:
-                payload['refreshToken'] = self.refreshKey
+                payload["refreshToken"] = self.refreshKey
 
             token_response = self.request_token(payload)
-            statsd.incr('news.backends.sfmc.auth_token_refresh')
-            self.authToken = token_response['accessToken']
-            self.authTokenExpiresIn = token_response['expiresIn']
+            statsd.incr("news.backends.sfmc.auth_token_refresh")
+            self.authToken = token_response["accessToken"]
+            self.authTokenExpiresIn = token_response["expiresIn"]
             self.authTokenExpiration = time() + self.authTokenExpiresIn
-            self.internalAuthToken = token_response['legacyToken']
-            if 'refreshToken' in token_response:
-                self.refreshKey = token_response['refreshToken']
+            self.internalAuthToken = token_response["legacyToken"]
+            if "refreshToken" in token_response:
+                self.refreshKey = token_response["refreshToken"]
 
             self.build_soap_client()
             self.cache_auth_tokens()
@@ -146,18 +158,20 @@ def assert_results(resp):
 
 
 def build_attributes(data):
-    return [{'Name': key, 'Value': value} for key, value in data.items()]
+    return [{"Name": key, "Value": value} for key, value in data.items()]
 
 
 class SFMC:
     _client = None
-    sms_api_url = 'https://www.exacttargetapis.com/sms/v1/messageContact/{}/send'
-    rowset_api_url = 'https://www.exacttargetapis.com/hub/v1/dataevents/key:{}/rowset'
+    sms_api_url = "https://www.exacttargetapis.com/sms/v1/messageContact/{}/send"
+    rowset_api_url = "https://www.exacttargetapis.com/hub/v1/dataevents/key:{}/rowset"
 
     @property
     def client(self):
-        if self._client is None and 'clientid' in settings.SFMC_SETTINGS:
-            self._client = ETRefreshClient(False, settings.SFMC_DEBUG, settings.SFMC_SETTINGS)
+        if self._client is None and "clientid" in settings.SFMC_SETTINGS:
+            self._client = ETRefreshClient(
+                False, settings.SFMC_DEBUG, settings.SFMC_SETTINGS,
+            )
 
         return self._client
 
@@ -167,7 +181,7 @@ class SFMC:
             return
 
         self.client.refresh_token()
-        return {'Authorization': 'Bearer {0}'.format(self.client.authToken)}
+        return {"Authorization": "Bearer {0}".format(self.client.authToken)}
 
     def _get_row_obj(self, de_name, props):
         if self.client is None:
@@ -193,26 +207,25 @@ class SFMC:
         if self.client is None:
             return
 
-        assert token or email, 'token or email required'
+        assert token or email, "token or email required"
         row = self._get_row_obj(de_name, fields)
         if token:
             row.search_filter = {
-                'Property': 'TOKEN',
-                'SimpleOperator': 'equals',
-                'Value': token,
+                "Property": "TOKEN",
+                "SimpleOperator": "equals",
+                "Value": token,
             }
         elif email:
             row.search_filter = {
-                'Property': 'EMAIL_ADDRESS_',
-                'SimpleOperator': 'equals',
-                'Value': email,
+                "Property": "EMAIL_ADDRESS_",
+                "SimpleOperator": "equals",
+                "Value": email,
             }
 
         resp = row.get()
         assert_results(resp)
         # TODO do something if more than 1 result is returned
-        return dict((p.Name, p.Value)
-                    for p in resp.results[0].Properties.Property)
+        return dict((p.Name, p.Value) for p in resp.results[0].Properties.Property)
 
     @time_request
     def add_row(self, de_name, values):
@@ -298,16 +311,14 @@ class SFMC:
 
         ts = ET_TriggeredSend()
         ts.auth_stub = self.client
-        ts.props = {'CustomerKey': ts_name}
+        ts.props = {"CustomerKey": ts_name}
         subscriber = {
-            'EmailAddress': email,
-            'SubscriberKey': subscriber_key,
+            "EmailAddress": email,
+            "SubscriberKey": subscriber_key,
         }
         if token:
-            ts.attributes = build_attributes({
-                'Token__c': token,
-            })
-            subscriber['Attributes'] = ts.attributes
+            ts.attributes = build_attributes({"Token__c": token})
+            subscriber["Attributes"] = ts.attributes
         ts.subscribers = [subscriber]
         resp = ts.send()
         assert_response(resp)
@@ -320,22 +331,26 @@ class SFMC:
         if isinstance(phone_numbers, str):
             phone_numbers = [phone_numbers]
 
-        phone_numbers = [pn.lstrip('+') for pn in phone_numbers]
+        phone_numbers = [pn.lstrip("+") for pn in phone_numbers]
         data = {
-            'mobileNumbers': phone_numbers,
-            'Subscribe': True,
-            'Resubscribe': True,
-            'keyword': 'FFDROID',  # TODO: Set keyword in arguments.
+            "mobileNumbers": phone_numbers,
+            "Subscribe": True,
+            "Resubscribe": True,
+            "keyword": "FFDROID",  # TODO: Set keyword in arguments.
         }
         url = self.sms_api_url.format(message_id)
         response = requests.post(url, json=data, headers=self.auth_header, timeout=10)
         if response.status_code >= 500:
-            raise NewsletterException('SFMC Server Error: {}'.format(force_str(response.content)),
-                                      status_code=response.status_code)
+            raise NewsletterException(
+                "SFMC Server Error: {}".format(force_str(response.content)),
+                status_code=response.status_code,
+            )
 
         if response.status_code >= 400:
-            raise NewsletterException('SFMC Request Error: {}'.format(force_str(response.content)),
-                                      status_code=response.status_code)
+            raise NewsletterException(
+                "SFMC Request Error: {}".format(force_str(response.content)),
+                status_code=response.status_code,
+            )
 
     @time_request
     def bulk_upsert_rows(self, de_name, values):
@@ -345,11 +360,15 @@ class SFMC:
         url = self.rowset_api_url.format(de_name)
         response = requests.post(url, json=values, headers=self.auth_header, timeout=30)
         if response.status_code >= 500:
-            raise NewsletterException('SFMC Server Error: {}'.format(force_str(response.content)),
-                                      status_code=response.status_code)
+            raise NewsletterException(
+                "SFMC Server Error: {}".format(force_str(response.content)),
+                status_code=response.status_code,
+            )
 
         if response.status_code >= 400:
-            raise NewsletterException(force_str(response.content), status_code=response.status_code)
+            raise NewsletterException(
+                force_str(response.content), status_code=response.status_code,
+            )
 
 
 sfmc = SFMC()
