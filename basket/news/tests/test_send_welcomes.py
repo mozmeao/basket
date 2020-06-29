@@ -7,17 +7,17 @@ from basket.news.tasks import mogrify_message_id, send_message
 
 
 class TestSendMessage(TestCase):
-    @patch('basket.news.tasks.sfmc')
+    @patch("basket.news.tasks.sfmc")
     def test_caching_bad_message_ids(self, mock_sfmc):
         """Bad message IDs are cached so we don't try to send to them again"""
-        exc = NewsletterException('Invalid Customer Key')
+        exc = NewsletterException("Invalid Customer Key")
         mock_sfmc.send_mail.side_effect = exc
 
         message_id = "MESSAGE_ID"
-        for i in range(10):
-            send_message(message_id, 'email', 'sub-key', 'token')
+        for _ in range(10):
+            send_message(message_id, "email", "sub-key", "token")
 
-        mock_sfmc.send_mail.assert_called_once_with(message_id, 'email', 'sub-key', 'token')
+        mock_sfmc.send_mail.assert_called_once_with(message_id, "email", "sub-key", "token")
 
 
 class TestMogrifyMessageID(TestCase):

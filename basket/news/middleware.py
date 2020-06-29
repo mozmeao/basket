@@ -10,13 +10,13 @@ from django_statsd.middleware import GraphiteRequestTimingMiddleware
 from mozilla_django_oidc.middleware import SessionRefresh
 
 
-IP_RE = re.compile(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$')
+IP_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
 
 
 class OIDCSessionRefreshMiddleware(SessionRefresh):
     def is_refreshable_url(self, request):
         # only do OIDC session checking in admin URLs
-        if not request.path.startswith('/admin/'):
+        if not request.path.startswith("/admin/"):
             return False
 
         return super().is_refreshable_url(request)
@@ -27,29 +27,27 @@ class GraphiteViewHitCountMiddleware(GraphiteRequestTimingMiddleware):
 
     def process_view(self, request, view_func, view_args, view_kwargs):
         super(GraphiteViewHitCountMiddleware, self).process_view(
-            request, view_func, view_args, view_kwargs)
-        if hasattr(request, '_view_name'):
+            request, view_func, view_args, view_kwargs,
+        )
+        if hasattr(request, "_view_name"):
             vmodule = request._view_module
-            if vmodule.startswith('basket.'):
+            if vmodule.startswith("basket."):
                 vmodule = vmodule[7:]
-            data = dict(module=vmodule,
-                        name=request._view_name,
-                        method=request.method)
-            statsd.incr('view.count.{module}.{name}.{method}'.format(**data))
-            statsd.incr('view.count.{module}.{method}'.format(**data))
-            statsd.incr('view.count.{method}'.format(**data))
+            data = dict(module=vmodule, name=request._view_name, method=request.method)
+            statsd.incr("view.count.{module}.{name}.{method}".format(**data))
+            statsd.incr("view.count.{module}.{method}".format(**data))
+            statsd.incr("view.count.{method}".format(**data))
 
 
 class HostnameMiddleware(object):
     def __init__(self, get_response):
-        values = [getattr(settings, x) for x in [
-            'CLUSTER_NAME', 'K8S_NAMESPACE', 'K8S_POD_NAME']]
-        self.backend_server = '/'.join(x for x in values if x)
+        values = [getattr(settings, x) for x in ["CLUSTER_NAME", "K8S_NAMESPACE", "K8S_POD_NAME"]]
+        self.backend_server = "/".join(x for x in values if x)
         self.get_response = get_response
 
     def __call__(self, request):
         response = self.get_response(request)
-        response['X-Backend-Server'] = self.backend_server
+        response["X-Backend-Server"] = self.backend_server
         return response
 
 
@@ -65,6 +63,7 @@ class EnforceHostnameMiddleware(object):
 
     via http://www.michaelvdw.nl/code/force-hostname-with-django-middleware-for-heroku/
     """
+
     def __init__(self, get_response):
         self.allowed_hosts = settings.ENFORCE_HOSTNAME
         self.get_response = get_response
@@ -80,7 +79,9 @@ class EnforceHostnameMiddleware(object):
 
         # redirect to the proper host name\
         new_url = "%s://%s%s" % (
-            'https' if request.is_secure() else 'http',
-            self.allowed_hosts[0], request.get_full_path())
+            "https" if request.is_secure() else "http",
+            self.allowed_hosts[0],
+            request.get_full_path(),
+        )
 
         return HttpResponsePermanentRedirect(new_url)

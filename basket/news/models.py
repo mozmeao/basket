@@ -1,4 +1,3 @@
-
 from uuid import uuid4
 
 from django.core.mail import send_mail
@@ -24,63 +23,55 @@ class BlockedEmail(models.Model):
 
 class Newsletter(models.Model):
     slug = models.SlugField(
-        unique=True,
-        help_text="The ID for the newsletter that will be used by clients",
+        unique=True, help_text="The ID for the newsletter that will be used by clients",
     )
-    title = models.CharField(
-        max_length=128,
-        help_text="Public name of newsletter in English",
-    )
+    title = models.CharField(max_length=128, help_text="Public name of newsletter in English")
     description = models.CharField(
-        max_length=256,
-        help_text="One-line description of newsletter in English",
-        blank=True,
+        max_length=256, help_text="One-line description of newsletter in English", blank=True,
     )
     show = models.BooleanField(
         default=False,
         help_text="Whether to show this newsletter in lists of newsletters, "
-                  "even to non-subscribers",
+        "even to non-subscribers",
     )
     active = models.BooleanField(
         default=True,
         help_text="Whether this newsletter is active. Inactive newsletters "
-                  "are only shown to those who are already subscribed, and "
-                  "might have other differences in behavior.",
+        "are only shown to those who are already subscribed, and "
+        "might have other differences in behavior.",
     )
     private = models.BooleanField(
         default=False,
         help_text="Whether this newsletter is private. Private newsletters "
-                  "require the subscribe requests to use an API key.",
+        "require the subscribe requests to use an API key.",
     )
     indent = models.BooleanField(
         default=False,
         help_text="Whether this newsletter is indented in the email preference center.",
     )
     vendor_id = models.CharField(
-        max_length=128,
-        help_text="The backend vendor's identifier for this newsletter",
+        max_length=128, help_text="The backend vendor's identifier for this newsletter",
     )
     languages = models.CharField(
         max_length=200,
-        help_text="Comma-separated list of the language codes that this "
-                  "newsletter supports",
+        help_text="Comma-separated list of the language codes that this " "newsletter supports",
     )
     requires_double_optin = models.BooleanField(
         default=False,
         help_text="True if subscribing to this newsletter requires someone"
-                  "to respond to a confirming email.",
+        "to respond to a confirming email.",
     )
     order = models.IntegerField(
         default=0,
         help_text="Order to display the newsletters on the web site. "
-                  "Newsletters with lower order numbers will display first."
+        "Newsletters with lower order numbers will display first.",
     )
 
     def __unicode__(self):
         return self.title
 
     class Meta(object):
-        ordering = ['order']
+        ordering = ["order"]
 
     def save(self, *args, **kwargs):
         # Strip whitespace from langs before save
@@ -90,34 +81,28 @@ class Newsletter(models.Model):
     @property
     def language_list(self):
         """Return language codes for this newsletter as a list"""
-        return [x.strip() for x in self.languages.split(',') if x.strip()]
+        return [x.strip() for x in self.languages.split(",") if x.strip()]
 
 
 class NewsletterGroup(models.Model):
     slug = models.SlugField(
-        unique=True,
-        help_text='The ID for the group that will be used by clients',
+        unique=True, help_text="The ID for the group that will be used by clients",
     )
-    title = models.CharField(
-        max_length=128,
-        help_text='Public name of group in English',
-    )
+    title = models.CharField(max_length=128, help_text="Public name of group in English")
     description = models.CharField(
-        max_length=256,
-        help_text='One-line description of group in English',
-        blank=True,
+        max_length=256, help_text="One-line description of group in English", blank=True,
     )
     show = models.BooleanField(
         default=False,
-        help_text='Whether to show this group in lists of newsletters and groups, '
-                  'even to non-subscribers',
+        help_text="Whether to show this group in lists of newsletters and groups, "
+        "even to non-subscribers",
     )
     active = models.BooleanField(
         default=False,
-        help_text='Whether this group should be considered when subscription '
-                  'requests are received.',
+        help_text="Whether this group should be considered when subscription "
+        "requests are received.",
     )
-    newsletters = models.ManyToManyField(Newsletter, related_name='newsletter_groups')
+    newsletters = models.ManyToManyField(Newsletter, related_name="newsletter_groups")
 
     def newsletter_slugs(self):
         return [nl.slug for nl in self.newsletters.all()]
@@ -126,13 +111,9 @@ class NewsletterGroup(models.Model):
 class APIUser(models.Model):
     """On some API calls, an API key must be passed that must
     exist in this table."""
-    name = models.CharField(
-        max_length=256,
-        help_text="Descriptive name of this user"
-    )
-    api_key = models.CharField(max_length=40,
-                               default=get_uuid,
-                               db_index=True)
+
+    name = models.CharField(max_length=256, help_text="Descriptive name of this user")
+    api_key = models.CharField(max_length=40, default=get_uuid, db_index=True)
     enabled = models.BooleanField(default=True)
 
     class Meta:
@@ -158,7 +139,7 @@ class QueuedTask(models.Model):
     kwargs = JSONField(null=False, default=dict)
 
     class Meta:
-        ordering = ['pk']
+        ordering = ["pk"]
 
     def retry(self):
         celery_app.send_task(self.name, args=self.args, kwargs=self.kwargs)
@@ -182,10 +163,7 @@ class FailedTask(models.Model):
         """Return a string that could be evalled to repeat the original call"""
         formatted_args = [repr(arg) for arg in self.args]
         formatted_kwargs = ["%s=%r" % (key, val) for key, val in self.kwargs.items()]
-        return "%s(%s)" % (
-            self.name,
-            ", ".join(formatted_args + formatted_kwargs)
-        )
+        return "%s(%s)" % (self.name, ", ".join(formatted_args + formatted_kwargs))
 
     @property
     def filtered_args(self):
@@ -219,29 +197,27 @@ class FailedTask(models.Model):
 
 
 class Interest(models.Model):
-    title = models.CharField(
-        max_length=128,
-        help_text='Public name of interest in English',
-    )
+    title = models.CharField(max_length=128, help_text="Public name of interest in English")
     interest_id = models.SlugField(
-        unique=True, db_index=True,
-        help_text='The ID for the interest that will be used by clients',
+        unique=True,
+        db_index=True,
+        help_text="The ID for the interest that will be used by clients",
     )
     # Note: use .welcome_id property to get this field or the default
     _welcome_id = models.CharField(
         max_length=64,
-        help_text='The ID of the welcome message sent for this interest. '
-                  'This is the HTML version of the message; append _T to this '
-                  'ID to get the ID of the text-only version.  If blank, '
-                  'welcome message ID will be assumed to be the same as '
-                  'the interest_id',
+        help_text="The ID of the welcome message sent for this interest. "
+        "This is the HTML version of the message; append _T to this "
+        "ID to get the ID of the text-only version.  If blank, "
+        "welcome message ID will be assumed to be the same as "
+        "the interest_id",
         blank=True,
-        verbose_name='Welcome ID',
+        verbose_name="Welcome ID",
     )
     default_steward_emails = CommaSeparatedEmailField(
         blank=True,
-        help_text='Comma-separated list of the default / en-US stewards\' email addresses.',
-        verbose_name='Default / en-US Steward Emails',
+        help_text="Comma-separated list of the default / en-US stewards' email addresses.",
+        verbose_name="Default / en-US Steward Emails",
     )
 
     @property
@@ -257,13 +233,16 @@ class Interest(models.Model):
         Send an email to the stewards about a new interested
         subscriber.
         """
-        email_body = render_to_string('news/get_involved/steward_email.txt', {
-            'contributor_name': name,
-            'contributor_email': email,
-            'interest': self,
-            'lang': lang,
-            'message': message,
-        })
+        email_body = render_to_string(
+            "news/get_involved/steward_email.txt",
+            {
+                "contributor_name": name,
+                "contributor_email": email,
+                "interest": self,
+                "lang": lang,
+                "message": message,
+            },
+        )
 
         # Find the right stewards for the given language.
         try:
@@ -272,8 +251,9 @@ class Interest(models.Model):
         except LocaleStewards.DoesNotExist:
             emails = self.default_steward_emails_list
 
-        send_mail('Inquiry about {0}'.format(self.title), email_body, 'contribute@mozilla.org',
-                  emails)
+        send_mail(
+            "Inquiry about {0}".format(self.title), email_body, "contribute@mozilla.org", emails,
+        )
 
     def __unicode__(self):
         return self.title
@@ -283,12 +263,11 @@ class LocaleStewards(models.Model):
     """
     List of steward emails for a specific interest-locale combination.
     """
-    interest = models.ForeignKey(Interest, on_delete=models.CASCADE,
-                                 related_name='stewards')
+
+    interest = models.ForeignKey(Interest, on_delete=models.CASCADE, related_name="stewards")
     locale = LocaleField()
     emails = CommaSeparatedEmailField(
-        blank=False,
-        help_text='Comma-separated list of the stewards\' email addresses.',
+        blank=False, help_text="Comma-separated list of the stewards' email addresses.",
     )
 
     @property
@@ -296,39 +275,34 @@ class LocaleStewards(models.Model):
         return parse_emails(self.emails)
 
     class Meta:
-        unique_together = ('interest', 'locale')
-        verbose_name = 'Locale Steward'
-        verbose_name_plural = 'Locale Stewards'
+        unique_together = ("interest", "locale")
+        verbose_name = "Locale Steward"
+        verbose_name_plural = "Locale Stewards"
 
     def __unicode__(self):
-        return 'Stewards for {lang_code} ({lang_name})'.format(
-            lang_code=self.locale,
-            lang_name=product_details.languages[self.locale]['English'],
+        return "Stewards for {lang_code} ({lang_name})".format(
+            lang_code=self.locale, lang_name=product_details.languages[self.locale]["English"],
         )
 
 
 class LocalizedSMSMessage(models.Model):
-    message_id = models.SlugField(
-        help_text='The ID for the message that will be used by clients',
-    )
+    message_id = models.SlugField(help_text="The ID for the message that will be used by clients")
     vendor_id = models.CharField(
-        max_length=50,
-        help_text="The backend vendor's identifier for this message",
+        max_length=50, help_text="The backend vendor's identifier for this message",
     )
     description = models.CharField(
-        max_length=200, blank=True,
-        help_text='Optional short description of this message'
+        max_length=200, blank=True, help_text="Optional short description of this message",
     )
-    language = LocaleField(default='en-US')
-    country = CountryField(default='us')
+    language = LocaleField(default="en-US")
+    country = CountryField(default="us")
 
     class Meta:
-        unique_together = ['message_id', 'language', 'country']
-        verbose_name = 'Localized SMS message'
+        unique_together = ["message_id", "language", "country"]
+        verbose_name = "Localized SMS message"
 
     @staticmethod
     def make_slug(message_id, country, language):
-        full_msg_id = '%s-%s-%s' % (message_id, country, language)
+        full_msg_id = "%s-%s-%s" % (message_id, country, language)
         return full_msg_id.lower()
 
     @property
@@ -338,27 +312,23 @@ class LocalizedSMSMessage(models.Model):
 
 class TransactionalEmailMessage(models.Model):
     message_id = models.SlugField(
-        primary_key=True,
-        help_text='The ID for the message that will be used by clients',
+        primary_key=True, help_text="The ID for the message that will be used by clients",
     )
     vendor_id = models.CharField(
-        max_length=50,
-        help_text="The backend vendor's identifier for this message",
+        max_length=50, help_text="The backend vendor's identifier for this message",
     )
     description = models.CharField(
-        max_length=200, blank=True,
-        help_text='Optional short description of this message'
+        max_length=200, blank=True, help_text="Optional short description of this message",
     )
     languages = models.CharField(
         max_length=200,
-        help_text="Comma-separated list of the language codes that this "
-                  "newsletter supports",
+        help_text="Comma-separated list of the language codes that this " "newsletter supports",
     )
 
     @property
     def language_list(self):
         """Return language codes for this newsletter as a list"""
-        return [x.strip() for x in self.languages.split(',') if x.strip()]
+        return [x.strip() for x in self.languages.split(",") if x.strip()]
 
 
 class CommonVoiceUpdate(models.Model):
@@ -367,4 +337,4 @@ class CommonVoiceUpdate(models.Model):
     ack = models.BooleanField(default=False)
 
     class Meta:
-        ordering = ['pk']
+        ordering = ["pk"]

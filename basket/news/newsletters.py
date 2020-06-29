@@ -8,16 +8,26 @@ from django.db.models.signals import post_save
 from django.db.models.signals import post_delete
 from django.core.cache import cache
 
-from basket.news.models import Newsletter, NewsletterGroup, LocalizedSMSMessage, TransactionalEmailMessage
+from basket.news.models import (
+    Newsletter,
+    NewsletterGroup,
+    LocalizedSMSMessage,
+    TransactionalEmailMessage,
+)
 
 
-__all__ = ('clear_newsletter_cache', 'get_sms_messages', 'newsletter_field',
-           'newsletter_name', 'newsletter_fields')
+__all__ = (
+    "clear_newsletter_cache",
+    "get_sms_messages",
+    "newsletter_field",
+    "newsletter_name",
+    "newsletter_fields",
+)
 
 
-CACHE_KEY = 'newsletters_cache_data'
-SMS_CACHE_KEY = 'local_sms_messages_cache_data'
-TRANSACTIONAL_CACHE_KEY = 'transactional_messages_cache_data'
+CACHE_KEY = "newsletters_cache_data"
+SMS_CACHE_KEY = "local_sms_messages_cache_data"
+TRANSACTIONAL_CACHE_KEY = "transactional_messages_cache_data"
 
 
 def get_transactional_message_ids():
@@ -49,7 +59,7 @@ def get_sms_messages():
     return data
 
 
-def get_sms_vendor_id(message_id, country='us', language='en-US'):
+def get_sms_vendor_id(message_id, country="us", language="en-US"):
     all_msgs = get_sms_messages()
     full_msg_id = LocalizedSMSMessage.make_slug(message_id, country, language)
     return all_msgs.get(full_msg_id)
@@ -80,7 +90,7 @@ def _newsletters():
     data = cache.get(CACHE_KEY)
     if data is None:
         data = _get_newsletters_data()
-        data['groups'] = _get_newsletter_groups_data()
+        data["groups"] = _get_newsletter_groups_data()
         cache.set(CACHE_KEY, data)
 
     return data
@@ -99,13 +109,13 @@ def _get_newsletters_data():
         by_vendor_id[nl.vendor_id] = nl
 
     return {
-        'by_name': by_name,
-        'by_vendor_id': by_vendor_id,
+        "by_name": by_name,
+        "by_vendor_id": by_vendor_id,
     }
 
 
 def newsletter_map():
-    by_name = _newsletters()['by_name']
+    by_name = _newsletters()["by_name"]
     return {name: nl.vendor_id for name, nl in by_name.items()}
 
 
@@ -116,7 +126,7 @@ def newsletter_inv_map():
 def newsletter_field(name):
     """Lookup the backend-specific field (vendor ID) for the newsletter"""
     try:
-        return _newsletters()['by_name'][name].vendor_id
+        return _newsletters()["by_name"][name].vendor_id
     except KeyError:
         return None
 
@@ -124,7 +134,7 @@ def newsletter_field(name):
 def newsletter_name(field):
     """Lookup the generic name for this newsletter field"""
     try:
-        return _newsletters()['by_vendor_id'][field].slug
+        return _newsletters()["by_vendor_id"][field].slug
     except KeyError:
         return None
 
@@ -132,7 +142,7 @@ def newsletter_name(field):
 def newsletter_group_newsletter_slugs(name):
     """Return the newsletter slugs associated with a group."""
     try:
-        return _newsletters()['groups'][name]
+        return _newsletters()["groups"][name]
     except KeyError:
         return None
 
@@ -142,7 +152,7 @@ def newsletter_slugs():
     Get a list of all the available newsletters.
     Returns a list of their slugs.
     """
-    return list(_newsletters()['by_name'].keys())
+    return list(_newsletters()["by_name"].keys())
 
 
 def newsletter_group_slugs():
@@ -151,7 +161,7 @@ def newsletter_group_slugs():
     Returns a list of their slugs.
     """
     # using get() in case old format cached
-    return list(_newsletters().get('groups', {}).keys())
+    return list(_newsletters().get("groups", {}).keys())
 
 
 def newsletter_and_group_slugs():
@@ -161,21 +171,21 @@ def newsletter_and_group_slugs():
 
 def newsletter_private_slugs():
     """Return a list of private newsletter ids"""
-    return [nl.slug for nl in _newsletters()['by_name'].values() if nl.private]
+    return [nl.slug for nl in _newsletters()["by_name"].values() if nl.private]
 
 
 def newsletter_inactive_slugs():
-    return [nl.slug for nl in _newsletters()['by_name'].values() if not nl.active]
+    return [nl.slug for nl in _newsletters()["by_name"].values() if not nl.active]
 
 
 def slug_to_vendor_id(slug):
     """Given a newsletter's slug, return its vendor_id"""
-    return _newsletters()['by_name'][slug].vendor_id
+    return _newsletters()["by_name"][slug].vendor_id
 
 
 def newsletter_fields():
     """Get a list of all the newsletter backend-specific fields"""
-    return list(_newsletters()['by_vendor_id'].keys())
+    return list(_newsletters()["by_vendor_id"].keys())
 
 
 def newsletter_languages():
@@ -184,7 +194,7 @@ def newsletter_languages():
     supported by newsletters.
     """
     lang_set = set()
-    for newsletter in _newsletters()['by_name'].values():
+    for newsletter in _newsletters()["by_name"].values():
         lang_set |= set(newsletter.language_list)
     return lang_set
 

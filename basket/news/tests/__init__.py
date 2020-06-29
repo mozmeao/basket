@@ -1,1 +1,1 @@
-default_app_config = 'basket.news.apps.BasketNewsConfig'
+default_app_config = "basket.news.apps.BasketNewsConfig"

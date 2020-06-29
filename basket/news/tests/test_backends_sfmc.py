@@ -7,82 +7,96 @@ from basket.news.backends.common import NewsletterException
 from basket.news.backends import sfmc
 
 
-@patch('basket.news.backends.sfmc.requests')
-@patch.object(sfmc.sfmc, '_client', Mock())
+@patch("basket.news.backends.sfmc.requests")
+@patch.object(sfmc.sfmc, "_client", Mock())
 class TestSendSMS(TestCase):
     def test_single_phone_number(self, req_mock):
         req_mock.post.return_value.status_code = 200
-        sfmc.sfmc.send_sms('+1234567890', 'dude')
-        url = sfmc.sfmc.sms_api_url.format('dude')
-        req_mock.post.assert_called_with(url, json={
-            'mobileNumbers': ['1234567890'],
-            'Subscribe': True,
-            'Resubscribe': True,
-            'keyword': 'FFDROID',
-        }, headers=sfmc.sfmc.auth_header, timeout=10)
+        sfmc.sfmc.send_sms("+1234567890", "dude")
+        url = sfmc.sfmc.sms_api_url.format("dude")
+        req_mock.post.assert_called_with(
+            url,
+            json={
+                "mobileNumbers": ["1234567890"],
+                "Subscribe": True,
+                "Resubscribe": True,
+                "keyword": "FFDROID",
+            },
+            headers=sfmc.sfmc.auth_header,
+            timeout=10,
+        )
 
     def test_multiple_phone_numbers(self, req_mock):
         req_mock.post.return_value.status_code = 200
-        sfmc.sfmc.send_sms(['+1234567890', '+9876543210'], 'dude')
-        url = sfmc.sfmc.sms_api_url.format('dude')
-        req_mock.post.assert_called_with(url, json={
-            'mobileNumbers': ['1234567890', '9876543210'],
-            'Subscribe': True,
-            'Resubscribe': True,
-            'keyword': 'FFDROID',
-        }, headers=sfmc.sfmc.auth_header, timeout=10)
+        sfmc.sfmc.send_sms(["+1234567890", "+9876543210"], "dude")
+        url = sfmc.sfmc.sms_api_url.format("dude")
+        req_mock.post.assert_called_with(
+            url,
+            json={
+                "mobileNumbers": ["1234567890", "9876543210"],
+                "Subscribe": True,
+                "Resubscribe": True,
+                "keyword": "FFDROID",
+            },
+            headers=sfmc.sfmc.auth_header,
+            timeout=10,
+        )
 
 
-@patch('basket.news.backends.sfmc.time', Mock(return_value=600))
-@patch.object(sfmc.ETRefreshClient, 'build_soap_client', Mock())
-@patch.object(sfmc.ETRefreshClient, 'load_wsdl', Mock())
-@patch.object(sfmc.ETRefreshClient, 'request_token')
-@patch.object(sfmc.ETRefreshClient, 'refresh_auth_tokens_from_cache')
-@patch.object(sfmc.ETRefreshClient, 'cache_auth_tokens')
-@patch.object(sfmc.ETRefreshClient, 'token_is_expired')
+@patch("basket.news.backends.sfmc.time", Mock(return_value=600))
+@patch.object(sfmc.ETRefreshClient, "build_soap_client", Mock())
+@patch.object(sfmc.ETRefreshClient, "load_wsdl", Mock())
+@patch.object(sfmc.ETRefreshClient, "request_token")
+@patch.object(sfmc.ETRefreshClient, "refresh_auth_tokens_from_cache")
+@patch.object(sfmc.ETRefreshClient, "cache_auth_tokens")
+@patch.object(sfmc.ETRefreshClient, "token_is_expired")
 class TestRefreshToken(TestCase):
     def test_refresh_token(self, exp_mock, cache_mock, refresh_mock, request_mock):
         request_mock.return_value = {
-            'accessToken': 'good-token',
-            'expiresIn': 9000,
-            'legacyToken': 'internal-token',
-            'refreshToken': 'refresh-key',
+            "accessToken": "good-token",
+            "expiresIn": 9000,
+            "legacyToken": "internal-token",
+            "refreshToken": "refresh-key",
         }
-        client = sfmc.ETRefreshClient(params={'clientid': 'id', 'clientsecret': 'sssshhhh'})
+        client = sfmc.ETRefreshClient(params={"clientid": "id", "clientsecret": "sssshhhh"})
         self.assertTrue(refresh_mock.called)
         self.assertFalse(exp_mock.called)
         self.assertTrue(cache_mock.called)
-        self.assertEqual(client.authToken, 'good-token')
+        self.assertEqual(client.authToken, "good-token")
         self.assertEqual(client.authTokenExpiration, 9600)  # because of time mock
-        self.assertEqual(client.internalAuthToken, 'internal-token')
-        self.assertEqual(client.refreshKey, 'refresh-key')
+        self.assertEqual(client.internalAuthToken, "internal-token")
+        self.assertEqual(client.refreshKey, "refresh-key")
 
 
-@patch.object(sfmc.ETRefreshClient, 'load_wsdl', Mock())
-@patch.object(sfmc.ETRefreshClient, 'build_soap_client', Mock())
-@patch.object(sfmc.ETRefreshClient, 'refresh_token', Mock())
-@patch('basket.news.backends.sfmc.cache')
+@patch.object(sfmc.ETRefreshClient, "load_wsdl", Mock())
+@patch.object(sfmc.ETRefreshClient, "build_soap_client", Mock())
+@patch.object(sfmc.ETRefreshClient, "refresh_token", Mock())
+@patch("basket.news.backends.sfmc.cache")
 class TestCacheTokens(TestCase):
     def test_cache_auth_tokens(self, cache_mock):
         client = sfmc.ETRefreshClient()
-        client.authToken = 'good-token'
-        client._old_authToken = 'old-token'
+        client.authToken = "good-token"
+        client._old_authToken = "old-token"
         client.authTokenExpiration = 9600
         client.authTokenExpiresIn = 100
-        client.internalAuthToken = 'internal-token'
-        client.refreshKey = 'refresh-key'
+        client.internalAuthToken = "internal-token"
+        client.refreshKey = "refresh-key"
         client.cache_auth_tokens()
-        cache_mock.set.assert_called_once_with(client.token_cache_key, {
-            'authToken': 'good-token',
-            'authTokenExpiration': 9600,
-            'internalAuthToken': 'internal-token',
-            'refreshKey': 'refresh-key',
-        }, 700)
+        cache_mock.set.assert_called_once_with(
+            client.token_cache_key,
+            {
+                "authToken": "good-token",
+                "authTokenExpiration": 9600,
+                "internalAuthToken": "internal-token",
+                "refreshKey": "refresh-key",
+            },
+            700,
+        )
 
     def test_cache_auth_tokens_skip(self, cache_mock):
         """Should skip setting cache when token is good"""
         client = sfmc.ETRefreshClient()
-        client.authToken = 'good-token'
+        client.authToken = "good-token"
         client._old_authToken = client.authToken
         self.assertFalse(cache_mock.set.called)
 
@@ -90,22 +104,22 @@ class TestCacheTokens(TestCase):
         client = sfmc.ETRefreshClient()
         client.authToken = None
         cache_mock.get.return_value = {
-            'authToken': 'good-token',
-            'authTokenExpiration': 9600,
-            'internalAuthToken': 'internal-token',
-            'refreshKey': 'refresh-key',
+            "authToken": "good-token",
+            "authTokenExpiration": 9600,
+            "internalAuthToken": "internal-token",
+            "refreshKey": "refresh-key",
         }
         client.refresh_auth_tokens_from_cache()
-        self.assertEqual(client.authToken, 'good-token')
+        self.assertEqual(client.authToken, "good-token")
         self.assertEqual(client.authTokenExpiration, 9600)
-        self.assertEqual(client.internalAuthToken, 'internal-token')
-        self.assertEqual(client.refreshKey, 'refresh-key')
+        self.assertEqual(client.internalAuthToken, "internal-token")
+        self.assertEqual(client.refreshKey, "refresh-key")
 
 
-@patch.object(sfmc.ETRefreshClient, 'load_wsdl', Mock())
-@patch.object(sfmc.ETRefreshClient, 'refresh_token', Mock())
-@patch('basket.news.backends.sfmc.time')
-@patch('basket.news.backends.sfmc.randint')
+@patch.object(sfmc.ETRefreshClient, "load_wsdl", Mock())
+@patch.object(sfmc.ETRefreshClient, "refresh_token", Mock())
+@patch("basket.news.backends.sfmc.time")
+@patch("basket.news.backends.sfmc.randint")
 class TestTokenIsExpired(TestCase):
     def test_token_is_expired(self, randint_mock, time_mock):
         client = sfmc.ETRefreshClient()
@@ -121,17 +135,17 @@ class TestTokenIsExpired(TestCase):
         self.assertFalse(client.token_is_expired())
 
 
-@patch.object(sfmc.ETRefreshClient, 'load_wsdl', Mock())
-@patch.object(sfmc.ETRefreshClient, 'refresh_token', Mock())
-@patch('basket.news.backends.sfmc.requests')
+@patch.object(sfmc.ETRefreshClient, "load_wsdl", Mock())
+@patch.object(sfmc.ETRefreshClient, "refresh_token", Mock())
+@patch("basket.news.backends.sfmc.requests")
 class TestRequestToken(TestCase):
     def setUp(self):
         cache.clear()
 
     def test_request_token_success(self, req_mock):
         client = sfmc.ETRefreshClient()
-        req_mock.post.return_value.json.return_value = {'accessToken': 'good-token'}
-        payload = {'refreshToken': 'token'}
+        req_mock.post.return_value.json.return_value = {"accessToken": "good-token"}
+        payload = {"refreshToken": "token"}
         client.request_token(payload)
         # called once when first call is successful
         req_mock.post.assert_called_once_with(client.auth_url, json=payload)
@@ -141,23 +155,25 @@ class TestRequestToken(TestCase):
         If first call fails it should try again without refreshToken
         """
         client = sfmc.ETRefreshClient()
-        req_mock.post.return_value.json.side_effect = [{}, {'accessToken': 'good-token'}]
-        payload = {'refreshToken': 'token'}
+        req_mock.post.return_value.json.side_effect = [{}, {"accessToken": "good-token"}]
+        payload = {"refreshToken": "token"}
         client.request_token(payload)
         # payload should be modified
         self.assertEqual(req_mock.post.call_count, 2)
-        req_mock.post.assert_has_calls([
-            call(client.auth_url, json={'refreshToken': 'token'}),
-            call().json(),
-            call(client.auth_url, json={}),
-            call().json(),
-        ])
+        req_mock.post.assert_has_calls(
+            [
+                call(client.auth_url, json={"refreshToken": "token"}),
+                call().json(),
+                call(client.auth_url, json={}),
+                call().json(),
+            ],
+        )
 
     def test_request_token_both_fail(self, req_mock):
         """If both calls fail it should raise an exception"""
         client = sfmc.ETRefreshClient()
         req_mock.post.return_value.json.return_value = {}
-        payload = {'refreshToken': 'token'}
+        payload = {"refreshToken": "token"}
         with self.assertRaises(NewsletterException):
             client.request_token(payload)
 
