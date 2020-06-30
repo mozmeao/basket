@@ -9,7 +9,12 @@ from product_details import product_details
 from .celery import app as celery_app
 from jsonfield import JSONField
 
-from basket.news.fields import CommaSeparatedEmailField, CountryField, LocaleField, parse_emails
+from basket.news.fields import (
+    CommaSeparatedEmailField,
+    CountryField,
+    LocaleField,
+    parse_emails,
+)
 
 
 def get_uuid():
@@ -25,9 +30,13 @@ class Newsletter(models.Model):
     slug = models.SlugField(
         unique=True, help_text="The ID for the newsletter that will be used by clients",
     )
-    title = models.CharField(max_length=128, help_text="Public name of newsletter in English")
+    title = models.CharField(
+        max_length=128, help_text="Public name of newsletter in English",
+    )
     description = models.CharField(
-        max_length=256, help_text="One-line description of newsletter in English", blank=True,
+        max_length=256,
+        help_text="One-line description of newsletter in English",
+        blank=True,
     )
     show = models.BooleanField(
         default=False,
@@ -54,7 +63,8 @@ class Newsletter(models.Model):
     )
     languages = models.CharField(
         max_length=200,
-        help_text="Comma-separated list of the language codes that this " "newsletter supports",
+        help_text="Comma-separated list of the language codes that this "
+        "newsletter supports",
     )
     requires_double_optin = models.BooleanField(
         default=False,
@@ -88,9 +98,13 @@ class NewsletterGroup(models.Model):
     slug = models.SlugField(
         unique=True, help_text="The ID for the group that will be used by clients",
     )
-    title = models.CharField(max_length=128, help_text="Public name of group in English")
+    title = models.CharField(
+        max_length=128, help_text="Public name of group in English",
+    )
     description = models.CharField(
-        max_length=256, help_text="One-line description of group in English", blank=True,
+        max_length=256,
+        help_text="One-line description of group in English",
+        blank=True,
     )
     show = models.BooleanField(
         default=False,
@@ -197,7 +211,9 @@ class FailedTask(models.Model):
 
 
 class Interest(models.Model):
-    title = models.CharField(max_length=128, help_text="Public name of interest in English")
+    title = models.CharField(
+        max_length=128, help_text="Public name of interest in English",
+    )
     interest_id = models.SlugField(
         unique=True,
         db_index=True,
@@ -252,7 +268,10 @@ class Interest(models.Model):
             emails = self.default_steward_emails_list
 
         send_mail(
-            "Inquiry about {0}".format(self.title), email_body, "contribute@mozilla.org", emails,
+            "Inquiry about {0}".format(self.title),
+            email_body,
+            "contribute@mozilla.org",
+            emails,
         )
 
     def __unicode__(self):
@@ -264,7 +283,9 @@ class LocaleStewards(models.Model):
     List of steward emails for a specific interest-locale combination.
     """
 
-    interest = models.ForeignKey(Interest, on_delete=models.CASCADE, related_name="stewards")
+    interest = models.ForeignKey(
+        Interest, on_delete=models.CASCADE, related_name="stewards",
+    )
     locale = LocaleField()
     emails = CommaSeparatedEmailField(
         blank=False, help_text="Comma-separated list of the stewards' email addresses.",
@@ -281,17 +302,22 @@ class LocaleStewards(models.Model):
 
     def __unicode__(self):
         return "Stewards for {lang_code} ({lang_name})".format(
-            lang_code=self.locale, lang_name=product_details.languages[self.locale]["English"],
+            lang_code=self.locale,
+            lang_name=product_details.languages[self.locale]["English"],
         )
 
 
 class LocalizedSMSMessage(models.Model):
-    message_id = models.SlugField(help_text="The ID for the message that will be used by clients")
+    message_id = models.SlugField(
+        help_text="The ID for the message that will be used by clients",
+    )
     vendor_id = models.CharField(
         max_length=50, help_text="The backend vendor's identifier for this message",
     )
     description = models.CharField(
-        max_length=200, blank=True, help_text="Optional short description of this message",
+        max_length=200,
+        blank=True,
+        help_text="Optional short description of this message",
     )
     language = LocaleField(default="en-US")
     country = CountryField(default="us")
@@ -312,17 +338,21 @@ class LocalizedSMSMessage(models.Model):
 
 class TransactionalEmailMessage(models.Model):
     message_id = models.SlugField(
-        primary_key=True, help_text="The ID for the message that will be used by clients",
+        primary_key=True,
+        help_text="The ID for the message that will be used by clients",
     )
     vendor_id = models.CharField(
         max_length=50, help_text="The backend vendor's identifier for this message",
     )
     description = models.CharField(
-        max_length=200, blank=True, help_text="Optional short description of this message",
+        max_length=200,
+        blank=True,
+        help_text="Optional short description of this message",
     )
     languages = models.CharField(
         max_length=200,
-        help_text="Comma-separated list of the language codes that this " "newsletter supports",
+        help_text="Comma-separated list of the language codes that this "
+        "newsletter supports",
     )
 
     @property

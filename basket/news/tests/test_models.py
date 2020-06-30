@@ -35,14 +35,20 @@ class FailedTaskTest(TestCase):
     def test_retry_with_querydict_not_first(self):
         """When given args with a QueryDict in any position, subtask should get a dict."""
         task_name = "make_a_caucasian"
-        task_args = ["donny", {"case_type": ["ringer"], "email": ["dude@example.com"]}, "walter"]
+        task_args = [
+            "donny",
+            {"case_type": ["ringer"], "email": ["dude@example.com"]},
+            "walter",
+        ]
         task = models.FailedTask.objects.create(
             task_id="el-dudarino", name=task_name, args=task_args,
         )
         with patch.object(models.celery_app, "send_task") as sub_mock:
             task.retry()
 
-        sub_mock.assert_called_with(task_name, args=["donny"] + self.good_task_args, kwargs={})
+        sub_mock.assert_called_with(
+            task_name, args=["donny"] + self.good_task_args, kwargs={},
+        )
 
     def test_retry_with_almost_querydict(self):
         """When given args with a dict with a list, subtask should get a same args."""

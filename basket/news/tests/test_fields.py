@@ -20,7 +20,9 @@ class CommaSeparatedEmailFieldTests(TestCase):
             self.field.attname = "blah"
             instance.blah = "  foo@example.com   ,bar@example.com   "
             self.field.pre_save(instance, False)
-            validate_email.assert_has_calls([call("foo@example.com"), call("bar@example.com")])
+            validate_email.assert_has_calls(
+                [call("foo@example.com"), call("bar@example.com")],
+            )
 
             validate_email.reset_mock()
             instance.blah = "foo@example.com"
@@ -46,12 +48,18 @@ class CommaSeparatedEmailFieldTests(TestCase):
 
         # Basic
         instance.blah = "bob@example.com,larry@example.com"
-        self.assertEqual(self.field.pre_save(instance, False), "bob@example.com,larry@example.com")
+        self.assertEqual(
+            self.field.pre_save(instance, False), "bob@example.com,larry@example.com",
+        )
 
         # Excess whitespace
         instance.blah = "   bob@example.com ,larry@example.com    "
-        self.assertEqual(self.field.pre_save(instance, False), "bob@example.com,larry@example.com")
+        self.assertEqual(
+            self.field.pre_save(instance, False), "bob@example.com,larry@example.com",
+        )
 
         # Extra commas
         instance.blah = "bob@example.com  ,,,, larry@example.com "
-        self.assertEqual(self.field.pre_save(instance, False), "bob@example.com,larry@example.com")
+        self.assertEqual(
+            self.field.pre_save(instance, False), "bob@example.com,larry@example.com",
+        )

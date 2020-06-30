@@ -34,7 +34,11 @@ def test_email_validation(email_mock):
 def test_newsletters_validation(email_mock):
     # comma separated in just one field
     form = forms.SubscribeForm(
-        {"newsletters": ["dude, walter"], "email": "dude@example.com", "privacy": "true"},
+        {
+            "newsletters": ["dude, walter"],
+            "email": "dude@example.com",
+            "privacy": "true",
+        },
     )
     form.fields["newsletters"].choices = (("dude", "dude"), ("walter", "walter"))
     assert form.is_valid(), form.errors
@@ -42,7 +46,11 @@ def test_newsletters_validation(email_mock):
 
     # separate fields
     form = forms.SubscribeForm(
-        {"newsletters": ["dude", "walter"], "email": "dude@example.com", "privacy": "true"},
+        {
+            "newsletters": ["dude", "walter"],
+            "email": "dude@example.com",
+            "privacy": "true",
+        },
     )
     form.fields["newsletters"].choices = (("dude", "dude"), ("walter", "walter"))
     assert form.is_valid(), form.errors
@@ -50,7 +58,11 @@ def test_newsletters_validation(email_mock):
 
     # combo of comma separated and non
     form = forms.SubscribeForm(
-        {"newsletters": ["dude", "walter,donnie"], "email": "dude@example.com", "privacy": "true"},
+        {
+            "newsletters": ["dude", "walter,donnie"],
+            "email": "dude@example.com",
+            "privacy": "true",
+        },
     )
     form.fields["newsletters"].choices = (
         ("dude", "dude"),
@@ -62,7 +74,11 @@ def test_newsletters_validation(email_mock):
 
     # invalid newsletter
     form = forms.SubscribeForm(
-        {"newsletters": ["dude, walter"], "email": "dude@example.com", "privacy": "true"},
+        {
+            "newsletters": ["dude, walter"],
+            "email": "dude@example.com",
+            "privacy": "true",
+        },
     )
     form.fields["newsletters"].choices = (("dude", "dude"),)
     assert not form.is_valid()
@@ -71,13 +87,19 @@ def test_newsletters_validation(email_mock):
 
 @patch.object(forms, "process_email", return_value="dude@example.com")
 def test_privacy_required(email_mock):
-    form = forms.SubscribeForm({"newsletters": ["dude, walter"], "email": "dude@example.com"})
+    form = forms.SubscribeForm(
+        {"newsletters": ["dude, walter"], "email": "dude@example.com"},
+    )
     form.fields["newsletters"].choices = (("dude", "dude"),)
     assert not form.is_valid()
     assert "privacy" in form.errors
 
     form = forms.SubscribeForm(
-        {"newsletters": ["dude, walter"], "email": "dude@example.com", "privacy": "false"},
+        {
+            "newsletters": ["dude, walter"],
+            "email": "dude@example.com",
+            "privacy": "false",
+        },
     )
     form.fields["newsletters"].choices = (("dude", "dude"),)
     assert not form.is_valid()

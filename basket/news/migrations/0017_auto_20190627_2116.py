@@ -14,7 +14,9 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="apiuser",
             name="name",
-            field=models.CharField(help_text="Descriptive name of this user", max_length=256),
+            field=models.CharField(
+                help_text="Descriptive name of this user", max_length=256,
+            ),
         ),
         migrations.AlterField(
             model_name="interest",
@@ -39,13 +41,16 @@ class Migration(migrations.Migration):
             model_name="interest",
             name="interest_id",
             field=models.SlugField(
-                help_text="The ID for the interest that will be used by clients", unique=True,
+                help_text="The ID for the interest that will be used by clients",
+                unique=True,
             ),
         ),
         migrations.AlterField(
             model_name="interest",
             name="title",
-            field=models.CharField(help_text="Public name of interest in English", max_length=128),
+            field=models.CharField(
+                help_text="Public name of interest in English", max_length=128,
+            ),
         ),
         migrations.AlterField(
             model_name="localestewards",
@@ -487,7 +492,9 @@ class Migration(migrations.Migration):
             model_name="localizedsmsmessage",
             name="description",
             field=models.CharField(
-                blank=True, help_text="Optional short description of this message", max_length=200,
+                blank=True,
+                help_text="Optional short description of this message",
+                max_length=200,
             ),
         ),
         migrations.AlterField(
@@ -663,13 +670,16 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="localizedsmsmessage",
             name="message_id",
-            field=models.SlugField(help_text="The ID for the message that will be used by clients"),
+            field=models.SlugField(
+                help_text="The ID for the message that will be used by clients",
+            ),
         ),
         migrations.AlterField(
             model_name="localizedsmsmessage",
             name="vendor_id",
             field=models.CharField(
-                help_text="The backend vendor's identifier for this message", max_length=50,
+                help_text="The backend vendor's identifier for this message",
+                max_length=50,
             ),
         ),
         migrations.AlterField(
@@ -741,7 +751,8 @@ class Migration(migrations.Migration):
             model_name="newsletter",
             name="slug",
             field=models.SlugField(
-                help_text="The ID for the newsletter that will be used by clients", unique=True,
+                help_text="The ID for the newsletter that will be used by clients",
+                unique=True,
             ),
         ),
         migrations.AlterField(
@@ -755,7 +766,8 @@ class Migration(migrations.Migration):
             model_name="newsletter",
             name="vendor_id",
             field=models.CharField(
-                help_text="The backend vendor's identifier for this newsletter", max_length=128,
+                help_text="The backend vendor's identifier for this newsletter",
+                max_length=128,
             ),
         ),
         migrations.AlterField(
@@ -770,7 +782,9 @@ class Migration(migrations.Migration):
             model_name="newslettergroup",
             name="description",
             field=models.CharField(
-                blank=True, help_text="One-line description of group in English", max_length=256,
+                blank=True,
+                help_text="One-line description of group in English",
+                max_length=256,
             ),
         ),
         migrations.AlterField(
@@ -785,19 +799,24 @@ class Migration(migrations.Migration):
             model_name="newslettergroup",
             name="slug",
             field=models.SlugField(
-                help_text="The ID for the group that will be used by clients", unique=True,
+                help_text="The ID for the group that will be used by clients",
+                unique=True,
             ),
         ),
         migrations.AlterField(
             model_name="newslettergroup",
             name="title",
-            field=models.CharField(help_text="Public name of group in English", max_length=128),
+            field=models.CharField(
+                help_text="Public name of group in English", max_length=128,
+            ),
         ),
         migrations.AlterField(
             model_name="transactionalemailmessage",
             name="description",
             field=models.CharField(
-                blank=True, help_text="Optional short description of this message", max_length=200,
+                blank=True,
+                help_text="Optional short description of this message",
+                max_length=200,
             ),
         ),
         migrations.AlterField(
@@ -821,7 +840,8 @@ class Migration(migrations.Migration):
             model_name="transactionalemailmessage",
             name="vendor_id",
             field=models.CharField(
-                help_text="The backend vendor's identifier for this message", max_length=50,
+                help_text="The backend vendor's identifier for this message",
+                max_length=50,
             ),
         ),
     ]

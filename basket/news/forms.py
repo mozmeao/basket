@@ -44,7 +44,13 @@ class NewslettersField(forms.MultipleChoiceField):
     """
 
     def __init__(
-        self, required=True, widget=None, label=None, initial=None, help_text="", **kwargs
+        self,
+        required=True,
+        widget=None,
+        label=None,
+        initial=None,
+        help_text="",
+        **kwargs,
     ):
         super(NewslettersField, self).__init__(
             choices=newsletter_field_choices,
@@ -82,7 +88,9 @@ def validate_datetime_str(value):
 class CommonVoiceForm(forms.Form):
     email = EmailField()
     days_interval = forms.IntegerField(required=False)
-    created_at = forms.CharField(required=False, max_length=20, validators=[validate_datetime_str])
+    created_at = forms.CharField(
+        required=False, max_length=20, validators=[validate_datetime_str],
+    )
     goal_reached_at = forms.CharField(
         required=False, max_length=20, validators=[validate_datetime_str],
     )

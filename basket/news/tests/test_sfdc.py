@@ -6,7 +6,10 @@ from mock import patch, Mock
 from basket.news.backends.sfdc import to_vendor, from_vendor
 
 
-@patch("basket.news.backends.sfdc.is_supported_newsletter_language", Mock(return_value=True))
+@patch(
+    "basket.news.backends.sfdc.is_supported_newsletter_language",
+    Mock(return_value=True),
+)
 class VendorConversionTests(TestCase):
     @patch("basket.news.backends.sfdc.newsletter_map")
     def test_to_vendor(self, nm_mock):

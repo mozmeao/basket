@@ -270,9 +270,9 @@ class RefreshingSFType(sfapi.SFType):
         self.refresh_session()
 
     def _base_url(self):
-        return ("https://{instance}/services/data/" "v{version}/sobjects/{name}/").format(
-            instance=self.sf_instance, name=self.name, version=self.sf_version,
-        )
+        return (
+            "https://{instance}/services/data/" "v{version}/sobjects/{name}/"
+        ).format(instance=self.sf_instance, name=self.name, version=self.sf_version)
 
     def refresh_session(self):
         sf_session = get_sf_session()
@@ -314,10 +314,16 @@ class RefreshingSFType(sfapi.SFType):
             usages = sfapi.Salesforce.parse_api_usage(limit_info)
             usage = usages.get("api-usage")
             if usage:
-                statsd.gauge("news.backends.sfdc.daily_api_used", int(usage.used), rate=0.5)
-                statsd.gauge("news.backends.sfdc.daily_api_limit", int(usage.total), rate=0.5)
+                statsd.gauge(
+                    "news.backends.sfdc.daily_api_used", int(usage.used), rate=0.5,
+                )
+                statsd.gauge(
+                    "news.backends.sfdc.daily_api_limit", int(usage.total), rate=0.5,
+                )
                 percentage = float(usage.used) / float(usage.total) * 100
-                statsd.gauge("news.backends.sfdc.percent_daily_api_used", percentage, rate=0.5)
+                statsd.gauge(
+                    "news.backends.sfdc.percent_daily_api_used", percentage, rate=0.5,
+                )
 
         return resp
 

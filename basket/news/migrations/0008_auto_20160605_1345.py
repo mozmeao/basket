@@ -12,6 +12,8 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.AlterField(
-            model_name="failedtask", name="task_id", field=models.CharField(max_length=255),
+            model_name="failedtask",
+            name="task_id",
+            field=models.CharField(max_length=255),
         ),
     ]

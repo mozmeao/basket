@@ -26,16 +26,22 @@ from basket.news.utils import (
 )
 
 
-@override_settings(FXA_OAUTH_SERVER_ENV="stable", FXA_CLIENT_ID="dude", FXA_CLIENT_SECRET="abides")
+@override_settings(
+    FXA_OAUTH_SERVER_ENV="stable", FXA_CLIENT_ID="dude", FXA_CLIENT_SECRET="abides",
+)
 @patch("basket.news.utils.fxa.oauth")
 @patch("basket.news.utils.fxa.profile")
 class GetFxAClientsTests(TestCase):
     def test_get_fxa_clients(self, profile_mock, oauth_mock):
         oauth, profile = get_fxa_clients()
         oauth_mock.Client.assert_called_with(
-            server_url=fxa.constants.STABLE_URLS["oauth"], client_id="dude", client_secret="abides",
+            server_url=fxa.constants.STABLE_URLS["oauth"],
+            client_id="dude",
+            client_secret="abides",
         )
-        profile_mock.Client.assert_called_with(server_url=fxa.constants.STABLE_URLS["profile"])
+        profile_mock.Client.assert_called_with(
+            server_url=fxa.constants.STABLE_URLS["profile"],
+        )
         assert oauth == oauth_mock.Client.return_value
         assert profile == profile_mock.Client.return_value
 
@@ -218,7 +224,9 @@ class TestGetAcceptLanguages(TestCase):
         """
         self._test("fr-FR", ["fr"])
         self._test("en-us,en;q=0.5", ["en"])
-        self._test("pt-pt,fr;q=0.8,it-it;q=0.5,de;q=0.3", ["pt-PT", "fr", "it-IT", "de"])
+        self._test(
+            "pt-pt,fr;q=0.8,it-it;q=0.5,de;q=0.3", ["pt-PT", "fr", "it-IT", "de"],
+        )
         self._test("ja-JP-mac,ja-JP;q=0.7,ja;q=0.3", ["ja-JP", "ja"])
         self._test("foo,bar;q=0.5", ["foo", "bar"])
 
@@ -228,7 +236,9 @@ class TestGetAcceptLanguages(TestCase):
         Let's accept it. Bug 1102652.
         """
         self._test("en_US", ["en"])
-        self._test("pt_pt,fr;q=0.8,it_it;q=0.5,de;q=0.3", ["pt-PT", "fr", "it-IT", "de"])
+        self._test(
+            "pt_pt,fr;q=0.8,it_it;q=0.5,de;q=0.3", ["pt-PT", "fr", "it-IT", "de"],
+        )
 
     def test_invalid_lang_codes(self):
         """
@@ -274,7 +284,18 @@ class TestGetBestSupportedLang(TestCase):
     def setUp(self):
         patcher = patch(
             "basket.news.utils.newsletter_languages",
-            return_value=["de", "en", "es", "fr", "id", "pt", "ru", "pl", "hu", "zh-TW"],
+            return_value=[
+                "de",
+                "en",
+                "es",
+                "fr",
+                "id",
+                "pt",
+                "ru",
+                "pl",
+                "hu",
+                "zh-TW",
+            ],
         )
         self.addCleanup(patcher.stop)
         patcher.start()

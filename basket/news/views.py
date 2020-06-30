@@ -22,7 +22,12 @@ from ratelimit.utils import is_ratelimited
 from simple_salesforce import SalesforceError
 from synctool.routing import Route
 
-from basket.news.forms import CommonVoiceForm, SubscribeForm, UpdateUserMeta, SOURCE_URL_RE
+from basket.news.forms import (
+    CommonVoiceForm,
+    SubscribeForm,
+    UpdateUserMeta,
+    SOURCE_URL_RE,
+)
 from basket.news.models import (
     CommonVoiceUpdate,
     Interest,
@@ -159,7 +164,12 @@ def ratelimited(request, e):
     parts = [x for x in parts if not is_token(x)]
     statsd.incr(".".join(parts + ["ratelimited"]))
     return HttpResponseJSON(
-        {"status": "error", "desc": "rate limit reached", "code": errors.BASKET_USAGE_ERROR}, 429,
+        {
+            "status": "error",
+            "desc": "rate limit reached",
+            "code": errors.BASKET_USAGE_ERROR,
+        },
+        429,
     )
 
 
@@ -168,7 +178,9 @@ def generate_fxa_state():
 
 
 def get_fxa_authorization_url(state, redirect_uri, email):
-    fxa_server = fxa.constants.ENVIRONMENT_URLS.get(settings.FXA_OAUTH_SERVER_ENV)["oauth"]
+    fxa_server = fxa.constants.ENVIRONMENT_URLS.get(settings.FXA_OAUTH_SERVER_ENV)[
+        "oauth"
+    ]
     params = {
         "client_id": settings.FXA_CLIENT_ID,
         "state": state,
@@ -215,7 +227,9 @@ def fxa_callback(request):
 
     fxa_oauth, fxa_profile = get_fxa_clients()
     try:
-        access_token = fxa_oauth.trade_code(code, ttl=settings.FXA_OAUTH_TOKEN_TTL)["access_token"]
+        access_token = fxa_oauth.trade_code(code, ttl=settings.FXA_OAUTH_TOKEN_TTL)[
+            "access_token"
+        ]
         user_profile = fxa_profile.get_profile(access_token)
     except Exception:
         statsd.incr("news.views.fxa_callback.error.fxa_comm")
@@ -256,7 +270,9 @@ def fxa_callback(request):
             sentry_sdk.capture_exception()
             return HttpResponseRedirect(error_url)
 
-    redirect_to = f"https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/existing/{token}/?fxa=1"
+    redirect_to = (
+        f"https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/existing/{token}/?fxa=1"
+    )
     return HttpResponseRedirect(redirect_to)
 
 
@@ -314,7 +330,11 @@ def get_involved(request):
     data = request.POST.dict()
     if "email" not in data:
         return HttpResponseJSON(
-            {"status": "error", "desc": "email is required", "code": errors.BASKET_USAGE_ERROR},
+            {
+                "status": "error",
+                "desc": "email is required",
+                "code": errors.BASKET_USAGE_ERROR,
+            },
             401,
         )
     if email_is_blocked(data["email"]):
@@ -334,13 +354,22 @@ def get_involved(request):
         Interest.objects.get(interest_id=data["interest_id"])
     except Interest.DoesNotExist:
         return HttpResponseJSON(
-            {"status": "error", "desc": "invalid interest_id", "code": errors.BASKET_USAGE_ERROR},
+            {
+                "status": "error",
+                "desc": "invalid interest_id",
+                "code": errors.BASKET_USAGE_ERROR,
+            },
             401,
         )
 
     if "lang" not in data:
         return HttpResponseJSON(
-            {"status": "error", "desc": "lang is required", "code": errors.BASKET_USAGE_ERROR}, 401,
+            {
+                "status": "error",
+                "desc": "lang is required",
+                "code": errors.BASKET_USAGE_ERROR,
+            },
+            401,
         )
     if not language_code_is_valid(data["lang"]):
         return HttpResponseJSON(
@@ -353,11 +382,20 @@ def get_involved(request):
         )
     if "name" not in data:
         return HttpResponseJSON(
-            {"status": "error", "desc": "name is required", "code": errors.BASKET_USAGE_ERROR}, 401,
+            {
+                "status": "error",
+                "desc": "name is required",
+                "code": errors.BASKET_USAGE_ERROR,
+            },
+            401,
         )
     if "country" not in data:
         return HttpResponseJSON(
-            {"status": "error", "desc": "country is required", "code": errors.BASKET_USAGE_ERROR},
+            {
+                "status": "error",
+                "desc": "country is required",
+                "code": errors.BASKET_USAGE_ERROR,
+            },
             401,
         )
 
@@ -445,7 +483,9 @@ def common_voice_goals(request):
     form = CommonVoiceForm(request.POST)
     if form.is_valid():
         # don't send empty values and use ISO formatted date strings
-        data = {k: v for k, v in form.cleaned_data.items() if not (v == "" or v is None)}
+        data = {
+            k: v for k, v in form.cleaned_data.items() if not (v == "" or v is None)
+        }
         if settings.COMMON_VOICE_BATCH_UPDATES:
             if settings.READ_ONLY_MODE:
                 api_key = request.META["HTTP_X_API_KEY"]
@@ -564,7 +604,9 @@ def subscribe(request):
             # malformed request from FxOS
             # Can't use QueryDict since the string is not url-encoded.
             # It will convert '+' to ' ' for example.
-            data = dict(pair.split("=") for pair in raw_request.split("&") if "=" in pair)
+            data = dict(
+                pair.split("=") for pair in raw_request.split("&") if "=" in pair
+            )
             statsd.incr("news.views.subscribe.fxos-workaround")
         else:
             return HttpResponseJSON(
@@ -578,7 +620,11 @@ def subscribe(request):
 
     if "email" not in data:
         return HttpResponseJSON(
-            {"status": "error", "desc": "email is required", "code": errors.BASKET_USAGE_ERROR},
+            {
+                "status": "error",
+                "desc": "email is required",
+                "code": errors.BASKET_USAGE_ERROR,
+            },
             401,
         )
 
@@ -728,7 +774,12 @@ def user_meta(request, token):
         return HttpResponseJSON({"status": "ok"})
 
     return HttpResponseJSON(
-        {"status": "error", "desc": "data is invalid", "code": errors.BASKET_USAGE_ERROR}, 400,
+        {
+            "status": "error",
+            "desc": "data is invalid",
+            "code": errors.BASKET_USAGE_ERROR,
+        },
+        400,
     )
 
 
@@ -814,7 +865,8 @@ def custom_unsub_reason(request):
         return HttpResponseJSON(
             {
                 "status": "error",
-                "desc": "custom_unsub_reason requires the `token` " "and `reason` POST parameters",
+                "desc": "custom_unsub_reason requires the `token` "
+                "and `reason` POST parameters",
                 "code": errors.BASKET_USAGE_ERROR,
             },
             400,
@@ -959,7 +1011,9 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
     newsletters = parse_newsletters_csv(data.get("newsletters"))
     if newsletters:
         if api_call_type == SUBSCRIBE:
-            all_newsletters = newsletter_and_group_slugs() + get_transactional_message_ids()
+            all_newsletters = (
+                newsletter_and_group_slugs() + get_transactional_message_ids()
+            )
         else:
             all_newsletters = newsletter_slugs()
 
@@ -1103,7 +1157,12 @@ def subhub_post(request):
             sentry_sdk.capture_exception()
 
         return HttpResponseJSON(
-            {"status": "error", "desc": "JSON error", "code": errors.BASKET_USAGE_ERROR}, 400,
+            {
+                "status": "error",
+                "desc": "JSON error",
+                "code": errors.BASKET_USAGE_ERROR,
+            },
+            400,
         )
     else:
         etype = data.get("event_type")
@@ -1129,7 +1188,11 @@ def subhub_post(request):
 def amo_sync(request, post_type):
     if post_type not in AMO_SYNC_TYPES:
         return HttpResponseJSON(
-            {"status": "error", "desc": "API URL not found", "code": errors.BASKET_USAGE_ERROR},
+            {
+                "status": "error",
+                "desc": "API URL not found",
+                "code": errors.BASKET_USAGE_ERROR,
+            },
             404,
         )
 
@@ -1152,7 +1215,12 @@ def amo_sync(request, post_type):
             sentry_sdk.capture_exception()
 
         return HttpResponseJSON(
-            {"status": "error", "desc": "JSON error", "code": errors.BASKET_USAGE_ERROR}, 400,
+            {
+                "status": "error",
+                "desc": "JSON error",
+                "code": errors.BASKET_USAGE_ERROR,
+            },
+            400,
         )
 
     AMO_SYNC_TYPES[post_type].delay(data)

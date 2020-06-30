@@ -63,7 +63,10 @@ class ETRefreshClient(ET_Client):
 
     def refresh_auth_tokens_from_cache(self):
         """Refresh the auth token and other values from cache"""
-        if self.authToken is not None and time() + MAX_BUFFER < self.authTokenExpiration:
+        if (
+            self.authToken is not None
+            and time() + MAX_BUFFER < self.authTokenExpiration
+        ):
             # no need to refresh if the current tokens are still good
             return
 
@@ -84,7 +87,9 @@ class ETRefreshClient(ET_Client):
 
     def cache_auth_tokens(self):
         if self.authToken is not None and self.authToken != self._old_authToken:
-            new_tokens = {prop: getattr(self, prop) for prop in self.token_property_names}
+            new_tokens = {
+                prop: getattr(self, prop) for prop in self.token_property_names
+            }
             # 10 min longer than expiration so that refreshKey can be used
             cache.set(self.token_cache_key, new_tokens, self.authTokenExpiresIn + 600)
 
@@ -94,7 +99,8 @@ class ETRefreshClient(ET_Client):
             token_response = r.json()
         except ValueError:
             raise NewsletterException(
-                "SFMC Error During Auth: " + force_str(r.content), status_code=r.status_code,
+                "SFMC Error During Auth: " + force_str(r.content),
+                status_code=r.status_code,
             )
 
         if "accessToken" in token_response:
@@ -108,7 +114,8 @@ class ETRefreshClient(ET_Client):
             return self.request_token(payload)
 
         raise NewsletterException(
-            "SFMC Error During Auth: " + force_str(r.content), status_code=r.status_code,
+            "SFMC Error During Auth: " + force_str(r.content),
+            status_code=r.status_code,
         )
 
     def refresh_token(self, force_refresh=False):
@@ -162,7 +169,9 @@ class SFMC:
     @property
     def client(self):
         if self._client is None and "clientid" in settings.SFMC_SETTINGS:
-            self._client = ETRefreshClient(False, settings.SFMC_DEBUG, settings.SFMC_SETTINGS)
+            self._client = ETRefreshClient(
+                False, settings.SFMC_DEBUG, settings.SFMC_SETTINGS,
+            )
 
         return self._client
 
@@ -357,7 +366,9 @@ class SFMC:
             )
 
         if response.status_code >= 400:
-            raise NewsletterException(force_str(response.content), status_code=response.status_code)
+            raise NewsletterException(
+                force_str(response.content), status_code=response.status_code,
+            )
 
 
 sfmc = SFMC()

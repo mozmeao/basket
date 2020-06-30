@@ -66,7 +66,10 @@ class ProcessPetitionSignatureTests(TestCase):
                 "source_url": "https://example.com/change",
                 "email_subscription": False,
                 "comments": "The Dude abides",
-                "metadata": {"location": "bowling alley", "donnie": "out of his element"},
+                "metadata": {
+                    "location": "bowling alley",
+                    "donnie": "out of his element",
+                },
             },
         }
 
@@ -422,7 +425,8 @@ class SubHubEventTests(TestCase):
         )
 
         sfdc_mock.update.assert_called_with(
-            user_data, {"fxa_id": "1234", "payee_id": "cus_1234", "last_name": "Lebowski"},
+            user_data,
+            {"fxa_id": "1234", "payee_id": "cus_1234", "last_name": "Lebowski"},
         )
 
     def test_customer_created_customer_not_found(self, sfdc_mock, gud_mock):
@@ -456,7 +460,11 @@ class SubHubEventTests(TestCase):
         """
         Contact found by FxA_ID and email matches
         """
-        user_data = {"first_name": "Jeffrey", "last_name": "_", "email": "walter@thedude.io"}
+        user_data = {
+            "first_name": "Jeffrey",
+            "last_name": "_",
+            "email": "walter@thedude.io",
+        }
         gud_mock.return_value = user_data
 
         process_subhub_event_customer_created(
@@ -470,14 +478,21 @@ class SubHubEventTests(TestCase):
 
         gud_mock.assert_called_once_with(fxa_id="1234", extra_fields=["id"])
         sfdc_mock.update.assert_called_once_with(
-            user_data, {"fxa_id": "1234", "payee_id": "cus_1234", "last_name": "Sobchak"},
+            user_data,
+            {"fxa_id": "1234", "payee_id": "cus_1234", "last_name": "Sobchak"},
         )
 
-    def test_customer_created_customer_fxa_found_no_match_yes_other(self, sfdc_mock, gud_mock):
+    def test_customer_created_customer_fxa_found_no_match_yes_other(
+        self, sfdc_mock, gud_mock,
+    ):
         """
         Contact found by FxA_ID and email does not match
         """
-        user_data_fxa = {"first_name": "Jeffrey", "last_name": "_", "email": "dude@thedude.io"}
+        user_data_fxa = {
+            "first_name": "Jeffrey",
+            "last_name": "_",
+            "email": "dude@thedude.io",
+        }
         gud_mock.return_value = user_data_fxa
 
         process_subhub_event_customer_created(
@@ -831,7 +846,11 @@ class ProcessDonationTests(TestCase):
         process_donation(data)
         sfdc_mock.update.assert_called_with(
             gud_mock(),
-            {"_set_subscriber": False, "first_name": "Jeffery", "last_name": "Lebowski"},
+            {
+                "_set_subscriber": False,
+                "first_name": "Jeffery",
+                "last_name": "Lebowski",
+            },
         )
 
         sfdc_mock.reset_mock()
@@ -940,7 +959,11 @@ class ProcessDonationTests(TestCase):
             "last_name": "Lebowski",
         }
         error_content = [
-            {"errorCode": "OTHER_ERROR", "fields": [], "message": "Some other non-dupe problem"},
+            {
+                "errorCode": "OTHER_ERROR",
+                "fields": [],
+                "message": "Some other non-dupe problem",
+            },
         ]
         exc = sfapi.SalesforceMalformedRequest("url", 400, "opportunity", error_content)
         sfdc_mock.opportunity.create.side_effect = exc
@@ -1003,7 +1026,12 @@ class RetryTaskTest(TestCase):
     def test_retry_task(self, info):
         TASK_NAME = "news.tasks.update_phonebook"
         failed_task = FailedTask(
-            name=TASK_NAME, task_id=4, args=[1, 2], kwargs={"token": 3}, exc="", einfo="",
+            name=TASK_NAME,
+            task_id=4,
+            args=[1, 2],
+            kwargs={"token": 3},
+            exc="",
+            einfo="",
         )
         # Failed task is deleted after queuing, but that only works on records
         # that have been saved, so just mock that and check later that it was
@@ -1033,7 +1061,9 @@ class RecoveryMessageTask(TestCase):
 
     def test_et_error(self, mock_look_for_user, mock_send):
         """Error talking to Basket. I'm shocked, SHOCKED!"""
-        mock_look_for_user.side_effect = NewsletterException("ET has failed to achieve.")
+        mock_look_for_user.side_effect = NewsletterException(
+            "ET has failed to achieve.",
+        )
 
         with self.assertRaises(Retry):
             send_recovery_message_task(self.email)
@@ -1058,7 +1088,9 @@ class RecoveryMessageTask(TestCase):
         }
         send_recovery_message_task(self.email)
         message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
-        mock_send.delay.assert_called_with(message_id, self.email, "SFDCID", token="USERTOKEN")
+        mock_send.delay.assert_called_with(
+            message_id, self.email, "SFDCID", token="USERTOKEN",
+        )
 
     @override_settings(RECOVER_MSG_LANGS=["en"])
     def test_lang_not_available(self, mock_look_for_user, mock_send):
@@ -1077,7 +1109,9 @@ class RecoveryMessageTask(TestCase):
         }
         send_recovery_message_task(self.email)
         message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, "en", format)
-        mock_send.delay.assert_called_with(message_id, self.email, "SFDCID", token="USERTOKEN")
+        mock_send.delay.assert_called_with(
+            message_id, self.email, "SFDCID", token="USERTOKEN",
+        )
 
 
 @override_settings(ET_CLIENT_ID="client_id", ET_CLIENT_SECRET="client_secret")
@@ -1146,7 +1180,9 @@ class ETTaskTests(TestCase):
 class AddFxaActivityTests(TestCase):
     def _base_test(self, user_agent=False, fxa_id="123", first_device=True):
         if not user_agent:
-            user_agent = "Mozilla/5.0 (Windows NT 6.1; rv:10.0) Gecko/20100101 Firefox/10.0"
+            user_agent = (
+                "Mozilla/5.0 (Windows NT 6.1; rv:10.0) Gecko/20100101 Firefox/10.0"
+            )
 
         data = {
             "fxa_id": fxa_id,
@@ -1258,7 +1294,8 @@ class AddFxaActivityTests(TestCase):
 
 
 @override_settings(
-    FXA_EVENTS_VERIFIED_SFDC_ENABLE=True, FXA_REGISTER_NEWSLETTER="firefox-accounts-journey",
+    FXA_EVENTS_VERIFIED_SFDC_ENABLE=True,
+    FXA_REGISTER_NEWSLETTER="firefox-accounts-journey",
 )
 @patch("basket.news.tasks.get_best_language", Mock(return_value="en-US"))
 @patch("basket.news.tasks.newsletter_languages", Mock(return_value=["en-US"]))
@@ -1358,7 +1395,8 @@ class FxAVerifiedTests(TestCase):
             {
                 "email": data["email"],
                 "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
-                "source_url": settings.FXA_REGISTER_SOURCE_URL + "?utm_campaign=bowling",
+                "source_url": settings.FXA_REGISTER_SOURCE_URL
+                + "?utm_campaign=bowling",
                 "country": "DE",
                 "lang": "en-US",
                 "fxa_lang": data["locale"],
@@ -1536,7 +1574,8 @@ class FxAEmailChangedTests(TestCase):
         # ts higher in message, do the things
         fxa_email_changed(data)
         sfmc_mock.upsert_row.assert_called_with(
-            "FXA_EmailUpdated", {"FXA_ID": data["uid"], "NewEmailAddress": data["email"]},
+            "FXA_EmailUpdated",
+            {"FXA_ID": data["uid"], "NewEmailAddress": data["email"]},
         )
         sfdc_mock.update.assert_called_with(ANY, {"fxa_primary_email": data["email"]})
 
@@ -1550,7 +1589,8 @@ class FxAEmailChangedTests(TestCase):
         gud_mock.return_value = {"id": "1234"}
         fxa_email_changed(data)
         sfmc_mock.upsert_row.assert_called_with(
-            "FXA_EmailUpdated", {"FXA_ID": data["uid"], "NewEmailAddress": data["email"]},
+            "FXA_EmailUpdated",
+            {"FXA_ID": data["uid"], "NewEmailAddress": data["email"]},
         )
         sfdc_mock.update.assert_called_with(ANY, {"fxa_primary_email": data["email"]})
 
@@ -1590,7 +1630,11 @@ class FxAEmailChangedTests(TestCase):
         )
         sfdc_mock.update.assert_not_called()
         sfdc_mock.add.assert_called_with(
-            {"email": data["email"], "fxa_id": data["uid"], "fxa_primary_email": data["email"]},
+            {
+                "email": data["email"],
+                "fxa_id": data["uid"],
+                "fxa_primary_email": data["email"],
+            },
         )
 
 
@@ -1710,7 +1754,12 @@ class AMOSyncAddonTests(TestCase):
                 "version": "1.0",
             },
             "name": "Ibird Jelewt Boartrica",
-            "ratings": {"average": 4.1, "bayesian_average": 4.2, "count": 43, "text_count": 40},
+            "ratings": {
+                "average": 4.1,
+                "bayesian_average": 4.2,
+                "count": 43,
+                "text_count": 40,
+            },
             "slug": "ibird-jelewt-boartrica",
             "status": "nominated",
             "type": "extension",
@@ -1914,19 +1963,34 @@ class AMOSyncUserTests(TestCase):
 class TestCommonVoiceBatch(TestCase):
     def setUp(self):
         CommonVoiceUpdate.objects.create(
-            data={"email": "dude@example.com", "last_active_date": "2020-02-18T14:52:30Z"},
+            data={
+                "email": "dude@example.com",
+                "last_active_date": "2020-02-18T14:52:30Z",
+            },
         )
         CommonVoiceUpdate.objects.create(
-            data={"email": "dude@example.com", "last_active_date": "2020-02-17T14:52:30Z"},
+            data={
+                "email": "dude@example.com",
+                "last_active_date": "2020-02-17T14:52:30Z",
+            },
         )
         CommonVoiceUpdate.objects.create(
-            data={"email": "dude@example.com", "last_active_date": "2020-02-16T14:52:30Z"},
+            data={
+                "email": "dude@example.com",
+                "last_active_date": "2020-02-16T14:52:30Z",
+            },
         )
         CommonVoiceUpdate.objects.create(
-            data={"email": "donny@example.com", "last_active_date": "2020-02-15T14:52:30Z"},
+            data={
+                "email": "donny@example.com",
+                "last_active_date": "2020-02-15T14:52:30Z",
+            },
         )
         CommonVoiceUpdate.objects.create(
-            data={"email": "donny@example.com", "last_active_date": "2020-02-14T14:52:30Z"},
+            data={
+                "email": "donny@example.com",
+                "last_active_date": "2020-02-14T14:52:30Z",
+            },
         )
 
     def test_batch(self, mock_rcvg):
@@ -1938,8 +2002,18 @@ class TestCommonVoiceBatch(TestCase):
         assert mock_rcvg.delay.call_count == 2
         assert mock_rcvg.delay.has_calls(
             [
-                call({"email": "dude@example.com", "last_active_date": "2020-02-18T14:52:30Z"}),
-                call({"email": "donny@example.com", "last_active_date": "2020-02-15T14:52:30Z"}),
+                call(
+                    {
+                        "email": "dude@example.com",
+                        "last_active_date": "2020-02-18T14:52:30Z",
+                    },
+                ),
+                call(
+                    {
+                        "email": "donny@example.com",
+                        "last_active_date": "2020-02-15T14:52:30Z",
+                    },
+                ),
             ],
         )
 
@@ -1951,19 +2025,34 @@ class TestCommonVoiceBatch(TestCase):
 
     def test_batch_chunking(self, mock_rcvg):
         obj = CommonVoiceUpdate.objects.create(
-            data={"email": "dude@example.com", "last_active_date": "2020-02-19T14:52:30Z"},
+            data={
+                "email": "dude@example.com",
+                "last_active_date": "2020-02-19T14:52:30Z",
+            },
         )
         CommonVoiceUpdate.objects.create(
-            data={"email": "dude@example.com", "last_active_date": "2020-02-19T14:53:30Z"},
+            data={
+                "email": "dude@example.com",
+                "last_active_date": "2020-02-19T14:53:30Z",
+            },
         )
         CommonVoiceUpdate.objects.create(
-            data={"email": "dude@example.com", "last_active_date": "2020-02-19T14:54:30Z"},
+            data={
+                "email": "dude@example.com",
+                "last_active_date": "2020-02-19T14:54:30Z",
+            },
         )
         CommonVoiceUpdate.objects.create(
-            data={"email": "donny@example.com", "last_active_date": "2020-02-19T14:55:30Z"},
+            data={
+                "email": "donny@example.com",
+                "last_active_date": "2020-02-19T14:55:30Z",
+            },
         )
         CommonVoiceUpdate.objects.create(
-            data={"email": "donny@example.com", "last_active_date": "2020-02-19T14:56:30Z"},
+            data={
+                "email": "donny@example.com",
+                "last_active_date": "2020-02-19T14:56:30Z",
+            },
         )
         assert CommonVoiceUpdate.objects.filter(ack=False).count() == 10
         assert CommonVoiceUpdate.objects.filter(ack=True).count() == 0

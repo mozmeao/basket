@@ -64,7 +64,8 @@ class Command(BaseCommand):
             while True:
                 self.snitch()
                 msgs = queue.receive_messages(
-                    WaitTimeSeconds=settings.FXA_EVENTS_QUEUE_WAIT_TIME, MaxNumberOfMessages=10,
+                    WaitTimeSeconds=settings.FXA_EVENTS_QUEUE_WAIT_TIME,
+                    MaxNumberOfMessages=10,
                 )
                 for msg in msgs:
                     if not (msg and msg.body):
@@ -87,7 +88,9 @@ class Command(BaseCommand):
                     event_type = event.get("event", "__NONE__").replace(":", "-")
                     statsd.incr("fxa.events.message.received.{}".format(event_type))
                     if event_type not in FXA_EVENT_TYPES:
-                        statsd.incr("fxa.events.message.received.{}.IGNORED".format(event_type))
+                        statsd.incr(
+                            "fxa.events.message.received.{}.IGNORED".format(event_type),
+                        )
                         log.debug("IGNORED: %s" % event)
                         # we can safely remove from the queue message types we don't need
                         # this keeps the queue from filling up with old messages

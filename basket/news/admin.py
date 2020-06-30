@@ -82,7 +82,14 @@ class NewsletterAdmin(admin.ModelAdmin):
         "private",
     )
     list_display_links = ("title", "slug")
-    list_editable = ("order", "show", "active", "indent", "requires_double_optin", "private")
+    list_editable = (
+        "order",
+        "show",
+        "active",
+        "indent",
+        "requires_double_optin",
+        "private",
+    )
     list_filter = ("show", "active", "requires_double_optin", "private")
     prepopulated_fields = {"slug": ("title",)}
     search_fields = ("title", "slug", "description", "vendor_id")
@@ -123,7 +130,9 @@ class QueuedTaskAdmin(admin.ModelAdmin):
         for old_task in queryset:
             old_task.retry()
             count += 1
-        messages.info(request, "Queued %d task%s to process" % (count, "" if count == 1 else "s"))
+        messages.info(
+            request, "Queued %d task%s to process" % (count, "" if count == 1 else "s"),
+        )
 
     retry_task_action.short_description = "Process task(s)"
 
@@ -141,7 +150,10 @@ class FailedTaskAdmin(admin.ModelAdmin):
         for old_task in queryset:
             old_task.retry()
             count += 1
-        messages.info(request, "Queued %d task%s to try again" % (count, "" if count == 1 else "s"))
+        messages.info(
+            request,
+            "Queued %d task%s to try again" % (count, "" if count == 1 else "s"),
+        )
 
     retry_task_action.short_description = "Retry task(s)"
 

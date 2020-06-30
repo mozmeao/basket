@@ -39,7 +39,9 @@ TEST_RUNNER = "django.test.runner.DiscoverRunner"
 READ_ONLY_MODE = config("READ_ONLY_MODE", False, cast=bool)
 # Disables the API and changes redirects
 ADMIN_ONLY_MODE = config("ADMIN_ONLY_MODE", False, cast=bool)
-BASKET_RW_URL = config("BASKET_RW_URL", default="https://prod-oregon-b.basket.moz.works")
+BASKET_RW_URL = config(
+    "BASKET_RW_URL", default="https://prod-oregon-b.basket.moz.works",
+)
 
 REDIS_URL = config("REDIS_URL", None)
 if REDIS_URL:
@@ -53,7 +55,9 @@ if REDIS_URL:
 # for an example if you'd like to run MySQL locally, and add that to your
 # local.py.
 DATABASES = {
-    "default": config("DATABASE_URL", default="sqlite:///basket.db", cast=dj_database_url.parse),
+    "default": config(
+        "DATABASE_URL", default="sqlite:///basket.db", cast=dj_database_url.parse,
+    ),
 }
 if DATABASES["default"]["ENGINE"] == "django.db.backends.mysql":
     DATABASES["default"]["OPTIONS"] = {
@@ -102,12 +106,16 @@ ENFORCE_HOSTNAME = config("ENFORCE_HOSTNAME", default="", cast=Csv())
 USE_X_FORWARDED_HOST = True
 
 SESSION_COOKIE_SECURE = config("SESSION_COOKIE_SECURE", not DEBUG, cast=bool)
-SESSION_ENGINE = config("SESSION_ENGINE", default="django.contrib.sessions.backends.cache")
+SESSION_ENGINE = config(
+    "SESSION_ENGINE", default="django.contrib.sessions.backends.cache",
+)
 CSRF_COOKIE_SECURE = config("CSRF_COOKIE_SECURE", not DEBUG, cast=bool)
 DISABLE_ADMIN = config("DISABLE_ADMIN", READ_ONLY_MODE, cast=bool)
 STORE_TASK_FAILURES = config("STORE_TASK_FAILURES", not READ_ONLY_MODE, cast=bool)
 # if DISABLE_ADMIN is True redirect /admin/ to this URL
-ADMIN_REDIRECT_URL = config("ADMIN_REDIRECT_URL", "https://admin.basket.moz.works/admin/")
+ADMIN_REDIRECT_URL = config(
+    "ADMIN_REDIRECT_URL", "https://admin.basket.moz.works/admin/",
+)
 
 TIME_ZONE = "UTC"
 USE_TZ = True
@@ -185,7 +193,9 @@ INSTALLED_APPS = (
 SECURE_HSTS_SECONDS = config("SECURE_HSTS_SECONDS", default="0", cast=int)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = False
 SECURE_BROWSER_XSS_FILTER = config("SECURE_BROWSER_XSS_FILTER", default=True, cast=bool)
-SECURE_CONTENT_TYPE_NOSNIFF = config("SECURE_CONTENT_TYPE_NOSNIFF", default=True, cast=bool)
+SECURE_CONTENT_TYPE_NOSNIFF = config(
+    "SECURE_CONTENT_TYPE_NOSNIFF", default=True, cast=bool,
+)
 SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", default=False, cast=bool)
 SECURE_REDIRECT_EXEMPT = [
     r"^healthz/$",
@@ -251,19 +261,25 @@ CELERY_TASK_ACKS_LATE = config("CELERY_TASK_ACKS_LATE", True, cast=bool)
 CELERY_TASK_REJECT_ON_WORKER_LOST = False
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_MAX_RETRY_DELAY_MINUTES = 2048
-CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": CELERY_MAX_RETRY_DELAY_MINUTES * 60}
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "visibility_timeout": CELERY_MAX_RETRY_DELAY_MINUTES * 60,
+}
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", None)
 CELERY_REDIS_MAX_CONNECTIONS = config("CELERY_REDIS_MAX_CONNECTIONS", 2, cast=int)
 CELERY_WORKER_DISABLE_RATE_LIMITS = True
 CELERY_TASK_IGNORE_RESULT = True
-CELERY_WORKER_PREFETCH_MULTIPLIER = config("CELERY_WORKER_PREFETCH_MULTIPLIER", 1, cast=int)
+CELERY_WORKER_PREFETCH_MULTIPLIER = config(
+    "CELERY_WORKER_PREFETCH_MULTIPLIER", 1, cast=int,
+)
 CELERY_TASK_COMPRESSION = "gzip"
 CELERY_TASK_ROUTES = {
     "basket.news.tasks.snitch": {"queue": "snitch"},
 }
 
 # size in kb
-CELERY_WORKER_MAX_MEMORY_PER_CHILD = config("CELERY_WORKER_MAX_MEMORY_PER_CHILD", 200000, cast=int)
+CELERY_WORKER_MAX_MEMORY_PER_CHILD = config(
+    "CELERY_WORKER_MAX_MEMORY_PER_CHILD", 200000, cast=int,
+)
 
 SNITCH_ID = config("SNITCH_ID", None)
 
@@ -317,13 +333,26 @@ STATSD_CLIENT = config("STATSD_CLIENT", "django_statsd.clients.null")
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "root": {"level": config("DJANGO_LOG_LEVEL", default="WARNING"), "handlers": ["console"]},
-    "formatters": {"verbose": {"format": "%(levelname)s %(asctime)s %(module)s %(message)s"}},
+    "root": {
+        "level": config("DJANGO_LOG_LEVEL", default="WARNING"),
+        "handlers": ["console"],
+    },
+    "formatters": {
+        "verbose": {"format": "%(levelname)s %(asctime)s %(module)s %(message)s"},
+    },
     "handlers": {
-        "console": {"level": "DEBUG", "class": "logging.StreamHandler", "formatter": "verbose"},
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
     },
     "loggers": {
-        "django.db.backends": {"level": "ERROR", "handlers": ["console"], "propagate": False},
+        "django.db.backends": {
+            "level": "ERROR",
+            "handlers": ["console"],
+            "propagate": False,
+        },
         "suds.client": {"level": "ERROR", "handlers": ["console"], "propagate": False},
     },
 }
@@ -387,8 +416,12 @@ FXA_CLIENT_SECRET = config("FXA_CLIENT_SECRET", default="")
 FXA_OAUTH_TOKEN_TTL = config("FXA_OAUTH_TOKEN_TTL", default=300, cast=int)  # 5 minutes
 
 FXA_EMAIL_PREFS_DOMAIN = config("FXA_EMAIL_PREFS_DOMAIN", default="www.mozilla.org")
-FXA_REGISTER_NEWSLETTER = config("FXA_REGISTER_NEWSLETTER", default="firefox-accounts-journey")
-FXA_REGISTER_SOURCE_URL = config("FXA_REGISTER_SOURCE_URL", default="https://accounts.firefox.com/")
+FXA_REGISTER_NEWSLETTER = config(
+    "FXA_REGISTER_NEWSLETTER", default="firefox-accounts-journey",
+)
+FXA_REGISTER_SOURCE_URL = config(
+    "FXA_REGISTER_SOURCE_URL", default="https://accounts.firefox.com/",
+)
 # TODO move this to the DB
 FXA_LOGIN_CAMPAIGNS = {
     "fxa-embedded-form-moz": "mozilla-welcome",
@@ -405,9 +438,15 @@ SUBHUB_CC_EXPIRE_TRIGGER = config(
 )
 
 COMMON_VOICE_NEWSLETTER = config("COMMON_VOICE_NEWSLETTER", default="common-voice")
-COMMON_VOICE_BATCH_UPDATES = config("COMMON_VOICE_BATCH_UPDATES", default=False, cast=bool)
-COMMON_VOICE_BATCH_PROCESSING = config("COMMON_VOICE_BATCH_PROCESSING", default=False, cast=bool)
-COMMON_VOICE_BATCH_CHUNK_SIZE = config("COMMON_VOICE_BATCH_CHUNK_SIZE", default=1000, cast=int)
+COMMON_VOICE_BATCH_UPDATES = config(
+    "COMMON_VOICE_BATCH_UPDATES", default=False, cast=bool,
+)
+COMMON_VOICE_BATCH_PROCESSING = config(
+    "COMMON_VOICE_BATCH_PROCESSING", default=False, cast=bool,
+)
+COMMON_VOICE_BATCH_CHUNK_SIZE = config(
+    "COMMON_VOICE_BATCH_CHUNK_SIZE", default=1000, cast=int,
+)
 
 OIDC_ENABLE = config("OIDC_ENABLE", default=False, cast=bool)
 if OIDC_ENABLE:

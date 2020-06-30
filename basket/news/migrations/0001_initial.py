@@ -19,17 +19,24 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.AutoField(
-                        verbose_name="ID", serialize=False, auto_created=True, primary_key=True,
+                        verbose_name="ID",
+                        serialize=False,
+                        auto_created=True,
+                        primary_key=True,
                     ),
                 ),
                 (
                     "name",
-                    models.CharField(help_text=b"Descriptive name of this user", max_length=256),
+                    models.CharField(
+                        help_text=b"Descriptive name of this user", max_length=256,
+                    ),
                 ),
                 (
                     "api_key",
                     models.CharField(
-                        default=basket.news.models.get_uuid, max_length=40, db_index=True,
+                        default=basket.news.models.get_uuid,
+                        max_length=40,
+                        db_index=True,
                     ),
                 ),
                 ("enabled", models.BooleanField(default=True)),
@@ -43,7 +50,10 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.AutoField(
-                        verbose_name="ID", serialize=False, auto_created=True, primary_key=True,
+                        verbose_name="ID",
+                        serialize=False,
+                        auto_created=True,
+                        primary_key=True,
                     ),
                 ),
                 ("email_domain", models.CharField(max_length=50)),
@@ -57,16 +67,32 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.AutoField(
-                        verbose_name="ID", serialize=False, auto_created=True, primary_key=True,
+                        verbose_name="ID",
+                        serialize=False,
+                        auto_created=True,
+                        primary_key=True,
                     ),
                 ),
-                ("when", models.DateTimeField(default=django.utils.timezone.now, editable=False)),
+                (
+                    "when",
+                    models.DateTimeField(
+                        default=django.utils.timezone.now, editable=False,
+                    ),
+                ),
                 ("task_id", models.CharField(unique=True, max_length=255)),
                 ("name", models.CharField(max_length=255)),
                 ("args", jsonfield.fields.JSONField(default=[])),
                 ("kwargs", jsonfield.fields.JSONField(default={})),
-                ("exc", models.TextField(default=None, help_text="repr(exception)", null=True)),
-                ("einfo", models.TextField(default=None, help_text="repr(einfo)", null=True)),
+                (
+                    "exc",
+                    models.TextField(
+                        default=None, help_text="repr(exception)", null=True,
+                    ),
+                ),
+                (
+                    "einfo",
+                    models.TextField(default=None, help_text="repr(einfo)", null=True),
+                ),
             ],
             options={},
             bases=(models.Model,),
@@ -77,7 +103,10 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.AutoField(
-                        verbose_name="ID", serialize=False, auto_created=True, primary_key=True,
+                        verbose_name="ID",
+                        serialize=False,
+                        auto_created=True,
+                        primary_key=True,
                     ),
                 ),
                 (
@@ -120,7 +149,10 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.AutoField(
-                        verbose_name="ID", serialize=False, auto_created=True, primary_key=True,
+                        verbose_name="ID",
+                        serialize=False,
+                        auto_created=True,
+                        primary_key=True,
                     ),
                 ),
                 (
@@ -276,9 +308,15 @@ class Migration(migrations.Migration):
                         help_text=b"Comma-separated list of the stewards' email addresses.",
                     ),
                 ),
-                ("interest", models.ForeignKey(to="news.Interest", on_delete=models.CASCADE)),
+                (
+                    "interest",
+                    models.ForeignKey(to="news.Interest", on_delete=models.CASCADE),
+                ),
             ],
-            options={"verbose_name": "Locale Steward", "verbose_name_plural": "Locale Stewards"},
+            options={
+                "verbose_name": "Locale Steward",
+                "verbose_name_plural": "Locale Stewards",
+            },
             bases=(models.Model,),
         ),
         migrations.CreateModel(
@@ -287,7 +325,10 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.AutoField(
-                        verbose_name="ID", serialize=False, auto_created=True, primary_key=True,
+                        verbose_name="ID",
+                        serialize=False,
+                        auto_created=True,
+                        primary_key=True,
                     ),
                 ),
                 (
@@ -300,7 +341,8 @@ class Migration(migrations.Migration):
                 (
                     "title",
                     models.CharField(
-                        help_text=b"Public name of newsletter in English", max_length=128,
+                        help_text=b"Public name of newsletter in English",
+                        max_length=128,
                     ),
                 ),
                 (
@@ -379,18 +421,24 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.AutoField(
-                        verbose_name="ID", serialize=False, auto_created=True, primary_key=True,
+                        verbose_name="ID",
+                        serialize=False,
+                        auto_created=True,
+                        primary_key=True,
                     ),
                 ),
                 (
                     "slug",
                     models.SlugField(
-                        help_text=b"The ID for the group that will be used by clients", unique=True,
+                        help_text=b"The ID for the group that will be used by clients",
+                        unique=True,
                     ),
                 ),
                 (
                     "title",
-                    models.CharField(help_text=b"Public name of group in English", max_length=128),
+                    models.CharField(
+                        help_text=b"Public name of group in English", max_length=128,
+                    ),
                 ),
                 (
                     "description",
@@ -416,7 +464,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "newsletters",
-                    models.ManyToManyField(related_name="newsletter_groups", to="news.Newsletter"),
+                    models.ManyToManyField(
+                        related_name="newsletter_groups", to="news.Newsletter",
+                    ),
                 ),
             ],
             options={},
@@ -455,14 +505,24 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="Subscriber",
             fields=[
-                ("email", models.EmailField(max_length=75, serialize=False, primary_key=True)),
+                (
+                    "email",
+                    models.EmailField(max_length=75, serialize=False, primary_key=True),
+                ),
                 (
                     "token",
                     models.CharField(
-                        default=basket.news.models.get_uuid, max_length=40, db_index=True,
+                        default=basket.news.models.get_uuid,
+                        max_length=40,
+                        db_index=True,
                     ),
                 ),
-                ("fxa_id", models.CharField(db_index=True, max_length=100, null=True, blank=True)),
+                (
+                    "fxa_id",
+                    models.CharField(
+                        db_index=True, max_length=100, null=True, blank=True,
+                    ),
+                ),
             ],
             options={},
             bases=(models.Model,),

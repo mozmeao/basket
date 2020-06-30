@@ -191,7 +191,10 @@ def et_task(func):
 
     # continue to use old names regardless of new layout
     @celery_app.task(
-        name=full_task_name, bind=True, default_retry_delay=300, max_retries=12,  # 5 min
+        name=full_task_name,
+        bind=True,
+        default_retry_delay=300,
+        max_retries=12,  # 5 min
     )
     @wraps(func)
     def wrapped(self, *args, **kwargs):
@@ -464,7 +467,15 @@ def _add_fxa_activity(data):
 
 @et_task
 def update_get_involved(
-    interest_id, lang, name, email, country, email_format, subscribe, message, source_url,
+    interest_id,
+    lang,
+    name,
+    email,
+    country,
+    email_format,
+    subscribe,
+    message,
+    source_url,
 ):
     """Send a user contribution information. Should be removed soon."""
     try:
@@ -497,7 +508,9 @@ def upsert_user(api_call_type, data):
     upsert_contact(
         api_call_type,
         data,
-        get_user_data(token=data.get("token"), email=data.get("email"), extra_fields=["id"]),
+        get_user_data(
+            token=data.get("token"), email=data.get("email"), extra_fields=["id"],
+        ),
     )
 
 
@@ -537,7 +550,9 @@ def upsert_contact(api_call_type, data, user_data):
 
     # Set the newsletter flags in the record by comparing to their
     # current subscriptions.
-    update_data["newsletters"] = parse_newsletters(api_call_type, newsletters, cur_newsletters)
+    update_data["newsletters"] = parse_newsletters(
+        api_call_type, newsletters, cur_newsletters,
+    )
 
     if api_call_type != UNSUBSCRIBE:
         # Are they subscribing to any newsletters that don't require confirmation?
@@ -545,7 +560,9 @@ def upsert_contact(api_call_type, data, user_data):
         # require confirmation, user gets a pass on confirming and goes straight
         # to confirmed.
         to_subscribe = [nl for nl, sub in update_data["newsletters"].items() if sub]
-        if to_subscribe and not (forced_optin or (user_data and user_data.get("optin"))):
+        if to_subscribe and not (
+            forced_optin or (user_data and user_data.get("optin"))
+        ):
             exempt_from_confirmation = Newsletter.objects.filter(
                 slug__in=to_subscribe, requires_double_optin=False,
             ).exists()
@@ -816,13 +833,18 @@ def process_common_voice_batch():
     if not settings.COMMON_VOICE_BATCH_PROCESSING:
         return
 
-    updates = CommonVoiceUpdate.objects.filter(ack=False)[: settings.COMMON_VOICE_BATCH_CHUNK_SIZE]
+    updates = CommonVoiceUpdate.objects.filter(ack=False)[
+        : settings.COMMON_VOICE_BATCH_CHUNK_SIZE
+    ]
     per_user = {}
     for update in updates:
         # last_active_date is when the update was sent basically, so we can use it for ordering
         data = update.data
         last_active = isoparse(data["last_active_date"])
-        if data["email"] in per_user and per_user[data["email"]]["last_active"] > last_active:
+        if (
+            data["email"] in per_user
+            and per_user[data["email"]]["last_active"] > last_active
+        ):
             continue
 
         per_user[data["email"]] = {
@@ -933,7 +955,9 @@ def process_subhub_event_subscription_charge(data):
     statsd.incr("news.tasks.process_subhub_event.subscription_charge")
     user_data = get_user_data(payee_id=data["customer_id"], extra_fields=["id"])
     if not user_data:
-        statsd.incr("news.tasks.process_subhub_event.subscription_charge.user_not_found")
+        statsd.incr(
+            "news.tasks.process_subhub_event.subscription_charge.user_not_found",
+        )
         raise RetryTask("Could not find user. Try again.")
 
     nickname = data["nickname"]
@@ -947,7 +971,9 @@ def process_subhub_event_subscription_charge(data):
     oppy_data = {
         "Amount": cents_to_dollars(data["plan_amount"]),
         "Billing_Cycle_End__c": iso_format_unix_timestamp(data["current_period_end"]),
-        "Billing_Cycle_Start__c": iso_format_unix_timestamp(data["current_period_start"]),
+        "Billing_Cycle_Start__c": iso_format_unix_timestamp(
+            data["current_period_start"],
+        ),
         "CloseDate": iso_format_unix_timestamp(data["created"]),
         "Credit_Card_Type__c": data["brand"],
         "currency__c": data["currency"],
@@ -980,7 +1006,9 @@ def process_subhub_event_subscription_reactivated(data):
     statsd.incr("news.tasks.process_subhub_event.subscription_reactivated")
     user_data = get_user_data(payee_id=data["customer_id"], extra_fields=["id"])
     if not user_data:
-        statsd.incr("news.tasks.process_subhub_event.subscription_reactivated.user_not_found")
+        statsd.incr(
+            "news.tasks.process_subhub_event.subscription_reactivated.user_not_found",
+        )
         raise RetryTask("Could not find user. Try again.")
 
     nickname = data["nickname"]
@@ -993,7 +1021,9 @@ def process_subhub_event_subscription_reactivated(data):
     sfdc.opportunity.create(
         {
             "Amount": cents_to_dollars(data["plan_amount"]),
-            "Billing_Cycle_End__c": iso_format_unix_timestamp(data["current_period_end"]),
+            "Billing_Cycle_End__c": iso_format_unix_timestamp(
+                data["current_period_end"],
+            ),
             "CloseDate": iso_format_unix_timestamp(data.get("close_date", time())),
             "Credit_Card_Type__c": data["brand"],
             "Last_4_Digits__c": data["last4"],
@@ -1015,7 +1045,9 @@ def process_subhub_event_subscription_updated(data):
     statsd.incr("news.tasks.process_subhub_event.subscription_updated")
     user_data = get_user_data(payee_id=data["customer_id"], extra_fields=["id"])
     if not user_data:
-        statsd.incr("news.tasks.process_subhub_event.subscription_updated.user_not_found")
+        statsd.incr(
+            "news.tasks.process_subhub_event.subscription_updated.user_not_found",
+        )
         raise RetryTask("Could not find user. Try again.")
 
     direction = "Down" if data["event_type"].endswith("downgrade") else "Up"
@@ -1025,7 +1057,9 @@ def process_subhub_event_subscription_updated(data):
             "Amount": cents_to_dollars(data["plan_amount_new"]),
             "Plan_Amount_Old__c": cents_to_dollars(data["plan_amount_old"]),
             "Proration_Amount__c": cents_to_dollars(data["proration_amount"]),
-            "Billing_Cycle_End__c": iso_format_unix_timestamp(data["current_period_end"]),
+            "Billing_Cycle_End__c": iso_format_unix_timestamp(
+                data["current_period_end"],
+            ),
             "CloseDate": iso_format_unix_timestamp(data.get("close_date", time())),
             "Donation_Contact__c": user_data["id"],
             "Event_Id__c": data["event_id"],
@@ -1058,7 +1092,9 @@ def process_subhub_event_subscription_cancel(data):
     statsd.incr("news.tasks.process_subhub_event.subscription_cancel")
     user_data = get_user_data(payee_id=data["customer_id"], extra_fields=["id"])
     if not user_data:
-        statsd.incr("news.tasks.process_subhub_event_subscription_cancel.user_not_found")
+        statsd.incr(
+            "news.tasks.process_subhub_event_subscription_cancel.user_not_found",
+        )
         raise RetryTask("Could not find user. Try again.")
 
     nickname = data["nickname"]
@@ -1071,8 +1107,12 @@ def process_subhub_event_subscription_cancel(data):
     sfdc.opportunity.create(
         {
             "Amount": cents_to_dollars(data["plan_amount"]),
-            "Billing_Cycle_End__c": iso_format_unix_timestamp(data["current_period_end"]),
-            "Billing_Cycle_Start__c": iso_format_unix_timestamp(data["current_period_start"]),
+            "Billing_Cycle_End__c": iso_format_unix_timestamp(
+                data["current_period_end"],
+            ),
+            "Billing_Cycle_Start__c": iso_format_unix_timestamp(
+                data["current_period_start"],
+            ),
             "CloseDate": iso_format_unix_timestamp(data.get("cancel_at", time())),
             "Donation_Contact__c": user_data["id"],
             "Event_Id__c": data["event_id"],
@@ -1257,8 +1297,14 @@ def process_donation(data):
     user_data = get_user_data(email=data["email"], extra_fields=["id"])
     if user_data:
         if contact_data and (
-            ("first_name" in contact_data and contact_data["first_name"] != user_data["first_name"])
-            or ("last_name" in contact_data and contact_data["last_name"] != user_data["last_name"])
+            (
+                "first_name" in contact_data
+                and contact_data["first_name"] != user_data["first_name"]
+            )
+            or (
+                "last_name" in contact_data
+                and contact_data["last_name"] != user_data["last_name"]
+            )
         ):
             sfdc.update(user_data, contact_data)
     else:
@@ -1468,7 +1514,9 @@ def amo_sync_addon(data):
         addon_data["AMO_Current_Version__c"] = ""
 
     if data["latest_unlisted_version"]:
-        addon_data["AMO_Current_Version_Unlisted__c"] = data["latest_unlisted_version"]["version"]
+        addon_data["AMO_Current_Version_Unlisted__c"] = data["latest_unlisted_version"][
+            "version"
+        ]
     else:
         addon_data["AMO_Current_Version_Unlisted__c"] = ""
 
@@ -1480,7 +1528,10 @@ def amo_sync_addon(data):
         try:
             sfdc.dev_addon.upsert(
                 f'ConcatenateAMOID__c/{user["amo_id"]}-{data["id"]}',
-                {"AMO_AddOn_ID__c": addon_record["Id"], "AMO_Contact_ID__c": user["id"]},
+                {
+                    "AMO_AddOn_ID__c": addon_record["Id"],
+                    "AMO_Contact_ID__c": user["id"],
+                },
             )
         except sfapi.SalesforceMalformedRequest as e:
             try:

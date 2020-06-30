@@ -24,7 +24,10 @@ from basket import errors
 from django_statsd.clients import statsd
 from email_validator import validate_email, EmailNotValidError
 
-from basket.news.backends.common import NewsletterException, NewsletterNoResultsException
+from basket.news.backends.common import (
+    NewsletterException,
+    NewsletterNoResultsException,
+)
 from basket.news.backends.sfdc import sfdc
 from basket.news.backends.sfmc import sfmc
 from basket.news.models import APIUser, BlockedEmail
@@ -353,7 +356,9 @@ def get_user_data(
     except sfapi.SalesforceResourceNotFound:
         return None
     except requests.exceptions.RequestException as e:
-        raise NewsletterException(str(e), error_code=errors.BASKET_NETWORK_FAILURE, status_code=400)
+        raise NewsletterException(
+            str(e), error_code=errors.BASKET_NETWORK_FAILURE, status_code=400,
+        )
     except sfapi.SalesforceAuthenticationFailed:
         raise NewsletterException(
             "Email service provider auth failure",
@@ -406,7 +411,9 @@ def get_user(token=None, email=None, get_fxa=False):
     if user_data is None:
         user_data = {
             "status": "error",
-            "code": errors.BASKET_UNKNOWN_EMAIL if email else errors.BASKET_UNKNOWN_TOKEN,
+            "code": errors.BASKET_UNKNOWN_EMAIL
+            if email
+            else errors.BASKET_UNKNOWN_TOKEN,
             "desc": MSG_USER_NOT_FOUND,
         }
         status_code = 404

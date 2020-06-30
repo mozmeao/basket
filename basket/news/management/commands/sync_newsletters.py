@@ -17,9 +17,14 @@ class Command(BaseCommand):
             default=getattr(settings, "SYNC_DOMAIN", DEFAULT_SYNC_DOMAIN),
             help="Domain of the Basket from which to sync",
         )
-        parser.add_argument("-k", "--key", default=settings.SYNC_KEY, help="Auth key for the sync")
         parser.add_argument(
-            "-c", "--clean", action="store_true", help="Delete all Newsletter data before sync",
+            "-k", "--key", default=settings.SYNC_KEY, help="Auth key for the sync",
+        )
+        parser.add_argument(
+            "-c",
+            "--clean",
+            action="store_true",
+            help="Delete all Newsletter data before sync",
         )
 
     def handle(self, *args, **options):

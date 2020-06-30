@@ -17,7 +17,9 @@ class TestSendMessage(TestCase):
         for _ in range(10):
             send_message(message_id, "email", "sub-key", "token")
 
-        mock_sfmc.send_mail.assert_called_once_with(message_id, "email", "sub-key", "token")
+        mock_sfmc.send_mail.assert_called_once_with(
+            message_id, "email", "sub-key", "token",
+        )
 
 
 class TestMogrifyMessageID(TestCase):

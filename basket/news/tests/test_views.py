@@ -64,7 +64,9 @@ class TestIsToken(TestCase):
 
 class GetInvolvedTests(TestCase):
     def setUp(self):
-        self.interest = models.Interest.objects.create(title="Bowling", interest_id="bowling")
+        self.interest = models.Interest.objects.create(
+            title="Bowling", interest_id="bowling",
+        )
         self.rf = RequestFactory()
         self.base_data = {
             "email": "dude@example.com",
@@ -97,7 +99,15 @@ class GetInvolvedTests(TestCase):
         self.process_email.assert_called_with(self.base_data["email"])
         self.assertEqual(resp["status"], "ok", resp)
         self.update_get_involved.delay.assert_called_with(
-            "bowling", "en", "The Dude", "dude@example.com", "us", "T", False, None, None,
+            "bowling",
+            "en",
+            "The Dude",
+            "dude@example.com",
+            "us",
+            "T",
+            False,
+            None,
+            None,
         )
 
     @patch("basket.news.utils.get_email_block_list")
@@ -277,7 +287,11 @@ class SubscribeSMSTests(TestCase):
         data = json.loads(resp.content)
         self.assertEqual(
             data,
-            {"status": "error", "desc": "rate limit reached", "code": errors.BASKET_USAGE_ERROR},
+            {
+                "status": "error",
+                "desc": "rate limit reached",
+                "code": errors.BASKET_USAGE_ERROR,
+            },
         )
         self.assertFalse(self.add_sms_user.delay.called)
 
@@ -358,7 +372,8 @@ class SubscribeEmailValidationTest(TestCase):
     def test_non_ascii_email(self, update_user_mock):
         """Should be able to accept valid email including non-ascii chars."""
         req = self.rf.post(
-            "/news/subscribe/", data={"email": "dude@黒川.日本", "newsletters": "firefox-os"},
+            "/news/subscribe/",
+            data={"email": "dude@黒川.日本", "newsletters": "firefox-os"},
         )
         views.subscribe(req)
         update_user_mock.assert_called_with(
@@ -372,7 +387,9 @@ class SubscribeEmailValidationTest(TestCase):
     @patch("basket.news.views.update_user_task")
     def test_empty_email_invalid(self, update_user_mock):
         """Should report an error for missing or empty value."""
-        req = self.rf.post("/news/subscribe/", data={"email": "", "newsletters": "firefox-os"})
+        req = self.rf.post(
+            "/news/subscribe/", data={"email": "", "newsletters": "firefox-os"},
+        )
         resp = views.subscribe(req)
         resp_data = json.loads(resp.content)
         self.assertEqual(resp_data["status"], "error")
@@ -408,11 +425,17 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
         self._patch_views("process_email")
         self._patch_views("email_is_blocked")
         models.Newsletter.objects.create(
-            slug="slug", title="title", active=False, languages="en-US,fr", vendor_id="VENDOR1",
+            slug="slug",
+            title="title",
+            active=False,
+            languages="en-US,fr",
+            vendor_id="VENDOR1",
         )
         models.Newsletter.objects.create(slug="slug2", vendor_id="VENDOR2")
         models.Newsletter.objects.create(slug="slug3", vendor_id="VENDOR3")
-        models.Newsletter.objects.create(slug="slug-private", vendor_id="VENDOR4", private=True)
+        models.Newsletter.objects.create(
+            slug="slug-private", vendor_id="VENDOR4", private=True,
+        )
 
     def tearDown(self):
         cache.clear()
@@ -502,7 +525,8 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
             ],
             "errors_by_field": {
                 "newsletters": [
-                    "Select a valid choice. walter is not one of " "the available choices.",
+                    "Select a valid choice. walter is not one of "
+                    "the available choices.",
                 ],
             },
         }
@@ -545,7 +569,12 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
         self.process_email.return_value = "dude@example.com"
         self.email_is_blocked.return_value = False
         response = self._request(
-            {"newsletters": "slug", "email": "dude@example.com", "privacy": "true", "lang": "fr"},
+            {
+                "newsletters": "slug",
+                "email": "dude@example.com",
+                "privacy": "true",
+                "lang": "fr",
+            },
             HTTP_ACCEPT_LANGUAGE="de,fr,en-US",
         )
         assert response.status_code == 200
@@ -570,7 +599,12 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
         self.process_email.return_value = "dude@example.com"
         self.email_is_blocked.return_value = False
         response = self._request(
-            {"newsletters": "slug", "email": "dude@example.com", "privacy": "true", "lang": "es"},
+            {
+                "newsletters": "slug",
+                "email": "dude@example.com",
+                "privacy": "true",
+                "lang": "es",
+            },
         )
         assert response.status_code == 200
         self.upsert_user.delay.assert_called_with(
@@ -728,7 +762,11 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         """
         If optin is 'Y' but the API key isn't valid, disable optin.
         """
-        request_data = {"newsletters": "asdf", "optin": "Y", "email": "dude@example.com"}
+        request_data = {
+            "newsletters": "asdf",
+            "optin": "Y",
+            "email": "dude@example.com",
+        }
         update_data = request_data.copy()
         del update_data["optin"]
         self.process_email.return_value = update_data["email"]
@@ -764,7 +802,9 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         request = self.factory.post("/", request_data)
         self.process_email.return_value = None
 
-        with patch("basket.news.views.invalid_email_response") as invalid_email_response:
+        with patch(
+            "basket.news.views.invalid_email_response",
+        ) as invalid_email_response:
             response = views.subscribe(request)
             self.assertEqual(response, invalid_email_response.return_value)
             self.process_email.assert_called_with(request_data["email"])
@@ -850,7 +890,9 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         del update_data["sync"]
         update_data["source_url"] = "https://example.com/newsletter"
         self.process_email.return_value = update_data["email"]
-        request = self.factory.post("/", request_data, HTTP_REFERER=update_data["source_url"])
+        request = self.factory.post(
+            "/", request_data, HTTP_REFERER=update_data["source_url"],
+        )
 
         response = views.subscribe(request)
 
@@ -875,7 +917,9 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         del update_data["optin"]
         del update_data["sync"]
         self.process_email.return_value = update_data["email"]
-        request = self.factory.post("/", request_data, HTTP_REFERER="https://example.com/donnie")
+        request = self.factory.post(
+            "/", request_data, HTTP_REFERER="https://example.com/donnie",
+        )
 
         response = views.subscribe(request)
 
@@ -962,7 +1006,9 @@ class TestRateLimitingFunctions(ViewsPatcherMixin, TestCase):
         self.rf = RequestFactory()
 
     def test_ip_rate_limit_key(self):
-        req = self.rf.get("/", HTTP_X_CLUSTER_CLIENT_IP="1.1.1.1", REMOTE_ADDR="2.2.2.2")
+        req = self.rf.get(
+            "/", HTTP_X_CLUSTER_CLIENT_IP="1.1.1.1", REMOTE_ADDR="2.2.2.2",
+        )
         self.assertEqual(views.ip_rate_limit_key(None, req), "1.1.1.1")
 
     def test_ip_rate_limit_key_fallback(self):
@@ -1002,11 +1048,17 @@ class TestNewslettersAPI(TestCase):
     def test_newsletters_view(self):
         # We can fetch the newsletter data
         nl1 = models.Newsletter.objects.create(
-            slug="slug", title="title", active=False, languages="en-US,fr", vendor_id="VENDOR1",
+            slug="slug",
+            title="title",
+            active=False,
+            languages="en-US,fr",
+            vendor_id="VENDOR1",
         )
 
         models.Newsletter.objects.create(slug="slug2", vendor_id="VENDOR2", indent=True)
-        models.Newsletter.objects.create(slug="slug3", vendor_id="VENDOR3", private=True)
+        models.Newsletter.objects.create(
+            slug="slug3", vendor_id="VENDOR3", private=True,
+        )
 
         req = self.rf.get(self.url)
         resp = views.newsletters(req)
@@ -1043,20 +1095,36 @@ class TestNewslettersAPI(TestCase):
         # (Note that newsletter_languages() is not part of the external
         # API, but is used internally)
         models.Newsletter.objects.create(
-            slug="slug", title="title", active=False, languages="en-US", vendor_id="VENDOR1",
+            slug="slug",
+            title="title",
+            active=False,
+            languages="en-US",
+            vendor_id="VENDOR1",
         )
         models.Newsletter.objects.create(
-            slug="slug2", title="title", active=False, languages="fr, de ", vendor_id="VENDOR2",
+            slug="slug2",
+            title="title",
+            active=False,
+            languages="fr, de ",
+            vendor_id="VENDOR2",
         )
         models.Newsletter.objects.create(
-            slug="slug3", title="title", active=False, languages="en-US, fr", vendor_id="VENDOR3",
+            slug="slug3",
+            title="title",
+            active=False,
+            languages="en-US, fr",
+            vendor_id="VENDOR3",
         )
         expect = set(["en-US", "fr", "de"])
         self.assertEqual(expect, newsletter_languages())
 
     def test_newsletters_cached(self):
         models.Newsletter.objects.create(
-            slug="slug", title="title", vendor_id="VEND1", active=False, languages="en-US, fr, de ",
+            slug="slug",
+            title="title",
+            vendor_id="VEND1",
+            active=False,
+            languages="en-US, fr, de ",
         )
         # This should get the data cached
         newsletter_fields()
@@ -1070,7 +1138,11 @@ class TestNewslettersAPI(TestCase):
         # Our caching of newsletter data doesn't result in wrong answers
         # when newsletters change
         models.Newsletter.objects.create(
-            slug="slug", title="title", vendor_id="VEND1", active=False, languages="en-US, fr, de ",
+            slug="slug",
+            title="title",
+            vendor_id="VEND1",
+            active=False,
+            languages="en-US, fr, de ",
         )
         vendor_ids = newsletter_fields()
         self.assertEqual(["VEND1"], vendor_ids)
@@ -1089,7 +1161,11 @@ class TestNewslettersAPI(TestCase):
         # Our caching of newsletter data doesn't result in wrong answers
         # when newsletters are deleted
         nl1 = models.Newsletter.objects.create(
-            slug="slug", title="title", vendor_id="VEND1", active=False, languages="en-US, fr, de ",
+            slug="slug",
+            title="title",
+            vendor_id="VEND1",
+            active=False,
+            languages="en-US, fr, de ",
         )
         vendor_ids = newsletter_fields()
         self.assertEqual(["VEND1"], vendor_ids)
@@ -1128,7 +1204,9 @@ class RecoveryViewTest(TestCase):
 
     @patch("basket.news.utils.get_email_block_list")
     @patch("basket.news.views.send_recovery_message_task.delay", autospec=True)
-    def test_blocked_email(self, mock_send_recovery_message_task, mock_get_email_block_list):
+    def test_blocked_email(
+        self, mock_send_recovery_message_task, mock_get_email_block_list,
+    ):
         """email provided - pass to the task, return 200"""
         email = "dude@example.com"
         mock_get_email_block_list.return_value = ["example.com"]
@@ -1184,7 +1262,11 @@ class CommonVoiceGoalsTests(ViewsPatcherMixin, TestCase):
         )
         resp = views.common_voice_goals(req)
         self.record_common_voice_update.delay.assert_called_with(
-            {"email": "dude@example.com", "days_interval": 1, "created_at": "2019-04-07T12:42:34Z"},
+            {
+                "email": "dude@example.com",
+                "days_interval": 1,
+                "created_at": "2019-04-07T12:42:34Z",
+            },
         )
         self.assertEqual(resp.status_code, 200, resp.content)
         data = json.loads(resp.content)
@@ -1244,7 +1326,12 @@ class FxAConcertsRSVPTests(ViewsPatcherMixin, TestCase):
     def test_valid_submission(self):
         self.has_valid_api_key.return_value = True
         req = self.rf.post(
-            "/", {"email": "dude@example.com", "is_firefox": "yes", "campaign_id": "bowling"},
+            "/",
+            {
+                "email": "dude@example.com",
+                "is_firefox": "yes",
+                "campaign_id": "bowling",
+            },
         )
         resp = views.fxa_concerts_rsvp(req)
         self.record_fxa_concerts_rsvp.delay.assert_called_with(
@@ -1257,7 +1344,12 @@ class FxAConcertsRSVPTests(ViewsPatcherMixin, TestCase):
     def test_requires_api_key(self):
         self.has_valid_api_key.return_value = False
         req = self.rf.post(
-            "/", {"email": "dude@example.com", "is_firefox": "yes", "campaign_id": "bowling"},
+            "/",
+            {
+                "email": "dude@example.com",
+                "is_firefox": "yes",
+                "campaign_id": "bowling",
+            },
         )
         resp = views.fxa_concerts_rsvp(req)
         self.assertFalse(self.record_fxa_concerts_rsvp.delay.called)
@@ -1300,7 +1392,9 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         resp = self.client.get("/fxa/callback/", {"code": "thecode"})
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
-        self.statsd.incr.assert_called_with("news.views.fxa_callback.error.no_code_state")
+        self.statsd.incr.assert_called_with(
+            "news.views.fxa_callback.error.no_code_state",
+        )
 
     def test_no_returned_code(self):
         """Should return a redirect to error page"""
@@ -1310,7 +1404,9 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         resp = self.client.get("/fxa/callback/", {"state": "thedude"})
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
-        self.statsd.incr.assert_called_with("news.views.fxa_callback.error.no_code_state")
+        self.statsd.incr.assert_called_with(
+            "news.views.fxa_callback.error.no_code_state",
+        )
 
     def test_session_and_request_state_no_match(self):
         """Should return a redirect to error page"""
@@ -1321,7 +1417,9 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         resp = self.client.get("/fxa/callback/", {"code": "thecode", "state": "walter"})
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
-        self.statsd.incr.assert_called_with("news.views.fxa_callback.error.no_state_match")
+        self.statsd.incr.assert_called_with(
+            "news.views.fxa_callback.error.no_state_match",
+        )
 
     def test_fxa_communication_issue(self):
         """Should return a redirect to error page"""
@@ -1332,7 +1430,9 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         session["fxa_state"] = "thedude"
         session.save()
         # no state
-        resp = self.client.get("/fxa/callback/", {"code": "thecode", "state": "thedude"})
+        resp = self.client.get(
+            "/fxa/callback/", {"code": "thecode", "state": "thedude"},
+        )
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
         self.statsd.incr.assert_called_with("news.views.fxa_callback.error.fxa_comm")
@@ -1349,12 +1449,19 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         session["fxa_state"] = "thedude"
         session.save()
         # no state
-        resp = self.client.get("/fxa/callback/", {"code": "thecode", "state": "thedude"})
+        resp = self.client.get(
+            "/fxa/callback/", {"code": "thecode", "state": "thedude"},
+        )
         assert resp.status_code == 302
-        fxa_oauth_mock.trade_code.assert_called_with("thecode", ttl=settings.FXA_OAUTH_TOKEN_TTL)
+        fxa_oauth_mock.trade_code.assert_called_with(
+            "thecode", ttl=settings.FXA_OAUTH_TOKEN_TTL,
+        )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         self.statsd.incr.assert_not_called()
-        assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-token/?fxa=1"
+        assert (
+            resp["location"]
+            == "https://www.mozilla.org/newsletter/existing/the-token/?fxa=1"
+        )
         self.get_user_data.assert_called_with(email="dude@example.com")
 
     def test_new_user_with_locale(self):
@@ -1372,13 +1479,18 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         session["fxa_state"] = "thedude"
         session.save()
         # no state
-        resp = self.client.get("/fxa/callback/", {"code": "thecode", "state": "thedude"})
+        resp = self.client.get(
+            "/fxa/callback/", {"code": "thecode", "state": "thedude"},
+        )
         assert resp.status_code == 302
-        fxa_oauth_mock.trade_code.assert_called_with("thecode", ttl=settings.FXA_OAUTH_TOKEN_TTL)
+        fxa_oauth_mock.trade_code.assert_called_with(
+            "thecode", ttl=settings.FXA_OAUTH_TOKEN_TTL,
+        )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         self.statsd.incr.assert_not_called()
         assert (
-            resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
+            resp["location"]
+            == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
         )
         self.get_user_data.assert_called_with(email="dude@example.com")
         self.upsert_contact.assert_called_with(
@@ -1388,7 +1500,8 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
                 "optin": True,
                 "format": "H",
                 "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
-                "source_url": settings.FXA_REGISTER_SOURCE_URL + "?utm_source=basket-fxa-oauth",
+                "source_url": settings.FXA_REGISTER_SOURCE_URL
+                + "?utm_source=basket-fxa-oauth",
                 "lang": "other",
                 "fxa_lang": "en,en-US",
             },
@@ -1409,13 +1522,18 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         session["fxa_state"] = "thedude"
         session.save()
         # no state
-        resp = self.client.get("/fxa/callback/", {"code": "thecode", "state": "thedude"})
+        resp = self.client.get(
+            "/fxa/callback/", {"code": "thecode", "state": "thedude"},
+        )
         assert resp.status_code == 302
-        fxa_oauth_mock.trade_code.assert_called_with("thecode", ttl=settings.FXA_OAUTH_TOKEN_TTL)
+        fxa_oauth_mock.trade_code.assert_called_with(
+            "thecode", ttl=settings.FXA_OAUTH_TOKEN_TTL,
+        )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         self.statsd.incr.assert_not_called()
         assert (
-            resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
+            resp["location"]
+            == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
         )
         self.get_user_data.assert_called_with(email="dude@example.com")
         self.upsert_contact.assert_called_with(
@@ -1425,7 +1543,8 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
                 "optin": True,
                 "format": "H",
                 "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
-                "source_url": settings.FXA_REGISTER_SOURCE_URL + "?utm_source=basket-fxa-oauth",
+                "source_url": settings.FXA_REGISTER_SOURCE_URL
+                + "?utm_source=basket-fxa-oauth",
             },
             None,
         )
@@ -1439,7 +1558,9 @@ class FxAPrefCenterOauthStartTests(ViewsPatcherMixin, TestCase):
         self._patch_views("generate_fxa_state")
 
     def test_get_redirect_url(self):
-        self.get_fxa_authorization_url.return_value = good_redirect = "https://example.com/oauth"
+        self.get_fxa_authorization_url.return_value = (
+            good_redirect
+        ) = "https://example.com/oauth"
         self.generate_fxa_state.return_value = "the-dude-abides"
         resp = self.client.get("/fxa/")
         self.get_fxa_authorization_url.assert_called_with(
@@ -1449,7 +1570,9 @@ class FxAPrefCenterOauthStartTests(ViewsPatcherMixin, TestCase):
         assert resp["location"] == good_redirect
 
     def test_get_redirect_url_with_email(self):
-        self.get_fxa_authorization_url.return_value = good_redirect = "https://example.com/oauth"
+        self.get_fxa_authorization_url.return_value = (
+            good_redirect
+        ) = "https://example.com/oauth"
         self.generate_fxa_state.return_value = "the-dude-abides"
         resp = self.client.get("/fxa/?email=dude%40example.com")
         self.get_fxa_authorization_url.assert_called_with(
@@ -1483,7 +1606,9 @@ class SubHubAPITests(ViewsPatcherMixin, TestCase):
     def test_require_valid_api_key(self):
         self.has_valid_api_key.return_value = False
         resp = self.client.post(
-            "/subhub/", data=json.dumps({"name": "The Dude"}), content_type="application/json",
+            "/subhub/",
+            data=json.dumps({"name": "The Dude"}),
+            content_type="application/json",
         )
         assert resp.status_code == 401
         # self.amo_sync_user.delay.assert_not_called()
@@ -1492,35 +1617,45 @@ class SubHubAPITests(ViewsPatcherMixin, TestCase):
     def test_customer_created_task(self):
         self.has_valid_api_key.return_value = True
         data = {"event_type": "customer.created"}
-        resp = self.client.post("/subhub/", data=json.dumps(data), content_type="application/json")
+        resp = self.client.post(
+            "/subhub/", data=json.dumps(data), content_type="application/json",
+        )
         assert resp.status_code == 200
         self.process_subhub_event_customer_created.delay.assert_called_with(data)
 
     def test_customer_recurring_charge_task(self):
         self.has_valid_api_key.return_value = True
         data = {"event_type": "customer.recurring_charge"}
-        resp = self.client.post("/subhub/", data=json.dumps(data), content_type="application/json")
+        resp = self.client.post(
+            "/subhub/", data=json.dumps(data), content_type="application/json",
+        )
         assert resp.status_code == 200
         self.process_subhub_event_subscription_charge.delay.assert_called_with(data)
 
     def test_customer_subscription_created_task(self):
         self.has_valid_api_key.return_value = True
         data = {"event_type": "customer.subscription.created"}
-        resp = self.client.post("/subhub/", data=json.dumps(data), content_type="application/json")
+        resp = self.client.post(
+            "/subhub/", data=json.dumps(data), content_type="application/json",
+        )
         assert resp.status_code == 200
         self.process_subhub_event_subscription_charge.delay.assert_called_with(data)
 
     def test_customer_subscription_cancelled_task(self):
         self.has_valid_api_key.return_value = True
         data = {"event_type": "customer.subscription.cancelled"}
-        resp = self.client.post("/subhub/", data=json.dumps(data), content_type="application/json")
+        resp = self.client.post(
+            "/subhub/", data=json.dumps(data), content_type="application/json",
+        )
         assert resp.status_code == 200
         self.process_subhub_event_subscription_cancel.delay.assert_called_with(data)
 
     def test_invoice_payment_failed_task(self):
         self.has_valid_api_key.return_value = True
         data = {"event_type": "invoice.payment_failed"}
-        resp = self.client.post("/subhub/", data=json.dumps(data), content_type="application/json")
+        resp = self.client.post(
+            "/subhub/", data=json.dumps(data), content_type="application/json",
+        )
         assert resp.status_code == 200
         self.process_subhub_event_payment_failed.delay.assert_called_with(data)
 
@@ -1532,7 +1667,9 @@ class AMOSyncTests(ViewsPatcherMixin, TestCase):
         self._patch_views("amo_sync_user")
         self._patch_views("has_valid_api_key")
         # the above patch doesn't replace in the dict
-        views.AMO_SYNC_TYPES.update(userprofile=self.amo_sync_user, addon=self.amo_sync_addon)
+        views.AMO_SYNC_TYPES.update(
+            userprofile=self.amo_sync_user, addon=self.amo_sync_addon,
+        )
 
     def test_require_valid_api_key(self):
         self.has_valid_api_key.return_value = False
@@ -1549,7 +1686,9 @@ class AMOSyncTests(ViewsPatcherMixin, TestCase):
         self.has_valid_api_key.return_value = True
         data = {"name": "The Dude"}
         resp = self.client.post(
-            "/amo-sync/userprofile/", data=json.dumps(data), content_type="application/json",
+            "/amo-sync/userprofile/",
+            data=json.dumps(data),
+            content_type="application/json",
         )
         assert resp.status_code == 200
         self.amo_sync_user.delay.assert_called_with(data)

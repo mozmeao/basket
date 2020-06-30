@@ -10,7 +10,10 @@ from mock import patch
 from basket import errors
 
 from basket.news import views
-from basket.news.backends.common import NewsletterException, NewsletterNoResultsException
+from basket.news.backends.common import (
+    NewsletterException,
+    NewsletterNoResultsException,
+)
 from basket.news.models import APIUser
 from basket.news.utils import SET, generate_token
 
@@ -27,7 +30,9 @@ class UserTest(TestCase):
         with patch.object(views, "update_user_task") as update_user_task:
             update_user_task.return_value = HttpResponse()
             views.user(request, "asdf")
-            update_user_task.assert_called_with(request, SET, {"fake": "data", "token": "asdf"})
+            update_user_task.assert_called_with(
+                request, SET, {"fake": "data", "token": "asdf"},
+            )
 
     @patch("basket.news.utils.sfdc")
     def test_user_not_in_sf(self, sfdc_mock):
@@ -38,7 +43,8 @@ class UserTest(TestCase):
         self.assertEqual(resp.status_code, 400)
         resp_data = json.loads(resp.content)
         self.assertDictEqual(
-            resp_data, {"status": "error", "desc": "DANGER!", "code": errors.BASKET_UNKNOWN_ERROR},
+            resp_data,
+            {"status": "error", "desc": "DANGER!", "code": errors.BASKET_UNKNOWN_ERROR},
         )
 
 

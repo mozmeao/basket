@@ -37,7 +37,10 @@ if not settings.ADMIN_ONLY_MODE:
 
 if settings.DISABLE_ADMIN:
     urlpatterns.append(
-        path("admin/", RedirectView.as_view(url=settings.ADMIN_REDIRECT_URL, permanent=True)),
+        path(
+            "admin/",
+            RedirectView.as_view(url=settings.ADMIN_REDIRECT_URL, permanent=True),
+        ),
     )
 else:
     if settings.OIDC_ENABLE:

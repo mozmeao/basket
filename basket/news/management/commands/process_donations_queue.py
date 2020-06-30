@@ -57,7 +57,8 @@ class Command(BaseCommand):
             while True:
                 self.snitch()
                 msgs = queue.receive_messages(
-                    WaitTimeSeconds=settings.DONATE_QUEUE_WAIT_TIME, MaxNumberOfMessages=10,
+                    WaitTimeSeconds=settings.DONATE_QUEUE_WAIT_TIME,
+                    MaxNumberOfMessages=10,
                 )
                 for msg in msgs:
                     if not (msg and msg.body):

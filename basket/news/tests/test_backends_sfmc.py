@@ -58,7 +58,9 @@ class TestRefreshToken(TestCase):
             "legacyToken": "internal-token",
             "refreshToken": "refresh-key",
         }
-        client = sfmc.ETRefreshClient(params={"clientid": "id", "clientsecret": "sssshhhh"})
+        client = sfmc.ETRefreshClient(
+            params={"clientid": "id", "clientsecret": "sssshhhh"},
+        )
         self.assertTrue(refresh_mock.called)
         self.assertFalse(exp_mock.called)
         self.assertTrue(cache_mock.called)
@@ -155,7 +157,10 @@ class TestRequestToken(TestCase):
         If first call fails it should try again without refreshToken
         """
         client = sfmc.ETRefreshClient()
-        req_mock.post.return_value.json.side_effect = [{}, {"accessToken": "good-token"}]
+        req_mock.post.return_value.json.side_effect = [
+            {},
+            {"accessToken": "good-token"},
+        ]
         payload = {"refreshToken": "token"}
         client.request_token(payload)
         # payload should be modified

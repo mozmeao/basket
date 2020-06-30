@@ -52,7 +52,11 @@ def fernet_loads(encoded_message):
 
 serialization.unregister("json")
 serialization.register(
-    "json", fernet_dumps, fernet_loads, content_type="application/json", content_encoding="utf-8",
+    "json",
+    fernet_dumps,
+    fernet_loads,
+    content_type="application/json",
+    content_encoding="utf-8",
 )
 
 

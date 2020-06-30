@@ -14,10 +14,14 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.AlterField(
-            model_name="failedtask", name="args", field=jsonfield.fields.JSONField(default=list),
+            model_name="failedtask",
+            name="args",
+            field=jsonfield.fields.JSONField(default=list),
         ),
         migrations.AlterField(
-            model_name="failedtask", name="kwargs", field=jsonfield.fields.JSONField(default=dict),
+            model_name="failedtask",
+            name="kwargs",
+            field=jsonfield.fields.JSONField(default=dict),
         ),
         migrations.AlterField(
             model_name="localestewards",
@@ -183,9 +187,13 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AlterField(
-            model_name="queuedtask", name="args", field=jsonfield.fields.JSONField(default=list),
+            model_name="queuedtask",
+            name="args",
+            field=jsonfield.fields.JSONField(default=list),
         ),
         migrations.AlterField(
-            model_name="queuedtask", name="kwargs", field=jsonfield.fields.JSONField(default=dict),
+            model_name="queuedtask",
+            name="kwargs",
+            field=jsonfield.fields.JSONField(default=dict),
         ),
     ]

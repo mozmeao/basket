@@ -18,10 +18,18 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.AutoField(
-                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID",
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
                     ),
                 ),
-                ("when", models.DateTimeField(default=django.utils.timezone.now, editable=False)),
+                (
+                    "when",
+                    models.DateTimeField(
+                        default=django.utils.timezone.now, editable=False,
+                    ),
+                ),
                 ("data", jsonfield.fields.JSONField(default=dict)),
                 ("ack", models.BooleanField(default=False)),
             ],

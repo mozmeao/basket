@@ -55,7 +55,9 @@ class UpsertUserTests(TestCase):
     @patch("basket.news.tasks.sfdc")
     @patch("basket.news.tasks.send_message")
     @patch("basket.news.tasks.get_user_data")
-    def test_update_source_url_de(self, get_user_data, send_message, sfdc_mock, source_url_mock):
+    def test_update_source_url_de(
+        self, get_user_data, send_message, sfdc_mock, source_url_mock,
+    ):
         """Subscription including a source_url should be recorded in SFMC"""
         get_user_data.return_value = None  # Does not exist yet
         models.Newsletter.objects.create(
@@ -74,7 +76,9 @@ class UpsertUserTests(TestCase):
             vendor_id="VENDOR2",
             requires_double_optin=True,
         )
-        source_url = "https://www.mozilla.org/en-US/newsletter/?utm_tracking_you=totally"
+        source_url = (
+            "https://www.mozilla.org/en-US/newsletter/?utm_tracking_you=totally"
+        )
         data = {
             "country": "US",
             "lang": "en",
@@ -87,7 +91,10 @@ class UpsertUserTests(TestCase):
         }
         upsert_user(SUBSCRIBE, data)
         source_url_mock.delay.assert_has_calls(
-            [call(self.email, source_url, "VENDOR1"), call(self.email, source_url, "VENDOR2")],
+            [
+                call(self.email, source_url, "VENDOR1"),
+                call(self.email, source_url, "VENDOR2"),
+            ],
             any_order=True,
         )
 
@@ -127,7 +134,8 @@ class UpsertUserTests(TestCase):
         }
         upsert_user(SUBSCRIBE, data)
         source_url_mock.delay.assert_has_calls(
-            [call(self.email, None, "VENDOR1"), call(self.email, None, "VENDOR2")], any_order=True,
+            [call(self.email, None, "VENDOR1"), call(self.email, None, "VENDOR2")],
+            any_order=True,
         )
 
     @patch("basket.news.tasks.sfdc")
@@ -276,7 +284,9 @@ class UpsertUserTests(TestCase):
 
     @patch("basket.news.tasks.sfdc")
     @patch("basket.news.tasks.get_user_data")
-    def test_update_user_without_format_doesnt_send_format(self, get_user_mock, sfdc_mock):
+    def test_update_user_without_format_doesnt_send_format(
+        self, get_user_mock, sfdc_mock,
+    ):
         """
         SF format not changed if update_user call doesn't specify.
 
