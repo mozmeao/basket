@@ -396,7 +396,9 @@ class SFDC(object):
             raise RuntimeError("One of the arguments is required: " + ", ".join(args))
 
         id_field = FIELD_MAP[field]
-        contact = self.contact.get_by_custom_id(id_field, value)
+        contact = self.contact.get_by_custom_id(
+            custom_id_field=id_field, custom_id=value,
+        )
         return from_vendor(contact)
 
     @time_request

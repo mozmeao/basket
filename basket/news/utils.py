@@ -352,7 +352,9 @@ def get_user_data(
     }
     """
     try:
-        user = sfdc.get(token, email, payee_id, amo_id, fxa_id)
+        user = sfdc.get(
+            token=token, email=email, payee_id=payee_id, amo_id=amo_id, fxa_id=fxa_id,
+        )
     except sfapi.SalesforceResourceNotFound:
         return None
     except requests.exceptions.RequestException as e:
