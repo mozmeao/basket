@@ -9,7 +9,6 @@ from basket.news.views import (
     amo_sync,
     fxa_callback,
     fxa_start,
-    subhub_post,
     subscribe_main,
     subscribe_json,
 )
@@ -30,7 +29,6 @@ if not settings.ADMIN_ONLY_MODE:
             path("subscribe.json", subscribe_json),
             path("fxa/", fxa_start),
             path("fxa/callback/", fxa_callback),
-            path("subhub/", subhub_post),
             path("amo-sync/<post_type>/", amo_sync),
         ],
     )

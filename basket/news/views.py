@@ -58,12 +58,6 @@ from basket.news.tasks import (
     update_user_meta,
     upsert_contact,
     upsert_user,
-    process_subhub_event_customer_created,
-    process_subhub_event_payment_failed,
-    process_subhub_event_subscription_cancel,
-    process_subhub_event_subscription_charge,
-    process_subhub_event_subscription_reactivated,
-    process_subhub_event_subscription_updated,
 )
 from basket.news.utils import (
     SET,
@@ -99,17 +93,6 @@ PHONE_NUMBER_RATE_LIMIT = getattr(settings, "PHONE_NUMBER_RATE_LIMIT", "4/5m")
 # four submissions for a set of newsletters per email address per 5 minutes
 EMAIL_SUBSCRIBE_RATE_LIMIT = getattr(settings, "EMAIL_SUBSCRIBE_RATE_LIMIT", "4/5m")
 sync_route = Route(api_token=settings.SYNC_KEY)
-SUBHUB_EVENT_TYPES = {
-    "customer.created": process_subhub_event_customer_created,
-    "customer.recurring_charge": process_subhub_event_subscription_charge,  # subscriptioin creations & recurring charges
-    "customer.subscription.created": process_subhub_event_subscription_charge,  # subscriptioin creations & recurring charges
-    "customer.subscription_cancelled": process_subhub_event_subscription_cancel,
-    "customer.subscription.reactivated": process_subhub_event_subscription_reactivated,
-    "customer.subscription.upgrade": process_subhub_event_subscription_updated,
-    "customer.subscription.downgrade": process_subhub_event_subscription_updated,
-    "customer.deleted": process_subhub_event_subscription_cancel,
-    "invoice.payment_failed": process_subhub_event_payment_failed,
-}
 AMO_SYNC_TYPES = {
     "addon": amo_sync_addon,
     "userprofile": amo_sync_user,
@@ -1133,54 +1116,6 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
     else:
         upsert_user.delay(api_call_type, data, start_time=time())
         return HttpResponseJSON({"status": "ok"})
-
-
-@require_POST
-@csrf_exempt
-def subhub_post(request):
-    if not has_valid_api_key(request):
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "requires a valid API-key",
-                "code": errors.BASKET_AUTH_ERROR,
-            },
-            401,
-        )
-
-    try:
-        data = json.loads(request.body)
-    except ValueError:
-        statsd.incr("subhub_post.message.json_error")
-        with sentry_sdk.configure_scope() as scope:
-            scope.set_extra("request.body", request.body)
-            sentry_sdk.capture_exception()
-
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "JSON error",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            400,
-        )
-    else:
-        etype = data.get("event_type")
-        processor = SUBHUB_EVENT_TYPES.get(etype)
-
-        if processor:
-            processor.delay(data)
-            return HttpResponseJSON({"status": "ok"})
-        else:
-            statsd.incr("subhub_post.message.IGNORED")
-            return HttpResponseJSON(
-                {
-                    "desc": "unknown event type",
-                    "status": "error",
-                    "code": errors.BASKET_USAGE_ERROR,
-                },
-                400,
-            )
 
 
 @require_POST
