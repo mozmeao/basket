@@ -432,11 +432,6 @@ FXA_LOGIN_CAMPAIGNS = {
     "membership-tk": "member-tk",
 }
 
-SUBHUB_OPP_RECORD_TYPE = config("SUBHUB_OPP_RECORD_TYPE", default="")
-SUBHUB_CC_EXPIRE_TRIGGER = config(
-    "SUBHUB_CC_EXPIRE_TRIGGER", default="en_subscription_services_cc_expired",
-)
-
 COMMON_VOICE_NEWSLETTER = config("COMMON_VOICE_NEWSLETTER", default="common-voice")
 COMMON_VOICE_BATCH_UPDATES = config(
     "COMMON_VOICE_BATCH_UPDATES", default=False, cast=bool,
