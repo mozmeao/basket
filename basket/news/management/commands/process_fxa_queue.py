@@ -71,6 +71,11 @@ class Command(BaseCommand):
                     if not (msg and msg.body):
                         continue
 
+                    if settings.FXA_EVENTS_QUEUE_IGNORE_MODE:
+                        statsd.incr("fxa.events.message.ignored")
+                        msg.delete()
+                        continue
+
                     statsd.incr("fxa.events.message.received")
                     try:
                         data = json.loads(msg.body)
