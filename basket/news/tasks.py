@@ -1142,8 +1142,14 @@ def process_petition_signature(data):
             },
         )
 
+    campaign_id = data["campaign_id"]
+    # Fix a specific issue with a specific campaign where the ID was entered without
+    # the leading 7
+    if len(campaign_id) == 17 and not campaign_id.startswith("7"):
+        campaign_id = f"7{campaign_id}"
+
     campaign_member = {
-        "CampaignId": data["campaign_id"],
+        "CampaignId": campaign_id,
         "ContactId": user_data["id"],
         "Full_URL__c": data["source_url"],
         "Status": "Signed",
