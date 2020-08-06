@@ -321,24 +321,8 @@ def fxa_verified(data):
     if not lang or lang not in newsletter_languages():
         lang = "other"
 
-    # avoid modifying the passed in dict
-    new_data = deepcopy(data)
-    new_data["lang"] = lang
-    fxa_verified_sfdc_tmp(new_data)
-
-
-@et_task
-def fxa_verified_sfdc(data):
-    """Temporary task to process remaining tasks
-
-    TODO delete me after prod deployment"""
-    fxa_verified_sfdc_tmp(data)
-
-
-def fxa_verified_sfdc_tmp(data):
     email = data["email"]
     fxa_id = data["uid"]
-    lang = data["lang"]
     create_date = data.get("createDate", data.get("ts"))
     newsletters = data.get("newsletters")
     metrics = data.get("metricsContext", {})
@@ -365,32 +349,6 @@ def fxa_verified_sfdc_tmp(data):
         new_data["lang"] = lang
 
     upsert_contact(SUBSCRIBE, new_data, user_data)
-
-
-@et_task
-def fxa_verified_sfmc(data):
-    """No longer needed but kept temporarily so we don't leave tasks on the queue
-
-    See https://github.com/mozmeao/basket/issues/572
-
-    TODO delete me after next deployment"""
-    create_date = data.get("createDate")
-    if create_date:
-        create_date = datetime.fromtimestamp(create_date)
-    try:
-        apply_updates(
-            "Firefox_Account_ID",
-            {
-                "EMAIL_ADDRESS_": data["email"],
-                "CREATED_DATE_": gmttime(create_date),
-                "FXA_ID": data["uid"],
-                "FXA_LANGUAGE_ISO2": data["lang"],
-                "SERVICE": data.get("service", ""),
-            },
-        )
-    except NewsletterException as e:
-        # don't report these errors to sentry until retries exhausted
-        raise RetryTask(str(e))
 
 
 @et_task
