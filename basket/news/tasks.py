@@ -312,7 +312,7 @@ def fxa_delete(data):
 
 @et_task
 def fxa_verified(data):
-    """Add new FxA users to an SFMC data extension and SFDC"""
+    """Add new FxA users to SFDC"""
     # if we're not using the sandbox ignore testing domains
     if email_is_testing(data["email"]):
         return
@@ -324,19 +324,18 @@ def fxa_verified(data):
     # avoid modifying the passed in dict
     new_data = deepcopy(data)
     new_data["lang"] = lang
-
-    # add the data to SFMC
-    # do this part async so that it can retry independent of the SFDC parts
-    fxa_verified_sfmc.delay(new_data)
-
-    # add the data to SFDC
-    # do this part async so that it can retry independent of the SFMC parts
-    if settings.FXA_EVENTS_VERIFIED_SFDC_ENABLE:
-        fxa_verified_sfdc.delay(new_data)
+    fxa_verified_sfdc_tmp(new_data)
 
 
 @et_task
 def fxa_verified_sfdc(data):
+    """Temporary task to process remaining tasks
+
+    TODO delete me after prod deployment"""
+    fxa_verified_sfdc_tmp(data)
+
+
+def fxa_verified_sfdc_tmp(data):
     email = data["email"]
     fxa_id = data["uid"]
     lang = data["lang"]
@@ -370,6 +369,11 @@ def fxa_verified_sfdc(data):
 
 @et_task
 def fxa_verified_sfmc(data):
+    """No longer needed but kept temporarily so we don't leave tasks on the queue
+
+    See https://github.com/mozmeao/basket/issues/572
+
+    TODO delete me after next deployment"""
     create_date = data.get("createDate")
     if create_date:
         create_date = datetime.fromtimestamp(create_date)
