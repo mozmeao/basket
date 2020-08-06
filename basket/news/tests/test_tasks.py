@@ -854,11 +854,10 @@ class AddFxaActivityTests(TestCase):
 )
 @patch("basket.news.tasks.get_best_language", Mock(return_value="en-US"))
 @patch("basket.news.tasks.newsletter_languages", Mock(return_value=["en-US"]))
-@patch("basket.news.tasks.apply_updates")
 @patch("basket.news.tasks.upsert_contact")
 @patch("basket.news.tasks.get_fxa_user_data")
 class FxAVerifiedTests(TestCase):
-    def test_success(self, fxa_data_mock, upsert_mock, apply_mock):
+    def test_success(self, fxa_data_mock, upsert_mock):
         fxa_data_mock.return_value = {"lang": "en-US"}
         data = {
             "email": "thedude@example.com",
@@ -882,18 +881,8 @@ class FxAVerifiedTests(TestCase):
             },
             fxa_data_mock(),
         )
-        apply_mock.assert_called_with(
-            "Firefox_Account_ID",
-            {
-                "EMAIL_ADDRESS_": data["email"],
-                "CREATED_DATE_": ANY,
-                "FXA_ID": "the-fxa-id",
-                "FXA_LANGUAGE_ISO2": "en-US",
-                "SERVICE": "sync",
-            },
-        )
 
-    def test_with_newsletters(self, fxa_data_mock, upsert_mock, apply_mock):
+    def test_with_newsletters(self, fxa_data_mock, upsert_mock):
         fxa_data_mock.return_value = None
         data = {
             "email": "thedude@example.com",
@@ -923,18 +912,8 @@ class FxAVerifiedTests(TestCase):
             },
             None,
         )
-        apply_mock.assert_called_with(
-            "Firefox_Account_ID",
-            {
-                "EMAIL_ADDRESS_": data["email"],
-                "CREATED_DATE_": ANY,
-                "FXA_ID": "the-fxa-id",
-                "FXA_LANGUAGE_ISO2": "en-US",
-                "SERVICE": "sync",
-            },
-        )
 
-    def test_with_subscribe_and_metrics(self, fxa_data_mock, upsert_mock, apply_mock):
+    def test_with_subscribe_and_metrics(self, fxa_data_mock, upsert_mock):
         fxa_data_mock.return_value = None
         data = {
             "email": "thedude@example.com",
@@ -962,18 +941,8 @@ class FxAVerifiedTests(TestCase):
             },
             None,
         )
-        apply_mock.assert_called_with(
-            "Firefox_Account_ID",
-            {
-                "EMAIL_ADDRESS_": data["email"],
-                "CREATED_DATE_": ANY,
-                "FXA_ID": "the-fxa-id",
-                "FXA_LANGUAGE_ISO2": "en-US",
-                "SERVICE": "monitor",
-            },
-        )
 
-    def test_with_createDate(self, fxa_data_mock, upsert_mock, apply_mock):
+    def test_with_createDate(self, fxa_data_mock, upsert_mock):
         fxa_data_mock.return_value = None
         create_date = 1526996035.498
         data = {
@@ -999,16 +968,6 @@ class FxAVerifiedTests(TestCase):
                 "format": "H",
             },
             None,
-        )
-        apply_mock.assert_called_with(
-            "Firefox_Account_ID",
-            {
-                "EMAIL_ADDRESS_": data["email"],
-                "CREATED_DATE_": gmttime(datetime.fromtimestamp(create_date)),
-                "FXA_ID": "the-fxa-id",
-                "FXA_LANGUAGE_ISO2": "en-US",
-                "SERVICE": "",
-            },
         )
 
 
