@@ -74,9 +74,9 @@ billiard==3.6.3.0 \
 celery==4.4.0 \
     --hash=sha256:7c544f37a84a5eadc44cab1aa8c9580dff94636bb81978cdf9bf8012d9ea7d8f \
     --hash=sha256:d3363bb5df72d74420986a435449f3c3979285941dff57d5d97ecba352a0e3e2
-kombu==4.6.7 \
-    --hash=sha256:2a9e7adff14d046c9996752b2c48b6d9185d0b992106d5160e1a179907a5d4ac \
-    --hash=sha256:67b32ccb6fea030f8799f8fd50dd08e03a4b99464ebc4952d71d8747b1a52ad1
+kombu==5.0.0 \
+    --hash=sha256:60a4e6feeab5a6cabb0dccdad49e9a7df0e8435f1bab1914fd7d1a1c46538373 \
+    --hash=sha256:7c949fe33573a971f06c8836ca025390088f3747533b78438f9a57344a142b59
 https://github.com/pmclanahan/django-synctool/archive/5f7cf9bad741e60bd9df32aa90e71425d98e437c.tar.gz#egg=django-synctool==1.1.1 \
     --hash=sha256:2dd290c5339769e3c40d644b5248236bec7c558eaccb922badd7c39c5fd5e095
 https://github.com/mozmeao/FuelSDK-Python/archive/172815bd74009e36b728b16f774f1aafecb06d03.tar.gz#egg=Salesforce-FuelSDK==1.2.0 \
