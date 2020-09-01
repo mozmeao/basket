@@ -234,11 +234,12 @@ if ET_CLIENT_ID and ET_CLIENT_SECRET:
     SFMC_SETTINGS["clientsecret"] = ET_CLIENT_SECRET
 
 # Salesforce.com
+SFDC_USE_SANDBOX = (config("SFDC_USE_SANDBOX", USE_SANDBOX_BACKEND, cast=bool),)
 SFDC_SETTINGS = {
     "username": config("SFDC_USERNAME", None),
     "password": config("SFDC_PASSWORD", None),
     "security_token": config("SFDC_SEC_TOKEN", None),
-    "sandbox": config("SFDC_USE_SANDBOX", USE_SANDBOX_BACKEND, cast=bool),
+    "domain": "test" if SFDC_USE_SANDBOX else "login",
 }
 # default SFDC sessions timeout after 2 hours of inactivity. so they never timeout on
 # prod. Let's make it every 4 hours by default.

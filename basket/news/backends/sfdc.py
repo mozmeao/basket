@@ -4,7 +4,6 @@ API Client Library for Salesforce.com (SFDC)
 from random import randint
 from time import time
 
-import requests
 from django.conf import settings
 from django.core.cache import cache
 
@@ -258,21 +257,13 @@ def get_sf_session(force=False):
     return session_info
 
 
-class RefreshingSFType(sfapi.SFType):
+class RefreshingSFMixin:
     session_id = None
     session_expires = None
     sf_instance = None
 
-    def __init__(self, name="Contact"):
-        self.sf_version = DEFAULT_API_VERSION
-        self.name = name
-        self.request = requests.Session()
-        self.refresh_session()
-
     def _base_url(self):
-        return (
-            "https://{instance}/services/data/" "v{version}/sobjects/{name}/"
-        ).format(instance=self.sf_instance, name=self.name, version=self.sf_version)
+        raise NotImplementedError()
 
     def refresh_session(self):
         sf_session = get_sf_session()
@@ -302,17 +293,15 @@ class RefreshingSFType(sfapi.SFType):
         kwargs["timeout"] = settings.SFDC_REQUEST_TIMEOUT
         try:
             statsd.incr("news.backends.sfdc.call_salesforce")
-            resp = super(RefreshingSFType, self)._call_salesforce(method, url, **kwargs)
+            resp = super()._call_salesforce(method, url, **kwargs)
         except sfapi.SalesforceExpiredSession:
             statsd.incr("news.backends.sfdc.call_salesforce")
             statsd.incr("news.backends.sfdc.session_expired")
             self.refresh_session()
-            resp = super(RefreshingSFType, self)._call_salesforce(method, url, **kwargs)
+            resp = super()._call_salesforce(method, url, **kwargs)
 
-        limit_info = resp.headers.get("sforce-limit-info")
-        if limit_info:
-            usages = sfapi.Salesforce.parse_api_usage(limit_info)
-            usage = usages.get("api-usage")
+        if self.api_usage:
+            usage = self.api_usage.get("api-usage")
             if usage:
                 statsd.gauge(
                     "news.backends.sfdc.daily_api_used", int(usage.used), rate=0.5,
@@ -328,47 +317,72 @@ class RefreshingSFType(sfapi.SFType):
         return resp
 
 
-class SFDC(object):
-    _contact = None
-    _opportunity = None
-    _campaign_member = None
-    _addon = None
-    _dev_addon = None
+class RefreshingSalesforce(RefreshingSFMixin, sfapi.Salesforce):
+    def __init__(self):
+        self.refresh_session()
+        super().__init__(
+            session_id=self.session_id,
+            instance=self.sf_instance,
+            version=DEFAULT_API_VERSION,
+            domain=settings.SFDC_SETTINGS["domain"],
+        )
+
+    def _base_url(self):
+        return ("https://{instance}/services/data/v{version}/").format(
+            instance=self.sf_instance, version=self.sf_version,
+        )
+
+
+class RefreshingSFType(RefreshingSFMixin, sfapi.SFType):
+    def __init__(self, name="Contact"):
+        self.refresh_session()
+        super().__init__(
+            object_name=name,
+            session_id=self.session_id,
+            sf_instance=self.sf_instance,
+            sf_version=DEFAULT_API_VERSION,
+        )
+
+    def _base_url(self):
+        return ("https://{instance}/services/data/v{version}/sobjects/{name}/").format(
+            instance=self.sf_instance, name=self.name, version=self.sf_version,
+        )
+
+
+class SFDC:
+    def __init__(self):
+        self._types_cache = {}
+
+    def _get_type(self, name):
+        if name not in self._types_cache and settings.SFDC_SETTINGS.get("username"):
+            inst = RefreshingSalesforce() if name == "sf" else RefreshingSFType(name)
+            self._types_cache[name] = inst
+
+        return self._types_cache.get(name, None)
+
+    @property
+    def sf(self):
+        return self._get_type("sf")
 
     @property
     def contact(self):
-        if self._contact is None and settings.SFDC_SETTINGS.get("username"):
-            self._contact = RefreshingSFType()
-
-        return self._contact
+        return self._get_type("Contact")
 
     @property
     def opportunity(self):
-        if self._opportunity is None and settings.SFDC_SETTINGS.get("username"):
-            self._opportunity = RefreshingSFType("Opportunity")
-
-        return self._opportunity
+        return self._get_type("Opportunity")
 
     @property
     def campaign_member(self):
-        if self._campaign_member is None and settings.SFDC_SETTINGS.get("username"):
-            self._campaign_member = RefreshingSFType("CampaignMember")
-
-        return self._campaign_member
+        return self._get_type("CampaignMember")
 
     @property
     def addon(self):
-        if self._addon is None and settings.SFDC_SETTINGS.get("username"):
-            self._addon = RefreshingSFType("Add_On__c")
-
-        return self._addon
+        return self._get_type("Add_On__c")
 
     @property
     def dev_addon(self):
-        if self._dev_addon is None and settings.SFDC_SETTINGS.get("username"):
-            self._dev_addon = RefreshingSFType("DevAddOn__c")
-
-        return self._dev_addon
+        return self._get_type("DevAddOn__c")
 
     @time_request
     def get(self, token=None, email=None, payee_id=None, amo_id=None, fxa_id=None):
