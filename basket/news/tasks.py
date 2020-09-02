@@ -1134,12 +1134,13 @@ def process_petition_signature(data):
             raise
 
 
-def upsert_amo_user_data(data):
+def upsert_amo_user_data(data, user_sync=False):
     """
     Update AMO user data in the SFDC contact, or create a contact.
     Return the Contact data (the contact ID at a minimum).
 
     :param data: dict of amo user data
+    :param user_sync: bool True if this is a User Sync request
     :return: dict of SFDC contact data
     """
     fxa_id = data.pop("fxa_id")
@@ -1152,6 +1153,10 @@ def upsert_amo_user_data(data):
 
     if not user:
         # Cannot find user with FxA ID or AMO ID, ignore the update
+        return None
+
+    if user_sync and not user["amo_id"]:
+        # do not update user as AMO User unless it comes from an AddonSync
         return None
 
     amo_deleted = data.pop("deleted", False)
@@ -1188,6 +1193,8 @@ def amo_compress_categories(categories):
 def amo_sync_addon(data):
     data = deepcopy(data)
     users = [upsert_amo_user_data(author) for author in data["authors"]]
+    # filter out the users that couldn't be found
+    users = [user for user in users if user]
     addon_data = {
         "AMO_Category__c": amo_compress_categories(data["categories"]),
         "AMO_Default_Language__c": data["default_locale"],
@@ -1220,9 +1227,37 @@ def amo_sync_addon(data):
 
     sfdc.addon.upsert(f'AMO_AddOn_Id__c/{data["id"]}', addon_data)
     addon_record = sfdc.addon.get_by_custom_id("AMO_AddOn_Id__c", data["id"])
+
+    # delete users no longer associated with the addon
+    existing_users = sfdc.sf.query(
+        sfapi.format_soql(
+            "SELECT Id, AMO_Contact_ID__c FROM DevAddOn__c WHERE AMO_AddOn_ID__c = {addon_id}",
+            addon_id=addon_record["Id"],
+        ),
+    )
+    user_ids_to_records = {
+        i["AMO_Contact_ID__c"]: i["Id"] for i in existing_users["records"]
+    }
+    existing_user_ids = set(user_ids_to_records.keys())
+    new_user_ids = {user["id"] for user in users}
+    if new_user_ids == existing_user_ids:
+        # no need to continue as no users have been added or removed
+        return
+
+    to_delete = existing_user_ids - new_user_ids
+    for delete_user_id in to_delete:
+        sfdc.dev_addon.delete(user_ids_to_records[delete_user_id])
+
+    to_add = new_user_ids - existing_user_ids
+    if not to_add:
+        # no new users to add
+        return
+
     for user in users:
-        if not user:
+        if user["id"] not in to_add:
+            # record exists
             continue
+
         try:
             sfdc.dev_addon.upsert(
                 f'ConcatenateAMOID__c/{user["amo_id"]}-{data["id"]}',
@@ -1232,21 +1267,17 @@ def amo_sync_addon(data):
                 },
             )
         except sfapi.SalesforceMalformedRequest as e:
-            try:
-                if e.content[0]["errorCode"] == "DUPLICATE_VALUE":
-                    # dupe error, so we don't need to do this again
-                    pass
-                else:
-                    raise e
-            except Exception:
-                # if anything else goes wrong just retry
+            if e.content[0]["errorCode"] == "DUPLICATE_VALUE":
+                # dupe error, so we don't need to do this again
+                pass
+            else:
                 raise e
 
 
 @et_task
 def amo_sync_user(data):
     # copy input so it's not modified for retry
-    upsert_amo_user_data(data.copy())
+    upsert_amo_user_data(data.copy(), user_sync=True)
 
 
 @celery_app.task()

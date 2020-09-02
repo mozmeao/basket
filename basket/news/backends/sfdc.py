@@ -262,9 +262,6 @@ class RefreshingSFMixin:
     session_expires = None
     sf_instance = None
 
-    def _base_url(self):
-        raise NotImplementedError()
-
     def refresh_session(self):
         sf_session = get_sf_session()
         if sf_session["id"] == self.session_id:
@@ -274,7 +271,6 @@ class RefreshingSFMixin:
         self.session_id = sf_session["id"]
         self.session_expires = sf_session["expires"]
         self.sf_instance = sf_session["instance"]
-        self.base_url = self._base_url()
 
     def session_is_expired(self):
         """Report session as expired between 5 and 6 minutes early
@@ -327,11 +323,6 @@ class RefreshingSalesforce(RefreshingSFMixin, sfapi.Salesforce):
             domain=settings.SFDC_SETTINGS["domain"],
         )
 
-    def _base_url(self):
-        return ("https://{instance}/services/data/v{version}/").format(
-            instance=self.sf_instance, version=self.sf_version,
-        )
-
 
 class RefreshingSFType(RefreshingSFMixin, sfapi.SFType):
     def __init__(self, name="Contact"):
@@ -341,11 +332,6 @@ class RefreshingSFType(RefreshingSFMixin, sfapi.SFType):
             session_id=self.session_id,
             sf_instance=self.sf_instance,
             sf_version=DEFAULT_API_VERSION,
-        )
-
-    def _base_url(self):
-        return ("https://{instance}/services/data/v{version}/sobjects/{name}/").format(
-            instance=self.sf_instance, name=self.name, version=self.sf_version,
         )
 
 
