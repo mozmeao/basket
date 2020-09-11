@@ -1165,17 +1165,8 @@ def upsert_amo_user_data(data, user_sync=False):
     amo_data["amo_id"] = amo_id
     amo_data["amo_deleted"] = amo_deleted
 
-    if amo_deleted:
-        if fxa_id is None:
-            # Deleted user, we don't want do keep linking that AMO account with
-            # that FxA account in Salesforce, they might re-create a new AMO
-            # account from their previous FxA account.
-            amo_data["amo_id"] = None
-    else:
-        if fxa_id is None:
-            # User takeover protection, we don't want do keep linking that AMO
-            # account with that FxA account in Salesforce
-            amo_data["amo_id"] = None
+    if amo_deleted or fxa_id is None:
+        amo_data["amo_id"] = None
 
     sfdc.update(user, amo_data)
     return user

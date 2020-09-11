@@ -1432,7 +1432,7 @@ class AMOSyncUserTests(TestCase):
                 "amo_location": "California, USA, Earth",
                 "amo_user": True,
                 "amo_deleted": True,
-                "amo_id": 1234,
+                "amo_id": None,
             },
         )
 
