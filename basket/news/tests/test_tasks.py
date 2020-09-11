@@ -1363,6 +1363,21 @@ class AMOSyncAddonTests(TestCase):
             ],
         )
 
+    def test_deleted_addon(self, uaud_mock, sfdc_mock):
+        self.amo_data["status"] = "deleted"
+        sfdc_mock.sf.query.return_value = {
+            "records": [{"Id": 1234}, {"Id": 1235}],
+        }
+        amo_sync_addon(self.amo_data)
+        uaud_mock.assert_not_called()
+        sfdc_mock.sf.query.assert_called_with(
+            f'SELECT Id FROM DevAddOn__c WHERE AMO_AddOn_ID__c = {self.amo_data["id"]}',
+        )
+        sfdc_mock.dev_addon.delete.has_calls([call(1234), call(1235)])
+        sfdc_mock.addon.delete.assert_called_with(
+            f'AMO_AddOn_Id__c/{self.amo_data["id"]}',
+        )
+
 
 @patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.get_user_data")

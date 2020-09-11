@@ -1183,6 +1183,20 @@ def amo_compress_categories(categories):
 @et_task
 def amo_sync_addon(data):
     data = deepcopy(data)
+    if data["status"] == "deleted":
+        # if deleted, go ahead and delete the author associations and addon
+        addon_users = sfdc.sf.query(
+            sfapi.format_soql(
+                "SELECT Id FROM DevAddOn__c WHERE AMO_AddOn_ID__c = {addon_id}",
+                addon_id=data["id"],
+            ),
+        )
+        for record in addon_users["records"]:
+            sfdc.dev_addon.delete(record["Id"])
+
+        sfdc.addon.delete(f'AMO_AddOn_Id__c/{data["id"]}')
+        return
+
     users = [upsert_amo_user_data(author) for author in data["authors"]]
     # filter out the users that couldn't be found
     users = [user for user in users if user]
