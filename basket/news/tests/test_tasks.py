@@ -1365,13 +1365,41 @@ class AMOSyncAddonTests(TestCase):
 
     def test_deleted_addon(self, uaud_mock, sfdc_mock):
         self.amo_data["status"] = "deleted"
-        sfdc_mock.sf.query.return_value = {
-            "records": [{"Id": 1234}, {"Id": 1235}],
-        }
+        sfdc_mock.sf.query.side_effect = [
+            {
+                # 1st response is the addon's users
+                "records": [
+                    {"Id": 1234, "AMO_Contact_ID__c": "A4321"},
+                    {"Id": 1235, "AMO_Contact_ID__c": "A4322"},
+                ],
+            },
+            {
+                # 1st user has records
+                "records": [{"Id": "123456"}],
+            },
+            {
+                # 2nd user has none
+                "records": [],
+            },
+        ]
         amo_sync_addon(self.amo_data)
         uaud_mock.assert_not_called()
-        sfdc_mock.sf.query.assert_called_with(
-            f'SELECT Id FROM DevAddOn__c WHERE AMO_AddOn_ID__c = {self.amo_data["id"]}',
+        sfdc_mock.sf.query.assert_has_calls(
+            [
+                call(
+                    f"SELECT Id, AMO_Contact_ID__c FROM DevAddOn__c WHERE AMO_AddOn_ID__c = {self.amo_data['id']}",
+                ),
+                call(
+                    "SELECT Id FROM DevAddOn__c WHERE AMO_Contact_ID__c = 'A4321' LIMIT 1",
+                ),
+                call(
+                    "SELECT Id FROM DevAddOn__c WHERE AMO_Contact_ID__c = 'A4322' LIMIT 1",
+                ),
+            ],
+        )
+        # it should update the 2nd user that has no returned records
+        sfdc_mock.update.called_once_with(
+            {"id": "A4322"}, {"amo_id": None, "amo_user": False},
         )
         sfdc_mock.dev_addon.delete.has_calls([call(1234), call(1235)])
         sfdc_mock.addon.delete.assert_called_with(

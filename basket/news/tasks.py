@@ -1180,6 +1180,18 @@ def amo_compress_categories(categories):
     return ",".join(cats_list)
 
 
+def amo_check_user_for_deletion(user_id):
+    """If a user has no addons their AMO info should be removed"""
+    addons = sfdc.sf.query(
+        sfapi.format_soql(
+            "SELECT Id FROM DevAddOn__c WHERE AMO_Contact_ID__c = {contact_id} LIMIT 1",
+            contact_id=user_id,
+        ),
+    )
+    if not addons["records"]:
+        sfdc.update({"id": user_id}, {"amo_id": None, "amo_user": False})
+
+
 @et_task
 def amo_sync_addon(data):
     data = deepcopy(data)
@@ -1187,12 +1199,13 @@ def amo_sync_addon(data):
         # if deleted, go ahead and delete the author associations and addon
         addon_users = sfdc.sf.query(
             sfapi.format_soql(
-                "SELECT Id FROM DevAddOn__c WHERE AMO_AddOn_ID__c = {addon_id}",
+                "SELECT Id, AMO_Contact_ID__c FROM DevAddOn__c WHERE AMO_AddOn_ID__c = {addon_id}",
                 addon_id=data["id"],
             ),
         )
         for record in addon_users["records"]:
             sfdc.dev_addon.delete(record["Id"])
+            amo_check_user_for_deletion(record["AMO_Contact_ID__c"])
 
         sfdc.addon.delete(f'AMO_AddOn_Id__c/{data["id"]}')
         return
@@ -1252,6 +1265,7 @@ def amo_sync_addon(data):
     to_delete = existing_user_ids - new_user_ids
     for delete_user_id in to_delete:
         sfdc.dev_addon.delete(user_ids_to_records[delete_user_id])
+        amo_check_user_for_deletion(delete_user_id)
 
     to_add = new_user_ids - existing_user_ids
     if not to_add:
