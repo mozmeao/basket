@@ -75,6 +75,10 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         "TIMEOUT": 60 * 60,  # 1 hour
     },
+    "sfdc_sessions": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "TIMEOUT": 60 * 60,  # 1 hour
+    },
     "product_details": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
 }
 

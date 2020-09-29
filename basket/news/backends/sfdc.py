@@ -5,7 +5,7 @@ from random import randint
 from time import time
 
 from django.conf import settings
-from django.core.cache import cache
+from django.core.cache import caches
 
 import simple_salesforce as sfapi
 from django_statsd.clients import statsd
@@ -21,6 +21,7 @@ from basket.news.newsletters import (
 )
 
 
+cache = caches["sfdc_sessions"]
 _BOOLEANS = {
     "1": True,
     "y": True,
@@ -325,26 +326,25 @@ class RefreshingSalesforce(RefreshingSFMixin, sfapi.Salesforce):
 
 
 class RefreshingSFType(RefreshingSFMixin, sfapi.SFType):
-    def __init__(self, name="Contact"):
-        self.refresh_session()
-        super().__init__(
-            object_name=name,
-            session_id=self.session_id,
-            sf_instance=self.sf_instance,
-            sf_version=DEFAULT_API_VERSION,
-        )
+    pass
 
 
 class SFDC:
-    def __init__(self):
-        self._types_cache = {}
-
     def _get_type(self, name):
-        if name not in self._types_cache and settings.SFDC_SETTINGS.get("username"):
-            inst = RefreshingSalesforce() if name == "sf" else RefreshingSFType(name)
-            self._types_cache[name] = inst
+        if not settings.SFDC_SETTINGS.get("username"):
+            return None
 
-        return self._types_cache.get(name, None)
+        sf = RefreshingSalesforce()
+        if name == "sf":
+            return sf
+        else:
+            return RefreshingSFType(
+                object_name=name,
+                session_id=sf.session_id,
+                sf_instance=sf.sf_instance,
+                sf_version=sf.sf_version,
+                session=sf.session,
+            )
 
     @property
     def sf(self):
