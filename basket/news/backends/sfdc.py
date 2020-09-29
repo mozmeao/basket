@@ -326,7 +326,20 @@ class RefreshingSalesforce(RefreshingSFMixin, sfapi.Salesforce):
 
 
 class RefreshingSFType(RefreshingSFMixin, sfapi.SFType):
-    pass
+    def __init__(
+        self,
+        object_name,
+        session_id,
+        sf_instance,
+        sf_version=DEFAULT_API_VERSION,
+        proxies=None,
+        session=None,
+        session_expires=None,
+    ):
+        self.session_expires = session_expires
+        super().__init__(
+            object_name, session_id, sf_instance, sf_version, proxies, session,
+        )
 
 
 class SFDC:
@@ -344,6 +357,7 @@ class SFDC:
                 sf_instance=sf.sf_instance,
                 sf_version=sf.sf_version,
                 session=sf.session,
+                session_expires=sf.session_expires,
             )
 
     @property
