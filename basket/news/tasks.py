@@ -1196,18 +1196,22 @@ def amo_check_user_for_deletion(user_id):
 def amo_sync_addon(data):
     data = deepcopy(data)
     if data["status"] == "deleted":
+        try:
+            addon_record = sfdc.addon.get_by_custom_id("AMO_AddOn_Id__c", data["id"])
+        except sfapi.SalesforceResourceNotFound:
+            return
         # if deleted, go ahead and delete the author associations and addon
         addon_users = sfdc.sf.query(
             sfapi.format_soql(
                 "SELECT Id, AMO_Contact_ID__c FROM DevAddOn__c WHERE AMO_AddOn_ID__c = {addon_id}",
-                addon_id=data["id"],
+                addon_id=addon_record["Id"],
             ),
         )
         for record in addon_users["records"]:
             sfdc.dev_addon.delete(record["Id"])
             amo_check_user_for_deletion(record["AMO_Contact_ID__c"])
 
-        sfdc.addon.delete(f'AMO_AddOn_Id__c/{data["id"]}')
+        sfdc.addon.delete(addon_record["Id"])
         return
 
     users = [upsert_amo_user_data(author) for author in data["authors"]]
