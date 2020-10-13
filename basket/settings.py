@@ -238,7 +238,7 @@ if ET_CLIENT_ID and ET_CLIENT_SECRET:
     SFMC_SETTINGS["clientsecret"] = ET_CLIENT_SECRET
 
 # Salesforce.com
-SFDC_USE_SANDBOX = (config("SFDC_USE_SANDBOX", USE_SANDBOX_BACKEND, cast=bool),)
+SFDC_USE_SANDBOX = config("SFDC_USE_SANDBOX", USE_SANDBOX_BACKEND, cast=bool)
 SFDC_SETTINGS = {
     "username": config("SFDC_USERNAME", None),
     "password": config("SFDC_PASSWORD", None),
