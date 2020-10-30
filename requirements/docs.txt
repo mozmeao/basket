@@ -1,4 +1,0 @@
-# requirements for building the docs
-
-Sphinx==2.4.0
-

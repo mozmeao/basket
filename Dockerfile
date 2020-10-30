@@ -16,8 +16,8 @@ WORKDIR /app
 ENV DJANGO_SETTINGS_MODULE=basket.settings
 
 # Install app
-COPY requirements /app/requirements
-RUN pip install --require-hashes --no-cache-dir -r requirements/prod.txt
+COPY requirements.txt /app/
+RUN pip install --require-hashes --no-cache-dir -r requirements.txt
 
 COPY . /app
 RUN DEBUG=False SECRET_KEY=foo ALLOWED_HOSTS=localhost, DATABASE_URL=sqlite:// \

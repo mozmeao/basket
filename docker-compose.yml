@@ -114,3 +114,10 @@ services:
       context: .
       target: builder
     image: mozmeao/basket:builder-${GIT_COMMIT_SHORT:-latest}
+
+  compile-requirements:
+    image: mozmeao/basket:builder-${GIT_COMMIT_SHORT:-latest}
+    command:
+      ./bin/compile-requirements.sh
+    volumes:
+      - .:/app

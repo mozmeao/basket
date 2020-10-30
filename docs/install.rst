@@ -52,7 +52,7 @@ The steps to get up and running are these:
     $ # this starts the server and dependencies
     $ docker-compose up web
 
-If you've made changes to the `Dockerfile` or the `requirements/*.txt` files you'll need to rebuild the image to run the app and tests:
+If you've made changes to the `Dockerfile` or `requirements.txt` you'll need to rebuild the image to run the app and tests:
 
 .. code-block:: bash
 
