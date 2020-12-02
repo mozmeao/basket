@@ -43,7 +43,7 @@ dev:
     - master
   variables:
     NAMESPACE: basket-dev
-    CLUSTERS: oregon-a oregon-b
+    CLUSTERS: mozmeao-or
 
 stage:
   extends: .deploy
@@ -52,7 +52,7 @@ stage:
     - stage
   variables:
     NAMESPACE: basket-stage
-    CLUSTERS: frankfurt oregon-a oregon-b
+    CLUSTERS: mozmeao-fr mozmeao-or
 
 stage-admin:
   extends: .deploy
@@ -62,7 +62,7 @@ stage-admin:
     - stage
   variables:
     NAMESPACE: basket-admin-stage
-    CLUSTERS: oregon-a oregon-b
+    CLUSTERS: mozmeao-or
 
 admin:
   extends: .deploy
@@ -72,7 +72,7 @@ admin:
     - prod
   variables:
     NAMESPACE: basket-admin
-    CLUSTERS: oregon-a oregon-b
+    CLUSTERS: mozmeao-or
 
 prod:
   extends: .deploy
@@ -80,4 +80,4 @@ prod:
     - prod
   variables:
     NAMESPACE: basket-prod
-    CLUSTERS: frankfurt oregon-a oregon-b
+    CLUSTERS: mozmeao-fr mozmeao-or
