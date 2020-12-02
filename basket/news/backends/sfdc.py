@@ -6,7 +6,10 @@ from time import time
 
 from django.conf import settings
 from django.core.cache import caches
+from django.utils.functional import cached_property
 
+import requests
+import requests.adapters
 import simple_salesforce as sfapi
 from django_statsd.clients import statsd
 from simple_salesforce.api import DEFAULT_API_VERSION
@@ -315,13 +318,14 @@ class RefreshingSFMixin:
 
 
 class RefreshingSalesforce(RefreshingSFMixin, sfapi.Salesforce):
-    def __init__(self):
+    def __init__(self, session=None):
         self.refresh_session()
         super().__init__(
             session_id=self.session_id,
             instance=self.sf_instance,
             version=DEFAULT_API_VERSION,
             domain=settings.SFDC_SETTINGS["domain"],
+            session=session,
         )
 
 
@@ -347,7 +351,7 @@ class SFDC:
         if not settings.SFDC_SETTINGS.get("username"):
             return None
 
-        sf = RefreshingSalesforce()
+        sf = RefreshingSalesforce(self._session)
         if name == "sf":
             return sf
         else:
@@ -356,9 +360,16 @@ class SFDC:
                 session_id=sf.session_id,
                 sf_instance=sf.sf_instance,
                 sf_version=sf.sf_version,
-                session=sf.session,
+                session=self._session,
                 session_expires=sf.session_expires,
             )
+
+    @cached_property
+    def _session(self):
+        session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(max_retries=4)
+        session.mount("https://", adapter)
+        return session
 
     @property
     def sf(self):
