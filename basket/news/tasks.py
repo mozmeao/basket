@@ -1161,9 +1161,11 @@ def upsert_amo_user_data(data, user_sync=False):
 
     amo_deleted = data.pop("deleted", False)
     amo_data = {f"amo_{k}": v for k, v in data.items() if v}
-    amo_data["amo_user"] = True
     amo_data["amo_id"] = amo_id
     amo_data["amo_deleted"] = amo_deleted
+    if not user_sync:
+        # only ensure this is true if this is from an addon sync
+        amo_data["amo_user"] = True
 
     if amo_deleted or fxa_id is None:
         amo_data["amo_id"] = None
