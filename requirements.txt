@@ -374,13 +374,13 @@ pyflakes==2.1.1 \
     --hash=sha256:17dbeb2e3f4d772725c777fabc446d5634d1038f234e77343108ce445ea69ce0 \
     --hash=sha256:d976835886f8c5b31d47970ed689944a0262b5f3afa00a5a7b4dc81e5449f8a2 \
     # via flake8
-pyfxa==0.7.3 \
-    --hash=sha256:f47f4285629fa6c033c79adc3fb90926c0818a42cfddb04d32818547362f1627 \
+pyfxa==0.7.7 \
+    --hash=sha256:6c85cd08cf05f7138dee1cf2a8a1d68fd428b7b5ad488917c70a2a763d651cdb \
     # via -r requirements.in
 pyjwt==2.0.0 \
     --hash=sha256:5c2ff2eb27d7e342dfc3cafcc16412781f06db2690fbef81922b0172598f085b \
     --hash=sha256:7a2b271c6dac2fda9e0c33d176c4253faba2c6c6b3a99c7f28a32c3c97522779 \
-    # via salesforce-fuelsdk
+    # via pyfxa, salesforce-fuelsdk
 pyopenssl==20.0.1 \
     --hash=sha256:4c231c759543ba02560fcd2480c48dcec4dae34c9da7d3747c508227e0624b51 \
     --hash=sha256:818ae18e06922c066f777a33f1fca45786d85edfe71cd043de6379337a7f274b \
