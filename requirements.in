@@ -23,7 +23,7 @@ gunicorn==20.0.4
 hiredis==1.0.1
 importlib-metadata==1.4.0
 ipaddress==1.0.22
-meinheld==1.0.1
+meinheld==1.0.2
 mozilla-django-oidc==1.2.3
 msgpack-python==0.5.6
 mysqlclient==1.4.6
