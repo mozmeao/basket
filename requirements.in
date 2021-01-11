@@ -21,7 +21,7 @@ django-watchman==0.17.0
 email-validator==1.0.5
 gunicorn==20.0.4
 hiredis==1.0.1
-importlib-metadata==1.4.0
+importlib-metadata==3.4.0
 ipaddress==1.0.22
 meinheld==1.0.1
 mozilla-django-oidc==1.2.3
