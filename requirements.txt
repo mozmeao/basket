@@ -342,9 +342,9 @@ pep8==1.7.1 \
     --hash=sha256:b22cfae5db09833bb9bd7c8463b53e1a9c9b39f12e304a8d0bba729c501827ee \
     --hash=sha256:fe249b52e20498e59e0b5c5256aa52ee99fc295b26ec9eaa85776ffdb9fe6374 \
     # via -r requirements.in
-phonenumbers==8.11.4 \
-    --hash=sha256:685e81ac131fea8dbd71b7769d2ac480c9fe9d5a45838e8546f5de9910670e8e \
-    --hash=sha256:9ca4332425ae4f4d1e7925bbf98ef9446755b59a903ae6a63cf4fb19adcd168b \
+phonenumbers==8.12.15 \
+    --hash=sha256:13d499f7114c4b37c54ee844b188d5e7441951a7da41de5fc1a25ff8fdceef80 \
+    --hash=sha256:b734bfcf33e87ddae72196a40b3d1af35abd0beb263816ae18e1bff612926406 \
     # via -r requirements.in
 pip-tools==5.3.1 \
     --hash=sha256:5672c2b6ca0f1fd803f3b45568c2cf7fadf135b4971e7d665232b2075544c0ef \
