@@ -173,9 +173,9 @@ django-watchman==0.17.0 \
     --hash=sha256:5b847fb742a0fa572864641d2c809dfeecb512cf58b45a2adabc0107e67d001d \
     --hash=sha256:6d2fed545ef3128b25927dfe61da46d7bdc2754dc1e76ba1c96576a168a1a506 \
     # via -r requirements.in
-django==2.2.13 \
-    --hash=sha256:84f370f6acedbe1f3c41e1a02de44ac206efda3355e427139ecb785b5f596d80 \
-    --hash=sha256:e8fe3c2b2212dce6126becab7a693157f1a441a07b62ec994c046c76af5bb66d \
+django==2.2.17 \
+    --hash=sha256:558cb27930defd9a6042133258caf797b2d1dee233959f537e3dc475cb49bd7c \
+    --hash=sha256:cf5370a4d7765a9dd6d42a7b96b53c74f9446cd38209211304b210fe0404b861 \
     # via -r requirements.in, django-allow-cidr, django-cors-headers, django-jsonfield, django-mozilla-product-details, django-picklefield, django-redis, django-synctool, django-watchman, mozilla-django-oidc
 dnspython==2.1.0 \
     --hash=sha256:95d12f6ef0317118d2a1a6fc49aac65ffec7eb8087474158f42f26a639135216 \
