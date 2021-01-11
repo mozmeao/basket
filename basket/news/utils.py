@@ -538,7 +538,7 @@ def process_email(email):
     except EmailNotValidError:
         return None
 
-    return info.get("email_ascii", None)
+    return info.ascii_email
 
 
 def parse_newsletters_csv(newsletters):
