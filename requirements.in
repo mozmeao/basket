@@ -45,6 +45,6 @@ mock==3.0.5
 pbr==5.4.4
 pip-tools==5.3.1
 pep8==1.7.1
-pytest-django==3.8.0
+pytest-django==4.1.0
 pytest-pythonpath==0.7.3
 urlwait==0.4
