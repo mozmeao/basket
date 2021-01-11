@@ -30,7 +30,7 @@ mysqlclient==1.4.6
 newrelic==5.4.1.134
 phonenumbers==8.11.4
 PyFxA==0.7.3
-python-decouple==3.3
+python-decouple==3.4
 PyYAML==5.3
 https://github.com/mozmeao/FuelSDK-Python/archive/172815bd74009e36b728b16f774f1aafecb06d03.tar.gz#egg=Salesforce-FuelSDK==1.2.0
 sentry-sdk==0.17.6
