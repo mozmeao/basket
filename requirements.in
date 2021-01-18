@@ -17,7 +17,7 @@ django-ratelimit==2.0.0
 django-redis==4.11.0
 django-statsd-mozilla==0.4.0
 https://github.com/pmclanahan/django-synctool/archive/5f7cf9bad741e60bd9df32aa90e71425d98e437c.tar.gz#egg=django-synctool==1.1.1
-django-watchman==0.17.0
+django-watchman==1.2.0
 email-validator==1.1.2
 gunicorn==20.0.4
 hiredis==1.0.1
