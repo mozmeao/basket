@@ -138,9 +138,9 @@ django-extensions==2.2.6 \
     --hash=sha256:4524eca892d23fa6e93b0620901983b287ff5dc806f1b978d6a98541f06b9471 \
     --hash=sha256:936e8e3962024d3c75ea54f4e0248002404ca7ca7fb698430e60b06b5555b4e7 \
     # via -r requirements.in
-django-jsonfield==1.4.0 \
-    --hash=sha256:7bdd0ea75ad842b9e33decdf343398c91fbb7bd664fde0648ef83e78b0453b6e \
-    --hash=sha256:9b3dac9f7352a6d37e9cfe0126c5b58ac7abf1cb20c0da294a00269a725223f1 \
+django-jsonfield==1.4.1 \
+    --hash=sha256:ccb2fe623e1bf7799e49c593b0a89a85084ef8d3debbf26d92a54e27b5305d72 \
+    --hash=sha256:f789a0ea1f80b48aff7d6c36dd356ce125dbf1b7cd97a82d315607ac758f50ff \
     # via -r requirements.in
 django-jsonview==2.0.0 \
     --hash=sha256:1871983f6c7ab0bec1bad3249b06ce64c47d3bed57cd190f87e5acaf65722ebb \
