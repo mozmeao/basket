@@ -47,4 +47,4 @@ pip-tools==5.3.1
 pep8==1.7.1
 pytest-django==4.1.0
 pytest-pythonpath==0.7.3
-urlwait==0.4
+urlwait==1.0

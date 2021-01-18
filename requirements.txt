@@ -556,9 +556,9 @@ urllib3==1.25.11 \
     --hash=sha256:8d7eaa5a82a1cac232164990f04874c594c9453ec55eef02eab885aa02fc17a2 \
     --hash=sha256:f5321fbe4bf3fefa0efd0bfe7fb14e90909eb62a48ccda331726b4319897dd5e \
     # via botocore, requests, sentry-sdk
-urlwait==0.4 \
-    --hash=sha256:395fc0c2a7f9736858a2c2f449aa20c6e9da1f86bfc2d1fda4f2f5b78a5c115a \
-    --hash=sha256:fc39ff2c8abbcaad5043e1f79699dcb15a036cc4b0ff4d1aa825ea105d4889ff \
+urlwait==1.0 \
+    --hash=sha256:a9bf2da792fa6983fa93f6360108e16615066ab0f9cfb7f53e5faee5f5dffaac \
+    --hash=sha256:eae2c20001efc915166cac79c04bac0088ad5787ec64b36f27afd2f359953b2b \
     # via -r requirements.in
 user-agents==2.1 \
     --hash=sha256:a0aadd6604d224ed01f94ee8783aa1e7ddf8c116ecadc460c9a98acdea20a66f \
