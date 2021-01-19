@@ -1143,13 +1143,17 @@ def upsert_amo_user_data(data, user_sync=False):
     :param user_sync: bool True if this is a User Sync request
     :return: dict of SFDC contact data
     """
-    fxa_id = data.pop("fxa_id")
-    amo_id = data.pop("id")
+    data = data.copy()
+    fxa_id = data.pop("fxa_id", None)
+    amo_id = data.pop("id", None)
+    user = None
 
-    user = get_user_data(amo_id=amo_id, extra_fields=["id", "amo_id", "fxa_id"])
-    if not user:
-        # Try to find user with fxa_id
-        user = get_user_data(fxa_id=fxa_id, extra_fields=["id", "amo_id", "fxa_id"])
+    # records can come in with no "id" or "fxa_id" field
+    if amo_id:
+        user = get_user_data(amo_id=amo_id, extra_fields=["id", "amo_id", "fxa_id"])
+        if not user and fxa_id:
+            # Try to find user with fxa_id
+            user = get_user_data(fxa_id=fxa_id, extra_fields=["id", "amo_id", "fxa_id"])
 
     if not user:
         # Cannot find user with FxA ID or AMO ID, ignore the update

@@ -1510,6 +1510,12 @@ class AMOSyncUserTests(TestCase):
             },
         )
 
+    def test_ignore_user_no_id_or_fxa_id(self, gud_mock, sfdc_mock):
+        self.amo_data["fxa_id"] = None
+        self.amo_data["id"] = None
+        amo_sync_user(self.amo_data)
+        sfdc_mock.update.assert_not_called()
+
 
 @override_settings(COMMON_VOICE_BATCH_PROCESSING=True, COMMON_VOICE_BATCH_CHUNK_SIZE=5)
 @patch("basket.news.tasks.record_common_voice_update")
