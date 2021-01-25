@@ -77,7 +77,7 @@ class Newsletter(models.Model):
         "Newsletters with lower order numbers will display first.",
     )
 
-    def __unicode__(self):
+    def __str__(self):
         return self.title
 
     class Meta(object):
@@ -170,7 +170,7 @@ class FailedTask(models.Model):
     exc = models.TextField(null=True, default=None, help_text="repr(exception)")
     einfo = models.TextField(null=True, default=None, help_text="repr(einfo)")
 
-    def __unicode__(self):
+    def __str__(self):
         return self.task_id
 
     def formatted_call(self):
@@ -274,7 +274,7 @@ class Interest(models.Model):
             emails,
         )
 
-    def __unicode__(self):
+    def __str__(self):
         return self.title
 
 
@@ -300,7 +300,7 @@ class LocaleStewards(models.Model):
         verbose_name = "Locale Steward"
         verbose_name_plural = "Locale Stewards"
 
-    def __unicode__(self):
+    def __str__(self):
         return "Stewards for {lang_code} ({lang_name})".format(
             lang_code=self.locale,
             lang_name=product_details.languages[self.locale]["English"],
