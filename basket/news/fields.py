@@ -55,7 +55,7 @@ class CountryField(models.CharField):
         for key, value in defaults.items():
             kwargs.setdefault(key, value)
 
-        return super(CountryField, self).__init__(*args, **kwargs)
+        super(CountryField, self).__init__(*args, **kwargs)
 
 
 class LocaleField(models.CharField):
@@ -69,4 +69,4 @@ class LocaleField(models.CharField):
         for key, value in defaults.items():
             kwargs.setdefault(key, value)
 
-        return super(LocaleField, self).__init__(*args, **kwargs)
+        super(LocaleField, self).__init__(*args, **kwargs)

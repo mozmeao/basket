@@ -22,6 +22,10 @@ def get_uuid():
     return str(uuid4())
 
 
+def make_slug(*args):
+    return "-".join(args).lower()
+
+
 class BlockedEmail(models.Model):
     email_domain = models.CharField(max_length=50)
 
@@ -326,14 +330,9 @@ class LocalizedSMSMessage(models.Model):
         unique_together = ["message_id", "language", "country"]
         verbose_name = "Localized SMS message"
 
-    @staticmethod
-    def make_slug(message_id, country, language):
-        full_msg_id = "%s-%s-%s" % (message_id, country, language)
-        return full_msg_id.lower()
-
     @property
     def slug(self):
-        return self.make_slug(self.message_id, self.country, self.language)
+        return make_slug(self.message_id, self.country, self.language)
 
 
 class TransactionalEmailMessage(models.Model):
@@ -359,6 +358,59 @@ class TransactionalEmailMessage(models.Model):
     def language_list(self):
         """Return language codes for this newsletter as a list"""
         return [x.strip() for x in self.languages.split(",") if x.strip()]
+
+
+class AcousticTxEmailMessageManager(models.Manager):
+    def get_vendor_id(self, message_id, language):
+        message = None
+        exception = AcousticTxEmailMessage.DoesNotExist
+        try:
+            # try to get the exact language
+            message = self.get(message_id=message_id, language=language)
+        except exception:
+            if "-" in language:
+                language = language.split("-")[0]
+
+            try:
+                # failing above, try to get the language prefix
+                message = self.get(message_id=message_id, language__startswith=language)
+            except exception:
+                try:
+                    # failing above, try to get the default language
+                    message = self.get(message_id=message_id, language="en-US")
+                except exception:
+                    # couldn't find a message. give up.
+                    pass
+
+        if message:
+            return message.vendor_id
+
+
+class AcousticTxEmailMessage(models.Model):
+    """Transactional Email definitions for Acoustic Transact"""
+
+    message_id = models.SlugField(
+        help_text="The ID for the message that will be used by clients",
+    )
+    vendor_id = models.CharField(
+        max_length=10, help_text="The backend vendor's identifier for this message",
+    )
+    description = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Optional short description of this message",
+    )
+    language = LocaleField(default="en-US")
+
+    objects = AcousticTxEmailMessageManager()
+
+    class Meta:
+        unique_together = ["message_id", "language"]
+        verbose_name = "Acoustic Transact message"
+
+    @property
+    def slug(self):
+        return make_slug(self.message_id, self.language)
 
 
 class CommonVoiceUpdate(models.Model):
