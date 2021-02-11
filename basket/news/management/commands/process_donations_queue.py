@@ -13,6 +13,7 @@ from django_statsd.clients import statsd
 from basket.news.tasks import (
     process_donation,
     process_donation_event,
+    process_donation_receipt,
     process_newsletter_subscribe,
     process_petition_signature,
 )
@@ -87,6 +88,8 @@ class Command(BaseCommand):
                         statsd.incr("mofo.donations.message.received.{}".format(etype))
                         processor = EVENT_TYPES.get(etype, EVENT_TYPES["DEFAULT"])
                         processor.delay(data["data"])
+                        if etype == "donation" and settings.DONATE_SEND_RECEIPTS:
+                            process_donation_receipt.delay(data["data"])
                     except Exception:
                         # something's wrong with the queue. try again.
                         statsd.incr("mofo.donations.message.queue_error")

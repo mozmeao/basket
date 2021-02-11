@@ -24,6 +24,7 @@ from dateutil.parser import isoparse
 from django_statsd.clients import statsd
 
 from basket.base.utils import email_is_testing
+from basket.news.backends.acoustic import acoustic
 from basket.news.backends.common import NewsletterException
 from basket.news.backends.sfdc import sfdc
 from basket.news.backends.sfmc import sfmc
@@ -35,6 +36,7 @@ from basket.news.models import (
     QueuedTask,
     TransactionalEmailMessage,
     CommonVoiceUpdate,
+    AcousticTxEmailMessage,
 )
 from basket.news.newsletters import (
     get_sms_vendor_id,
@@ -622,8 +624,27 @@ def sfdc_add_update(update_data, user_data=None):
                 sfdc.add(update_data)
 
 
+@et_task
+def send_acoustic_tx_message(email, vendor_id, fields=None):
+    acoustic.send_mail(email, vendor_id, fields)
+
+
+def send_acoustic_tx_messages(data, message_ids):
+    sent = 0
+    for mid in message_ids:
+        vid = AcousticTxEmailMessage.objects.get_vendor_id(mid, data.get("lang", "en"))
+        if vid:
+            send_acoustic_tx_message.delay(data["email"], vid)
+            sent += 1
+
+    return sent
+
+
 def send_transactional_messages(data, user_data, transactionals):
     email = data["email"]
+    if send_acoustic_tx_messages(data, transactionals):
+        return  # sent via Acoustic, skip SFMC
+
     lang_code = data.get("lang", "en")[:2].lower()
     msgs = TransactionalEmailMessage.objects.filter(message_id__in=transactionals)
     if user_data and "id" in user_data:
@@ -779,8 +800,12 @@ def send_recovery_message_task(email):
     if lang not in settings.RECOVER_MSG_LANGS:
         lang = "en"
 
-    message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
-    send_message.delay(message_id, email, user_data["id"], token=user_data["token"])
+    vid = AcousticTxEmailMessage.objects.get_vendor_id("token-recovery", lang)
+    if vid:
+        send_acoustic_tx_message.delay(email, vid, {"token": user_data["token"]})
+    else:
+        message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
+        send_message.delay(message_id, email, user_data["id"], token=user_data["token"])
 
 
 @et_task
@@ -1072,6 +1097,48 @@ def process_donation(data):
             pass
         else:
             raise
+
+
+DONATION_RECEIPT_FIELDS = [
+    "created",
+    "currency",
+    "donation_amount",
+    "email",
+    "first_name",
+    "last_name",
+    "recurring",
+    "transaction_id",
+    "card_type",
+    "last_4",
+    "locale",
+    "service",
+    "project",
+]
+# map of incoming field names -> email field names
+DONATION_RECEIPT_FIELDS_MAP = {
+    "card_type": "cc_type",
+    "last_4": "cc_last_4_digits",
+    "locale": "donation_locale",
+    "service": "payment_source",
+}
+
+
+@et_task
+def process_donation_receipt(data):
+    # filter out any extra data
+    message_data = {k: v for k, v in data.items() if k in DONATION_RECEIPT_FIELDS}
+    email = message_data.pop("email")
+    recurring = message_data.pop("recurring")
+    message_data["payment_frequency"] = "Recurring" if recurring else "One-Time"
+    # convert some field names
+    message_data = {
+        DONATION_RECEIPT_FIELDS_MAP.get(k, k): v for k, v in message_data.items()
+    }
+    message_id = AcousticTxEmailMessage.objects.get_vendor_id(
+        "donation-receipt", data["locale"],
+    )
+    if message_id:
+        acoustic.send_mail(email, message_id, message_data)
 
 
 @et_task

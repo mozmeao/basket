@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib import admin, messages
 
 from basket.news.models import (
+    AcousticTxEmailMessage,
     APIUser,
     BlockedEmail,
     FailedTask,
@@ -18,6 +19,12 @@ from basket.news.models import (
 class TransactionalEmailAdmin(admin.ModelAdmin):
     fields = ("message_id", "vendor_id", "languages", "description")
     list_display = ("message_id", "vendor_id", "languages", "description")
+
+
+class AcousticTxEmailMessageAdmin(admin.ModelAdmin):
+    fields = ("message_id", "vendor_id", "language", "description")
+    list_display = ("message_id", "vendor_id", "language", "description")
+    list_editable = ("vendor_id",)
 
 
 class LocalizedSMSMessageAdmin(admin.ModelAdmin):
@@ -164,6 +171,7 @@ class LogEntryAdmin(admin.ModelAdmin):
 
 
 admin.site.register(TransactionalEmailMessage, TransactionalEmailAdmin)
+admin.site.register(AcousticTxEmailMessage, AcousticTxEmailMessageAdmin)
 admin.site.register(LocalizedSMSMessage, LocalizedSMSMessageAdmin)
 admin.site.register(APIUser, APIUserAdmin)
 admin.site.register(BlockedEmail, BlockedEmailAdmin)
