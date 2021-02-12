@@ -107,6 +107,7 @@ FIELD_MAP = {
     "fxa_id": "FxA_Id__c",
     "fxa_deleted": "FxA_Account_Deleted__c",
     "fxa_lang": "FxA_Language__c",
+    "fxa_last_login": "FxA_Last_Login__c",
     "fxa_service": "FirstService__c",
     "fxa_create_date": "FxA_Created_Date__c",
     "fxa_primary_email": "FxA_Primary_Email__c",

@@ -1,6 +1,6 @@
 import json
 import re
-from datetime import datetime
+from datetime import date, datetime
 from itertools import chain
 from uuid import uuid4
 
@@ -53,13 +53,18 @@ SET = "SET"
 email_block_list_cache = caches["email_block_list"]
 
 
-def iso_format_unix_timestamp(timestamp):
+def iso_format_unix_timestamp(timestamp, date_only=False):
     """
     Convert a unix timestamp in seconds since epoc
     to an ISO formatted date string
     """
     if timestamp:
-        return datetime.utcfromtimestamp(float(timestamp)).isoformat()
+        if date_only:
+            dto = date.fromtimestamp(float(timestamp))
+        else:
+            dto = datetime.utcfromtimestamp(float(timestamp))
+
+        return dto.isoformat()
 
 
 def generate_token():

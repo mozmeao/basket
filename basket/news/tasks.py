@@ -302,12 +302,34 @@ def fxa_email_changed(data):
     cache.set(cache_key, ts, 7200)  # 2 hr
 
 
+def fxa_direct_update_contact(fxa_id, data):
+    """Set some small data for a contact with an FxA ID
+
+    Ignore if contact with FxA ID can't be found
+    """
+    try:
+        sfdc.contact.update(f"FxA_Id__c/{fxa_id}", data)
+    except sfapi.SalesforceMalformedRequest as e:
+        if e.content[0]["errorCode"] == "REQUIRED_FIELD_MISSING":
+            # couldn't find the fxa_id and tried to create a record but doesn't
+            # have the required data to do so. We can drop this one.
+            return
+        else:
+            # otherwise it's something else and we should potentially retry
+            raise
+
+
+@et_task
+def fxa_last_login(fxa_id, timestamp):
+    fxa_direct_update_contact(
+        fxa_id,
+        {"FxA_Last_Login__c": iso_format_unix_timestamp(timestamp, date_only=True)},
+    )
+
+
 @et_task
 def fxa_delete(data):
-    sfmc.upsert_row("FXA_Deleted", {"FXA_ID": data["uid"]})
-    user_data = get_user_data(fxa_id=data["uid"], extra_fields=["id"])
-    if user_data:
-        sfdc.update(user_data, {"fxa_deleted": True})
+    fxa_direct_update_contact(data["uid"], {"FxA_Account_Deleted__c": True})
 
 
 @et_task

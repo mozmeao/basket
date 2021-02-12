@@ -1,4 +1,3 @@
-from email.utils import formatdate
 from multiprocessing.dummy import Pool as ThreadPool
 from time import time
 
@@ -8,13 +7,12 @@ from django.core.management import BaseCommand, CommandError
 
 import boto3
 import requests
-import sentry_sdk
 from apscheduler.schedulers.blocking import BlockingScheduler
 from django_statsd.clients import statsd
 from pathlib import Path
 from pytz import utc
 
-from basket.news.backends.sfmc import sfmc
+from basket.news.tasks import fxa_last_login
 
 
 TMP = Path("/tmp")
@@ -77,23 +75,10 @@ def set_timestamps_done(timestamp_chunk):
 
 
 def update_fxa_records(timestamp_chunk):
-    formatted_chunk = [format_data_for_sfmc(*vals) for vals in timestamp_chunk]
-    try:
-        sfmc.bulk_upsert_rows(settings.FXA_SFMC_DE, formatted_chunk)
-    except Exception as e:
-        log("error updating chunk: %r" % e)
-        sentry_sdk.capture_exception()
-        # try again later
-        return
+    for fxaid, timestamp in timestamp_chunk:
+        fxa_last_login.delay(fxaid, timestamp)
 
     set_timestamps_done(timestamp_chunk)
-
-
-def format_data_for_sfmc(fxaid, timestamp):
-    return {
-        "keys": {"FXA_ID": fxaid},
-        "values": {"Timestamp": formatdate(timeval=timestamp, usegmt=True)},
-    }
 
 
 def chunk_fxa_data(current_timestamps, chunk_size=1000):
@@ -114,7 +99,7 @@ def chunk_fxa_data(current_timestamps, chunk_size=1000):
 
 
 def update_fxa_data(current_timestamps):
-    """Store the updated timestamps in a local dict, the cache, and SFMC."""
+    """Store the updated timestamps in a local dict, the cache, and SFDC."""
     global UPDATE_COUNT
     UPDATE_COUNT = 0
     total_count = len(current_timestamps)
@@ -166,7 +151,7 @@ def get_fxa_data():
 
         log("loading data from %s" % tmp_path)
         # collect all of the latest timestamps from all files in a dict first
-        # to ensure that we have the minimum data set to compare against SFMC
+        # to ensure that we have the minimum data set to compare against SFDC
         with tmp_path.open() as fxafile:
             file_count = 0
             for line in fxafile:
