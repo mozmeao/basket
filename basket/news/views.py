@@ -1145,7 +1145,7 @@ def amo_sync(request, post_type):
         data = json.loads(request.body)
     except ValueError:
         statsd.incr(f"amo_sync.{post_type}.message.json_error")
-        with sentry_sdk.configure_scope() as scope:
+        with sentry_sdk.push_scope() as scope:
             scope.set_extra("request.body", request.body)
             sentry_sdk.capture_exception()
 

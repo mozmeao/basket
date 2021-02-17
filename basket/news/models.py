@@ -5,6 +5,7 @@ from django.db import models
 from django.template.loader import render_to_string
 from django.utils.timezone import now
 
+import sentry_sdk
 from product_details import product_details
 from .celery import app as celery_app
 from jsonfield import JSONField
@@ -362,6 +363,7 @@ class TransactionalEmailMessage(models.Model):
 
 class AcousticTxEmailMessageManager(models.Manager):
     def get_vendor_id(self, message_id, language):
+        req_language = language
         message = None
         exception = AcousticTxEmailMessage.DoesNotExist
         try:
@@ -378,9 +380,12 @@ class AcousticTxEmailMessageManager(models.Manager):
                 try:
                     # failing above, try to get the default language
                     message = self.get(message_id=message_id, language="en-US")
-                except exception:
+                except exception as e:
                     # couldn't find a message. give up.
-                    pass
+                    with sentry_sdk.push_scope() as scope:
+                        scope.set_tag("language", req_language)
+                        scope.set_tag("message_id", message_id)
+                        sentry_sdk.capture_exception(e)
 
         if message:
             return message.vendor_id

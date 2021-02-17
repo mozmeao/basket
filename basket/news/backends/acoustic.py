@@ -28,12 +28,12 @@ def transact_xml(to, campaign_id, fields=None):
     root.append(xml_tag("NO_RETRY_ON_FAILURE", "false"))
     if fields:
         save_cols_tag = xml_tag("SAVE_COLUMNS")
+        root.append(save_cols_tag)
         for name in fields:
             save_cols_tag.append(xml_tag("COLUMN_NAME", name))
 
-        root.append(save_cols_tag)
-
     recipient_tag = xml_tag("RECIPIENT")
+    root.append(recipient_tag)
     recipient_tag.append(xml_tag("EMAIL", to))
     recipient_tag.append(xml_tag("BODY_TYPE", "HTML"))
     for name, value in fields.items():
@@ -42,7 +42,6 @@ def transact_xml(to, campaign_id, fields=None):
         p_tag.append(xml_tag("VALUE", value))
         recipient_tag.append(p_tag)
 
-    root.append(recipient_tag)
     return ElementTree.tostring(root, encoding="unicode")
 
 
@@ -62,7 +61,7 @@ class SilverpopTransact(Silverpop):
         return self._call_xt(transact_xml(to, campaign_id, fields))
 
 
-acoustic = SilverpopTransact(
+acoustic = Silverpop(
     client_id=settings.ACOUSTIC_CLIENT_ID,
     client_secret=settings.ACOUSTIC_CLIENT_SECRET,
     refresh_token=settings.ACOUSTIC_REFRESH_TOKEN,

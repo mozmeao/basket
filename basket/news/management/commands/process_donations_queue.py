@@ -76,7 +76,7 @@ class Command(BaseCommand):
                     except ValueError:
                         # body was not JSON
                         statsd.incr("mofo.donations.message.json_error")
-                        with sentry_sdk.configure_scope() as scope:
+                        with sentry_sdk.push_scope() as scope:
                             scope.set_extra("msg.body", msg.body)
                             sentry_sdk.capture_exception()
 
@@ -93,7 +93,7 @@ class Command(BaseCommand):
                     except Exception:
                         # something's wrong with the queue. try again.
                         statsd.incr("mofo.donations.message.queue_error")
-                        with sentry_sdk.configure_scope() as scope:
+                        with sentry_sdk.push_scope() as scope:
                             scope.set_tag("action", "retried")
                             sentry_sdk.capture_exception()
 

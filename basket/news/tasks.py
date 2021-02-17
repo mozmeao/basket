@@ -24,7 +24,7 @@ from dateutil.parser import isoparse
 from django_statsd.clients import statsd
 
 from basket.base.utils import email_is_testing
-from basket.news.backends.acoustic import acoustic_tx
+from basket.news.backends.acoustic import acoustic_tx, acoustic
 from basket.news.backends.common import NewsletterException
 from basket.news.backends.sfdc import sfdc
 from basket.news.backends.sfmc import sfmc
@@ -237,7 +237,7 @@ def et_task(func):
 
             try:
                 if not (isinstance(e, RetryTask) or ignore_error_post_retry(e)):
-                    with sentry_sdk.configure_scope() as scope:
+                    with sentry_sdk.push_scope() as scope:
                         scope.set_tag("action", "retried")
                         sentry_sdk.capture_exception()
 
@@ -431,22 +431,36 @@ def _add_fxa_activity(data):
     elif user_agent.is_tablet:
         device_type = "T"
 
-    apply_updates(
-        "Sync_Device_Logins",
-        {
-            "FXA_ID": data["fxa_id"],
-            "SERVICE": data["service"],
-            "LOGIN_DATE": gmttime(),
-            "FIRST_DEVICE": "y" if data.get("first_device") else "n",
-            "OS": user_agent.os.family,
-            "OS_VERSION": user_agent.os.version_string,
-            "BROWSER": "{0} {1}".format(
-                user_agent.browser.family, user_agent.browser.version_string,
-            ),
-            "DEVICE_NAME": user_agent.device.family,
-            "DEVICE_TYPE": device_type,
-        },
+    login_data = {
+        "FXA_ID": data["fxa_id"],
+        "SERVICE": data["service"],
+        "LOGIN_DATE": gmttime(),
+        "FIRST_DEVICE": "y" if data.get("first_device") else "n",
+        "OS": user_agent.os.family,
+        "OS_VERSION": user_agent.os.version_string,
+        "BROWSER": "{0} {1}".format(
+            user_agent.browser.family, user_agent.browser.version_string,
+        ),
+        "DEVICE_NAME": user_agent.device.family,
+        "DEVICE_TYPE": device_type,
+    }
+    fxa_activity_sfmc.delay(login_data)
+    if settings.ACOUSTIC_FXA_TABLE_ID:
+        fxa_activity_acoustic.delay(login_data)
+
+
+@et_task
+def fxa_activity_acoustic(data):
+    if "OS" in data:
+        data["OS_NAME"] = data.pop("OS")
+    acoustic.insert_update_relational_table(
+        table_id=settings.ACOUSTIC_FXA_TABLE_ID, rows=[data],
     )
+
+
+@et_task
+def fxa_activity_sfmc(data):
+    apply_updates("Sync_Device_Logins", data)
 
 
 @et_task
@@ -632,7 +646,9 @@ def send_acoustic_tx_message(email, vendor_id, fields=None):
 def send_acoustic_tx_messages(data, message_ids):
     sent = 0
     for mid in message_ids:
-        vid = AcousticTxEmailMessage.objects.get_vendor_id(mid, data.get("lang", "en"))
+        vid = AcousticTxEmailMessage.objects.get_vendor_id(
+            mid, data.get("lang", "en-US"),
+        )
         if vid:
             send_acoustic_tx_message.delay(data["email"], vid)
             sent += 1
@@ -948,9 +964,9 @@ def process_donation_event(data):
         )
     except sfapi.SalesforceMalformedRequest as e:
         statsd.incr("news.tasks.process_donation_event.not_found")
-        with sentry_sdk.configure_scope() as scope:
+        with sentry_sdk.push_scope() as scope:
             scope.set_tag("action", "ignored")
-            sentry_sdk.capture_exception()
+            sentry_sdk.capture_exception(e)
         # we don't know about this tx_id. Let someone know.
         do_notify = cache.add("donate-notify-{}".format(txn_id), 1, 86400)
         if do_notify and settings.DONATE_UPDATE_FAIL_DE:
