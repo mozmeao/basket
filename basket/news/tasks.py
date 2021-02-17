@@ -24,7 +24,7 @@ from dateutil.parser import isoparse
 from django_statsd.clients import statsd
 
 from basket.base.utils import email_is_testing
-from basket.news.backends.acoustic import acoustic
+from basket.news.backends.acoustic import acoustic_tx
 from basket.news.backends.common import NewsletterException
 from basket.news.backends.sfdc import sfdc
 from basket.news.backends.sfmc import sfmc
@@ -626,7 +626,7 @@ def sfdc_add_update(update_data, user_data=None):
 
 @et_task
 def send_acoustic_tx_message(email, vendor_id, fields=None):
-    acoustic.send_mail(email, vendor_id, fields)
+    acoustic_tx.send_mail(email, vendor_id, fields)
 
 
 def send_acoustic_tx_messages(data, message_ids):
@@ -1138,7 +1138,7 @@ def process_donation_receipt(data):
         "donation-receipt", data["locale"],
     )
     if message_id:
-        acoustic.send_mail(email, message_id, message_data)
+        acoustic_tx.send_mail(email, message_id, message_data)
 
 
 @et_task
