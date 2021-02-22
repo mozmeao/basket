@@ -1115,6 +1115,22 @@ def process_donation(data):
             raise
 
 
+def mofo_donation_receipt_datetime(ts):
+    # convert unix timestamp to e.g. "Thursday, Feb 11, 2021 at 4:20pm (GMT-08:00)"
+    ds = datetime.utcfromtimestamp(float(ts))
+    return ds - timedelta(hours=8)
+
+
+def mofo_donation_receipt_time_string(ds):
+    """Return the date and time formatted as requested by MoFo"""
+    return ds.strftime("%Y-%m-%d %H:%M")
+
+
+def mofo_donation_receipt_day_of_month(ds):
+    """Return the day of the month"""
+    return ds.strftime("%d")
+
+
 DONATION_RECEIPT_FIELDS = [
     "created",
     "currency",
@@ -1144,6 +1160,10 @@ def process_donation_receipt(data):
     # filter out any extra data
     message_data = {k: v for k, v in data.items() if k in DONATION_RECEIPT_FIELDS}
     email = message_data.pop("email")
+    created = message_data.pop("created")
+    created_dt = mofo_donation_receipt_datetime(created)
+    message_data["created"] = mofo_donation_receipt_time_string(created_dt)
+    message_data["day_of_month"] = mofo_donation_receipt_day_of_month(created_dt)
     recurring = message_data.pop("recurring")
     message_data["payment_frequency"] = "Recurring" if recurring else "One-Time"
     # convert some field names
