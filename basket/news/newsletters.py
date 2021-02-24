@@ -9,6 +9,7 @@ from django.db.models.signals import post_delete
 from django.core.cache import cache
 
 from basket.news.models import (
+    AcousticTxEmailMessage,
     Newsletter,
     NewsletterGroup,
     LocalizedSMSMessage,
@@ -36,7 +37,9 @@ def get_transactional_message_ids():
     """
     data = cache.get(TRANSACTIONAL_CACHE_KEY)
     if data is None:
-        data = [tx.message_id for tx in TransactionalEmailMessage.objects.all()]
+        data = {tx.message_id for tx in TransactionalEmailMessage.objects.all()}
+        data.update({tx.message_id for tx in AcousticTxEmailMessage.objects.all()})
+        data = list(data)
         cache.set(TRANSACTIONAL_CACHE_KEY, data)
 
     return data
