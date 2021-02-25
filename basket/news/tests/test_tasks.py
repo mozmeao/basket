@@ -349,6 +349,7 @@ class ProcessDonationReceiptTests(TestCase):
                 "created": "2016-11-21 08:46",
                 "day_of_month": "21",
                 "payment_frequency": "Recurring",
+                "friendly_from_name": "Mozilla",
             },
         )
 
@@ -372,6 +373,7 @@ class ProcessDonationReceiptTests(TestCase):
                 "created": "2016-11-21 08:46",
                 "day_of_month": "21",
                 "payment_frequency": "One-Time",
+                "friendly_from_name": "Mozilla",
             },
         )
 
