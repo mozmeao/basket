@@ -1173,6 +1173,9 @@ def process_donation_receipt(data):
     message_data["donation_amount"] = mofo_donation_receipt_number_format(
         message_data["donation_amount"],
     )
+    if message_data["project"] == "thunderbird":
+        message_data["friendly_from_name"] = "MZLA Thunderbird"
+
     # convert some field names
     message_data = {
         DONATION_RECEIPT_FIELDS_MAP.get(k, k): v for k, v in message_data.items()

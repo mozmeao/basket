@@ -375,6 +375,30 @@ class ProcessDonationReceiptTests(TestCase):
             },
         )
 
+    def test_receipt_thunderbird(self, acoustic_mock):
+        data = self.donate_data
+        data["project"] = "thunderbird"
+        process_donation_receipt(data)
+        acoustic_mock.send_mail.assert_called_with(
+            "dude@example.com",
+            "the-dude",
+            {
+                "donation_locale": "pt-BR",
+                "currency": "USD",
+                "donation_amount": "75.00",
+                "cc_last_4_digits": "5309",
+                "first_name": "Jeffery",
+                "last_name": "Lebowski",
+                "project": "thunderbird",
+                "payment_source": "paypal",
+                "transaction_id": "NLEKFRBED3BQ614797468093.25",
+                "created": "2016-11-21 08:46",
+                "day_of_month": "21",
+                "payment_frequency": "Recurring",
+                "friendly_from_name": "MZLA Thunderbird",
+            },
+        )
+
 
 @override_settings(TASK_LOCKING_ENABLE=False)
 @patch("basket.news.tasks.get_user_data")
