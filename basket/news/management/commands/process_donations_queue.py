@@ -62,6 +62,7 @@ class Command(BaseCommand):
                     MaxNumberOfMessages=10,
                 )
                 for msg in msgs:
+                    print("got one")
                     if not (msg and msg.body):
                         continue
 
@@ -85,6 +86,10 @@ class Command(BaseCommand):
 
                     try:
                         etype = data["data"].setdefault("event_type", "donation")
+                        print(etype)
+                        if etype == "donation":
+                            print(data["data"])
+
                         statsd.incr("mofo.donations.message.received.{}".format(etype))
                         processor = EVENT_TYPES.get(etype, EVENT_TYPES["DEFAULT"])
                         processor.delay(data["data"])

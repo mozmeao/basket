@@ -1131,6 +1131,10 @@ def mofo_donation_receipt_day_of_month(ds):
     return ds.strftime("%d")
 
 
+def mofo_donation_receipt_number_format(amount):
+    return f"{float(amount):.2f}"
+
+
 DONATION_RECEIPT_FIELDS = [
     "created",
     "currency",
@@ -1166,6 +1170,9 @@ def process_donation_receipt(data):
     message_data["day_of_month"] = mofo_donation_receipt_day_of_month(created_dt)
     recurring = message_data.pop("recurring")
     message_data["payment_frequency"] = "Recurring" if recurring else "One-Time"
+    message_data["donation_amount"] = mofo_donation_receipt_number_format(
+        message_data["donation_amount"],
+    )
     # convert some field names
     message_data = {
         DONATION_RECEIPT_FIELDS_MAP.get(k, k): v for k, v in message_data.items()

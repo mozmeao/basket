@@ -14,7 +14,7 @@ from celery.exceptions import Retry
 from mock import ANY, Mock, call, patch
 
 from basket.news.celery import app as celery_app
-from basket.news.models import FailedTask, CommonVoiceUpdate
+from basket.news.models import AcousticTxEmailMessage, FailedTask, CommonVoiceUpdate
 from basket.news.newsletters import clear_sms_cache
 from basket.news.tasks import (
     _add_fxa_activity,
@@ -32,6 +32,7 @@ from basket.news.tasks import (
     process_common_voice_batch,
     process_donation,
     process_donation_event,
+    process_donation_receipt,
     process_petition_signature,
     record_common_voice_update,
     RECOVERY_MESSAGE_ID,
@@ -294,6 +295,83 @@ class ProcessDonationEventTests(TestCase):
                 "PMT_Type_Lost__c": "charge.dispute.closed",
                 "PMT_Reason_Lost__c": "fraudulent",
                 "StageName": "Closed Lost",
+            },
+        )
+
+
+@patch("basket.news.tasks.acoustic_tx")
+class ProcessDonationReceiptTests(TestCase):
+    _data = {
+        "created": 1479746809.327,
+        "locale": "pt-BR",
+        "currency": "USD",
+        "donation_amount": "75",
+        "transaction_fee": 0.42,
+        "net_amount": 75.42,
+        "conversion_amount": 42.75,
+        "last_4": "5309",
+        "email": "dude@example.com",
+        "first_name": "Jeffery",
+        "last_name": "Lebowski",
+        "project": "mozillafoundation",
+        "source_url": "https://example.com/donate",
+        "recurring": True,
+        "service": "paypal",
+        "transaction_id": "NLEKFRBED3BQ614797468093.25",
+        "campaign_id": "were-you-listening-to-the-dudes-story",
+    }
+
+    @property
+    def donate_data(self):
+        return self._data.copy()
+
+    def setUp(self):
+        AcousticTxEmailMessage.objects.create(
+            message_id="donation-receipt", vendor_id="the-dude", language="en-US",
+        )
+
+    def test_receipt(self, acoustic_mock):
+        data = self.donate_data
+        process_donation_receipt(data)
+        acoustic_mock.send_mail.assert_called_with(
+            "dude@example.com",
+            "the-dude",
+            {
+                "donation_locale": "pt-BR",
+                "currency": "USD",
+                "donation_amount": "75.00",
+                "cc_last_4_digits": "5309",
+                "first_name": "Jeffery",
+                "last_name": "Lebowski",
+                "project": "mozillafoundation",
+                "payment_source": "paypal",
+                "transaction_id": "NLEKFRBED3BQ614797468093.25",
+                "created": "2016-11-21 08:46",
+                "day_of_month": "21",
+                "payment_frequency": "Recurring",
+            },
+        )
+
+    def test_receipt_one_time(self, acoustic_mock):
+        data = self.donate_data
+        data["recurring"] = False
+        process_donation_receipt(data)
+        acoustic_mock.send_mail.assert_called_with(
+            "dude@example.com",
+            "the-dude",
+            {
+                "donation_locale": "pt-BR",
+                "currency": "USD",
+                "donation_amount": "75.00",
+                "cc_last_4_digits": "5309",
+                "first_name": "Jeffery",
+                "last_name": "Lebowski",
+                "project": "mozillafoundation",
+                "payment_source": "paypal",
+                "transaction_id": "NLEKFRBED3BQ614797468093.25",
+                "created": "2016-11-21 08:46",
+                "day_of_month": "21",
+                "payment_frequency": "One-Time",
             },
         )
 
