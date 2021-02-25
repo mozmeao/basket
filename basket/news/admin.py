@@ -22,9 +22,9 @@ class TransactionalEmailAdmin(admin.ModelAdmin):
 
 
 class AcousticTxEmailMessageAdmin(admin.ModelAdmin):
-    fields = ("message_id", "vendor_id", "language", "description")
-    list_display = ("message_id", "vendor_id", "language", "description")
-    list_editable = ("vendor_id",)
+    fields = ("message_id", "vendor_id", "language", "description", "private")
+    list_display = ("message_id", "vendor_id", "language", "description", "private")
+    list_editable = ("vendor_id", "private")
 
 
 class LocalizedSMSMessageAdmin(admin.ModelAdmin):

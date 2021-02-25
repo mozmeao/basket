@@ -406,12 +406,18 @@ class AcousticTxEmailMessage(models.Model):
         help_text="Optional short description of this message",
     )
     language = LocaleField(default="en-US")
+    private = models.BooleanField(
+        default=False,
+        help_text="Whether this email is private. Private emails "
+        "are not allowed to be sent via the normal API.",
+    )
 
     objects = AcousticTxEmailMessageManager()
 
     class Meta:
         unique_together = ["message_id", "language"]
         verbose_name = "Acoustic Transact message"
+        ordering = ["message_id"]
 
     @property
     def slug(self):

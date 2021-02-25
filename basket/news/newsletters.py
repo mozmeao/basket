@@ -38,7 +38,12 @@ def get_transactional_message_ids():
     data = cache.get(TRANSACTIONAL_CACHE_KEY)
     if data is None:
         data = {tx.message_id for tx in TransactionalEmailMessage.objects.all()}
-        data.update({tx.message_id for tx in AcousticTxEmailMessage.objects.all()})
+        data.update(
+            {
+                tx.message_id
+                for tx in AcousticTxEmailMessage.objects.filter(private=False)
+            },
+        )
         data = list(data)
         cache.set(TRANSACTIONAL_CACHE_KEY, data)
 
