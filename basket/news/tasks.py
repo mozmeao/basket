@@ -1,7 +1,7 @@
 import json
 import logging
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from email.utils import formatdate
 from functools import wraps
 from hashlib import sha256
@@ -453,6 +453,10 @@ def _add_fxa_activity(data):
 def fxa_activity_acoustic(data):
     if "OS" in data:
         data["OS_NAME"] = data.pop("OS")
+
+    if data["LOGIN_DATE"].endswith("GMT"):
+        data["LOGIN_DATE"] = date.today().isoformat()
+
     acoustic.insert_update_relational_table(
         table_id=settings.ACOUSTIC_FXA_TABLE_ID, rows=[data],
     )
