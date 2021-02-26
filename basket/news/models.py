@@ -382,10 +382,12 @@ class AcousticTxEmailMessageManager(models.Manager):
                     message = self.get(message_id=message_id, language="en-US")
                 except exception as e:
                     # couldn't find a message. give up.
-                    with sentry_sdk.push_scope() as scope:
-                        scope.set_tag("language", req_language)
-                        scope.set_tag("message_id", message_id)
-                        sentry_sdk.capture_exception(e)
+                    # with sentry_sdk.push_scope() as scope:
+                    #     scope.set_tag("language", req_language)
+                    #     scope.set_tag("message_id", message_id)
+                    #     sentry_sdk.capture_exception(e)
+                    # TODO enable the above when SFMC is off
+                    pass
 
         if message:
             return message.vendor_id
