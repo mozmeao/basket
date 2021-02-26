@@ -22,6 +22,7 @@ from celery.signals import task_failure, task_retry, task_success
 from celery.utils.time import get_exponential_backoff_interval
 from dateutil.parser import isoparse
 from django_statsd.clients import statsd
+from silverpop.api import SilverpopResponseException
 
 from basket.base.utils import email_is_testing
 from basket.news.backends.acoustic import acoustic_tx, acoustic
@@ -229,6 +230,7 @@ def et_task(func):
             sfapi.SalesforceResourceNotFound,
             sfapi.SalesforceAuthenticationFailed,
             sfapi.SalesforceMalformedRequest,
+            SilverpopResponseException,
         ) as e:
             # These could all be connection issues, so try again later.
             # IOError covers URLError and SSLError.
