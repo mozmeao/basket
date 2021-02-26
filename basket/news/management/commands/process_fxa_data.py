@@ -12,8 +12,8 @@ from django_statsd.clients import statsd
 from pathlib import Path
 from pytz import utc
 
-from basket.news.tasks import fxa_last_login_direct
-
+from basket.news.backends.sfdc import sfdc
+from basket.news.utils import iso_format_unix_timestamp
 
 TMP = Path("/tmp")
 BUCKET_DIR = "fxa-last-active-timestamp/data"
@@ -75,9 +75,18 @@ def set_timestamps_done(timestamp_chunk):
 
 
 def update_fxa_records(timestamp_chunk):
+    data = []
     for fxaid, timestamp in timestamp_chunk:
-        fxa_last_login_direct(fxaid, timestamp)
+        data.append(
+            {
+                "FxA_Id__c": fxaid,
+                "FxA_Last_Login__c": iso_format_unix_timestamp(
+                    timestamp, date_only=True,
+                ),
+            },
+        )
 
+    sfdc.sf.bulk.Contact.update(data)
     set_timestamps_done(timestamp_chunk)
 
 
