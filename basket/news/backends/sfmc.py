@@ -12,6 +12,7 @@ from django.utils.encoding import force_str
 import requests
 from django_statsd.clients import statsd
 from FuelSDK import ET_Client, ET_DataExtension_Row, ET_TriggeredSend
+from suds import TypeNotFound
 
 from basket.news.backends.common import (
     get_timer_decorator,
@@ -320,7 +321,12 @@ class SFMC:
             ts.attributes = build_attributes({"Token__c": token})
             subscriber["Attributes"] = ts.attributes
         ts.subscribers = [subscriber]
-        resp = ts.send()
+        try:
+            resp = ts.send()
+        except TypeNotFound:
+            # seems to be mostly email misspellings
+            return
+
         assert_response(resp)
 
     @time_request
