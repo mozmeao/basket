@@ -851,14 +851,14 @@ class AddFxaActivityTests(TestCase):
             "ts": 1614301517.225,
         }
 
-        with patch("basket.news.tasks.apply_updates") as apply_updates_mock:
+        with patch("basket.news.tasks.fxa_activity_acoustic") as apply_updates_mock:
             _add_fxa_activity(data)
-        record = apply_updates_mock.call_args[0][1]
+        record = apply_updates_mock.delay.call_args[0][0]
         return record
 
     def test_login_date(self):
-        with patch("basket.news.tasks.gmttime") as gmttime_mock:
-            gmttime_mock.return_value = "this is time"
+        with patch("basket.news.tasks.date") as date_mock:
+            date_mock.fromtimestamp().isoformat.return_value = "this is time"
             record = self._base_test()
         self.assertEqual(record["LOGIN_DATE"], "this is time")
 
@@ -876,7 +876,7 @@ class AddFxaActivityTests(TestCase):
     def test_windows(self):
         ua = "Mozilla/5.0 (Windows NT 6.1; rv:10.0) Gecko/20100101 Firefox/10.0"
         record = self._base_test(ua)
-        self.assertEqual(record["OS"], "Windows")
+        self.assertEqual(record["OS_NAME"], "Windows")
         self.assertEqual(record["OS_VERSION"], "7")  # Not sure if we expect '7' here.
         self.assertEqual(record["BROWSER"], "Firefox 10.0")
         self.assertEqual(record["DEVICE_NAME"], "Other")
@@ -885,7 +885,7 @@ class AddFxaActivityTests(TestCase):
     def test_mac(self):
         ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6; rv:10.0) Gecko/20100101 Firefox/30.2"
         record = self._base_test(ua)
-        self.assertEqual(record["OS"], "Mac OS X")
+        self.assertEqual(record["OS_NAME"], "Mac OS X")
         self.assertEqual(record["OS_VERSION"], "10.6")
         self.assertEqual(record["BROWSER"], "Firefox 30.2")
         self.assertEqual(record["DEVICE_NAME"], "Mac")
@@ -894,7 +894,7 @@ class AddFxaActivityTests(TestCase):
     def test_linux(self):
         ua = "Mozilla/5.0 (X11; Linux i686 on x86_64; rv:10.0) Gecko/20100101 Firefox/42.0"
         record = self._base_test(ua)
-        self.assertEqual(record["OS"], "Linux")
+        self.assertEqual(record["OS_NAME"], "Linux")
         self.assertEqual(record["OS_VERSION"], "")
         self.assertEqual(record["BROWSER"], "Firefox 42.0")
         self.assertEqual(record["DEVICE_NAME"], "Other")
@@ -903,7 +903,7 @@ class AddFxaActivityTests(TestCase):
     def test_android_phone_below_version_41(self):
         ua = "Mozilla/5.0 (Android; Mobile; rv:40.0) Gecko/40.0 Firefox/40.0"
         record = self._base_test(ua)
-        self.assertEqual(record["OS"], "Android")
+        self.assertEqual(record["OS_NAME"], "Android")
         self.assertEqual(record["OS_VERSION"], "")
         self.assertEqual(record["BROWSER"], "Firefox Mobile 40.0")
         self.assertEqual(record["DEVICE_NAME"], "Generic Smartphone")
@@ -912,7 +912,7 @@ class AddFxaActivityTests(TestCase):
     def test_android_tablet_below_version_41(self):
         ua = "Mozilla/5.0 (Android; Tablet; rv:40.0) Gecko/40.0 Firefox/40.0"
         record = self._base_test(ua)
-        self.assertEqual(record["OS"], "Android")
+        self.assertEqual(record["OS_NAME"], "Android")
         self.assertEqual(record["OS_VERSION"], "")
         self.assertEqual(record["BROWSER"], "Firefox Mobile 40.0")
         self.assertEqual(record["DEVICE_NAME"], "Generic Tablet")
@@ -920,7 +920,7 @@ class AddFxaActivityTests(TestCase):
     def test_android_phone_from_version_41(self):
         ua = "Mozilla/5.0 (Android 4.4; Mobile; rv:41.0) Gecko/41.0 Firefox/41.0"
         record = self._base_test(ua)
-        self.assertEqual(record["OS"], "Android")
+        self.assertEqual(record["OS_NAME"], "Android")
         self.assertEqual(record["OS_VERSION"], "4.4")
         self.assertEqual(record["BROWSER"], "Firefox Mobile 41.0")
         self.assertEqual(record["DEVICE_NAME"], "Generic Smartphone")
@@ -929,7 +929,7 @@ class AddFxaActivityTests(TestCase):
     def test_android_tablet_from_version_41(self):
         ua = "Mozilla/5.0 (Android 5.0; Tablet; rv:41.0) Gecko/41.0 Firefox/41.0"
         record = self._base_test(ua)
-        self.assertEqual(record["OS"], "Android")
+        self.assertEqual(record["OS_NAME"], "Android")
         self.assertEqual(record["OS_VERSION"], "5.0")
         self.assertEqual(record["BROWSER"], "Firefox Mobile 41.0")
         self.assertEqual(record["DEVICE_NAME"], "Generic Tablet")
@@ -937,7 +937,7 @@ class AddFxaActivityTests(TestCase):
     def test_firefox_ios_iphone(self):
         ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 8_3 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) FxiOS/1.0 Mobile/12F69 Safari/600.1.4"
         record = self._base_test(ua)
-        self.assertEqual(record["OS"], "iOS")
+        self.assertEqual(record["OS_NAME"], "iOS")
         self.assertEqual(record["OS_VERSION"], "8.3")
         self.assertEqual(record["BROWSER"], "Firefox iOS 1.0")
         self.assertEqual(record["DEVICE_NAME"], "iPhone")
@@ -946,7 +946,7 @@ class AddFxaActivityTests(TestCase):
     def test_firefox_ios_tablet(self):
         ua = "Mozilla/5.0 (iPad; CPU iPhone OS 8_3 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) FxiOS/1.0 Mobile/12F69 Safari/600.1.4"
         record = self._base_test(ua)
-        self.assertEqual(record["OS"], "iOS")
+        self.assertEqual(record["OS_NAME"], "iOS")
         self.assertEqual(record["OS_VERSION"], "8.3")
         self.assertEqual(record["BROWSER"], "Firefox iOS 1.0")
         self.assertEqual(record["DEVICE_NAME"], "iPad")
