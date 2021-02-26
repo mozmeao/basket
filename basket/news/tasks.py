@@ -406,6 +406,7 @@ def fxa_login(data):
             "fxa_id": data["uid"],
             "first_device": data["deviceCount"] == 1,
             "service": data.get("service", ""),
+            "ts": data["ts"],
         }
         _add_fxa_activity(new_data)
 
@@ -446,7 +447,10 @@ def _add_fxa_activity(data):
     }
     fxa_activity_sfmc.delay(login_data)
     if settings.ACOUSTIC_FXA_TABLE_ID:
-        fxa_activity_acoustic.delay(login_data)
+        acoustic_data = login_data.copy()
+        acoustic_data["OS_NAME"] = acoustic_data.pop("OS")
+        acoustic_data["LOGIN_DATE"] = date.fromtimestamp(data["ts"]).isoformat()
+        fxa_activity_acoustic.delay(acoustic_data)
 
 
 @et_task
@@ -457,9 +461,11 @@ def fxa_activity_acoustic(data):
     if data["LOGIN_DATE"].endswith("GMT"):
         data["LOGIN_DATE"] = date.today().isoformat()
 
-    acoustic.insert_update_relational_table(
+    resp = acoustic.insert_update_relational_table(
         table_id=settings.ACOUSTIC_FXA_TABLE_ID, rows=[data],
     )
+    if settings.ACOUSTIC_FXA_LOG_ENABLED:
+        log.warning(resp.response_raw)
 
 
 @et_task
