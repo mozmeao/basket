@@ -465,7 +465,7 @@ def fxa_activity_acoustic(data):
         table_id=settings.ACOUSTIC_FXA_TABLE_ID, rows=[data],
     )
     if settings.ACOUSTIC_FXA_LOG_ENABLED:
-        log.warning(resp.response_raw)
+        sentry_sdk.capture_message(resp.response_raw)
 
 
 @et_task
