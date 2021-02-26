@@ -442,9 +442,9 @@ def _add_fxa_activity(data):
     login_data = {
         "FXA_ID": data["fxa_id"],
         "SERVICE": data["service"],
-        "LOGIN_DATE": gmttime(),
+        "LOGIN_DATE": date.fromtimestamp(data["ts"]).isoformat(),
         "FIRST_DEVICE": "y" if data.get("first_device") else "n",
-        "OS": user_agent.os.family,
+        "OS_NAME": user_agent.os.family,
         "OS_VERSION": user_agent.os.version_string,
         "BROWSER": "{0} {1}".format(
             user_agent.browser.family, user_agent.browser.version_string,
@@ -452,31 +452,26 @@ def _add_fxa_activity(data):
         "DEVICE_NAME": user_agent.device.family,
         "DEVICE_TYPE": device_type,
     }
-    fxa_activity_sfmc.delay(login_data)
-    if settings.ACOUSTIC_FXA_TABLE_ID:
-        acoustic_data = login_data.copy()
-        acoustic_data["OS_NAME"] = acoustic_data.pop("OS")
-        acoustic_data["LOGIN_DATE"] = date.fromtimestamp(data["ts"]).isoformat()
-        fxa_activity_acoustic.delay(acoustic_data)
+    fxa_activity_acoustic.delay(login_data)
 
 
 @et_task
 def fxa_activity_acoustic(data):
+    # TODO remove these if statements after initial deployment
     if "OS" in data:
         data["OS_NAME"] = data.pop("OS")
 
     if data["LOGIN_DATE"].endswith("GMT"):
         data["LOGIN_DATE"] = date.today().isoformat()
 
-    resp = acoustic.insert_update_relational_table(
+    acoustic.insert_update_relational_table(
         table_id=settings.ACOUSTIC_FXA_TABLE_ID, rows=[data],
     )
-    if settings.ACOUSTIC_FXA_LOG_ENABLED:
-        sentry_sdk.capture_exception(RuntimeError(resp.response_raw))
 
 
 @et_task
 def fxa_activity_sfmc(data):
+    # TODO remove after SFMC is gone
     apply_updates("Sync_Device_Logins", data)
 
 
