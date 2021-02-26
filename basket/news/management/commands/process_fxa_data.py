@@ -12,7 +12,7 @@ from django_statsd.clients import statsd
 from pathlib import Path
 from pytz import utc
 
-from basket.news.tasks import fxa_last_login
+from basket.news.tasks import fxa_last_login_direct
 
 
 TMP = Path("/tmp")
@@ -76,7 +76,7 @@ def set_timestamps_done(timestamp_chunk):
 
 def update_fxa_records(timestamp_chunk):
     for fxaid, timestamp in timestamp_chunk:
-        fxa_last_login.delay(fxaid, timestamp)
+        fxa_last_login_direct(fxaid, timestamp)
 
     set_timestamps_done(timestamp_chunk)
 

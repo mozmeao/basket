@@ -323,6 +323,11 @@ def fxa_direct_update_contact(fxa_id, data):
 
 @et_task
 def fxa_last_login(fxa_id, timestamp):
+    # drop the ones on the queue now
+    pass
+
+
+def fxa_last_login_direct(fxa_id, timestamp):
     fxa_direct_update_contact(
         fxa_id,
         {"FxA_Last_Login__c": iso_format_unix_timestamp(timestamp, date_only=True)},
