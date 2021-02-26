@@ -848,6 +848,7 @@ class AddFxaActivityTests(TestCase):
             "first_device": first_device,
             "user_agent": user_agent,
             "service": "sync",
+            "ts": 1614301517.225,
         }
 
         with patch("basket.news.tasks.apply_updates") as apply_updates_mock:
@@ -1117,6 +1118,7 @@ class FxALoginTests(TestCase):
                 "fxa_id": data["uid"],
                 "first_device": True,
                 "service": "sync",
+                "ts": 1508897239.207,
             },
         )
         upsert_mock.delay.assert_not_called()
@@ -1130,6 +1132,7 @@ class FxALoginTests(TestCase):
                 "fxa_id": data["uid"],
                 "first_device": False,
                 "service": "sync",
+                "ts": 1508897239.207,
             },
         )
         upsert_mock.delay.assert_called_with(
@@ -1158,6 +1161,7 @@ class FxALoginTests(TestCase):
                 "fxa_id": data["uid"],
                 "first_device": False,
                 "service": "sync",
+                "ts": 1508897239.207,
             },
         )
         upsert_mock.delay.assert_not_called()
