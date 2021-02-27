@@ -9,7 +9,7 @@ from silverpop.api import Silverpop, SilverpopResponseException
 logger = logging.getLogger(__name__)
 
 
-def process_reponse(resp):
+def process_response(resp):
     logger.debug("Response: %s" % resp.text)
     response = ElementTree.fromstring(resp.text.encode("utf-8"))
     failure = response.find(".//FAILURES/FAILURE")
@@ -81,7 +81,7 @@ class Acoustic(Silverpop):
     def _call(self, xml):
         logger.debug("Request: %s" % xml)
         response = self.session.post(self.api_endpoint, data={"xml": xml})
-        return process_reponse(response)
+        return process_response(response)
 
 
 class AcousticTransact(Silverpop):
