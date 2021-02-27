@@ -299,6 +299,7 @@ class ProcessDonationEventTests(TestCase):
         )
 
 
+@override_settings(DONATE_RECEIPTS_BCC=["dude@example.com"])
 @patch("basket.news.tasks.acoustic_tx")
 class ProcessDonationReceiptTests(TestCase):
     _data = {
@@ -351,6 +352,7 @@ class ProcessDonationReceiptTests(TestCase):
                 "payment_frequency": "Recurring",
                 "friendly_from_name": "Mozilla",
             },
+            bcc=["dude@example.com"],
         )
 
     def test_receipt_one_time(self, acoustic_mock):
@@ -375,6 +377,7 @@ class ProcessDonationReceiptTests(TestCase):
                 "payment_frequency": "One-Time",
                 "friendly_from_name": "Mozilla",
             },
+            bcc=["dude@example.com"],
         )
 
     def test_receipt_thunderbird(self, acoustic_mock):
@@ -399,6 +402,7 @@ class ProcessDonationReceiptTests(TestCase):
                 "payment_frequency": "Recurring",
                 "friendly_from_name": "MZLA Thunderbird",
             },
+            bcc=["dude@example.com"],
         )
 
 

@@ -17,8 +17,12 @@ def xml_tag(tag, value=None, **attrs):
     return xmlt
 
 
-def transact_xml(to, campaign_id, fields=None):
+def transact_xml(to, campaign_id, fields=None, bcc=None):
     fields = fields or {}
+    bcc = bcc or []
+    if isinstance(bcc, str):
+        bcc = [bcc]
+
     root = xml_tag("XTMAILING")
     root.append(xml_tag("CAMPAIGN_ID", campaign_id))
     if "transaction_id" in fields:
@@ -35,6 +39,8 @@ def transact_xml(to, campaign_id, fields=None):
     recipient_tag = xml_tag("RECIPIENT")
     root.append(recipient_tag)
     recipient_tag.append(xml_tag("EMAIL", to))
+    for addr in bcc:
+        recipient_tag.append(xml_tag("BCC", addr))
     recipient_tag.append(xml_tag("BODY_TYPE", "HTML"))
     for name, value in fields.items():
         p_tag = xml_tag("PERSONALIZATION")
@@ -57,8 +63,8 @@ class SilverpopTransact(Silverpop):
         response = self.session.post(self.api_xt_endpoint, data={"xml": xml})
         return ApiResponse(response)
 
-    def send_mail(self, to, campaign_id, fields=None):
-        return self._call_xt(transact_xml(to, campaign_id, fields))
+    def send_mail(self, to, campaign_id, fields=None, bcc=None):
+        return self._call_xt(transact_xml(to, campaign_id, fields, bcc))
 
 
 acoustic = Silverpop(

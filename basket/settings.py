@@ -404,6 +404,7 @@ DONATE_QUEUE_WAIT_TIME = config("DONATE_QUEUE_WAIT_TIME", cast=int, default=10)
 # needed so that donate.m.o can run continuous tests w/o filling the SFDC sandbox
 DONATE_QUEUE_IGNORE_MODE = config("DONATE_QUEUE_IGNORE_MODE", cast=bool, default=False)
 DONATE_SEND_RECEIPTS = config("DONATE_SEND_RECEIPTS", cast=bool, default=False)
+DONATE_RECEIPTS_BCC = config("DONATE_RECEIPTS_BCC", "", cast=Csv())
 DONATE_OPP_RECORD_TYPE = config("DONATE_OPP_RECORD_TYPE", default="")
 DONATE_CONTACT_RECORD_TYPE = config("DONATE_CONTACT_RECORD_TYPE", default="")
 DONATE_SNITCH_ID = config("DONATE_SNITCH_ID", default="")

@@ -1197,7 +1197,9 @@ def process_donation_receipt(data):
         "donation-receipt", data["locale"],
     )
     if message_id:
-        acoustic_tx.send_mail(email, message_id, message_data)
+        acoustic_tx.send_mail(
+            email, message_id, message_data, bcc=settings.DONATE_RECEIPTS_BCC,
+        )
 
 
 @et_task
