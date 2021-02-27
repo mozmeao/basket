@@ -365,22 +365,24 @@ class AcousticTxEmailMessageManager(models.Manager):
     def get_vendor_id(self, message_id, language):
         # req_language = language
         message = None
-        exception = AcousticTxEmailMessage.DoesNotExist
+        language = language.strip()
+        language = language or "en-US"
+        exc = AcousticTxEmailMessage.DoesNotExist
         try:
             # try to get the exact language
             message = self.get(message_id=message_id, language=language)
-        except exception:
+        except exc:
             if "-" in language:
                 language = language.split("-")[0]
 
             try:
                 # failing above, try to get the language prefix
                 message = self.get(message_id=message_id, language__startswith=language)
-            except exception:
+            except exc:
                 try:
                     # failing above, try to get the default language
                     message = self.get(message_id=message_id, language="en-US")
-                except exception:
+                except exc:
                     # couldn't find a message. give up.
                     # with sentry_sdk.push_scope() as scope:
                     #     scope.set_tag("language", req_language)

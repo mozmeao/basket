@@ -1190,15 +1190,15 @@ def process_donation_receipt(data):
     )
 
     # convert some field names
-    message_data = {
+    send_data = {
         DONATION_RECEIPT_FIELDS_MAP.get(k, k): v for k, v in message_data.items()
     }
     message_id = AcousticTxEmailMessage.objects.get_vendor_id(
-        "donation-receipt", data["locale"],
+        "donation-receipt", data.get("locale", "en-US"),
     )
     if message_id:
         acoustic_tx.send_mail(
-            email, message_id, message_data, bcc=settings.DONATE_RECEIPTS_BCC,
+            email, message_id, send_data, bcc=settings.DONATE_RECEIPTS_BCC,
         )
 
 
