@@ -3,10 +3,36 @@ from xml.etree import ElementTree
 
 from django.conf import settings
 
-from silverpop.api import ApiResponse, Silverpop, SilverpopResponseException
+from silverpop.api import Silverpop, SilverpopResponseException
 
 
 logger = logging.getLogger(__name__)
+
+
+def process_reponse(resp):
+    logger.debug("Response: %s" % resp.text)
+    response = ElementTree.fromstring(resp.text.encode("utf-8"))
+    failure = response.find(".//FAILURES/FAILURE")
+    if failure:
+        raise SilverpopResponseException(failure.attrib["description"])
+
+    fault = response.find(".//Fault/FaultString")
+    if fault:
+        raise SilverpopResponseException(fault.text)
+
+    return response
+
+
+def process_tx_response(resp):
+    logger.debug("Response: %s" % resp.text)
+    response = ElementTree.fromstring(resp.text.encode("utf-8"))
+    errors = response.findall(".//ERROR_STRING")
+    if errors:
+        for e in errors:
+            if e.text:
+                raise SilverpopResponseException(e.text)
+
+    return response
 
 
 def xml_tag(tag, value=None, **attrs):
@@ -51,7 +77,14 @@ def transact_xml(to, campaign_id, fields=None, bcc=None):
     return ElementTree.tostring(root, encoding="unicode")
 
 
-class SilverpopTransact(Silverpop):
+class Acoustic(Silverpop):
+    def _call(self, xml):
+        logger.debug("Request: %s" % xml)
+        response = self.session.post(self.api_endpoint, data={"xml": xml})
+        return process_reponse(response)
+
+
+class AcousticTransact(Silverpop):
     api_xt_endpoint = "https://transact-campaign-us-%s.goacoustic.com/XTMail"
 
     def __init__(self, client_id, client_secret, refresh_token, server_number):
@@ -61,23 +94,19 @@ class SilverpopTransact(Silverpop):
     def _call_xt(self, xml):
         logger.debug("Request: %s" % xml)
         response = self.session.post(self.api_xt_endpoint, data={"xml": xml})
-        return ApiResponse(response)
+        return process_tx_response(response)
 
     def send_mail(self, to, campaign_id, fields=None, bcc=None):
-        resp = self._call_xt(transact_xml(to, campaign_id, fields, bcc))
-        errors = int(resp.response.find("NUMBER_ERRORS").text)
-        if errors:
-            error_txt = resp.response.find("RECIPIENT_DETAIL/ERROR_STRING").text
-            raise SilverpopResponseException(error_txt)
+        self._call_xt(transact_xml(to, campaign_id, fields, bcc))
 
 
-acoustic = Silverpop(
+acoustic = Acoustic(
     client_id=settings.ACOUSTIC_CLIENT_ID,
     client_secret=settings.ACOUSTIC_CLIENT_SECRET,
     refresh_token=settings.ACOUSTIC_REFRESH_TOKEN,
     server_number=settings.ACOUSTIC_SERVER_NUMBER,
 )
-acoustic_tx = SilverpopTransact(
+acoustic_tx = AcousticTransact(
     client_id=settings.ACOUSTIC_TX_CLIENT_ID,
     client_secret=settings.ACOUSTIC_TX_CLIENT_SECRET,
     refresh_token=settings.ACOUSTIC_TX_REFRESH_TOKEN,
