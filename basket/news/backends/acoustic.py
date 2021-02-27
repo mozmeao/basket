@@ -3,7 +3,7 @@ from xml.etree import ElementTree
 
 from django.conf import settings
 
-from silverpop.api import ApiResponse, Silverpop
+from silverpop.api import ApiResponse, Silverpop, SilverpopResponseException
 
 
 logger = logging.getLogger(__name__)
@@ -64,7 +64,11 @@ class SilverpopTransact(Silverpop):
         return ApiResponse(response)
 
     def send_mail(self, to, campaign_id, fields=None, bcc=None):
-        return self._call_xt(transact_xml(to, campaign_id, fields, bcc))
+        resp = self._call_xt(transact_xml(to, campaign_id, fields, bcc))
+        errors = int(resp.response.find("NUMBER_ERRORS").text)
+        if errors:
+            error_txt = resp.response.find("RECIPIENT_DETAIL/ERROR_STRING").text
+            raise SilverpopResponseException(error_txt)
 
 
 acoustic = Silverpop(
