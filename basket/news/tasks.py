@@ -441,7 +441,7 @@ def _add_fxa_activity(data):
 
     login_data = {
         "FXA_ID": data["fxa_id"],
-        "SERVICE": data["service"],
+        "SERVICE": data.get("service", "unknown").strip() or "unknown",
         "LOGIN_DATE": date.fromtimestamp(data["ts"]).isoformat(),
         "FIRST_DEVICE": "y" if data.get("first_device") else "n",
         "OS_NAME": user_agent.os.family,
