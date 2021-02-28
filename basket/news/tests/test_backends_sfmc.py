@@ -7,42 +7,6 @@ from basket.news.backends.common import NewsletterException
 from basket.news.backends import sfmc
 
 
-@patch("basket.news.backends.sfmc.requests")
-@patch.object(sfmc.sfmc, "_client", Mock())
-class TestSendSMS(TestCase):
-    def test_single_phone_number(self, req_mock):
-        req_mock.post.return_value.status_code = 200
-        sfmc.sfmc.send_sms("+1234567890", "dude")
-        url = sfmc.sfmc.sms_api_url.format("dude")
-        req_mock.post.assert_called_with(
-            url,
-            json={
-                "mobileNumbers": ["1234567890"],
-                "Subscribe": True,
-                "Resubscribe": True,
-                "keyword": "FFDROID",
-            },
-            headers=sfmc.sfmc.auth_header,
-            timeout=10,
-        )
-
-    def test_multiple_phone_numbers(self, req_mock):
-        req_mock.post.return_value.status_code = 200
-        sfmc.sfmc.send_sms(["+1234567890", "+9876543210"], "dude")
-        url = sfmc.sfmc.sms_api_url.format("dude")
-        req_mock.post.assert_called_with(
-            url,
-            json={
-                "mobileNumbers": ["1234567890", "9876543210"],
-                "Subscribe": True,
-                "Resubscribe": True,
-                "keyword": "FFDROID",
-            },
-            headers=sfmc.sfmc.auth_header,
-            timeout=10,
-        )
-
-
 @patch("basket.news.backends.sfmc.time", Mock(return_value=600))
 @patch.object(sfmc.ETRefreshClient, "build_soap_client", Mock())
 @patch.object(sfmc.ETRefreshClient, "load_wsdl", Mock())

@@ -12,14 +12,12 @@ from basket.news.models import (
     AcousticTxEmailMessage,
     Newsletter,
     NewsletterGroup,
-    LocalizedSMSMessage,
     TransactionalEmailMessage,
 )
 
 
 __all__ = (
     "clear_newsletter_cache",
-    "get_sms_messages",
     "newsletter_field",
     "newsletter_name",
     "newsletter_fields",
@@ -27,7 +25,6 @@ __all__ = (
 
 
 CACHE_KEY = "newsletters_cache_data"
-SMS_CACHE_KEY = "local_sms_messages_cache_data"
 TRANSACTIONAL_CACHE_KEY = "transactional_messages_cache_data"
 
 
@@ -48,29 +45,6 @@ def get_transactional_message_ids():
         cache.set(TRANSACTIONAL_CACHE_KEY, data)
 
     return data
-
-
-def get_sms_messages():
-    """
-    Returns a dict for which the keys are SMS message IDs that
-    basket clients will send, and the values are the message IDs
-    that our SMS vendor expects.
-    """
-    data = cache.get(SMS_CACHE_KEY)
-    if data is None:
-        data = {}
-        for msg in LocalizedSMSMessage.objects.all():
-            data[msg.slug] = msg.vendor_id
-
-        cache.set(SMS_CACHE_KEY, data)
-
-    return data
-
-
-def get_sms_vendor_id(message_id, country="us", language="en-US"):
-    all_msgs = get_sms_messages()
-    full_msg_id = LocalizedSMSMessage.make_slug(message_id, country, language)
-    return all_msgs.get(full_msg_id)
 
 
 def _newsletters():
@@ -227,13 +201,7 @@ def clear_newsletter_cache(*args, **kwargs):
     cache.delete(CACHE_KEY)
 
 
-def clear_sms_cache(*args, **kwargs):
-    cache.delete(SMS_CACHE_KEY)
-
-
 post_save.connect(clear_newsletter_cache, sender=Newsletter)
 post_delete.connect(clear_newsletter_cache, sender=Newsletter)
 post_save.connect(clear_newsletter_cache, sender=NewsletterGroup)
 post_delete.connect(clear_newsletter_cache, sender=NewsletterGroup)
-post_save.connect(clear_sms_cache, sender=LocalizedSMSMessage)
-post_delete.connect(clear_sms_cache, sender=LocalizedSMSMessage)

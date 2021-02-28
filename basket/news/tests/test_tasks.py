@@ -15,10 +15,8 @@ from mock import ANY, Mock, call, patch
 
 from basket.news.celery import app as celery_app
 from basket.news.models import AcousticTxEmailMessage, FailedTask, CommonVoiceUpdate
-from basket.news.newsletters import clear_sms_cache
 from basket.news.tasks import (
     _add_fxa_activity,
-    add_sms_user,
     amo_sync_addon,
     amo_sync_user,
     et_task,
@@ -775,46 +773,6 @@ class RecoveryMessageTask(TestCase):
         mock_send.delay.assert_called_with(
             message_id, self.email, "SFDCID", token="USERTOKEN",
         )
-
-
-@override_settings(ET_CLIENT_ID="client_id", ET_CLIENT_SECRET="client_secret")
-class AddSMSUserTests(TestCase):
-    def setUp(self):
-        clear_sms_cache()
-        patcher = patch("basket.news.backends.sfmc.sfmc.send_sms")
-        self.send_sms = patcher.start()
-        self.addCleanup(patcher.stop)
-        patcher = patch("basket.news.tasks.get_sms_vendor_id")
-        self.get_sms_vendor_id = patcher.start()
-        self.get_sms_vendor_id.return_value = "bar"
-        self.addCleanup(patcher.stop)
-
-    def test_send_name_invalid(self):
-        """If the send_name is invalid, return immediately."""
-        self.get_sms_vendor_id.return_value = None
-        add_sms_user("baffle", "8675309", False)
-        self.send_sms.assert_not_called()
-
-    def test_success(self):
-        add_sms_user("foo", "8675309", False)
-        self.send_sms.assert_called_with("8675309", "bar")
-
-    def test_success_with_vendor_id(self):
-        add_sms_user("foo", "8675309", False, vendor_id="foo")
-        self.send_sms.assert_called_with("8675309", "foo")
-        self.get_sms_vendor_id.assert_not_called()
-
-    def test_success_with_optin(self):
-        """
-        If optin is True, add a Mobile_Subscribers record for the
-        number.
-        """
-        with patch("basket.news.tasks.sfmc") as sfmc_mock:
-            add_sms_user("foo", "8675309", True)
-
-            sfmc_mock.add_row.assert_called_with(
-                "Mobile_Subscribers", {"Phone": "8675309", "SubscriberKey": "8675309"},
-            )
 
 
 class ETTaskTests(TestCase):

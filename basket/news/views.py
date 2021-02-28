@@ -32,13 +32,11 @@ from basket.news.models import (
     CommonVoiceUpdate,
     Interest,
     LocaleStewards,
-    LocalizedSMSMessage,
     Newsletter,
     NewsletterGroup,
     TransactionalEmailMessage,
 )
 from basket.news.newsletters import (
-    get_sms_vendor_id,
     newsletter_slugs,
     newsletter_and_group_slugs,
     newsletter_private_slugs,
@@ -46,7 +44,6 @@ from basket.news.newsletters import (
     newsletter_languages,
 )
 from basket.news.tasks import (
-    add_sms_user,
     amo_sync_addon,
     amo_sync_user,
     confirm_user,
@@ -77,7 +74,6 @@ from basket.news.utils import (
     is_authorized,
     language_code_is_valid,
     NewsletterException,
-    parse_phone_number,
     process_email,
     newsletter_exception_response,
     parse_newsletters_csv,
@@ -110,7 +106,6 @@ def news_sync():
         NewsletterGroup.objects.all(),
         Interest.objects.all(),
         LocaleStewards.objects.all(),
-        LocalizedSMSMessage.objects.all(),
         TransactionalEmailMessage.objects.all(),
     ]
 
@@ -665,67 +660,6 @@ def invalid_email_response():
     }
     statsd.incr("news.views.invalid_email_response")
     return HttpResponseJSON(resp_data, 400)
-
-
-@require_POST
-@csrf_exempt
-def subscribe_sms(request):
-    mobile = request.POST.get("mobile_number")
-    if not mobile:
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "mobile_number is missing",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            400,
-        )
-
-    country = request.POST.get("country", "us")
-    language = request.POST.get("lang", "en-US")
-    msg_name = request.POST.get("msg_name", "SMS_Android")
-    vendor_id = get_sms_vendor_id(msg_name, country, language)
-    if not vendor_id:
-        if language != "en-US":
-            # if not available in the requested language, try the default
-            language = "en-US"
-            vendor_id = get_sms_vendor_id(msg_name, country, language)
-
-    if not vendor_id:
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "Invalid msg_name + country + language",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            400,
-        )
-
-    mobile = parse_phone_number(mobile, country)
-    if not mobile:
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "mobile_number is invalid",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            400,
-        )
-
-    # only rate limit numbers here so we don't rate limit errors.
-    if is_ratelimited(
-        request,
-        group="basket.news.views.subscribe_sms",
-        key=lambda x, y: "%s-%s" % (msg_name, mobile),
-        rate=PHONE_NUMBER_RATE_LIMIT,
-        increment=True,
-    ):
-        raise Ratelimited()
-
-    optin = request.POST.get("optin", "N") == "Y"
-
-    add_sms_user.delay(msg_name, mobile, optin, vendor_id=vendor_id)
-    return HttpResponseJSON({"status": "ok"})
 
 
 @require_POST

@@ -8,7 +8,6 @@ from basket.news.models import (
     FailedTask,
     Interest,
     LocaleStewards,
-    LocalizedSMSMessage,
     Newsletter,
     NewsletterGroup,
     QueuedTask,
@@ -25,12 +24,6 @@ class AcousticTxEmailMessageAdmin(admin.ModelAdmin):
     fields = ("message_id", "vendor_id", "language", "description", "private")
     list_display = ("message_id", "vendor_id", "language", "description", "private")
     list_editable = ("vendor_id", "private")
-
-
-class LocalizedSMSMessageAdmin(admin.ModelAdmin):
-    fields = ("message_id", "vendor_id", "language", "country", "description")
-    list_display = ("message_id", "vendor_id", "language", "country", "description")
-    list_editable = ("vendor_id",)
 
 
 class BlockedEmailAdmin(admin.ModelAdmin):
@@ -172,7 +165,6 @@ class LogEntryAdmin(admin.ModelAdmin):
 
 admin.site.register(TransactionalEmailMessage, TransactionalEmailAdmin)
 admin.site.register(AcousticTxEmailMessage, AcousticTxEmailMessageAdmin)
-admin.site.register(LocalizedSMSMessage, LocalizedSMSMessageAdmin)
 admin.site.register(APIUser, APIUserAdmin)
 admin.site.register(BlockedEmail, BlockedEmailAdmin)
 admin.site.register(FailedTask, FailedTaskAdmin)

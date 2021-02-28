@@ -164,7 +164,6 @@ def build_attributes(data):
 
 class SFMC:
     _client = None
-    sms_api_url = "https://www.exacttargetapis.com/sms/v1/messageContact/{}/send"
     rowset_api_url = "https://www.exacttargetapis.com/hub/v1/dataevents/key:{}/rowset"
 
     @property
@@ -328,35 +327,6 @@ class SFMC:
             return
 
         assert_response(resp)
-
-    @time_request
-    def send_sms(self, phone_numbers, message_id):
-        if self.client is None:
-            return
-
-        if isinstance(phone_numbers, str):
-            phone_numbers = [phone_numbers]
-
-        phone_numbers = [pn.lstrip("+") for pn in phone_numbers]
-        data = {
-            "mobileNumbers": phone_numbers,
-            "Subscribe": True,
-            "Resubscribe": True,
-            "keyword": "FFDROID",  # TODO: Set keyword in arguments.
-        }
-        url = self.sms_api_url.format(message_id)
-        response = requests.post(url, json=data, headers=self.auth_header, timeout=10)
-        if response.status_code >= 500:
-            raise NewsletterException(
-                "SFMC Server Error: {}".format(force_str(response.content)),
-                status_code=response.status_code,
-            )
-
-        if response.status_code >= 400:
-            raise NewsletterException(
-                "SFMC Request Error: {}".format(force_str(response.content)),
-                status_code=response.status_code,
-            )
 
     @time_request
     def bulk_upsert_rows(self, de_name, values):

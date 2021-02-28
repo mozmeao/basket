@@ -40,7 +40,6 @@ from basket.news.models import (
     AcousticTxEmailMessage,
 )
 from basket.news.newsletters import (
-    get_sms_vendor_id,
     get_transactional_message_ids,
     newsletter_map,
     newsletter_languages,
@@ -81,10 +80,7 @@ IGNORE_ERROR_MSGS = [
 # don't propagate after max retries if these are the error messages
 IGNORE_ERROR_MSGS_POST_RETRY = []
 # tasks exempt from maintenance mode queuing
-MAINTENANCE_EXEMPT = [
-    "news.tasks.add_sms_user",
-    "news.tasks.add_sms_user_optin",
-]
+MAINTENANCE_EXEMPT = []
 
 
 def exponential_backoff(retries):
@@ -787,23 +783,16 @@ def confirm_user(token):
 
 @et_task
 def add_sms_user(send_name, mobile_number, optin, vendor_id=None):
-    # Adding vendor_id as optional to avoid issues with deployment.
-    # Old tasks with the old sitnature will be on the queue when this is first deployed.
-    # TODO change the task signature to replace send_name with vendor_id
-    if not vendor_id:
-        vendor_id = get_sms_vendor_id(send_name)
-        if not vendor_id:
-            return
-
-    sfmc.send_sms(mobile_number, vendor_id)
-    if optin:
-        add_sms_user_optin.delay(mobile_number)
+    # TODO remove this task after first deployment
+    # just here to drain remaining taasks
+    pass
 
 
 @et_task
 def add_sms_user_optin(mobile_number):
-    record = {"Phone": mobile_number, "SubscriberKey": mobile_number}
-    sfmc.add_row("Mobile_Subscribers", record)
+    # TODO remove this task after first deployment
+    # just here to drain remaining taasks
+    pass
 
 
 @et_task

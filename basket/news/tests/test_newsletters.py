@@ -3,35 +3,7 @@
 from django.test import TestCase
 
 from basket.news import newsletters, utils
-from basket.news.models import Newsletter, NewsletterGroup, LocalizedSMSMessage
-
-
-class TestSMSMessageCache(TestCase):
-    def setUp(self):
-        newsletters.clear_sms_cache()
-        LocalizedSMSMessage.objects.create(
-            message_id="the-dude",
-            vendor_id="YOURE_NOT_WRONG_WALTER",
-            country="us",
-            language="de",
-        )
-        LocalizedSMSMessage.objects.create(
-            message_id="the-walrus",
-            vendor_id="SHUTUP_DONNIE",
-            country="gb",
-            language="en-GB",
-        )
-
-    def test_all_messages(self):
-        """Messages returned should be all of the ones in the DB."""
-
-        self.assertEqual(
-            newsletters.get_sms_messages(),
-            {
-                "the-dude-us-de": "YOURE_NOT_WRONG_WALTER",
-                "the-walrus-gb-en-gb": "SHUTUP_DONNIE",
-            },
-        )
+from basket.news.models import Newsletter, NewsletterGroup
 
 
 class TestNewsletterUtils(TestCase):

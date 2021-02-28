@@ -3,7 +3,7 @@ from django.core.management import BaseCommand
 
 from synctool.functions import sync_data
 
-from basket.news.newsletters import clear_newsletter_cache, clear_sms_cache
+from basket.news.newsletters import clear_newsletter_cache
 
 
 DEFAULT_SYNC_DOMAIN = "basket.mozilla.org"
@@ -34,4 +34,3 @@ class Command(BaseCommand):
             api_token=options["key"],
         )
         clear_newsletter_cache()
-        clear_sms_cache()
