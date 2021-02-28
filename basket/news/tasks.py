@@ -464,6 +464,9 @@ def fxa_activity_acoustic(data):
     if data["LOGIN_DATE"].endswith("GMT"):
         data["LOGIN_DATE"] = date.today().isoformat()
 
+    if not data["SERVICE"].strip():
+        data["SERVICE"] = "unknown"
+
     acoustic.insert_update_relational_table(
         table_id=settings.ACOUSTIC_FXA_TABLE_ID, rows=[data],
     )
