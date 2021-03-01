@@ -1,5 +1,5 @@
 import logging
-from xml.etree import ElementTree
+from lxml import etree
 
 from django.conf import settings
 
@@ -7,11 +7,12 @@ from silverpop.api import Silverpop, SilverpopResponseException
 
 
 logger = logging.getLogger(__name__)
+XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
 
 
 def process_response(resp):
     logger.debug("Response: %s" % resp.text)
-    response = ElementTree.fromstring(resp.text.encode("utf-8"))
+    response = etree.fromstring(resp.text.encode("utf-8"))
     failure = response.find(".//FAILURES/FAILURE")
     if failure:
         raise SilverpopResponseException(failure.attrib["description"])
@@ -25,7 +26,7 @@ def process_response(resp):
 
 def process_tx_response(resp):
     logger.debug("Response: %s" % resp.text)
-    response = ElementTree.fromstring(resp.text.encode("utf-8"))
+    response = etree.fromstring(resp.text.encode("utf-8"))
     errors = response.findall(".//ERROR_STRING")
     if errors:
         for e in errors:
@@ -35,10 +36,13 @@ def process_tx_response(resp):
     return response
 
 
-def xml_tag(tag, value=None, **attrs):
-    xmlt = ElementTree.Element(tag, attrs)
+def xml_tag(tag, value=None, cdata=False, **attrs):
+    xmlt = etree.Element(tag, attrs)
     if value:
-        xmlt.text = value
+        if cdata:
+            xmlt.text = etree.CDATA(value)
+        else:
+            xmlt.text = value
 
     return xmlt
 
@@ -74,13 +78,13 @@ def transact_xml(to, campaign_id, fields=None, bcc=None):
         p_tag.append(xml_tag("VALUE", value))
         recipient_tag.append(p_tag)
 
-    return ElementTree.tostring(root, encoding="unicode")
+    return XML_HEADER + etree.tostring(root, encoding="unicode")
 
 
 class Acoustic(Silverpop):
     def _call(self, xml):
         logger.debug("Request: %s" % xml)
-        response = self.session.post(self.api_endpoint, data={"xml": xml})
+        response = self.session.post(self.api_endpoint, data=xml.encode("utf-8"))
         return process_response(response)
 
 
@@ -93,7 +97,7 @@ class AcousticTransact(Silverpop):
 
     def _call_xt(self, xml):
         logger.debug("Request: %s" % xml)
-        response = self.session.post(self.api_xt_endpoint, data={"xml": xml})
+        response = self.session.post(self.api_xt_endpoint, data=xml.encode("utf-8"))
         return process_tx_response(response)
 
     def send_mail(self, to, campaign_id, fields=None, bcc=None):
