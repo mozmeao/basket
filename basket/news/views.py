@@ -49,7 +49,7 @@ from basket.news.tasks import (
     confirm_user,
     record_common_voice_update,
     record_fxa_concerts_rsvp,
-    send_recovery_message_task,
+    send_recovery_message_acoustic,
     update_custom_unsub,
     update_get_involved,
     update_user_meta,
@@ -754,7 +754,9 @@ def send_recovery_message(request):
             404,
         )  # Note: Bedrock looks for this 404
 
-    send_recovery_message_task.delay(email)
+    lang = user_data.get("lang", "en") or "en"
+    fmt = user_data.get("format", "H") or "H"
+    send_recovery_message_acoustic.delay(email, user_data["token"], lang, fmt)
     return HttpResponseJSON({"status": "ok"})
 
 

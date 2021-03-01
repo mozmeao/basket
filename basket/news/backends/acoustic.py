@@ -48,7 +48,7 @@ def xml_tag(tag, value=None, cdata=False, **attrs):
     return xmlt
 
 
-def transact_xml(to, campaign_id, fields=None, bcc=None):
+def transact_xml(to, campaign_id, fields=None, bcc=None, save_to_db=False):
     fields = fields or {}
     bcc = bcc or []
     if isinstance(bcc, str):
@@ -61,7 +61,7 @@ def transact_xml(to, campaign_id, fields=None, bcc=None):
 
     root.append(xml_tag("SEND_AS_BATCH", "false"))
     root.append(xml_tag("NO_RETRY_ON_FAILURE", "false"))
-    if fields:
+    if fields and save_to_db:
         save_cols_tag = xml_tag("SAVE_COLUMNS")
         root.append(save_cols_tag)
         for name in fields:
@@ -101,8 +101,8 @@ class AcousticTransact(Silverpop):
         response = self.session.post(self.api_xt_endpoint, data=force_bytes(xml))
         return process_tx_response(response)
 
-    def send_mail(self, to, campaign_id, fields=None, bcc=None):
-        self._call_xt(transact_xml(to, campaign_id, fields, bcc))
+    def send_mail(self, to, campaign_id, fields=None, bcc=None, save_to_db=False):
+        self._call_xt(transact_xml(to, campaign_id, fields, bcc, save_to_db))
 
 
 acoustic = Acoustic(

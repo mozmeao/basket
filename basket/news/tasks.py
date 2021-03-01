@@ -808,6 +808,7 @@ def update_custom_unsub(token, reason):
 
 @et_task
 def send_recovery_message_task(email):
+    # TODO delete me when SFMC is fully gone
     user_data = get_user_data(email=email, extra_fields=["id"])
     if not user_data:
         log.debug("In send_recovery_message_task, email not known: %s" % email)
@@ -820,12 +821,19 @@ def send_recovery_message_task(email):
     if lang not in settings.RECOVER_MSG_LANGS:
         lang = "en"
 
-    vid = AcousticTxEmailMessage.objects.get_vendor_id("token-recovery", lang)
+    message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
+    send_message.delay(message_id, email, user_data["id"], token=user_data["token"])
+
+
+@et_task
+def send_recovery_message_acoustic(email, token, lang, fmt):
+    message_name = "token-recovery"
+    if fmt != "H":
+        message_name += "-text"
+
+    vid = AcousticTxEmailMessage.objects.get_vendor_id(message_name, lang)
     if vid:
-        send_acoustic_tx_message.delay(email, vid, {"token": user_data["token"]})
-    else:
-        message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
-        send_message.delay(message_id, email, user_data["id"], token=user_data["token"])
+        acoustic_tx.send_mail(email, vid, {"basket_token": token})
 
 
 @et_task
@@ -1190,7 +1198,11 @@ def process_donation_receipt(data):
     )
     if message_id:
         acoustic_tx.send_mail(
-            email, message_id, send_data, bcc=settings.DONATE_RECEIPTS_BCC,
+            email,
+            message_id,
+            send_data,
+            bcc=settings.DONATE_RECEIPTS_BCC,
+            save_to_db=True,
         )
 
 

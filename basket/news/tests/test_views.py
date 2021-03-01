@@ -1109,7 +1109,7 @@ class RecoveryViewTest(TestCase):
         self.assertEqual(404, resp.status_code)
 
     @patch("basket.news.utils.get_email_block_list")
-    @patch("basket.news.views.send_recovery_message_task.delay", autospec=True)
+    @patch("basket.news.views.send_recovery_message_acoustic.delay", autospec=True)
     def test_blocked_email(
         self, mock_send_recovery_message_task, mock_get_email_block_list,
     ):
@@ -1123,15 +1123,17 @@ class RecoveryViewTest(TestCase):
 
     @patch("basket.news.views.process_email", Mock(return_value="dude@example.com"))
     @patch("basket.news.views.get_user_data", autospec=True)
-    @patch("basket.news.views.send_recovery_message_task.delay", autospec=True)
+    @patch("basket.news.views.send_recovery_message_acoustic.delay", autospec=True)
     def test_known_email(self, mock_send_recovery_message_task, mock_get_user_data):
         """email provided - pass to the task, return 200"""
         email = "dude@example.com"
-        mock_get_user_data.return_value = {"dummy": 2}
+        mock_get_user_data.return_value = {"token": "el-dudarino"}
         # It should pass the email to the task
         resp = self.client.post(self.url, {"email": email})
         self.assertEqual(200, resp.status_code)
-        mock_send_recovery_message_task.assert_called_with(email)
+        mock_send_recovery_message_task.assert_called_with(
+            email, "el-dudarino", "en", "H",
+        )
 
 
 class TestValidateEmail(TestCase):

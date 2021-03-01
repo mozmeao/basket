@@ -351,6 +351,7 @@ class ProcessDonationReceiptTests(TestCase):
                 "friendly_from_name": "Mozilla",
             },
             bcc=["dude@example.com"],
+            save_to_db=True,
         )
 
     def test_receipt_one_time(self, acoustic_mock):
@@ -376,6 +377,7 @@ class ProcessDonationReceiptTests(TestCase):
                 "friendly_from_name": "Mozilla",
             },
             bcc=["dude@example.com"],
+            save_to_db=True,
         )
 
     def test_receipt_thunderbird(self, acoustic_mock):
@@ -401,6 +403,7 @@ class ProcessDonationReceiptTests(TestCase):
                 "friendly_from_name": "MZLA Thunderbird",
             },
             bcc=["dude@example.com"],
+            save_to_db=True,
         )
 
 
