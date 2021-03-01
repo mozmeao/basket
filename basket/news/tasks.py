@@ -827,7 +827,7 @@ def send_recovery_message_task(email):
 
 @et_task
 def send_recovery_message_acoustic(email, token, lang, fmt):
-    message_name = "token-recovery"
+    message_name = "account-recovery"
     if fmt != "H":
         message_name += "-text"
 
