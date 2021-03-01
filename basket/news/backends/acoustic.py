@@ -1,8 +1,9 @@
 import logging
-from lxml import etree
 
 from django.conf import settings
+from django.utils.encoding import force_bytes
 
+from lxml import etree
 from silverpop.api import Silverpop, SilverpopResponseException
 
 
@@ -84,7 +85,7 @@ def transact_xml(to, campaign_id, fields=None, bcc=None):
 class Acoustic(Silverpop):
     def _call(self, xml):
         logger.debug("Request: %s" % xml)
-        response = self.session.post(self.api_endpoint, data=xml.encode("utf-8"))
+        response = self.session.post(self.api_endpoint, data=force_bytes(xml))
         return process_response(response)
 
 
@@ -97,7 +98,7 @@ class AcousticTransact(Silverpop):
 
     def _call_xt(self, xml):
         logger.debug("Request: %s" % xml)
-        response = self.session.post(self.api_xt_endpoint, data=xml.encode("utf-8"))
+        response = self.session.post(self.api_xt_endpoint, data=force_bytes(xml))
         return process_tx_response(response)
 
     def send_mail(self, to, campaign_id, fields=None, bcc=None):
