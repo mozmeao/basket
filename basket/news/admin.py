@@ -23,7 +23,8 @@ class TransactionalEmailAdmin(admin.ModelAdmin):
 class AcousticTxEmailMessageAdmin(admin.ModelAdmin):
     fields = ("message_id", "vendor_id", "language", "description", "private")
     list_display = ("message_id", "vendor_id", "language", "description", "private")
-    list_editable = ("vendor_id", "private")
+    search_fields = ("message_id", "vendor_id", "description")
+    list_filter = ("private", "message_id", "vendor_id", "language")
 
 
 class BlockedEmailAdmin(admin.ModelAdmin):
