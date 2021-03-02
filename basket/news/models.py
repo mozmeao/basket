@@ -398,6 +398,9 @@ class AcousticTxEmailMessage(models.Model):
         verbose_name = "Acoustic Transact message"
         ordering = ["message_id"]
 
+    def __str__(self):
+        return f"{self.message_id}: {self.language}"
+
     @property
     def slug(self):
         return make_slug(self.message_id, self.language)
