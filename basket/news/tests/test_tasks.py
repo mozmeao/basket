@@ -24,8 +24,6 @@ from basket.news.tasks import (
     fxa_login,
     fxa_verified,
     gmttime,
-    mogrify_message_id,
-    NewsletterException,
     PETITION_CONTACT_FIELDS,
     process_common_voice_batch,
     process_donation,
@@ -33,10 +31,8 @@ from basket.news.tasks import (
     process_donation_receipt,
     process_petition_signature,
     record_common_voice_update,
-    RECOVERY_MESSAGE_ID,
+    send_acoustic_tx_message,
     SUBSCRIBE,
-    send_recovery_message_task,
-    send_message,
     get_lock,
     RetryTask,
 )
@@ -666,16 +662,16 @@ class TaskDuplicationLockingTests(TestCase):
 class FailedTaskTest(TestCase):
     """Test that failed tasks are logged in our FailedTask table"""
 
-    @patch("basket.news.tasks.sfmc")
-    def test_failed_task_logging(self, mock_sfmc):
+    @patch("basket.news.tasks.acoustic_tx")
+    def test_failed_task_logging(self, mock_acoustic):
         """Failed task is logged in FailedTask table"""
-        mock_sfmc.send_mail.side_effect = Exception("Test exception")
+        mock_acoustic.send_mail.side_effect = Exception("Test exception")
         self.assertEqual(0, FailedTask.objects.count())
-        args = ["msg_id", "you@example.com", "SFDCID"]
-        kwargs = {"token": 3}
-        result = send_message.apply(args=args, kwargs=kwargs)
+        args = ["you@example.com", "SFDCID"]
+        kwargs = {"fields": {"token": 3}}
+        result = send_acoustic_tx_message.apply(args=args, kwargs=kwargs)
         fail = FailedTask.objects.get()
-        self.assertEqual("news.tasks.send_message", fail.name)
+        self.assertEqual("news.tasks.send_acoustic_tx_message", fail.name)
         self.assertEqual(result.task_id, fail.task_id)
         self.assertEqual(args, fail.args)
         self.assertEqual(kwargs, fail.kwargs)
@@ -708,74 +704,6 @@ class RetryTaskTest(TestCase):
         send_task_mock.assert_called_with(TASK_NAME, args=[1, 2], kwargs={"token": 3})
         # Previous failed task was deleted
         self.assertTrue(failed_task.delete.called)
-
-
-@patch("basket.news.tasks.send_message", autospec=True)
-@patch("basket.news.tasks.get_user_data", autospec=True)
-class RecoveryMessageTask(TestCase):
-    def setUp(self):
-        self.email = "dude@example.com"
-
-    def test_unknown_email(self, mock_look_for_user, mock_send):
-        """Email not in basket or ET"""
-        # Should log error and return
-        mock_look_for_user.return_value = None
-        send_recovery_message_task(self.email)
-        self.assertFalse(mock_send.called)
-
-    def test_et_error(self, mock_look_for_user, mock_send):
-        """Error talking to Basket. I'm shocked, SHOCKED!"""
-        mock_look_for_user.side_effect = NewsletterException(
-            "ET has failed to achieve.",
-        )
-
-        with self.assertRaises(Retry):
-            send_recovery_message_task(self.email)
-
-        self.assertFalse(mock_send.called)
-
-    @override_settings(RECOVER_MSG_LANGS=["fr"])
-    def test_email_in_et(self, mock_look_for_user, mock_send):
-        """Email not in basket but in ET"""
-        # Should trigger message. We can follow the user's format and lang pref
-        format = "T"
-        lang = "fr"
-        mock_look_for_user.return_value = {
-            "id": "SFDCID",
-            "status": "ok",
-            "email": self.email,
-            "format": format,
-            "country": "",
-            "lang": lang,
-            "token": "USERTOKEN",
-            "newsletters": [],
-        }
-        send_recovery_message_task(self.email)
-        message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
-        mock_send.delay.assert_called_with(
-            message_id, self.email, "SFDCID", token="USERTOKEN",
-        )
-
-    @override_settings(RECOVER_MSG_LANGS=["en"])
-    def test_lang_not_available(self, mock_look_for_user, mock_send):
-        """Language not available for recover message"""
-        # Should trigger message in english if not available in user lang
-        format = "T"
-        mock_look_for_user.return_value = {
-            "id": "SFDCID",
-            "status": "ok",
-            "email": self.email,
-            "format": format,
-            "country": "",
-            "lang": "fr",
-            "token": "USERTOKEN",
-            "newsletters": [],
-        }
-        send_recovery_message_task(self.email)
-        message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, "en", format)
-        mock_send.delay.assert_called_with(
-            message_id, self.email, "SFDCID", token="USERTOKEN",
-        )
 
 
 class ETTaskTests(TestCase):
@@ -1132,12 +1060,11 @@ class FxALoginTests(TestCase):
         upsert_mock.delay.assert_not_called()
 
 
-@patch("basket.news.tasks.sfmc")
 @patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.get_user_data")
 @patch("basket.news.tasks.cache")
 class FxAEmailChangedTests(TestCase):
-    def test_timestamps_older_message(self, cache_mock, gud_mock, sfdc_mock, sfmc_mock):
+    def test_timestamps_older_message(self, cache_mock, gud_mock, sfdc_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1147,10 +1074,9 @@ class FxAEmailChangedTests(TestCase):
         # ts higher in cache, should no-op
         gud_mock.return_value = {"id": "1234"}
         fxa_email_changed(data)
-        sfmc_mock.upsert_row.assert_not_called()
         sfdc_mock.upsert_row.assert_not_called()
 
-    def test_timestamps_newer_message(self, cache_mock, gud_mock, sfdc_mock, sfmc_mock):
+    def test_timestamps_newer_message(self, cache_mock, gud_mock, sfdc_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1160,13 +1086,9 @@ class FxAEmailChangedTests(TestCase):
         gud_mock.return_value = {"id": "1234"}
         # ts higher in message, do the things
         fxa_email_changed(data)
-        sfmc_mock.upsert_row.assert_called_with(
-            "FXA_EmailUpdated",
-            {"FXA_ID": data["uid"], "NewEmailAddress": data["email"]},
-        )
         sfdc_mock.update.assert_called_with(ANY, {"fxa_primary_email": data["email"]})
 
-    def test_timestamps_nothin_cached(self, cache_mock, gud_mock, sfdc_mock, sfmc_mock):
+    def test_timestamps_nothin_cached(self, cache_mock, gud_mock, sfdc_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1175,13 +1097,9 @@ class FxAEmailChangedTests(TestCase):
         cache_mock.get.return_value = 0
         gud_mock.return_value = {"id": "1234"}
         fxa_email_changed(data)
-        sfmc_mock.upsert_row.assert_called_with(
-            "FXA_EmailUpdated",
-            {"FXA_ID": data["uid"], "NewEmailAddress": data["email"]},
-        )
         sfdc_mock.update.assert_called_with(ANY, {"fxa_primary_email": data["email"]})
 
-    def test_fxa_id_not_found(self, cache_mock, gud_mock, sfdc_mock, sfmc_mock):
+    def test_fxa_id_not_found(self, cache_mock, gud_mock, sfdc_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1200,7 +1118,7 @@ class FxAEmailChangedTests(TestCase):
             {"id": "1234"}, {"fxa_id": data["uid"], "fxa_primary_email": data["email"]},
         )
 
-    def test_fxa_id_nor_email_found(self, cache_mock, gud_mock, sfdc_mock, sfmc_mock):
+    def test_fxa_id_nor_email_found(self, cache_mock, gud_mock, sfdc_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",

@@ -29,20 +29,17 @@ from basket.base.utils import email_is_testing
 from basket.news.backends.acoustic import acoustic_tx, acoustic
 from basket.news.backends.common import NewsletterException
 from basket.news.backends.sfdc import sfdc
-from basket.news.backends.sfmc import sfmc
 from basket.news.celery import app as celery_app
 from basket.news.models import (
     FailedTask,
     Newsletter,
     Interest,
     QueuedTask,
-    TransactionalEmailMessage,
     CommonVoiceUpdate,
     AcousticTxEmailMessage,
 )
 from basket.news.newsletters import (
     get_transactional_message_ids,
-    newsletter_map,
     newsletter_languages,
 )
 from basket.news.utils import (
@@ -61,14 +58,6 @@ from basket.news.utils import (
 log = logging.getLogger(__name__)
 
 BAD_MESSAGE_ID_CACHE = caches["bad_message_ids"]
-
-# Base message ID for confirmation email
-CONFIRMATION_MESSAGE = "confirmation_email"
-
-# This is prefixed with the 2-letter language code + _ before sending,
-# e.g. 'en_recovery_message', and '_T' if text, e.g. 'en_recovery_message_T'.
-RECOVERY_MESSAGE_ID = "SFDC_Recovery"
-FXACCOUNT_WELCOME = "FxAccounts_Welcome"
 
 # don't propagate and don't retry if these are the error messages
 IGNORE_ERROR_MSGS = [
@@ -309,8 +298,6 @@ def fxa_email_changed(data):
             sfdc.add({"email": email, "fxa_id": fxa_id, "fxa_primary_email": email})
             statsd.incr("news.tasks.fxa_email_changed.user_not_found")
 
-    sfmc.upsert_row("FXA_EmailUpdated", {"FXA_ID": fxa_id, "NewEmailAddress": email})
-
     cache.set(cache_key, ts, 7200)  # 2 hr
 
 
@@ -481,12 +468,6 @@ def fxa_activity_acoustic(data):
 
 
 @et_task
-def fxa_activity_sfmc(data):
-    # TODO remove after SFMC is gone
-    apply_updates("Sync_Device_Logins", data)
-
-
-@et_task
 def update_get_involved(
     interest_id,
     lang,
@@ -564,7 +545,9 @@ def upsert_contact(api_call_type, data, user_data):
         transactionals = newsletters_set & all_transactionals
         if transactionals:
             newsletters = list(newsletters_set - transactionals)
-            send_transactional_messages(update_data, user_data, list(transactionals))
+            send_acoustic_tx_messages(
+                data["email"], data.get("lang", "en-US"), list(transactionals),
+            )
             if not newsletters:
                 # no regular newsletters
                 return None, None
@@ -589,22 +572,6 @@ def upsert_contact(api_call_type, data, user_data):
             ).exists()
             if exempt_from_confirmation:
                 update_data["optin"] = True
-
-        # record source URL
-        nl_map = newsletter_map()
-        source_url = update_data.get("source_url")
-        email = update_data.get("email")
-        if not email:
-            email = user_data.get("email") if user_data else None
-
-        if email:
-            # send all newsletters whether already subscribed or not
-            # bug 1308971
-            # if api_call_type == SET this is pref center, so only send new subscriptions
-            nl_list = newsletters if api_call_type == SUBSCRIBE else to_subscribe
-            for nlid in nl_list:
-                if nlid in nl_map:
-                    record_source_url.delay(email, source_url, nl_map[nlid])
 
     if user_data is None:
         # no user found. create new one.
@@ -666,99 +633,17 @@ def send_acoustic_tx_message(email, vendor_id, fields=None):
     acoustic_tx.send_mail(email, vendor_id, fields)
 
 
-def send_acoustic_tx_messages(data, message_ids):
+def send_acoustic_tx_messages(email, lang, message_ids):
     sent = 0
+    lang = lang.strip()
+    lang = lang or "en-US"
     for mid in message_ids:
-        vid = AcousticTxEmailMessage.objects.get_vendor_id(
-            mid, data.get("lang", "en-US"),
-        )
+        vid = AcousticTxEmailMessage.objects.get_vendor_id(mid, lang)
         if vid:
-            send_acoustic_tx_message.delay(data["email"], vid)
+            send_acoustic_tx_message.delay(email, vid)
             sent += 1
 
     return sent
-
-
-def send_transactional_messages(data, user_data, transactionals):
-    email = data["email"]
-    if send_acoustic_tx_messages(data, transactionals):
-        return  # sent via Acoustic, skip SFMC
-
-    lang_code = data.get("lang", "en")[:2].lower()
-    msgs = TransactionalEmailMessage.objects.filter(message_id__in=transactionals)
-    if user_data and "id" in user_data:
-        sfdc_id = user_data["id"]
-    else:
-        sfdc_id = None
-
-    for tm in msgs:
-        languages = [lang[:2].lower() for lang in tm.language_list]
-        if lang_code not in languages:
-            # Newsletter does not support their preferred language, so
-            # it doesn't have a welcome in that language either. Settle
-            # for English, same as they'll be getting the newsletter in.
-            lang_code = "en"
-
-        msg_id = mogrify_message_id(tm.vendor_id, lang_code, "H")
-        send_message.delay(msg_id, email, sfdc_id or email)
-
-
-def apply_updates(database, record):
-    """Send the record data to ET to update the database named
-    target_et.
-
-    :param str database: Target database, e.g. 'Firefox_Account_ID'
-    :param dict record: Data to send
-    """
-    sfmc.upsert_row(database, record)
-
-
-@et_task
-def send_message(message_id, email, subscriber_key, token=None):
-    """
-    Ask ET to send a message.
-
-    @param str message_id: ID of the message in ET
-    @param str email: email to send it to
-    @param str subscriber_key: id of the email user (email or SFDC id)
-    @param token: optional token when sending recovery
-
-    @raises: NewsletterException for retryable errors, BasketError for
-        fatal errors.
-    """
-    if BAD_MESSAGE_ID_CACHE.get(message_id, False):
-        return
-
-    try:
-        sfmc.send_mail(message_id, email, subscriber_key, token)
-        statsd.incr("news.tasks.send_message." + message_id)
-    except NewsletterException as e:
-        # Better error messages for some cases. Also there's no point in
-        # retrying these
-        if "Invalid Customer Key" in str(e):
-            # remember it's a bad message ID so we don't try again during this process.
-            BAD_MESSAGE_ID_CACHE.set(message_id, True)
-            return
-        # we should retry
-        raise
-
-
-def mogrify_message_id(message_id, lang, format):
-    """Given a bare message ID, a language code, and a format (T or H),
-    return a message ID modified to specify that language and format.
-
-    E.g. on input ('MESSAGE', 'fr', 'T') it returns 'fr_MESSAGE_T',
-    or on input ('MESSAGE', 'pt', 'H') it returns 'pt_MESSAGE'
-
-    If `lang` is None or empty, it skips prefixing the language.
-    """
-    if lang:
-        result = "%s_%s" % (lang.lower()[:2], message_id)
-    else:
-        result = message_id
-    if format == "T":
-        result += "_T"
-    return result
 
 
 @et_task
@@ -816,25 +701,6 @@ def update_custom_unsub(token, reason):
     except sfapi.SalesforceMalformedRequest:
         # likely the record can't be found. nothing to do.
         pass
-
-
-@et_task
-def send_recovery_message_task(email):
-    # TODO delete me when SFMC is fully gone
-    user_data = get_user_data(email=email, extra_fields=["id"])
-    if not user_data:
-        log.debug("In send_recovery_message_task, email not known: %s" % email)
-        return
-
-    # make sure we have a language and format, no matter what ET returned
-    lang = user_data.get("lang", "en") or "en"
-    format = user_data.get("format", "H") or "H"
-
-    if lang not in settings.RECOVER_MSG_LANGS:
-        lang = "en"
-
-    message_id = mogrify_message_id(RECOVERY_MESSAGE_ID, lang, format)
-    send_message.delay(message_id, email, user_data["id"], token=user_data["token"])
 
 
 @et_task
@@ -920,37 +786,6 @@ def process_common_voice_batch():
 
 
 @et_task
-def record_fxa_concerts_rsvp(email, is_firefox, campaign_id):
-    sfmc.add_row(
-        "FxAccounts_Concert_RSVP",
-        {
-            "Email": email,
-            "Firefox": is_firefox,
-            "Campaign_ID": campaign_id,
-            "RSVP_Time": gmttime(),
-        },
-    )
-
-
-@et_task
-def record_source_url(email, source_url, newsletter_id):
-    if not source_url:
-        source_url = "__NONE__"
-    else:
-        source_url = source_url[:1000]
-
-    sfmc.add_row(
-        "NEWSLETTER_SOURCE_URLS",
-        {
-            "Email": email,
-            "Signup_Source_URL__c": source_url,
-            "Newsletter_Field_Name": newsletter_id,
-            "Newsletter_Date": gmttime(),
-        },
-    )
-
-
-@et_task
 def process_donation_event(data):
     """Process a followup event on a donation"""
     etype = data["event_type"]
@@ -993,18 +828,6 @@ def process_donation_event(data):
             sentry_sdk.capture_exception(e)
         # we don't know about this tx_id. Let someone know.
         do_notify = cache.add("donate-notify-{}".format(txn_id), 1, 86400)
-        if do_notify and settings.DONATE_UPDATE_FAIL_DE:
-            sfmc.add_row(
-                settings.DONATE_UPDATE_FAIL_DE,
-                {
-                    "PMT_Transaction_ID__c": txn_id,
-                    "Payment_Type__c": etype,
-                    "PMT_Reason_Lost__c": reason_lost,
-                    "Error_Text": str(e)[:4000],
-                    "Date": gmttime(),
-                },
-            )
-
         if do_notify and settings.DONATE_NOTIFY_EMAIL:
             # don't notify about a transaction more than once per day
             first_mail = cache.add("donate-notify-{}".format(txn_id), 1, 86400)

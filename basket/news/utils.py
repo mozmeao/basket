@@ -24,12 +24,8 @@ from basket import errors
 from django_statsd.clients import statsd
 from email_validator import validate_email, EmailNotValidError
 
-from basket.news.backends.common import (
-    NewsletterException,
-    NewsletterNoResultsException,
-)
+from basket.news.backends.common import NewsletterException
 from basket.news.backends.sfdc import sfdc
-from basket.news.backends.sfmc import sfmc
 from basket.news.models import APIUser, BlockedEmail
 from basket.news.newsletters import (
     newsletter_group_newsletter_slugs,
@@ -330,8 +326,7 @@ def get_user_data(
     call this function with said field name in a list passed in
     the `extra_fields` argument.
 
-    If `get_fxa` is True then the email will be looked up in the FxA Data Extension
-    in SFMC and a boolean field will be including indicating whether they are
+    If `get_fxa` is True then a boolean field will be including indicating whether they are
     an account holder or not.
 
     Review of results:
@@ -379,19 +374,7 @@ def get_user_data(
             user.pop(fn, None)
 
     if get_fxa:
-        try:
-            sfmc.get_row("Firefox_Account_ID", ["FXA_ID"], email=user["email"])
-        except NewsletterNoResultsException:
-            fxa_user = False
-        except Exception:
-            # some error happened, but we should return the user data anyway
-            sentry_sdk.capture_exception()
-            fxa_user = None
-        else:
-            fxa_user = True
-
-        if fxa_user is not None:
-            user["has_fxa"] = fxa_user
+        user["has_fxa"] = bool(user.get("fxa_id"))
 
     user["status"] = "ok"
     return user

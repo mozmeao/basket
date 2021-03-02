@@ -34,7 +34,6 @@ from basket.news.models import (
     LocaleStewards,
     Newsletter,
     NewsletterGroup,
-    TransactionalEmailMessage,
 )
 from basket.news.newsletters import (
     newsletter_slugs,
@@ -48,7 +47,6 @@ from basket.news.tasks import (
     amo_sync_user,
     confirm_user,
     record_common_voice_update,
-    record_fxa_concerts_rsvp,
     send_recovery_message_acoustic,
     update_custom_unsub,
     update_get_involved,
@@ -106,7 +104,6 @@ def news_sync():
         NewsletterGroup.objects.all(),
         Interest.objects.all(),
         LocaleStewards.objects.all(),
-        TransactionalEmailMessage.objects.all(),
     ]
 
 
@@ -267,38 +264,6 @@ def confirm(request, token):
     ):
         raise Ratelimited()
     confirm_user.delay(token, start_time=time())
-    return HttpResponseJSON({"status": "ok"})
-
-
-@require_POST
-@csrf_exempt
-def fxa_concerts_rsvp(request):
-    if not has_valid_api_key(request):
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "requires a valid API-key",
-                "code": errors.BASKET_AUTH_ERROR,
-            },
-            401,
-        )
-
-    fields = ("email", "is_firefox", "campaign_id")
-    data = request.POST.dict()
-    if not all(f in data for f in fields):
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "missing required field",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            401,
-        )
-
-    is_firefox = "Y" if data["is_firefox"][0].upper() == "Y" else "N"
-    record_fxa_concerts_rsvp.delay(
-        email=data["email"], is_firefox=is_firefox, campaign_id=data["campaign_id"],
-    )
     return HttpResponseJSON({"status": "ok"})
 
 

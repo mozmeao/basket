@@ -5,7 +5,7 @@ from django.db import models
 from django.template.loader import render_to_string
 from django.utils.timezone import now
 
-# import sentry_sdk
+import sentry_sdk
 from product_details import product_details
 from .celery import app as celery_app
 from jsonfield import JSONField
@@ -311,34 +311,9 @@ class LocaleStewards(models.Model):
         )
 
 
-class TransactionalEmailMessage(models.Model):
-    message_id = models.SlugField(
-        primary_key=True,
-        help_text="The ID for the message that will be used by clients",
-    )
-    vendor_id = models.CharField(
-        max_length=50, help_text="The backend vendor's identifier for this message",
-    )
-    description = models.CharField(
-        max_length=200,
-        blank=True,
-        help_text="Optional short description of this message",
-    )
-    languages = models.CharField(
-        max_length=200,
-        help_text="Comma-separated list of the language codes that this "
-        "newsletter supports",
-    )
-
-    @property
-    def language_list(self):
-        """Return language codes for this newsletter as a list"""
-        return [x.strip() for x in self.languages.split(",") if x.strip()]
-
-
 class AcousticTxEmailMessageManager(models.Manager):
     def get_vendor_id(self, message_id, language):
-        # req_language = language
+        req_language = language
         message = None
         language = language.strip()
         language = language or "en-US"
@@ -359,12 +334,10 @@ class AcousticTxEmailMessageManager(models.Manager):
                     message = self.get(message_id=message_id, language="en-US")
                 except exc:
                     # couldn't find a message. give up.
-                    # with sentry_sdk.push_scope() as scope:
-                    #     scope.set_tag("language", req_language)
-                    #     scope.set_tag("message_id", message_id)
-                    #     sentry_sdk.capture_exception(e)
-                    # TODO enable the above when SFMC is off
-                    pass
+                    with sentry_sdk.push_scope() as scope:
+                        scope.set_tag("language", req_language)
+                        scope.set_tag("message_id", message_id)
+                        sentry_sdk.capture_exception()
 
         if message:
             return message.vendor_id

@@ -281,7 +281,7 @@ class RefreshingSFMixin:
         """Report session as expired between 5 and 6 minutes early
 
         Having the expiration be random helps prevent multiple basket
-        instances simultaneously requesting a new token from SFMC,
+        instances simultaneously requesting a new token from SFDC,
         a.k.a. the Thundering Herd problem.
         """
         time_buffer = randint(1, HERD_TIMEOUT) + AUTH_BUFFER

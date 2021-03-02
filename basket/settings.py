@@ -215,29 +215,10 @@ WATCHMAN_CHECKS = (
     "watchman.checks.databases",
 )
 
-# legacy name
+# Salesforce.com
+# legacy names
 EXACTTARGET_USE_SANDBOX = config("EXACTTARGET_USE_SANDBOX", False, cast=bool)
 USE_SANDBOX_BACKEND = config("USE_SANDBOX_BACKEND", EXACTTARGET_USE_SANDBOX, cast=bool)
-ET_CLIENT_ID = config("ET_CLIENT_ID", None)
-ET_CLIENT_SECRET = config("ET_CLIENT_SECRET", None)
-
-if USE_SANDBOX_BACKEND:
-    auth_url = "https://auth-test.exacttargetapis.com/v1/requestToken?legacy=1"
-    wsdl_loc = "etframework.test.wsdl"
-else:
-    auth_url = "https://auth.exacttargetapis.com/v1/requestToken?legacy=1"
-    wsdl_loc = "etframework.wsdl"
-
-SFMC_DEBUG = config("SFMC_DEBUG", DEBUG, cast=bool)
-SFMC_SETTINGS = {
-    "authenticationurl": auth_url,
-    "wsdl_file_local_loc": path("basket", "news", "backends", wsdl_loc),
-}
-if ET_CLIENT_ID and ET_CLIENT_SECRET:
-    SFMC_SETTINGS["clientid"] = ET_CLIENT_ID
-    SFMC_SETTINGS["clientsecret"] = ET_CLIENT_SECRET
-
-# Salesforce.com
 SFDC_USE_SANDBOX = config("SFDC_USE_SANDBOX", USE_SANDBOX_BACKEND, cast=bool)
 SFDC_SETTINGS = {
     "username": config("SFDC_USERNAME", None),
@@ -428,7 +409,6 @@ FXA_EVENTS_VERIFIED_SFDC_ENABLE = config(
 FXA_ACCESS_KEY_ID = config("FXA_ACCESS_KEY_ID", default="")
 FXA_SECRET_ACCESS_KEY = config("FXA_SECRET_ACCESS_KEY", default="")
 FXA_S3_BUCKET = config("FXA_S3_BUCKET", default="")
-FXA_SFMC_DE = config("FXA_SFMC_DE", default="FXA_Logins")
 FXA_SNITCH_URL = config("FXA_SNITCH_URL", default="")
 # stable, stage, or production
 # https://github.com/mozilla/PyFxA/blob/master/fxa/constants.py
@@ -483,6 +463,4 @@ if sys.argv[0].endswith("py.test") or (len(sys.argv) > 1 and sys.argv[1] == "tes
     CELERY_TASK_ALWAYS_EAGER = True
     SFDC_SETTINGS.pop("username", None)
     SFDC_SETTINGS.pop("password", None)
-    SFMC_SETTINGS.pop("clientid", None)
-    SFMC_SETTINGS.pop("clientsecret", None)
     TESTING_EMAIL_DOMAINS = []

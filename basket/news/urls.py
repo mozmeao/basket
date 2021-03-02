@@ -5,7 +5,6 @@ from .views import (
     confirm,
     custom_unsub_reason,
     debug_user,
-    fxa_concerts_rsvp,
     get_involved,
     list_newsletters,
     lookup_user,
@@ -21,7 +20,6 @@ from .views import (
 
 urlpatterns = (
     path("get-involved/", get_involved),
-    path("fxa-concerts-rsvp/", fxa_concerts_rsvp),
     path("common-voice-goals/", common_voice_goals),
     path("subscribe/", subscribe),
     path("unsubscribe/<uuid:token>/", unsubscribe),
