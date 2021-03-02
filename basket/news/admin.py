@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.contrib import admin, messages
 
+from product_details import product_details
+
 from basket.news.models import (
     AcousticTxEmailMessage,
     APIUser,
@@ -15,6 +17,22 @@ from basket.news.models import (
 )
 
 
+class LanguageFilter(admin.SimpleListFilter):
+    """Only show languages in the filter that are used in a message"""
+
+    title = "language"
+    parameter_name = "language"
+
+    def lookups(self, request, model_admin):
+        qs = model_admin.get_queryset(request)
+        langs = sorted(set(qs.values_list("language", flat=True)))
+        return [(k, f"{k} ({product_details.languages[k]['English']})") for k in langs]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(language=self.value())
+
+
 class TransactionalEmailAdmin(admin.ModelAdmin):
     fields = ("message_id", "vendor_id", "languages", "description")
     list_display = ("message_id", "vendor_id", "languages", "description")
@@ -24,7 +42,7 @@ class AcousticTxEmailMessageAdmin(admin.ModelAdmin):
     fields = ("message_id", "vendor_id", "language", "description", "private")
     list_display = ("message_id", "vendor_id", "language", "description", "private")
     search_fields = ("message_id", "vendor_id", "description")
-    list_filter = ("private", "message_id", "vendor_id", "language")
+    list_filter = ("private", "message_id", "vendor_id", LanguageFilter)
 
 
 class BlockedEmailAdmin(admin.ModelAdmin):
