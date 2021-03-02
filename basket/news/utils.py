@@ -517,12 +517,9 @@ def get_best_supported_lang(code):
         return _fix_supported_lang(code)
 
     all_langs_2char = {c[:2]: c for c in all_langs}
-    if len(code) > 2:
-        code2 = code[:2]
-        if code2 in all_langs:
-            return _fix_supported_lang(code2)
-        if code2 in all_langs_2char:
-            return _fix_supported_lang(all_langs_2char[code2])
+    code2 = code[:2]
+    if code2 in all_langs_2char:
+        return _fix_supported_lang(all_langs_2char[code2])
 
     return "en"
 

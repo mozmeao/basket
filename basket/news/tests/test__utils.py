@@ -327,6 +327,7 @@ class TestGetBestSupportedLang(TestCase):
         self.assertEqual(get_best_supported_lang("pt-BR"), "pt")
         self.assertEqual(get_best_supported_lang("en-ZA"), "en")
         self.assertEqual(get_best_supported_lang("zh-CN"), "zh-TW")
+        self.assertEqual(get_best_supported_lang("zh"), "zh-TW")
 
 
 class TestLanguageCodeIsValid(TestCase):

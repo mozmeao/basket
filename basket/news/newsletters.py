@@ -178,6 +178,10 @@ def newsletter_languages():
     lang_set = set()
     for newsletter in _newsletters()["by_name"].values():
         lang_set |= set(newsletter.language_list)
+
+    # include Tx email languages
+    lang_set |= set(AcousticTxEmailMessage.objects.values_list("language", flat=True))
+
     return lang_set
 
 
