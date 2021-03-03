@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 from email.utils import formatdate
@@ -77,6 +78,8 @@ IGNORE_ERROR_MSGS = [
     "No valid subscribers were provided",
     "There are no valid subscribers",
 ]
+# don't propagate and don't retry if these regex match the error messages
+IGNORE_ERROR_MSGS_RE = [re.compile(r"campaignId \d+ not found")]
 # don't propagate after max retries if these are the error messages
 IGNORE_ERROR_MSGS_POST_RETRY = []
 # tasks exempt from maintenance mode queuing
@@ -103,10 +106,16 @@ def exponential_backoff(retries):
     return max(1, backoff_minutes) * 60
 
 
-def ignore_error(exc, to_ignore=IGNORE_ERROR_MSGS):
+def ignore_error(exc, to_ignore=None, to_ignore_re=None):
+    to_ignore = to_ignore or IGNORE_ERROR_MSGS
+    to_ignore_re = to_ignore_re or IGNORE_ERROR_MSGS_RE
     msg = str(exc)
     for ignore_msg in to_ignore:
         if ignore_msg in msg:
+            return True
+
+    for ignore_re in to_ignore_re:
+        if ignore_re.search(msg):
             return True
 
     return False
@@ -231,6 +240,9 @@ def et_task(func):
             # These could all be connection issues, so try again later.
             # IOError covers URLError and SSLError.
             if ignore_error(e):
+                with sentry_sdk.push_scope() as scope:
+                    scope.set_tag("action", "ignored")
+                    sentry_sdk.capture_exception()
                 return
 
             try:
