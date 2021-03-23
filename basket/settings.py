@@ -406,10 +406,6 @@ FXA_EVENTS_VERIFIED_SFDC_ENABLE = config(
     "FXA_EVENTS_VERIFIED_SFDC_ENABLE", cast=bool, default=False,
 )
 
-FXA_ACCESS_KEY_ID = config("FXA_ACCESS_KEY_ID", default="")
-FXA_SECRET_ACCESS_KEY = config("FXA_SECRET_ACCESS_KEY", default="")
-FXA_S3_BUCKET = config("FXA_S3_BUCKET", default="")
-FXA_SNITCH_URL = config("FXA_SNITCH_URL", default="")
 # stable, stage, or production
 # https://github.com/mozilla/PyFxA/blob/master/fxa/constants.py
 FXA_OAUTH_SERVER_ENV = config("FXA_OAUTH_SERVER_ENV", default="stable")

@@ -319,19 +319,6 @@ def fxa_direct_update_contact(fxa_id, data):
 
 
 @et_task
-def fxa_last_login(fxa_id, timestamp):
-    # drop the ones on the queue now
-    pass
-
-
-def fxa_last_login_direct(fxa_id, timestamp):
-    fxa_direct_update_contact(
-        fxa_id,
-        {"FxA_Last_Login__c": iso_format_unix_timestamp(timestamp, date_only=True)},
-    )
-
-
-@et_task
 def fxa_delete(data):
     fxa_direct_update_contact(data["uid"], {"FxA_Account_Deleted__c": True})
 
@@ -452,16 +439,6 @@ def _add_fxa_activity(data):
 
 @et_task
 def fxa_activity_acoustic(data):
-    # TODO remove these if statements after initial deployment
-    if "OS" in data:
-        data["OS_NAME"] = data.pop("OS")
-
-    if data["LOGIN_DATE"].endswith("GMT"):
-        data["LOGIN_DATE"] = date.today().isoformat()
-
-    if not data["SERVICE"].strip():
-        data["SERVICE"] = "unknown"
-
     acoustic.insert_update_relational_table(
         table_id=settings.ACOUSTIC_FXA_TABLE_ID, rows=[data],
     )
