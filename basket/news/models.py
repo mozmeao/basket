@@ -75,6 +75,10 @@ class Newsletter(models.Model):
         help_text="True if subscribing to this newsletter requires someone"
         "to respond to a confirming email.",
     )
+    firefox_confirm = models.BooleanField(
+        default=False,
+        help_text="Whether to send the Firefox or Mozilla branded confirmation message for this newsletter",
+    )
     order = models.IntegerField(
         default=0,
         help_text="Order to display the newsletters on the web site. "

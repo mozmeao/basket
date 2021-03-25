@@ -534,6 +534,7 @@ def upsert_contact(api_call_type, data, user_data):
     update_data["newsletters"] = parse_newsletters(
         api_call_type, newsletters, cur_newsletters,
     )
+    send_confirm = False
 
     if api_call_type != UNSUBSCRIBE:
         # Are they subscribing to any newsletters that don't require confirmation?
@@ -544,22 +545,31 @@ def upsert_contact(api_call_type, data, user_data):
         if to_subscribe and not (
             forced_optin or (user_data and user_data.get("optin"))
         ):
-            exempt_from_confirmation = Newsletter.objects.filter(
-                slug__in=to_subscribe, requires_double_optin=False,
-            ).exists()
+            to_subscribe = Newsletter.objects.filter(slug__in=to_subscribe)
+            exempt_from_confirmation = any(
+                [not o.requires_double_optin for o in to_subscribe],
+            )
             if exempt_from_confirmation:
                 update_data["optin"] = True
+            else:
+                send_fx_confirm = all([o.firefox_confirm for o in to_subscribe])
+                send_confirm = "fx" if send_fx_confirm else "moz"
 
     if user_data is None:
         # no user found. create new one.
-        update_data["token"] = generate_token()
+        token = update_data["token"] = generate_token()
         if settings.MAINTENANCE_MODE:
             sfdc_add_update.delay(update_data)
         else:
             # don't catch exceptions here. SalesforceError subclasses will retry.
             sfdc.add(update_data)
 
-        return update_data["token"], True
+        if send_confirm and settings.SEND_CONFIRM_MESSAGES:
+            send_confirm_message.delay(
+                data["email"], token, data.get("lang", "en-US"), send_confirm,
+            )
+
+        return token, True
 
     if forced_optin and not user_data.get("optin"):
         update_data["optin"] = True
@@ -579,6 +589,14 @@ def upsert_contact(api_call_type, data, user_data):
         sfdc_add_update.delay(update_data, user_data)
     else:
         sfdc.update(user_data, update_data)
+
+    if send_confirm and settings.SEND_CONFIRM_MESSAGES:
+        send_confirm_message.delay(
+            user_data["email"],
+            token,
+            update_data.get("lang", user_data.get("lang", "en-US")),
+            send_confirm,
+        )
 
     return token, False
 
@@ -621,6 +639,16 @@ def send_acoustic_tx_messages(email, lang, message_ids):
             sent += 1
 
     return sent
+
+
+@et_task
+def send_confirm_message(email, token, lang, message_type):
+    lang = lang.strip()
+    lang = lang or "en-US"
+    message_id = f"newsletter-confirm-{message_type}"
+    vid = AcousticTxEmailMessage.objects.get_vendor_id(message_id, lang)
+    if vid:
+        acoustic_tx.send_mail(email, vid, {"basket_token": token})
 
 
 @et_task
