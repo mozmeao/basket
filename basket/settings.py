@@ -245,6 +245,18 @@ ACOUSTIC_TX_SERVER_NUMBER = config("ACOUSTIC_TX_SERVER_NUMBER", None)
 # Send confirmation messages via Acoustic Transact
 SEND_CONFIRM_MESSAGES = config("SEND_CONFIRM_MESSAGES", False, cast=bool)
 
+# Mozilla CTMS
+CTMS_ENV = config("CTMS_ENV", "").lower()
+CTMS_ENABLED = config("CTMS_ENABLED", False, cast=bool)
+if CTMS_ENV == "stage":
+    default_url = "https://ctms.stage.mozilla-ess.mozit.cloud"
+elif CTMS_ENV == "prod":
+    default_url = "https://ctms.prod.mozilla-ess.mozit.cloud"
+else:
+    default_url = ""
+CTMS_URL = config("CTMS_URL", default_url)
+CTMS_CLIENT_ID = config("CTMS_CLIENT_ID", None)
+CTMS_CLIENT_SECRET = config("CTMS_CLIENT_SECRET", None)
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_URLS_REGEX = r"^/(news/|subscribe)"
