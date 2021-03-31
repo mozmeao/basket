@@ -648,7 +648,7 @@ def send_confirm_message(email, token, lang, message_type):
     message_id = f"newsletter-confirm-{message_type}"
     vid = AcousticTxEmailMessage.objects.get_vendor_id(message_id, lang)
     if vid:
-        acoustic_tx.send_mail(email, vid, {"basket_token": token})
+        acoustic_tx.send_mail(email, vid, {"basket_token": token}, save_to_db=True)
 
 
 @et_task
