@@ -1,13 +1,18 @@
-from unittest.mock import patch, Mock, ANY
 import json
+from unittest.mock import patch, Mock, ANY, DEFAULT
+from uuid import uuid4
 
 from django.test import TestCase
 from django.test.utils import override_settings
 
-from requests import Response
+from requests import Request, Response
 from requests.exceptions import HTTPError
 
-from basket.news.backends.ctms import ctms_session, CTMSSession
+from basket.news.backends.ctms import (
+    ctms_session,
+    CTMSInterface,
+    CTMSSession,
+)
 
 
 class CTMSSessionTests(TestCase):
@@ -216,3 +221,76 @@ class CTMSSessionTests(TestCase):
         """ctms_session() returns None when CTMS_ENABLED=False"""
         session = ctms_session()
         assert session is None
+
+
+def mock_interface(expected_call, status_code, response_data, reason=None):
+    """Return a CTMSInterface with a mocked session and response"""
+    call = expected_call.lower()
+    assert call in set(("post", "put", "get"))
+    session = Mock(spec_set=[call])
+    caller = getattr(session, call)
+
+    def set_request(path, **kwargs):
+        url = f"https://ctms.example.com{path}"
+        request = Request(expected_call, url, **kwargs)
+        response.request = request.prepare()
+        response.url = url
+        return DEFAULT
+
+    caller.side_effect = set_request
+
+    response = Response()
+    response.status_code = status_code
+    if reason:
+        response.reason = reason
+    else:
+        reasons = {200: "OK", 422: "Unprocessable Entity"}
+        response.reason = reasons.get(status_code, "Unknown")
+    response._content = json.dumps(response_data).encode("utf8")
+
+    getattr(session, call).return_value = response
+
+    return CTMSInterface(session)
+
+
+class MockInterfaceTests(TestCase):
+    def test_post_to_create_success(self):
+        expected = {
+            "email": {
+                "primary_email": "test@example.com",
+                "email_id": str(uuid4()),
+                "other": "stuff",
+            },
+            "other_groups": {"more": "data"},
+        }
+        interface = mock_interface("POST", 200, expected)
+        resp = interface.post_to_create(
+            {"email": {"primary_email": "test@example.com"}}
+        )
+        assert resp == expected
+
+    def test_post_to_create_data_failure(self):
+        expected = {
+            "detail": [
+                {
+                    "loc": ["body", "email"],
+                    "msg": "field required",
+                    "type": "value_error.missing",
+                }
+            ]
+        }
+        interface = mock_interface("POST", 422, expected)
+        with self.assertRaises(HTTPError) as context:
+            interface.post_to_create({})
+        error = context.exception
+        assert error.response.status_code == 422
+        assert error.response.json() == expected
+
+    def test_post_to_create_auth_failure(self):
+        expected = {"detail": "Incorrect username or password"}
+        interface = mock_interface("POST", 400, expected)
+        with self.assertRaises(HTTPError) as context:
+            interface.post_to_create({"email": {"primary_email": "test@example.com"}})
+        error = context.exception
+        assert error.response.status_code == 400
+        assert error.response.json() == expected
