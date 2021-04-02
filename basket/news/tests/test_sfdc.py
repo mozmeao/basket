@@ -20,6 +20,7 @@ class VendorConversionTests(TestCase):
         }
         data = {
             "email": "dude@example.com ",
+            "email_id": "a-ctms-uuid",
             "token": "    totally-token-man",
             "format": "H",
             "country": "US   ",
@@ -31,6 +32,7 @@ class VendorConversionTests(TestCase):
         }
         contact = {
             "Email_Format__c": "H",
+            "Email_Id__c": "a-ctms-uuid",
             "FirstName": "The",
             "LastName": "Dude",
             "Subscriber__c": True,
@@ -127,6 +129,7 @@ class VendorConversionTests(TestCase):
         data = {
             "id": "vendor-id",
             "email": "dude@example.com",
+            "email_id": "a-ctms-uuid",
             "token": "totally-token-man",
             "format": "H",
             "country": "us",
@@ -151,6 +154,7 @@ class VendorConversionTests(TestCase):
             "Sub_Bowlin__c": True,
             "Sub_Caucasians__c": True,
             "Sub_Fightin__c": False,
+            "Email_Id__c": "a-ctms-uuid",
         }
         self.assertDictEqual(from_vendor(contact), data)
 
