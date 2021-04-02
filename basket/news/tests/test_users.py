@@ -7,6 +7,9 @@ from django.urls import reverse
 
 from mock import patch
 
+from requests import Response
+from requests.exceptions import HTTPError
+
 from basket import errors
 
 from basket.news import views
@@ -61,6 +64,17 @@ class TestLookupUser(TestCase):
         params = params or {}
         return self.client.get(self.url, data=params, **extra)
 
+    def ctms_error(self, status_code, detail, reason):
+        """Return a CTMS error response"""
+        response = Response()
+        response.status_code = status_code
+        response._content = json.dumps({"detail": detail})
+        if reason:
+            response.reason = reason
+        error = HTTPError()
+        error.response = response
+        return error
+
     def test_no_parms(self):
         """Passing no parms is a 400 error"""
         rsp = self.get()
@@ -76,23 +90,30 @@ class TestLookupUser(TestCase):
         self.assertEqual(400, rsp.status_code, rsp.content)
 
     @patch("basket.news.utils.sfdc")
-    def test_with_token(self, sfdc_mock):
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_with_token(self, ctms_mock, sfdc_mock):
         """Passing a token gets back that user's data"""
         sfdc_mock.get.return_value = self.user_data
+        ctms_mock.get.return_value = None
         params = {
             "token": "dummy",
         }
         rsp = self.get(params=params)
         self.assertEqual(200, rsp.status_code, rsp.content)
         self.assertEqual(self.user_data, json.loads(rsp.content))
+        ctms_mock.get.assert_called_once_with(
+            amo_id=None, email=None, fxa_id=None, sfdc_id=None, token="dummy"
+        )
 
     @patch("basket.news.utils.sfdc")
-    def test_get_fxa_status(self, sfdc_mock):
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_get_fxa_status(self, ctms_mock, sfdc_mock):
         """Should return FxA status"""
         user_data = self.user_data.copy()
         user_data["email"] = "hisdudeness@example.com"
         user_data["fxa_id"] = "the-dude-abides"
         sfdc_mock.get.return_value = user_data
+        ctms_mock.get.return_value = None
         response = user_data.copy()
         response["has_fxa"] = True
         params = {
@@ -104,11 +125,13 @@ class TestLookupUser(TestCase):
         self.assertEqual(response, json.loads(rsp.content))
 
     @patch("basket.news.utils.sfdc")
-    def test_get_fxa_status_false(self, sfdc_mock):
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_get_fxa_status_false(self, ctms_mock, sfdc_mock):
         """Should return FxA status"""
         user_data = self.user_data.copy()
         user_data["email"] = "hisdudeness@example.com"
         sfdc_mock.get.return_value = user_data
+        ctms_mock.get.return_value = None
         response = user_data.copy()
         response["has_fxa"] = False
         params = {
@@ -118,6 +141,60 @@ class TestLookupUser(TestCase):
         rsp = self.get(params=params)
         self.assertEqual(200, rsp.status_code, rsp.content)
         self.assertEqual(response, json.loads(rsp.content))
+
+    @patch("basket.news.utils.sfdc")
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_ctms_user_found(self, ctms_mock, sfdc_mock):
+        """If CTMS knows a contact, it adds the missing email_id"""
+        sfdc_mock.get.return_value = self.user_data
+        ctms_data = self.user_data.copy()
+        ctms_data["email_id"] = "ctms-email-id"
+        ctms_mock.get.return_value = ctms_data
+        params = {"token": "dummy"}
+        rsp = self.get(params=params)
+        self.assertEqual(200, rsp.status_code, rsp.content)
+        self.assertEqual(ctms_data, json.loads(rsp.content))
+
+    @patch("basket.news.utils.sfdc")
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_ctms_user_not_found(self, ctms_mock, sfdc_mock):
+        """If CTMS returns a 404, email_id is unset"""
+        sfdc_mock.get.return_value = self.user_data
+        ctms_mock.get.side_effect = self.ctms_error(
+            404, "Not Found", "Unknown contact_id"
+        )
+        params = {"token": "dummy"}
+        rsp = self.get(params=params)
+        self.assertEqual(200, rsp.status_code, rsp.content)
+        self.assertEqual(self.user_data, json.loads(rsp.content))
+
+    @patch("basket.news.utils.sfdc")
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    @patch("basket.news.utils.sentry_sdk")
+    def test_ctms_user_not_authenticated(self, sentry_mock, ctms_mock, sfdc_mock):
+        """If CTMS returns a non-404 error, it is logged and email_id is unset"""
+        sfdc_mock.get.return_value = self.user_data
+        ctms_mock.get.side_effect = self.ctms_error(
+            401, "Unauthorized", "Not authenticated"
+        )
+        params = {"token": "dummy"}
+        rsp = self.get(params=params)
+        self.assertEqual(200, rsp.status_code, rsp.content)
+        self.assertEqual(self.user_data, json.loads(rsp.content))
+        sentry_mock.capture_exception.assert_called_once()
+
+    @patch("basket.news.utils.sfdc")
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    @patch("basket.news.utils.sentry_sdk")
+    def test_ctms_user_runtime_error(self, sentry_mock, ctms_mock, sfdc_mock):
+        """If CTMS raises a RuntimeError, it is logged and email_id is unset"""
+        sfdc_mock.get.return_value = self.user_data
+        ctms_mock.get.side_effect = RuntimeError("Multiple contacts returned for token")
+        params = {"token": "dummy"}
+        rsp = self.get(params=params)
+        self.assertEqual(200, rsp.status_code, rsp.content)
+        self.assertEqual(self.user_data, json.loads(rsp.content))
+        sentry_mock.capture_exception.assert_called_once()
 
     def test_with_email_no_api_key(self):
         """Passing email without api key is a 401"""
