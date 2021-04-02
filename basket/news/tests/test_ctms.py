@@ -10,9 +10,126 @@ from requests.exceptions import HTTPError
 
 from basket.news.backends.ctms import (
     ctms_session,
+    CTMS,
     CTMSInterface,
     CTMSSession,
+    from_vendor,
 )
+
+# Sample CTMS response from documentation, April 2021
+SAMPLE_CTMS_RESPONSE = json.loads(
+    """
+{
+  "amo": {
+    "add_on_ids": "add-on-1,add-on-2",
+    "display_name": "Add-ons Author",
+    "email_opt_in": false,
+    "language": "en",
+    "last_login": "2021-01-28",
+    "location": "California",
+    "profile_url": "firefox/user/98765",
+    "user": true,
+    "user_id": "98765",
+    "username": "AddOnAuthor",
+    "create_timestamp": "2020-12-05T19:21:50.908000+00:00",
+    "update_timestamp": "2021-02-04T15:36:57.511000+00:00"
+  },
+  "email": {
+    "primary_email": "contact@example.com",
+    "basket_token": "c4a7d759-bb52-457b-896b-90f1d3ef8433",
+    "double_opt_in": true,
+    "sfdc_id": "001A000023aABcDEFG",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "mailing_country": "us",
+    "email_format": "H",
+    "email_lang": "en",
+    "has_opted_out_of_email": false,
+    "unsubscribe_reason": "string",
+    "email_id": "332de237-cab7-4461-bcc3-48e68f42bd5c",
+    "create_timestamp": "2020-03-28T15:41:00.000Z",
+    "update_timestamp": "2021-01-28T21:26:57.511Z"
+  },
+  "fxa": {
+    "fxa_id": "6eb6ed6ac3b64259968aa490c6c0b9df",
+    "primary_email": "my-fxa-acct@example.com",
+    "created_date": "2021-01-29T18:43:49.082375+00:00",
+    "lang": "en,en-US",
+    "first_service": "sync",
+    "account_deleted": false
+  },
+  "mofo": {
+    "mofo_email_id": "string",
+    "mofo_contact_id": "string",
+    "mofo_relevant": false
+  },
+  "newsletters": [
+    {
+      "name": "mozilla-welcome",
+      "subscribed": true,
+      "format": "H",
+      "lang": "en",
+      "source": "https://www.mozilla.org/en-US/",
+      "unsub_reason": "string"
+    }
+  ],
+  "vpn_waitlist": {
+    "geo": "fr",
+    "platform": "ios,mac"
+  },
+  "status": "ok"
+}
+"""
+)
+
+
+class FromVendorTests(TestCase):
+    def test_sample_response(self):
+        """The sample CTMS user can be converted to basket format"""
+        data = from_vendor(SAMPLE_CTMS_RESPONSE)
+        assert data == {
+            "amo_display_name": "Add-ons Author",
+            "amo_homepage": "firefox/user/98765",
+            "amo_id": "98765",
+            "amo_last_login": "2021-01-28",
+            "amo_location": "California",
+            "amo_user": True,
+            "country": "us",
+            "created_date": "2020-03-28T15:41:00.000Z",
+            "email": "contact@example.com",
+            "email_id": "332de237-cab7-4461-bcc3-48e68f42bd5c",
+            "first_name": "Jane",
+            "format": "H",
+            "fpn_country": "fr",
+            "fpn_platform": "ios,mac",
+            "fxa_create_date": "2021-01-29T18:43:49.082375+00:00",
+            "fxa_deleted": False,
+            "fxa_id": "6eb6ed6ac3b64259968aa490c6c0b9df",
+            "fxa_lang": "en,en-US",
+            "fxa_primary_email": "my-fxa-acct@example.com",
+            "fxa_service": "sync",
+            "id": "001A000023aABcDEFG",
+            "lang": "en",
+            "last_modified_date": "2021-01-28T21:26:57.511Z",
+            "last_name": "Doe",
+            "newsletters": ["mozilla-welcome"],
+            "optin": True,
+            "optout": False,
+            "reason": "string",
+            "token": "c4a7d759-bb52-457b-896b-90f1d3ef8433",
+        }
+
+    def test_unknown_groups(self):
+        """Unknown CTMS data groups are ignored."""
+        ctms_contact = {
+            "email": {
+                "primary_email": "test@example.com",
+                "basket_token": "basket-token",
+            },
+            "favorites": {"color": "blue", "album": "green", "mattress": "purple"},
+        }
+        data = from_vendor(ctms_contact)
+        assert data == {"email": "test@example.com", "token": "basket-token"}
 
 
 class CTMSSessionTests(TestCase):
@@ -294,3 +411,157 @@ class MockInterfaceTests(TestCase):
         error = context.exception
         assert error.response.status_code == 400
         assert error.response.json() == expected
+
+
+class CTMSTests(TestCase):
+
+    TEST_CTMS_CONTACT = {
+        "amo": {"user_id": "amo-id"},
+        "email": {
+            "email_id": "a-ctms-uuid",
+            "basket_token": "token",
+            "primary_email": "basket@example.com",
+            "sfdc_id": "sfdc-id",
+        },
+        "fxa": {"fxa_id": "fxa-id"},
+        "mofo": {
+            "mofo_email_id": "mofo-email-id",
+            "mofo_contact_id": "mofo-contact-id",
+        },
+    }
+    TEST_BASKET_FORMAT = {
+        "amo_id": "amo-id",
+        "email_id": "a-ctms-uuid",
+        "email": "basket@example.com",
+        "fxa_id": "fxa-id",
+        "id": "sfdc-id",
+        "token": "token",
+    }
+
+    def test_get_no_interface(self):
+        """If the interface is None (disabled or other issue), None is returned."""
+        ctms = CTMS(None)
+        assert ctms.get(token="token") is None
+
+    def test_get_by_email_id(self):
+        """If email_id is passed, GET /ctms/{email_id} is called."""
+        email_id = self.TEST_CTMS_CONTACT["email"]["email_id"]
+        interface = mock_interface("GET", 200, self.TEST_CTMS_CONTACT)
+        ctms = CTMS(interface)
+        user_data = ctms.get(email_id=email_id)
+        assert user_data == self.TEST_BASKET_FORMAT
+        interface.session.get.assert_called_once_with("/ctms/a-ctms-uuid")
+
+    def test_get_by_email_id_not_found(self):
+        """If a contact is not found by email_id, an exception is raised."""
+        ctms = CTMS(mock_interface("GET", 404, {"detail": "Unknown contact_id"}))
+        with self.assertRaises(HTTPError) as context:
+            ctms.get(email_id="unknown-id")
+        assert context.exception.response.status_code == 404
+
+    def test_get_by_token(self):
+        """If token is passed, GET /ctms?basket_token={token} is called."""
+        token = self.TEST_CTMS_CONTACT["email"]["basket_token"]
+        interface = mock_interface("GET", 200, [self.TEST_CTMS_CONTACT])
+        ctms = CTMS(interface)
+        user_data = ctms.get(token=token)
+        assert user_data == self.TEST_BASKET_FORMAT
+        interface.session.get.assert_called_once_with(
+            "/ctms", params={"basket_token": token}
+        )
+
+    def test_get_by_token_not_found(self):
+        """If a contact is not found by token, None is returned."""
+        ctms = CTMS(mock_interface("GET", 200, []))
+        assert ctms.get(token="unknown-token") is None
+
+    def test_get_by_email(self):
+        """If email is passed, GET /ctms?primary_email={email} is called."""
+        email = self.TEST_CTMS_CONTACT["email"]["primary_email"]
+        interface = mock_interface("GET", 200, [self.TEST_CTMS_CONTACT])
+        ctms = CTMS(interface)
+        user_data = ctms.get(email=email)
+        assert user_data == self.TEST_BASKET_FORMAT
+        interface.session.get.assert_called_once_with(
+            "/ctms", params={"primary_email": email}
+        )
+
+    def test_get_by_sfdc_id(self):
+        """If sfdc_id is passed, GET /ctms?sfdc_id={id} is called."""
+        sfdc_id = self.TEST_CTMS_CONTACT["email"]["sfdc_id"]
+        interface = mock_interface("GET", 200, [self.TEST_CTMS_CONTACT])
+        ctms = CTMS(interface)
+        user_data = ctms.get(sfdc_id=sfdc_id)
+        assert user_data == self.TEST_BASKET_FORMAT
+        interface.session.get.assert_called_once_with(
+            "/ctms", params={"sfdc_id": sfdc_id}
+        )
+
+    def test_get_by_fxa_id(self):
+        """If fxa_id is passed, GET /ctms?fxa_id={fxa_id} is called."""
+        fxa_id = self.TEST_CTMS_CONTACT["fxa"]["fxa_id"]
+        interface = mock_interface("GET", 200, [self.TEST_CTMS_CONTACT])
+        ctms = CTMS(interface)
+        user_data = ctms.get(fxa_id=fxa_id)
+        assert user_data == self.TEST_BASKET_FORMAT
+        interface.session.get.assert_called_once_with(
+            "/ctms", params={"fxa_id": fxa_id}
+        )
+
+    def test_get_by_mofo_email_id(self):
+        """If mofo_email_id is passed, GET /ctms?mofo_email_id={mofo_email_id} is called."""
+        mofo_email_id = self.TEST_CTMS_CONTACT["mofo"]["mofo_email_id"]
+        interface = mock_interface("GET", 200, [self.TEST_CTMS_CONTACT])
+        ctms = CTMS(interface)
+        user_data = ctms.get(mofo_email_id=mofo_email_id)
+        assert user_data == self.TEST_BASKET_FORMAT
+        interface.session.get.assert_called_once_with(
+            "/ctms", params={"mofo_email_id": mofo_email_id}
+        )
+
+    def test_get_by_amo_id(self):
+        """If amo_id is passed, GET /ctms?amo_id={amo_id} is called."""
+        amo_id = self.TEST_CTMS_CONTACT["amo"]["user_id"]
+        interface = mock_interface("GET", 200, [self.TEST_CTMS_CONTACT])
+        ctms = CTMS(interface)
+        user_data = ctms.get(amo_id=amo_id)
+        assert user_data == self.TEST_BASKET_FORMAT
+        interface.session.get.assert_called_once_with(
+            "/ctms", params={"amo_user_id": amo_id}
+        )
+
+    def test_get_by_several_ids(self):
+        """If if multiple IDs are passed, the best is used."""
+        email_id = self.TEST_CTMS_CONTACT["email"]["email_id"]
+        interface = mock_interface("GET", 200, self.TEST_CTMS_CONTACT)
+        ctms = CTMS(interface)
+        user_data = ctms.get(
+            email_id=email_id, token="some-token", email="some-email@example.com"
+        )
+        assert user_data == self.TEST_BASKET_FORMAT
+        interface.session.get.assert_called_once_with(f"/ctms/{email_id}")
+
+    def test_get_by_amo_id_multiple_contacts(self):
+        """If an ID returns mutliple contacts, a RuntimeError is raised."""
+        amo_id = self.TEST_CTMS_CONTACT["amo"]["user_id"]
+        contact2 = {
+            "amo": {"user_id": "amo-user-id"},
+            "email": {
+                "email_id": "a-ctms-uuid",
+                "basket_token": "token",
+                "primary_email": "basket@example.com",
+                "sfdc_id": "sfdc-id",
+            },
+            "fxa": {"fxa_id": "fxa-id"},
+            "mofo": {
+                "mofo_email_id": "mofo-email-id",
+                "mofo_contact_id": "mofo-contact-id",
+            },
+        }
+        ctms = CTMS(mock_interface("GET", 200, [self.TEST_CTMS_CONTACT, contact2]))
+        self.assertRaises(RuntimeError, ctms.get, amo_id=amo_id)
+
+    def test_get_no_ids(self):
+        """RuntimeError is raised if all IDs are None."""
+        ctms = CTMS("interface should not be called")
+        self.assertRaises(RuntimeError, ctms.get, token=None)
