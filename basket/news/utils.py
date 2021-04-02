@@ -25,6 +25,7 @@ from django_statsd.clients import statsd
 from email_validator import validate_email, EmailNotValidError
 
 from basket.news.backends.common import NewsletterException
+from basket.news.backends.ctms import ctms
 from basket.news.backends.sfdc import sfdc
 from basket.news.models import APIUser, BlockedEmail
 from basket.news.newsletters import (
@@ -315,7 +316,7 @@ def get_user_data(
     extra_fields=None,
     get_fxa=False,
 ):
-    """Return a dictionary of the user's data from Exact Target.
+    """Return a dictionary of the user's data from Salesforce.com (SFDC).
     Look them up by their email or payment processor id (e.g. Stripe) if given,
     otherwise by the token.
 
@@ -329,9 +330,11 @@ def get_user_data(
     If `get_fxa` is True then a boolean field will be including indicating whether they are
     an account holder or not.
 
+    If SFDC does not have the CTMS email_id, try to get it from CTMS.
+
     Review of results:
 
-    None = user completely unknown, no errors talking to ET.
+    None = user completely unknown, no errors talking to SFDC.
 
     otherwise, return value is::
 
@@ -340,6 +343,7 @@ def get_user_data(
         'status':  'error',   # errors talking to ET, see next field
         'desc':  'error message'   # details if status is error
         'email': 'email@address',
+        'email_id': CTMS UUID,
         'format': 'T'|'H',
         'country': country code,
         'lang': language code,
@@ -375,6 +379,25 @@ def get_user_data(
 
     if get_fxa:
         user["has_fxa"] = bool(user.get("fxa_id"))
+
+    if not user.get("email_id"):
+        # Add email_id from CTMS, if CTMS knows about this contact
+        ctms_user = None
+        try:
+            ctms_user = ctms.get(
+                token=token,
+                email=email,
+                sfdc_id=user.get("id"),
+                amo_id=amo_id,
+                fxa_id=fxa_id,
+            )
+        except requests.exceptions.HTTPError as error:
+            if error.response.status_code != 404:
+                sentry_sdk.capture_exception()
+        except RuntimeError:
+            sentry_sdk.capture_exception()
+        if ctms_user and "email_id" in ctms_user:
+            user["email_id"] = ctms_user["email_id"]
 
     user["status"] = "ok"
     return user
