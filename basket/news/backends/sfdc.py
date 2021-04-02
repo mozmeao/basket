@@ -71,6 +71,7 @@ FIELD_MAP = {
     "id": "Id",
     "record_type": "RecordTypeId",
     "email": "Email",
+    "email_id": "Email_Id__c",
     "first_name": "FirstName",
     "last_name": "LastName",
     "format": "Email_Format__c",
