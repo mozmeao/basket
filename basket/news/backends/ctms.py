@@ -194,6 +194,7 @@ class CTMSSession:
         return resp
 
     get = partialmethod(request, "GET")
+    patch = partialmethod(request, "PATCH")
     post = partialmethod(request, "POST")
     put = partialmethod(request, "PUT")
 
@@ -310,6 +311,31 @@ class CTMSInterface:
         """
         email_id = data["email"]["email_id"]
         return self.put_by_email_id(email_id, data)
+
+    @time_request
+    def patch_by_email_id(self, email_id, data):
+        """
+        Call PATCH /ctms/{email_id} to partially update a CTMS contact by ID
+
+        To update a data element, send the key and the new value:
+
+          {"email": {"primary_email": "new_email.example.com"}}
+
+        To delete a subgroup, resetting to defaults, send the group value as "DELETE":
+
+          {"amo": DELETE}
+
+        To unsubscribe from all newsletters, set to "UNSUBSCRIBE":
+
+          {"newsletters": "UNSUBSCRIBE"}
+
+        @param email_id: The CTMS email_id of the contact
+        @param data: The contact data to update
+        @return: The updated contact data
+        """
+        resp = self.session.patch(f"/ctms/{email_id}", json=data)
+        resp.raise_for_status()
+        return resp.json()
 
 
 class CTMS:
