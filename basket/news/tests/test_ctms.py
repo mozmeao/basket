@@ -165,8 +165,14 @@ class CTMSSessionTests(TestCase):
         resp = session.get("/ctms", params={"primary_email": "test@example.com"})
         assert resp == mock_response
 
-        mock_oauth2_session.assert_called_once_with(client=ANY, token=None)
-        mock_session.register_compliance_hook.assert_called_once()
+        mock_oauth2_session.assert_called_once_with(
+            client=ANY,
+            token=None,
+            auto_refresh_url="https://ctms.example.com/token",
+            auto_refresh_kwargs={"client_id": "id", "client_secret": "secret"},
+            token_updater=ANY,
+        )
+        assert mock_session.register_compliance_hook.call_count == 2
         mock_cache.get.assert_called_once_with("ctms_token")
         mock_session.fetch_token.assert_called_once_with(
             client_id="id",
@@ -201,9 +207,13 @@ class CTMSSessionTests(TestCase):
         assert resp == mock_response
 
         mock_oauth2_session.assert_called_once_with(
-            client=ANY, token=self.EXAMPLE_TOKEN
+            client=ANY,
+            token=self.EXAMPLE_TOKEN,
+            auto_refresh_url="https://ctms.example.com/token",
+            auto_refresh_kwargs={"client_id": "id", "client_secret": "secret"},
+            token_updater=ANY,
         )
-        mock_session.register_compliance_hook.assert_called_once()
+        assert mock_session.register_compliance_hook.call_count == 2
         mock_cache.get.assert_called_once_with("ctms_token")
         mock_session.request.assert_called_once_with(
             "GET",
@@ -243,10 +253,8 @@ class CTMSSessionTests(TestCase):
         resp = session.get("/ctms", params={"primary_email": "test@example.com"})
         assert resp == mock_response_2
 
-        mock_oauth2_session.assert_called_once_with(
-            client=ANY, token=self.EXAMPLE_TOKEN
-        )
-        mock_session.register_compliance_hook.assert_called_once()
+        mock_oauth2_session.assert_called_once()
+        assert mock_session.register_compliance_hook.call_count == 2
         mock_cache.get.assert_called_once_with("ctms_token")
         mock_session.fetch_token.assert_called_once_with(
             client_id="id",
@@ -282,8 +290,8 @@ class CTMSSessionTests(TestCase):
             session.get("/ctms", params={"primary_email": "test@example.com"})
         assert context.exception == err
 
-        mock_oauth2_session.assert_called_once_with(client=ANY, token=None)
-        mock_session.register_compliance_hook.assert_called_once()
+        mock_oauth2_session.assert_called_once()
+        assert mock_session.register_compliance_hook.call_count == 2
         mock_cache.get.assert_called_once_with("ctms_token")
         mock_session.fetch_token.assert_called_once_with(
             client_id="id",

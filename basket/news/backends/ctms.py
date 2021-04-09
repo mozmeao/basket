@@ -136,12 +136,15 @@ class CTMSSession:
         """Get the current OAuth2 token"""
         return cache.get(self.token_cache_key)
 
-    @_token.setter
-    def _token(self, token):
+    def save_token(self, token):
         """Set the OAuth2 token"""
         expires_in = int(token.get("expires_in", 60))
         timeout = int(expires_in * 0.95)
         cache.set(self.token_cache_key, token, timeout=timeout)
+
+    @_token.setter
+    def _token(self, token):
+        self.save_token(token)
 
     @classmethod
     def check_2xx_response(cls, response):
@@ -153,9 +156,21 @@ class CTMSSession:
     def _session(self):
         """Get an authenticated OAuth2 session"""
         client = BackendApplicationClient(client_id=self.client_id)
-        session = OAuth2Session(client=client, token=self._token)
+        session = OAuth2Session(
+            client=client,
+            token=self._token,
+            auto_refresh_url=urljoin(self.api_url, "/token"),
+            auto_refresh_kwargs={
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+            },
+            token_updater=self.save_token,
+        )
         session.register_compliance_hook(
             "access_token_response", CTMSSession.check_2xx_response
+        )
+        session.register_compliance_hook(
+            "refresh_token_response", CTMSSession.check_2xx_response
         )
         if not session.authorized:
             session = self._authorize_session(session)
