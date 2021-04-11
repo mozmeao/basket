@@ -3,29 +3,35 @@ API Client Library for Mozilla's Contact Management System (CTMS)
 https://github.com/mozilla-it/ctms-api/
 """
 
-from functools import cached_property, partialmethod
+from functools import cached_property, partial, partialmethod
 from urllib.parse import urlparse, urlunparse, urljoin
 
 from django.conf import settings
 from django.core.cache import cache
+from django_statsd.clients import statsd
 
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import BackendApplicationClient
 
 from basket.news.backends.common import get_timer_decorator
+from basket.news.country_codes import SFDC_COUNTRIES_LIST, convert_country_3_to_2
+from basket.news.newsletters import (
+    newsletter_slugs,
+    is_supported_newsletter_language,
+)
 
 time_request = get_timer_decorator("news.backends.ctms")
 
 # Map CTMS group / name pairs to basket flat format names
-# Missing basket names from SFDC integration:
-#  record_type
-#  postal_code
-#  source_url
-#  fsa_*
-#  cv_*
-#  amo_deleted
-#  payee_id
-#  fxa_last_login
+# Missing basket names from pre-2021 SFDC integration:
+#  record_type - Identify MoFo donors with an associated opportunity
+#  postal_code - Extra data for MoFo petitions
+#  source_url - TODO: Set-once source URL, now per-newsletter
+#  fsa_* - Firefox Student Ambassadors, deprecated
+#  cv_* - Common Voice, moved to MoFo
+#  amo_deleted - TODO
+#  payee_id - Stripe payee ID for MoFo donations
+#  fxa_last_login - Imported into Acoustic periodically from FxA
 CTMS_TO_BASKET_NAMES = {
     "amo": {
         "add_on_ids": None,
@@ -99,6 +105,145 @@ def from_vendor(contact):
         else:
             pass
     return data
+
+
+BASKET_TO_CTMS_NAMES = {}
+for group_name, group in CTMS_TO_BASKET_NAMES.items():
+    for key, basket_name in group.items():
+        if basket_name is not None:
+            BASKET_TO_CTMS_NAMES[basket_name] = (group_name, key)
+
+# Known basket keys to discard, used in pre-2021 SFDC integration
+DISCARD_BASKET_NAMES = {
+    "_set_subscriber",  # Identify newsletter subscribers in SFDC
+    "record_type",  # Identify donors with associated opportunity
+    "postal_code",  # Extra data for MoFo petitions
+    "source_url",  # TODO: handle this
+    #
+    # fsa_* is Firefox Student Ambassador data, deprecated
+    "fsa_school",
+    "fsa_grad_year",
+    "fsa_major",
+    "fsa_city",
+    "fsa_current_status",
+    "fsa_allow_share",
+    #
+    # cv_* is Common Voice data, moved to MoFo
+    "cv_days_interval",
+    "cv_created_at",
+    "cv_goal_reached_at",
+    "cv_first_contribution_date",
+    "cv_two_day_streak",
+    "cv_last_active_date",
+    "amo_deleted",  # TODO: handle this
+    "fxa_last_login",  # Imported into Acoustic periodically from FxA
+}
+
+
+def process_country(raw_country):
+    """Convert to 2-letter country, and throw out unknown countries."""
+    country = raw_country.strip().lower()
+    if len(country) == 3:
+        new_country = convert_country_3_to_2(country)
+        if new_country:
+            country = new_country
+
+    if country not in SFDC_COUNTRIES_LIST:
+        return None
+    return country
+
+
+def process_lang(raw_lang):
+    """Ensure language is supported."""
+    lang = raw_lang.strip()
+    if lang.lower() in settings.EXTRA_SUPPORTED_LANGS:
+        return lang
+    elif is_supported_newsletter_language(lang):
+        return lang[:2].lower()
+    else:
+        # Use the default language (English) for unsupported languages
+        return "en"
+
+
+def truncate_string(max_length, raw_string):
+    """Truncate the a string to a maximum length, and return None for empty."""
+    if raw_string is None:
+        return None
+    string = raw_string.strip()
+    if len(string) > max_length:
+        statsd.incr("news.backends.ctms.data_truncated")
+        return string[:max_length]
+    return string or None
+
+
+TO_VENDOR_PROCESSORS = {
+    "country": process_country,
+    "lang": process_lang,
+    "first_name": partial(truncate_string, 255),  # SFDC was 40
+    "last_name": partial(truncate_string, 255),  # SFDC was 80
+    "reason": partial(truncate_string, 1000),  # CTMS unlimited, but 1k is reasonable
+    "fpn_country": partial(truncate_string, 100),  # SFDC was 120
+    "fpn_platform": partial(truncate_string, 100),  # SFDC was 120
+}
+
+
+def to_vendor(data):
+    """
+    Transform basket key-value data and convert to CTMS nested data
+
+    Differences from SFDC.to_vendor:
+    * No equivalent to Subscriber__c, UAT_Test_Data__c
+    * Doesn't convert SFDC values Browser_Locale__c, FSA_*, CV_*, MailingCity
+    * CTMS API handles boolean conversion
+    * TODO: Convert source_url
+
+    @params data: basket data
+    @return: dict in CTMS format
+    """
+    ctms_data = {}
+
+    for name, raw_value in data.items():
+        # Pre-process raw_value, which may remove it.
+        processor = TO_VENDOR_PROCESSORS.get(name)
+        if processor:
+            value = processor(raw_value)
+            if value is None:
+                continue
+        else:
+            value = raw_value
+
+        # Strip whitespace
+        try:
+            value = value.strip()
+        except AttributeError:
+            pass
+        if value is None or value == "":
+            # TODO: Should we allow clearing previously set values?
+            continue
+
+        # Place in CTMS contact structure
+        if name in BASKET_TO_CTMS_NAMES:
+            group_name, key = BASKET_TO_CTMS_NAMES[name]
+            ctms_data.setdefault(group_name, {})[key] = value
+        elif name == "newsletters":
+            valid_slugs = newsletter_slugs()
+            output = []
+            if isinstance(raw_value, dict):
+                # Dictionary of slugs to sub/unsub flags
+                for slug, subscribed in raw_value.items():
+                    if slug in valid_slugs:
+                        output.append({"name": slug, "subscribed": bool(subscribed)})
+            else:
+                # List of slugs for subscriptions
+                for slug in raw_value:
+                    if slug in valid_slugs:
+                        output.append({"name": slug, "subscribed": True})
+            if output:
+                ctms_data["newsletters"] = output
+        elif name not in DISCARD_BASKET_NAMES:
+            # TODO: SFDC ignores unknown fields, maybe this should as well
+            raise KeyError(name)
+    return ctms_data
 
 
 class CTMSSession:

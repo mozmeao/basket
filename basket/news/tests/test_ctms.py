@@ -14,6 +14,7 @@ from basket.news.backends.ctms import (
     CTMSInterface,
     CTMSSession,
     from_vendor,
+    to_vendor,
 )
 
 # Sample CTMS response from documentation, April 2021
@@ -82,42 +83,44 @@ SAMPLE_CTMS_RESPONSE = json.loads(
 """
 )
 
+SAMPLE_BASKET_FORMAT = {
+    "amo_display_name": "Add-ons Author",
+    "amo_homepage": "firefox/user/98765",
+    "amo_id": "98765",
+    "amo_last_login": "2021-01-28",
+    "amo_location": "California",
+    "amo_user": True,
+    "country": "us",
+    "created_date": "2020-03-28T15:41:00.000Z",
+    "email": "contact@example.com",
+    "email_id": "332de237-cab7-4461-bcc3-48e68f42bd5c",
+    "first_name": "Jane",
+    "format": "H",
+    "fpn_country": "fr",
+    "fpn_platform": "ios,mac",
+    "fxa_create_date": "2021-01-29T18:43:49.082375+00:00",
+    "fxa_deleted": False,
+    "fxa_id": "6eb6ed6ac3b64259968aa490c6c0b9df",
+    "fxa_lang": "en,en-US",
+    "fxa_primary_email": "my-fxa-acct@example.com",
+    "fxa_service": "sync",
+    "id": "001A000023aABcDEFG",
+    "lang": "en",
+    "last_modified_date": "2021-01-28T21:26:57.511Z",
+    "last_name": "Doe",
+    "newsletters": ["mozilla-welcome"],
+    "optin": True,
+    "optout": False,
+    "reason": "string",
+    "token": "c4a7d759-bb52-457b-896b-90f1d3ef8433",
+}
+
 
 class FromVendorTests(TestCase):
     def test_sample_response(self):
         """The sample CTMS user can be converted to basket format"""
         data = from_vendor(SAMPLE_CTMS_RESPONSE)
-        assert data == {
-            "amo_display_name": "Add-ons Author",
-            "amo_homepage": "firefox/user/98765",
-            "amo_id": "98765",
-            "amo_last_login": "2021-01-28",
-            "amo_location": "California",
-            "amo_user": True,
-            "country": "us",
-            "created_date": "2020-03-28T15:41:00.000Z",
-            "email": "contact@example.com",
-            "email_id": "332de237-cab7-4461-bcc3-48e68f42bd5c",
-            "first_name": "Jane",
-            "format": "H",
-            "fpn_country": "fr",
-            "fpn_platform": "ios,mac",
-            "fxa_create_date": "2021-01-29T18:43:49.082375+00:00",
-            "fxa_deleted": False,
-            "fxa_id": "6eb6ed6ac3b64259968aa490c6c0b9df",
-            "fxa_lang": "en,en-US",
-            "fxa_primary_email": "my-fxa-acct@example.com",
-            "fxa_service": "sync",
-            "id": "001A000023aABcDEFG",
-            "lang": "en",
-            "last_modified_date": "2021-01-28T21:26:57.511Z",
-            "last_name": "Doe",
-            "newsletters": ["mozilla-welcome"],
-            "optin": True,
-            "optout": False,
-            "reason": "string",
-            "token": "c4a7d759-bb52-457b-896b-90f1d3ef8433",
-        }
+        assert data == SAMPLE_BASKET_FORMAT
 
     def test_unknown_groups(self):
         """Unknown CTMS data groups are ignored."""
@@ -130,6 +133,196 @@ class FromVendorTests(TestCase):
         }
         data = from_vendor(ctms_contact)
         assert data == {"email": "test@example.com", "token": "basket-token"}
+
+
+class ToVendorTests(TestCase):
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs", return_value=["mozilla-welcome"]
+    )
+    def test_sample_format(self, mock_nl_slugs):
+        """The output of from_vendor is a valid input to to_vendor"""
+        data = to_vendor(SAMPLE_BASKET_FORMAT)
+        assert data == {
+            "amo": {
+                "display_name": "Add-ons Author",
+                "last_login": "2021-01-28",
+                "location": "California",
+                "profile_url": "firefox/user/98765",
+                "user": True,
+                "user_id": "98765",
+            },
+            "email": {
+                "basket_token": "c4a7d759-bb52-457b-896b-90f1d3ef8433",
+                "create_timestamp": "2020-03-28T15:41:00.000Z",
+                "double_opt_in": True,
+                "email_format": "H",
+                "email_id": "332de237-cab7-4461-bcc3-48e68f42bd5c",
+                "email_lang": "en",
+                "first_name": "Jane",
+                "has_opted_out_of_email": False,
+                "last_name": "Doe",
+                "mailing_country": "us",
+                "primary_email": "contact@example.com",
+                "sfdc_id": "001A000023aABcDEFG",
+                "unsubscribe_reason": "string",
+                "update_timestamp": "2021-01-28T21:26:57.511Z",
+            },
+            "fxa": {
+                "account_deleted": False,
+                "created_date": "2021-01-29T18:43:49.082375+00:00",
+                "first_service": "sync",
+                "fxa_id": "6eb6ed6ac3b64259968aa490c6c0b9df",
+                "lang": "en,en-US",
+                "primary_email": "my-fxa-acct@example.com",
+            },
+            "newsletters": [{"name": "mozilla-welcome", "subscribed": True}],
+            "vpn_waitlist": {"geo": "fr", "platform": "ios,mac"},
+        }
+
+    def test_country(self):
+        """country is validated and added as email.mailing_country"""
+        tests = (
+            ("mx", "mx"),
+            ("CN", "cn"),
+            (" USA ", "us"),
+            ("en", None),
+            (" ABC ", None),
+        )
+
+        for original, converted in tests:
+            data = to_vendor({"country": original})
+            if converted:
+                assert data == {"email": {"mailing_country": converted}}
+            else:
+                assert data == {}
+
+    @override_settings(EXTRA_SUPPORTED_LANGS=["zh-hans", "zh-hant"])
+    @patch(
+        "basket.news.newsletters.newsletter_languages",
+        return_value=["de", "en", "es", "fr", "zh-TW"],
+    )
+    def test_lang(self, mock_languages):
+        """lang is validated and added as email.email_lang"""
+        tests = (
+            ("en", "en"),
+            ("ES", "es"),
+            ("  FR  ", "fr"),
+            ("en-US", "en"),
+            ("zh", "zh"),
+            ("zh-TW ", "zh"),
+            (" zh-CN", "zh"),
+            ("zh-Hans ", "zh-Hans"),
+            ("zh-Hant", "zh-Hant"),
+            (" ru", "en"),
+            ("en-CA", "en"),
+            ("es-MX", "es"),
+        )
+        for original, converted in tests:
+            data = to_vendor({"lang": original})
+            if converted:
+                assert data == {"email": {"email_lang": converted}}
+            else:
+                assert data == {}
+
+    def test_truncate(self):
+        """Strings are stripped and truncated."""
+        tests = (
+            ("first_name", 255, "email", "first_name", f" first {'x' * 500}"),
+            ("last_name", 255, "email", "last_name", f" Last {'x' * 500} "),
+            ("reason", 1000, "email", "unsubscribe_reason", f"Cause:{'.' * 1500}"),
+            ("fpn_country", 100, "vpn_waitlist", "geo", f" Iran {'a' * 100} "),
+            ("fpn_platform", 100, "vpn_waitlist", "platform", f" Linux {'x' * 120} "),
+        )
+
+        for field, max_length, group, key, value in tests:
+            assert len(value) > max_length
+            data = to_vendor({field: value})
+            new_value = data[group][key]
+            assert len(new_value) == max_length
+
+    def test_truncate_empty_to_none(self):
+        """Empty or space-only strings are omitted."""
+
+        data = {
+            "email": "",
+            "format": "\n",
+            "first_name": "\r\n",
+            "last_name": "\t",
+            "reason": " " * 1200,
+            "fpn_country": " ",
+            "fpn_platform": None,
+        }
+        prepared = to_vendor(data)
+        assert prepared == {}
+
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["slug1", "slug2", "slug3", "slug4"],
+    )
+    def test_newsletter_list(self, mock_nl_slugs):
+        """A newsletter list is treated as subscription requests."""
+        data = {"newsletters": ["slug1", "slug2", "slug3", "other"]}
+        prepared = to_vendor(data)
+        assert prepared == {
+            "newsletters": [
+                {"name": "slug1", "subscribed": True},
+                {"name": "slug2", "subscribed": True},
+                {"name": "slug3", "subscribed": True},
+            ]
+        }
+
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["slug1", "slug2", "slug3", "slug4"],
+    )
+    def test_newsletter_map(self, mock_nl_slugs):
+        """A newsletter map combines subscribe and unsubscribe requests."""
+        data = {
+            "newsletters": {
+                "slug1": True,
+                "slug2": False,
+                "slug3": True,
+                "other": True,
+            }
+        }
+        prepared = to_vendor(data)
+        assert prepared == {
+            "newsletters": [
+                {"name": "slug1", "subscribed": True},
+                {"name": "slug2", "subscribed": False},
+                {"name": "slug3", "subscribed": True},
+            ]
+        }
+
+    def test_ignored_fields(self):
+        """Some fields exported to SFDC are quietly ignored in CTMS."""
+        data = {
+            "_set_subscriber": True,
+            "record_type": "someRecordType",
+            "postal_code": "90210",
+            "source_url": "https://example.com",
+            "fsa_school": "U of X",
+            "fsa_grad_year": "2020",
+            "fsa_major": "CS",
+            "fsa_city": "San Francisco",
+            "fsa_current_status": "Graduate",
+            "fsa_allow_share": True,
+            "cv_days_interval": 2,
+            "cv_created_at": "2021-03-11",
+            "cv_goal_reached_at": "2021-04-11",
+            "cv_first_contribution_date": "2021-03-12",
+            "cv_two_day_streak": True,
+            "cv_last_active_date": "2021-04-11",
+            "amo_deleted": True,
+            "fxa_last_login": "2020-04-11",
+        }
+        prepared = to_vendor(data)
+        assert prepared == {}
+
+    def test_unknown_field_raises(self):
+        """An unknown basket field is an exception."""
+        data = {"foo": "bar"}
+        self.assertRaises(KeyError, to_vendor, data)
 
 
 class CTMSSessionTests(TestCase):
