@@ -758,3 +758,53 @@ class CTMSTests(TestCase):
         """RuntimeError is raised if all IDs are None."""
         ctms = CTMS("interface should not be called")
         self.assertRaises(RuntimeError, ctms.get, token=None)
+
+    def test_add_no_interface(self):
+        """If the interface is None (disabled or other issue), None is returned."""
+        ctms = CTMS(None)
+        assert ctms.add({"token": "a-new-user"}) is None
+
+    def test_add(self):
+        """CTMS.add calls POST /ctms."""
+        created = {
+            "email": {"basket_token": "a-new-user", "email_id": "a-new-email_id"}
+        }
+        interface = mock_interface("POST", 201, created)
+        ctms = CTMS(interface)
+        assert ctms.add({"token": "a-new-user"}) == created
+        interface.session.post.assert_called_once_with(
+            "/ctms", json={"email": {"basket_token": "a-new-user"}}
+        )
+
+    def test_update_no_interface(self):
+        """If the interface is None (disabled or other issue), None is returned."""
+        ctms = CTMS(None)
+        user_data = {"token": "an-existing-user", "email_id": "an-existing-id"}
+        update_data = {"first_name": "Jane"}
+        assert ctms.update(user_data, update_data) is None
+
+    def test_update(self):
+        """CTMS.update calls PATCH /ctms/{email_id}."""
+        updated = {
+            "email": {
+                "basket_token": "an-existing-user",
+                "email_id": "an-existing-id",
+                "first_name": "Jane",
+            }
+        }
+        interface = mock_interface("PATCH", 200, updated)
+        ctms = CTMS(interface)
+
+        user_data = {"token": "an-existing-user", "email_id": "an-existing-id"}
+        update_data = {"first_name": "Jane"}
+        assert ctms.update(user_data, update_data) == updated
+        interface.session.patch.assert_called_once_with(
+            "/ctms/an-existing-id", json={"email": {"first_name": "Jane"}}
+        )
+
+    def test_update_email_id_not_in_existing_data(self):
+        """CTMS.update requires an email_id in existing data."""
+        ctms = CTMS("interface should not be called")
+        user_data = {"token": "an-existing-user"}
+        update_data = {"first_name": "Elizabeth", "email_id": "a-new-email-id"}
+        self.assertRaises(ValueError, ctms.update, user_data, update_data)

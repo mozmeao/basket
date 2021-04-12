@@ -545,6 +545,32 @@ class CTMS:
         else:
             return None
 
+    def add(self, data):
+        """
+        Create a contact record.
+
+        @param data: user data to add as a new contact.
+        @return: new user data
+        """
+        if not self.interface:
+            return None
+        return self.interface.post_to_create(to_vendor(data))
+
+    def update(self, existing_data, update_data):
+        """
+        Update data in an existing contact record
+
+        @param record: current contact record
+        @param data: dict of user data
+        @return: updated user data
+        """
+        if not self.interface:
+            return None
+        email_id = existing_data.get("email_id")
+        if not email_id:
+            raise ValueError("No email_id in existing data.")
+        return self.interface.patch_by_email_id(email_id, to_vendor(update_data))
+
 
 def ctms_session():
     """Return a CTMSSession configured from Django settings."""
