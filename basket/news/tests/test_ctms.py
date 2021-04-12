@@ -275,6 +275,41 @@ class ToVendorTests(TestCase):
         "basket.news.backends.ctms.newsletter_slugs",
         return_value=["slug1", "slug2", "slug3", "slug4"],
     )
+    def test_newsletter_list_with_source_url(self, mock_nl_slugs):
+        """A newsletter list can have a subscription source URL."""
+        data = {
+            "newsletters": ["slug1", "slug2", "slug3", "other"],
+            "source_url": "  https://example.com",
+        }
+        prepared = to_vendor(data)
+        assert prepared == {
+            "newsletters": [
+                {"name": "slug1", "subscribed": True, "source": "https://example.com"},
+                {"name": "slug2", "subscribed": True, "source": "https://example.com"},
+                {"name": "slug3", "subscribed": True, "source": "https://example.com"},
+            ]
+        }
+
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["slug1", "slug2", "slug3", "slug4"],
+    )
+    def test_newsletter_list_with_null_source_url(self, mock_nl_slugs):
+        """A null newsletter subscription source URL is ignored."""
+        data = {"newsletters": ["slug1", "slug2", "slug3", "other"], "source_url": None}
+        prepared = to_vendor(data)
+        assert prepared == {
+            "newsletters": [
+                {"name": "slug1", "subscribed": True},
+                {"name": "slug2", "subscribed": True},
+                {"name": "slug3", "subscribed": True},
+            ]
+        }
+
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["slug1", "slug2", "slug3", "slug4"],
+    )
     def test_newsletter_map(self, mock_nl_slugs):
         """A newsletter map combines subscribe and unsubscribe requests."""
         data = {

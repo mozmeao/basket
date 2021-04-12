@@ -26,7 +26,7 @@ time_request = get_timer_decorator("news.backends.ctms")
 # Missing basket names from pre-2021 SFDC integration:
 #  record_type - Identify MoFo donors with an associated opportunity
 #  postal_code - Extra data for MoFo petitions
-#  source_url - TODO: Set-once source URL, now per-newsletter
+#  source_url - Set-once source URL, now per-newsletter
 #  fsa_* - Firefox Student Ambassadors, deprecated
 #  cv_* - Common Voice, moved to MoFo
 #  payee_id - Stripe payee ID for MoFo donations
@@ -117,7 +117,7 @@ DISCARD_BASKET_NAMES = {
     "_set_subscriber",  # Identify newsletter subscribers in SFDC
     "record_type",  # Identify donors with associated opportunity
     "postal_code",  # Extra data for MoFo petitions
-    "source_url",  # TODO: handle this
+    "source_url",  # Skipped unless individual newsletter subscription(s)
     #
     # fsa_* is Firefox Student Ambassador data, deprecated
     "fsa_school",
@@ -193,7 +193,6 @@ def to_vendor(data):
     * No equivalent to Subscriber__c, UAT_Test_Data__c
     * Doesn't convert SFDC values Browser_Locale__c, FSA_*, CV_*, MailingCity
     * CTMS API handles boolean conversion
-    * TODO: Convert source_url
 
     @params data: basket data
     @return: dict in CTMS format
@@ -234,9 +233,13 @@ def to_vendor(data):
                         output.append({"name": slug, "subscribed": bool(subscribed)})
             else:
                 # List of slugs for subscriptions
+                source_url = (data.get("source_url", "") or "").strip()
                 for slug in raw_value:
                     if slug in valid_slugs:
-                        output.append({"name": slug, "subscribed": True})
+                        sub = {"name": slug, "subscribed": True}
+                        if source_url:
+                            sub["source"] = source_url
+                        output.append(sub)
             if output:
                 ctms_data["newsletters"] = output
         elif name == "amo_deleted":
