@@ -29,7 +29,6 @@ time_request = get_timer_decorator("news.backends.ctms")
 #  source_url - TODO: Set-once source URL, now per-newsletter
 #  fsa_* - Firefox Student Ambassadors, deprecated
 #  cv_* - Common Voice, moved to MoFo
-#  amo_deleted - TODO
 #  payee_id - Stripe payee ID for MoFo donations
 #  fxa_last_login - Imported into Acoustic periodically from FxA
 CTMS_TO_BASKET_NAMES = {
@@ -135,7 +134,6 @@ DISCARD_BASKET_NAMES = {
     "cv_first_contribution_date",
     "cv_two_day_streak",
     "cv_last_active_date",
-    "amo_deleted",  # TODO: handle this
     "fxa_last_login",  # Imported into Acoustic periodically from FxA
 }
 
@@ -201,6 +199,7 @@ def to_vendor(data):
     @return: dict in CTMS format
     """
     ctms_data = {}
+    amo_deleted = False
 
     for name, raw_value in data.items():
         # Pre-process raw_value, which may remove it.
@@ -240,9 +239,16 @@ def to_vendor(data):
                         output.append({"name": slug, "subscribed": True})
             if output:
                 ctms_data["newsletters"] = output
+        elif name == "amo_deleted":
+            amo_deleted = bool(value)
         elif name not in DISCARD_BASKET_NAMES:
             # TODO: SFDC ignores unknown fields, maybe this should as well
             raise KeyError(name)
+
+    # When an AMO account is deleted, reset data to defaults
+    if amo_deleted:
+        ctms_data["amo"] = "DELETE"
+
     return ctms_data
 
 
