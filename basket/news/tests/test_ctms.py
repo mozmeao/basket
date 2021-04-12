@@ -294,6 +294,20 @@ class ToVendorTests(TestCase):
             ]
         }
 
+    def test_amo_deleted(self):
+        """amo_deleted requests that AMO data is deleted."""
+        data = {
+            "amo_deleted": True,
+            "amo_id": None,
+            "amo_display_name": "Add-ons Author",
+            "amo_homepage": "firefox/user/98765",
+            "amo_last_login": "2021-01-28",
+            "amo_location": "California",
+            "amo_user": True,
+        }
+        prepared = to_vendor(data)
+        assert prepared == {"amo": "DELETE"}
+
     def test_ignored_fields(self):
         """Some fields exported to SFDC are quietly ignored in CTMS."""
         data = {
@@ -313,7 +327,6 @@ class ToVendorTests(TestCase):
             "cv_first_contribution_date": "2021-03-12",
             "cv_two_day_streak": True,
             "cv_last_active_date": "2021-04-11",
-            "amo_deleted": True,
             "fxa_last_login": "2020-04-11",
         }
         prepared = to_vendor(data)
