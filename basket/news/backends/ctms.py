@@ -199,6 +199,7 @@ def to_vendor(data):
     """
     ctms_data = {}
     amo_deleted = False
+    unsub_all = False
 
     for name, raw_value in data.items():
         # Pre-process raw_value, which may remove it.
@@ -227,10 +228,21 @@ def to_vendor(data):
             valid_slugs = newsletter_slugs()
             output = []
             if isinstance(raw_value, dict):
-                # Dictionary of slugs to sub/unsub flags
-                for slug, subscribed in raw_value.items():
-                    if slug in valid_slugs:
-                        output.append({"name": slug, "subscribed": bool(subscribed)})
+                # Detect unsubscribe all
+                optout = data.get("optout", False) or False
+                if (
+                    optout
+                    and (not any(raw_value.values()))
+                    and (set(valid_slugs) == set(raw_value.keys()))
+                ):
+                    unsub_all = True
+                else:
+                    # Dictionary of slugs to sub/unsub flags
+                    for slug, subscribed in raw_value.items():
+                        if slug in valid_slugs:
+                            output.append(
+                                {"name": slug, "subscribed": bool(subscribed)}
+                            )
             else:
                 # List of slugs for subscriptions
                 source_url = (data.get("source_url", "") or "").strip()
@@ -251,6 +263,9 @@ def to_vendor(data):
     # When an AMO account is deleted, reset data to defaults
     if amo_deleted:
         ctms_data["amo"] = "DELETE"
+    # When unsubscribe all is requested, let CTMS unsubscribe from all
+    if unsub_all:
+        ctms_data["newsletters"] = "UNSUBSCRIBE"
 
     return ctms_data
 

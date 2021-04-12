@@ -329,6 +329,51 @@ class ToVendorTests(TestCase):
             ]
         }
 
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["slug1", "slug2", "slug3", "slug4"],
+    )
+    def test_output_with_unsubscribe(self, mock_nl_slugs):
+        """An 'unsubscribe all' request is detected."""
+        data = {
+            "optout": True,
+            "newsletters": {
+                "slug1": False,
+                "slug2": False,
+                "slug3": False,
+                "slug4": False,
+            },
+        }
+        prepared = to_vendor(data)
+        assert prepared == {
+            "email": {"has_opted_out_of_email": True},
+            "newsletters": "UNSUBSCRIBE",
+        }
+
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["slug1", "slug2", "slug3", "slug4"],
+    )
+    def test_output_with_manual_unsubscribe_all(self, mock_nl_slugs):
+        """Manually unsubscribing is different from 'unsubscribe all'."""
+        data = {
+            "newsletters": {
+                "slug1": False,
+                "slug2": False,
+                "slug3": False,
+                "slug4": False,
+            },
+        }
+        prepared = to_vendor(data)
+        assert prepared == {
+            "newsletters": [
+                {"name": "slug1", "subscribed": False},
+                {"name": "slug2", "subscribed": False},
+                {"name": "slug3", "subscribed": False},
+                {"name": "slug4", "subscribed": False},
+            ]
+        }
+
     def test_amo_deleted(self):
         """amo_deleted requests that AMO data is deleted."""
         data = {
