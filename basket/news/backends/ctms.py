@@ -135,6 +135,7 @@ DISCARD_BASKET_NAMES = {
     "cv_two_day_streak",
     "cv_last_active_date",
     "fxa_last_login",  # Imported into Acoustic periodically from FxA
+    "api_key",  # Added from authenticated calls
 }
 
 
