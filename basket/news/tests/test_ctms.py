@@ -408,6 +408,7 @@ class ToVendorTests(TestCase):
             "cv_two_day_streak": True,
             "cv_last_active_date": "2021-04-11",
             "fxa_last_login": "2020-04-11",
+            "api_key": "a-basket-api-key",
         }
         prepared = to_vendor(data)
         assert prepared == {}
