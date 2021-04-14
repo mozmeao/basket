@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from django.test import TestCase, override_settings
 
 from mock import patch, ANY
@@ -34,6 +36,8 @@ class UpsertUserTests(TestCase):
     ):
         """sending name fields should result in names being passed to SF"""
         get_user_data.return_value = None  # Does not exist yet
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
             slug="slug",
             title="title",
@@ -55,9 +59,9 @@ class UpsertUserTests(TestCase):
         sfdc_data = data.copy()
         sfdc_data["newsletters"] = {"slug": True}
         sfdc_data["token"] = ANY
-        sfdc_data["email_id"] = ANY
-        sfdc_mock.add.assert_called_with(sfdc_data)
         ctms_mock.add.assert_called_with(sfdc_data)
+        sfdc_data["email_id"] = email_id
+        sfdc_mock.add.assert_called_with(sfdc_data)
 
     def test_update_user_set_works_if_no_newsletters(
         self, get_user_data, sfdc_mock, ctms_mock, confirm_mock,
@@ -284,6 +288,8 @@ class UpsertUserTests(TestCase):
     def test_send_confirm(self, get_user_data, sfdc_mock, ctms_mock, confirm_mock):
         """Subscribing to a newsletter should send a confirm email"""
         get_user_data.return_value = None  # Does not exist yet
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
             slug="slug",
             title="title",
@@ -303,14 +309,16 @@ class UpsertUserTests(TestCase):
         sfdc_data = data.copy()
         sfdc_data["newsletters"] = {"slug": True}
         sfdc_data["token"] = ANY
-        sfdc_data["email_id"] = ANY
-        sfdc_mock.add.assert_called_with(sfdc_data)
         ctms_mock.add.assert_called_with(sfdc_data)
+        sfdc_data["email_id"] = email_id
+        sfdc_mock.add.assert_called_with(sfdc_data)
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
     def test_send_fx_confirm(self, get_user_data, sfdc_mock, ctms_mock, confirm_mock):
         """Subscribing to a Fx newsletter should send a Fx confirm email"""
         get_user_data.return_value = None  # Does not exist yet
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
             slug="slug",
             title="title",
@@ -331,14 +339,16 @@ class UpsertUserTests(TestCase):
         sfdc_data = data.copy()
         sfdc_data["newsletters"] = {"slug": True}
         sfdc_data["token"] = ANY
-        sfdc_data["email_id"] = ANY
-        sfdc_mock.add.assert_called_with(sfdc_data)
         ctms_mock.add.assert_called_with(sfdc_data)
+        sfdc_data["email_id"] = email_id
+        sfdc_mock.add.assert_called_with(sfdc_data)
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "fx")
 
     def test_send_moz_confirm(self, get_user_data, sfdc_mock, ctms_mock, confirm_mock):
         """Subscribing to a Fx and moz newsletters should send a moz confirm email"""
         get_user_data.return_value = None  # Does not exist yet
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
             slug="slug",
             title="title",
@@ -368,9 +378,9 @@ class UpsertUserTests(TestCase):
         sfdc_data = data.copy()
         sfdc_data["newsletters"] = {"slug": True, "slug2": True}
         sfdc_data["token"] = ANY
-        sfdc_data["email_id"] = ANY
-        sfdc_mock.add.assert_called_with(sfdc_data)
         ctms_mock.add.assert_called_with(sfdc_data)
+        sfdc_data["email_id"] = email_id
+        sfdc_mock.add.assert_called_with(sfdc_data)
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
     def test_no_send_confirm_newsletter(
@@ -381,6 +391,8 @@ class UpsertUserTests(TestCase):
         if the newsletter does not require it
         """
         get_user_data.return_value = None  # Does not exist yet
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
             slug="slug",
             title="title",
@@ -400,10 +412,10 @@ class UpsertUserTests(TestCase):
         sfdc_data = data.copy()
         sfdc_data["newsletters"] = {"slug": True}
         sfdc_data["token"] = ANY
-        sfdc_data["email_id"] = ANY
         sfdc_data["optin"] = True
-        sfdc_mock.add.assert_called_with(sfdc_data)
         ctms_mock.add.assert_called_with(sfdc_data)
+        sfdc_data["email_id"] = email_id
+        sfdc_mock.add.assert_called_with(sfdc_data)
         confirm_mock.delay.assert_not_called()
 
     def test_no_send_confirm_user(
@@ -468,8 +480,6 @@ class UpsertUserTests(TestCase):
         sfdc_data = data.copy()
         sfdc_data["newsletters"] = {"slug": True}
         sfdc_data["token"] = ANY
-        sfdc_data["email_id"] = ANY
         ctms_mock.add.assert_called_with(sfdc_data)
-        del sfdc_data["email_id"]
         sfdc_mock.add.assert_called_with(sfdc_data)
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")

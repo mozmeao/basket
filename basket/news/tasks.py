@@ -564,14 +564,13 @@ def upsert_contact(api_call_type, data, user_data):
             sfdc_add_update.delay(update_data)
         else:
             ctms_data = update_data.copy()
-            email_id = ctms_data["email_id"] = generate_token()
             try:
-                ctms.add(ctms_data)
+                ctms_contact = ctms.add(ctms_data)
             except Exception:
                 sentry_sdk.capture_exception()
             else:
                 # Successfully added to CTMS, send email_id to SFDC
-                update_data["email_id"] = email_id
+                update_data["email_id"] = ctms_contact["email"]["email_id"]
 
             # don't catch exceptions here. SalesforceError subclasses will retry.
             sfdc.add(update_data)
@@ -629,10 +628,19 @@ def sfdc_add_update(update_data, user_data=None):
         sfdc.update(user_data, update_data)
         if user_data.get("email_id"):
             # Only update when CTMS has a matching record
-            ctms.update(user_data, update_data)
+            try:
+                ctms.update(user_data, update_data)
+            except Exception:
+                sentry_sdk.capture_exception()
     else:
-        if not update_data.get("email_id"):
-            update_data["email_id"] = generate_token()
+        ctms_data = update_data.copy()
+        try:
+            ctms_contact = ctms.add(ctms_data)
+        except Exception:
+            sentry_sdk.capture_exception()
+        else:
+            update_data["email_id"] = ctms_contact["email"]["email_id"]
+
         try:
             sfdc.add(update_data)
         except sfapi.SalesforceMalformedRequest as e:  # noqa
@@ -642,17 +650,23 @@ def sfdc_add_update(update_data, user_data=None):
                 # we have a user, delete generated token and email_id
                 # and continue with an update
                 update_data.pop("token", None)
-                update_data.pop("email_id", None)
+                if user_data.get("email_id"):
+                    update_data.pop("email_id", None)
                 sfdc.update(user_data, update_data)
                 if user_data.get("email_id"):
-                    ctms.update(user_data, update_data)
+                    try:
+                        ctms.update(user_data, update_data)
+                    except Exception:
+                        sentry_sdk.capture_exception()
             else:
                 # still no user, try the add one more time
+                try:
+                    ctms_contact = ctms.add(update_data)
+                except Exception:
+                    sentry_sdk.capture_exception()
+                else:
+                    update_data["email_id"] = ctms_contact["email_id"]["email_id"]
                 sfdc.add(update_data)
-                ctms.add(update_data)
-        else:
-            # Add the related CTMS record
-            ctms.add(update_data)
 
 
 @et_task
