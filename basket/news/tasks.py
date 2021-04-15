@@ -665,7 +665,7 @@ def sfdc_add_update(update_data, user_data=None):
                 except Exception:
                     sentry_sdk.capture_exception()
                 else:
-                    update_data["email_id"] = ctms_contact["email_id"]["email_id"]
+                    update_data["email_id"] = ctms_contact["email"]["email_id"]
                 sfdc.add(update_data)
 
 
