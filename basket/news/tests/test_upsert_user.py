@@ -3,8 +3,6 @@ from uuid import uuid4
 from django.test import TestCase, override_settings
 
 from mock import patch, ANY
-from requests import Response
-from requests.exceptions import HTTPError
 
 from basket.news import models
 from basket.news.tasks import upsert_user
@@ -456,11 +454,7 @@ class UpsertUserTests(TestCase):
     ):
         """When CTMS returns an error for a new contact, the email_id is not sent to SFDC"""
         get_user_data.return_value = None  # Does not exist yet
-        ctms_resp = Response()
-        ctms_resp.status_code = 409
-        ctms_resp._content = '"detail": "Contact already exists"}'
-        ctms_err = HTTPError(response=ctms_resp)
-        ctms_mock.add.side_effect = ctms_err
+        ctms_mock.add.return_value = None  # Conflict on create
         models.Newsletter.objects.create(
             slug="slug",
             title="title",
