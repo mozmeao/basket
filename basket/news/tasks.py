@@ -638,8 +638,7 @@ def sfdc_add_update(update_data, user_data=None):
                 # we have a user, delete generated token and email_id
                 # and continue with an update
                 update_data.pop("token", None)
-                if user_data.get("email_id"):
-                    update_data.pop("email_id", None)
+                update_data.pop("email_id", None)
                 sfdc.update(user_data, update_data)
                 if user_data.get("email_id"):
                     ctms.update(user_data, update_data)
