@@ -564,11 +564,8 @@ def upsert_contact(api_call_type, data, user_data):
             sfdc_add_update.delay(update_data)
         else:
             ctms_data = update_data.copy()
-            try:
-                ctms_contact = ctms.add(ctms_data)
-            except Exception:
-                sentry_sdk.capture_exception()
-            else:
+            ctms_contact = ctms.add(ctms_data)
+            if ctms_contact:
                 # Successfully added to CTMS, send email_id to SFDC
                 update_data["email_id"] = ctms_contact["email"]["email_id"]
 
@@ -604,10 +601,7 @@ def upsert_contact(api_call_type, data, user_data):
         # During the transition from SFDC to CTMS, only update if there is a
         # matching CTMS record
         if user_data.get("email_id"):
-            try:
-                ctms.update(user_data, update_data)
-            except Exception:
-                sentry_sdk.capture_exception()
+            ctms.update(user_data, update_data)
 
     if send_confirm and settings.SEND_CONFIRM_MESSAGES:
         send_confirm_message.delay(
@@ -628,17 +622,11 @@ def sfdc_add_update(update_data, user_data=None):
         sfdc.update(user_data, update_data)
         if user_data.get("email_id"):
             # Only update when CTMS has a matching record
-            try:
-                ctms.update(user_data, update_data)
-            except Exception:
-                sentry_sdk.capture_exception()
+            ctms.update(user_data, update_data)
     else:
         ctms_data = update_data.copy()
-        try:
-            ctms_contact = ctms.add(ctms_data)
-        except Exception:
-            sentry_sdk.capture_exception()
-        else:
+        ctms_contact = ctms.add(ctms_data)
+        if ctms_contact:
             update_data["email_id"] = ctms_contact["email"]["email_id"]
 
         try:
@@ -654,17 +642,11 @@ def sfdc_add_update(update_data, user_data=None):
                     update_data.pop("email_id", None)
                 sfdc.update(user_data, update_data)
                 if user_data.get("email_id"):
-                    try:
-                        ctms.update(user_data, update_data)
-                    except Exception:
-                        sentry_sdk.capture_exception()
+                    ctms.update(user_data, update_data)
             else:
                 # still no user, try the add one more time
-                try:
-                    ctms_contact = ctms.add(update_data)
-                except Exception:
-                    sentry_sdk.capture_exception()
-                else:
+                ctms_contact = ctms.add(update_data)
+                if ctms_contact:
                     update_data["email_id"] = ctms_contact["email"]["email_id"]
                 sfdc.add(update_data)
 

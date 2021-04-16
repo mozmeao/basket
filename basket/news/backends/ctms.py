@@ -10,6 +10,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django_statsd.clients import statsd
 
+import sentry_sdk
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import BackendApplicationClient
 
@@ -594,7 +595,11 @@ class CTMS:
         """
         if not self.interface:
             return None
-        return self.interface.post_to_create(to_vendor(data))
+        try:
+            return self.interface.post_to_create(to_vendor(data))
+        except Exception:
+            sentry_sdk.capture_exception()
+            return None
 
     def update(self, existing_data, update_data):
         """
@@ -609,7 +614,11 @@ class CTMS:
         email_id = existing_data.get("email_id")
         if not email_id:
             raise ValueError("No email_id in existing data.")
-        return self.interface.patch_by_email_id(email_id, to_vendor(update_data))
+        try:
+            return self.interface.patch_by_email_id(email_id, to_vendor(update_data))
+        except Exception:
+            sentry_sdk.capture_exception()
+            return None
 
 
 def ctms_session():
