@@ -613,7 +613,8 @@ class CTMS:
             return None
         email_id = existing_data.get("email_id")
         if not email_id:
-            raise ValueError("No email_id in existing data.")
+            # TODO: When CTMS is primary, this should be an error
+            return None
         try:
             return self.interface.patch_by_email_id(email_id, to_vendor(update_data))
         except Exception:

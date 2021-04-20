@@ -905,8 +905,14 @@ class CTMSTests(TestCase):
         )
 
     def test_update_email_id_not_in_existing_data(self):
-        """CTMS.update requires an email_id in existing data."""
+        """
+        CTMS.update requires an email_id in existing data.
+
+        TODO: This should raise an exception after the SDFC to CTMS
+        transition. However, the calling code is simplier if it does
+        nothing when there is no existing email_id.
+        """
         ctms = CTMS("interface should not be called")
         user_data = {"token": "an-existing-user"}
         update_data = {"first_name": "Elizabeth", "email_id": "a-new-email-id"}
-        self.assertRaises(ValueError, ctms.update, user_data, update_data)
+        assert ctms.update(user_data, update_data) is None
