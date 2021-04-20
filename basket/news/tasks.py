@@ -597,11 +597,7 @@ def upsert_contact(api_call_type, data, user_data):
         sfdc_add_update.delay(update_data, user_data)
     else:
         sfdc.update(user_data, update_data)
-
-        # During the transition from SFDC to CTMS, only update if there is a
-        # matching CTMS record
-        if user_data.get("email_id"):
-            ctms.update(user_data, update_data)
+        ctms.update(user_data, update_data)
 
     if send_confirm and settings.SEND_CONFIRM_MESSAGES:
         send_confirm_message.delay(
@@ -620,9 +616,7 @@ def sfdc_add_update(update_data, user_data=None):
     # TODO remove after maintenance is over and queue is processed
     if user_data:
         sfdc.update(user_data, update_data)
-        if user_data.get("email_id"):
-            # Only update when CTMS has a matching record
-            ctms.update(user_data, update_data)
+        ctms.update(user_data, update_data)
     else:
         ctms_data = update_data.copy()
         ctms_contact = ctms.add(ctms_data)
@@ -640,8 +634,7 @@ def sfdc_add_update(update_data, user_data=None):
                 update_data.pop("token", None)
                 update_data.pop("email_id", None)
                 sfdc.update(user_data, update_data)
-                if user_data.get("email_id"):
-                    ctms.update(user_data, update_data)
+                ctms.update(user_data, update_data)
             else:
                 # still no user, try the add one more time
                 ctms_contact = ctms.add(update_data)
