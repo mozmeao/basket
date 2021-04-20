@@ -468,7 +468,11 @@ if OIDC_ENABLE:
     MIDDLEWARE += ("basket.news.middleware.OIDCSessionRefreshMiddleware",)
     LOGIN_REDIRECT_URL = "/admin/"
 
-if sys.argv[0].endswith("py.test") or (len(sys.argv) > 1 and sys.argv[1] == "test"):
+if (
+    sys.argv[0].endswith("py.test")
+    or sys.argv[0].endswith("pytest")
+    or (len(sys.argv) > 1 and sys.argv[1] == "test")
+):
     # stuff that's absolutely required for a test run
     CELERY_TASK_ALWAYS_EAGER = True
     SFDC_SETTINGS.pop("username", None)
