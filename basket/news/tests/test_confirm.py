@@ -7,10 +7,11 @@ from basket.news.backends.common import NewsletterException
 from basket.news.tasks import confirm_user
 
 
+@patch("basket.news.tasks.ctms")
 @patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.get_user_data")
 class TestConfirmTask(TestCase):
-    def test_error(self, get_user_data, sfdc_mock):
+    def test_error(self, get_user_data, sfdc_mock, ctms_mock):
         """
         If user_data shows an error talking to ET, the task raises
         an exception so our task logic will retry
@@ -19,8 +20,9 @@ class TestConfirmTask(TestCase):
         with self.assertRaises(Retry):
             confirm_user("token")
         self.assertFalse(sfdc_mock.update.called)
+        self.assertFalse(ctms_mock.update.called)
 
-    def test_normal(self, get_user_data, sfdc_mock):
+    def test_normal(self, get_user_data, sfdc_mock, ctms_mock):
         """If user_data is okay, and not yet confirmed, the task calls
          the right stuff"""
         token = "TOKEN"
@@ -31,12 +33,14 @@ class TestConfirmTask(TestCase):
             "format": "ZZ",
             "email": "dude@example.com",
             "token": token,
+            "email_id": "some-email-id",
         }
         get_user_data.return_value = user_data
         confirm_user(token)
         sfdc_mock.update.assert_called_with(user_data, {"optin": True})
+        ctms_mock.update.assert_called_with(user_data, {"optin": True})
 
-    def test_already_confirmed(self, get_user_data, sfdc_mock):
+    def test_already_confirmed(self, get_user_data, sfdc_mock, ctms_mock):
         """If user_data already confirmed, task does nothing"""
         user_data = {
             "status": "ok",
@@ -48,3 +52,4 @@ class TestConfirmTask(TestCase):
         token = "TOKEN"
         confirm_user(token)
         self.assertFalse(sfdc_mock.update.called)
+        self.assertFalse(ctms_mock.update.called)

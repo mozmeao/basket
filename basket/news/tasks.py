@@ -701,6 +701,7 @@ def confirm_user(token):
         raise BasketError("token has no email in ET")
 
     sfdc.update(user_data, {"optin": True})
+    ctms.update(user_data, {"optin": True})
 
 
 @et_task
