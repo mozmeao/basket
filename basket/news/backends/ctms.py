@@ -23,6 +23,11 @@ from basket.news.newsletters import (
 
 time_request = get_timer_decorator("news.backends.ctms")
 
+
+class CTMSError(Exception):
+    """Base class for exceptions raised by CTMS functions."""
+
+
 # Map CTMS group / name pairs to basket flat format names
 # Missing basket names from pre-2021 SFDC integration:
 #  record_type - Identify MoFo donors with an associated opportunity
@@ -187,6 +192,19 @@ TO_VENDOR_PROCESSORS = {
 }
 
 
+class CTMSUnknownKeyError(CTMSError):
+    """A unknown key was encountered when converting to CTMS format."""
+
+    def __init__(self, unknown_key):
+        self.unknown_key = unknown_key
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.unknown_key!r})"
+
+    def __str__(self):
+        return f"Unknown basket key {self.unknown_key!r}"
+
+
 def to_vendor(data):
     """
     Transform basket key-value data and convert to CTMS nested data
@@ -260,7 +278,7 @@ def to_vendor(data):
             amo_deleted = bool(value)
         elif name not in DISCARD_BASKET_NAMES:
             # TODO: SFDC ignores unknown fields, maybe this should as well
-            raise KeyError(name)
+            raise CTMSUnknownKeyError(name)
 
     # When an AMO account is deleted, reset data to defaults
     if amo_deleted:
@@ -385,6 +403,22 @@ class CTMSSession:
     put = partialmethod(request, "PUT")
 
 
+class CTMSNoIdsError(CTMSError):
+    """No valid IDs were passed to retrieve CTMS records."""
+
+    def __init__(self, required_ids):
+        self.required_ids = required_ids
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.required_ids})"
+
+    def __str__(self):
+        return (
+            "None of the required identifiers are set:"
+            f" {', '.join(name for name in self.required_ids)}"
+        )
+
+
 class CTMSInterface:
     """Basic Interface to the CTMS API"""
 
@@ -430,6 +464,7 @@ class CTMSInterface:
         @param amo_user_id: User ID from addons.mozilla.org
         @param fxa_primary_email: Primary email in Firefox Accounts
         @return: list of contact dicts
+        @raises: CTMSNoIds, on no IDs set
         @raises: request.HTTPError, status_code 400, on bad auth credentials
         @raises: request.HTTPError, status_code 401, on no auth credentials
         @raises: request.HTTPError, status_code 404, on unknown email_id
@@ -440,7 +475,7 @@ class CTMSInterface:
             if name in self.all_ids and value is not None:
                 ids[name] = value
         if not ids:
-            raise ValueError("At least one ID must be non-null")
+            raise CTMSNoIdsError(self.all_ids)
         resp = self.session.get("/ctms", params=ids)
         resp.raise_for_status()
         return resp.json()
@@ -524,6 +559,33 @@ class CTMSInterface:
         return resp.json()
 
 
+class CTMSMultipleContactsError(CTMSError):
+    """Multiple contacts were returned when one was expected."""
+
+    def __init__(self, id_name, id_value, contacts):
+        self.id_name = id_name
+        self.id_value = id_value
+        self.contacts = contacts
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}({self.id_name!r}, {self.id_value!r},"
+            f" {self.contacts!r})"
+        )
+
+    def __str__(self):
+        try:
+            email_ids = repr(
+                [contact["email"]["email_id"] for contact in self.contacts]
+            )
+        except Exception:
+            email_ids = "(unable to extract email_ids)"
+        return (
+            f"{len(self.contacts)} contacts returned for"
+            f" {self.id_name}={self.id_value!r} with email_ids {email_ids}"
+        )
+
+
 class CTMS:
     """Basket interface to CTMS"""
 
@@ -551,6 +613,8 @@ class CTMS:
         @param mofo_email_id: external ID from MoFo
         @param amo_id: external ID from AMO
         @return: dict, or None if disabled
+        @raises CTMSNoIds: no IDs are set
+        @raises CTMSMultipleContacts:: multiple contacts returned
         """
         if not self.interface:
             return None
@@ -559,27 +623,39 @@ class CTMS:
             contact = self.interface.get_by_email_id(email_id)
         else:
             if token:
-                params = {"basket_token": token}
+                id_name, id_value = "basket_token", token
             elif email:
-                params = {"primary_email": email}
+                id_name, id_value = "primary_email", email
             elif sfdc_id:
-                params = {"sfdc_id": sfdc_id}
+                id_name, id_value = "sfdc_id", sfdc_id
             elif fxa_id:
-                params = {"fxa_id": fxa_id}
+                id_name, id_value = "fxa_id", fxa_id
             elif mofo_email_id:
-                params = {"mofo_email_id": mofo_email_id}
+                id_name, id_value = "mofo_email_id", mofo_email_id
             elif amo_id:
-                params = {"amo_user_id": amo_id}
+                id_name, id_value = "amo_user_id", amo_id
             else:
-                raise RuntimeError("One of the arguments must be set")
+                raise CTMSNoIdsError(
+                    required_ids=(
+                        "email_id",
+                        "token",
+                        "email",
+                        "sfdc_id",
+                        "fxa_id",
+                        "mofo_email_id",
+                        "amo_id",
+                    )
+                )
 
+            params = {id_name: id_value}
             contacts = self.interface.get_by_alternate_id(**params)
+
             if not contacts:
                 contact = None
             elif len(contacts) == 1:
                 contact = contacts[0]
             else:
-                raise RuntimeError(f"Multiple contacts returned for {params}")
+                raise CTMSMultipleContactsError(id_name, id_value, contacts)
 
         if contact:
             return from_vendor(contact)

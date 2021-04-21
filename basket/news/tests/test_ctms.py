@@ -13,6 +13,9 @@ from basket.news.backends.ctms import (
     CTMS,
     CTMSInterface,
     CTMSSession,
+    CTMSNoIdsError,
+    CTMSMultipleContactsError,
+    CTMSUnknownKeyError,
     from_vendor,
     to_vendor,
 )
@@ -416,7 +419,7 @@ class ToVendorTests(TestCase):
     def test_unknown_field_raises(self):
         """An unknown basket field is an exception."""
         data = {"foo": "bar"}
-        self.assertRaises(KeyError, to_vendor, data)
+        self.assertRaises(CTMSUnknownKeyError, to_vendor, data)
 
 
 class CTMSSessionTests(TestCase):
@@ -708,6 +711,50 @@ class MockInterfaceTests(TestCase):
         assert error.response.json() == expected
 
 
+class CTMSExceptionTests(TestCase):
+    def test_ctms_no_ids(self):
+        exc = CTMSNoIdsError(("email_id", "token"))
+        assert repr(exc) == "CTMSNoIdsError(('email_id', 'token'))"
+        assert str(exc) == "None of the required identifiers are set: email_id, token"
+
+    def test_ctms_multiple_contacts(self):
+        contact1 = {"email": {"email_id": "email-id-1"}}
+        contact2 = {"email": {"email_id": "email-id-2"}}
+        contacts = [contact1, contact2]
+
+        exc = CTMSMultipleContactsError("amo_id", "id1", contacts)
+        assert repr(exc) == (
+            "CTMSMultipleContactsError('amo_id', 'id1',"
+            " [{'email': {'email_id': 'email-id-1'}},"
+            " {'email': {'email_id': 'email-id-2'}}])"
+        )
+        assert str(exc) == (
+            "2 contacts returned for amo_id='id1' with email_ids"
+            " ['email-id-1', 'email-id-2']"
+        )
+
+    def test_ctms_multiple_contacts_bad_contact(self):
+        contact1 = {"email": {"email_id": "email-id-1"}}
+        contact2 = "huh a string"
+        contacts = [contact1, contact2]
+
+        exc = CTMSMultipleContactsError("amo_id", "id1", contacts)
+        assert repr(exc) == (
+            "CTMSMultipleContactsError('amo_id', 'id1',"
+            " [{'email': {'email_id': 'email-id-1'}},"
+            " 'huh a string'])"
+        )
+        assert str(exc) == (
+            "2 contacts returned for amo_id='id1' with email_ids"
+            " (unable to extract email_ids)"
+        )
+
+    def test_ctms_unknown_basket_key(self):
+        exc = CTMSUnknownKeyError("foo")
+        assert repr(exc) == "CTMSUnknownKeyError('foo')"
+        assert str(exc) == "Unknown basket key 'foo'"
+
+
 class CTMSTests(TestCase):
 
     TEST_CTMS_CONTACT = {
@@ -840,9 +887,9 @@ class CTMSTests(TestCase):
         """If an ID returns mutliple contacts, a RuntimeError is raised."""
         amo_id = self.TEST_CTMS_CONTACT["amo"]["user_id"]
         contact2 = {
-            "amo": {"user_id": "amo-user-id"},
+            "amo": {"user_id": amo_id},
             "email": {
-                "email_id": "a-ctms-uuid",
+                "email_id": "other-ctms-uuid",
                 "basket_token": "token",
                 "primary_email": "basket@example.com",
                 "sfdc_id": "sfdc-id",
@@ -854,12 +901,12 @@ class CTMSTests(TestCase):
             },
         }
         ctms = CTMS(mock_interface("GET", 200, [self.TEST_CTMS_CONTACT, contact2]))
-        self.assertRaises(RuntimeError, ctms.get, amo_id=amo_id)
+        self.assertRaises(CTMSMultipleContactsError, ctms.get, amo_id=amo_id)
 
     def test_get_no_ids(self):
         """RuntimeError is raised if all IDs are None."""
         ctms = CTMS("interface should not be called")
-        self.assertRaises(RuntimeError, ctms.get, token=None)
+        self.assertRaises(CTMSNoIdsError, ctms.get, token=None)
 
     def test_add_no_interface(self):
         """If the interface is None (disabled or other issue), None is returned."""
