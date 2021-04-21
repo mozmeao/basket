@@ -951,10 +951,20 @@ def process_donation(data):
             )
         ):
             sfdc.update(user_data, contact_data)
+            ctms_data = contact_data.copy()
+            del ctms_data["_set_subscriber"]
+            ctms.update(user_data, ctms_data)
     else:
         contact_data["token"] = generate_token()
         contact_data["email"] = data["email"]
         contact_data["record_type"] = settings.DONATE_CONTACT_RECORD_TYPE
+
+        ctms_data = contact_data.copy()
+        del ctms_data["_set_subscriber"]
+        del ctms_data["record_type"]
+        contact = ctms.add(ctms_data)
+        if contact:
+            contact_data["email_id"] = contact["email"]["email_id"]
 
         # returns a dict with the new ID but no other user data, but that's enough here
         user_data = sfdc.add(contact_data)
