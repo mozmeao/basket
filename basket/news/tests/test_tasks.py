@@ -36,6 +36,7 @@ from basket.news.tasks import (
     get_lock,
     RetryTask,
     update_custom_unsub,
+    update_user_meta,
 )
 from basket.news.utils import iso_format_unix_timestamp
 
@@ -1638,3 +1639,15 @@ class TestUpdateCustomUnsub(TestCase):
         mock_sfdc.update.assert_called_once_with(
             {"token": self.token}, {"reason": self.reason}
         )
+
+
+@override_settings(TASK_LOCKING_ENABLE=False)
+@patch("basket.news.tasks.sfdc")
+class TestUpdateUserMeta(TestCase):
+    token = "the-token"
+    data = {"first_name": "Edmund", "last_name": "Gettier"}
+
+    def test_normal(self, mock_sfdc):
+        """The data is updated for the token"""
+        update_user_meta(self.token, self.data)
+        mock_sfdc.update.assert_called_once_with({"token": self.token}, self.data)
