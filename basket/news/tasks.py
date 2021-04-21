@@ -773,8 +773,13 @@ def record_common_voice_update(data):
 
     if user_data:
         sfdc.update(user_data, new_data)
+        ctms.update(user_data, new_data)
     else:
         new_data.update({"email": email, "token": generate_token()})
+        ctms_data = new_data.copy()
+        ctms_contact = ctms.add(ctms_data)
+        if ctms_contact:
+            new_data["email_id"] = ctms_contact["email"]["email_id"]
         sfdc.add(new_data)
 
 
