@@ -28,7 +28,7 @@ from silverpop.api import SilverpopResponseException
 from basket.base.utils import email_is_testing
 from basket.news.backends.acoustic import acoustic_tx, acoustic
 from basket.news.backends.common import NewsletterException
-from basket.news.backends.ctms import ctms
+from basket.news.backends.ctms import ctms, CTMSNotFoundByAltIDError
 from basket.news.backends.sfdc import sfdc
 from basket.news.celery import app as celery_app
 from basket.news.models import (
@@ -726,6 +726,12 @@ def update_custom_unsub(token, reason):
         sfdc.update({"token": token}, {"reason": reason})
     except sfapi.SalesforceMalformedRequest:
         # likely the record can't be found. nothing to do.
+        return
+
+    try:
+        ctms.update_by_alt_id("token", token, {"reason": reason})
+    except CTMSNotFoundByAltIDError:
+        # No record found for that token, nothing to do.
         pass
 
 
