@@ -586,6 +586,20 @@ class CTMSMultipleContactsError(CTMSError):
         )
 
 
+class CTMSNotFoundByAltIDError(CTMSError):
+    """A CTMS record was not found by an alternate ID."""
+
+    def __init__(self, id_name, id_value):
+        self.id_name = id_name
+        self.id_value = id_value
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.id_name!r}, {self.id_value!r})"
+
+    def __str__(self):
+        return f"No contacts returned for {self.id_name}={self.id_value!r}"
+
+
 class CTMS:
     """Basket interface to CTMS"""
 
@@ -667,7 +681,7 @@ class CTMS:
         Create a contact record.
 
         @param data: user data to add as a new contact.
-        @return: new user data
+        @return: new user data, CTMS format
         """
         if not self.interface:
             return None
@@ -681,9 +695,9 @@ class CTMS:
         """
         Update data in an existing contact record
 
-        @param record: current contact record
-        @param data: dict of user data
-        @return: updated user data
+        @param existing_data: current contact record
+        @param update_data: dict of new data
+        @return: updated user data, CTMS format
         """
         if not self.interface:
             return None
@@ -696,6 +710,25 @@ class CTMS:
         except Exception:
             sentry_sdk.capture_exception()
             return None
+
+    def update_by_alt_id(self, alt_id_name, alt_id_value, update_data):
+        """
+        Update data in an existing contact record by an alternate ID
+
+        @param alt_id_name: the alternate ID name, such as 'token'
+        @param alt_id_value: the alternate ID value
+        @param update_data: dict of new data
+        @return: updated user data, CTMS format
+        @raises CTMSNotFoundByAltID: when no record found
+        """
+        if not self.interface:
+            return None
+
+        contact = self.get(**{alt_id_name: alt_id_value})
+        if contact:
+            return self.update(contact, update_data)
+        else:
+            raise CTMSNotFoundByAltIDError(alt_id_name, alt_id_value)
 
 
 def ctms_session():
