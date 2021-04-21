@@ -472,6 +472,11 @@ def update_get_involved(
 def update_user_meta(token, data):
     """Update a user's metadata, not newsletters"""
     sfdc.update({"token": token}, data)
+    try:
+        ctms.update_by_alt_id("token", token, data)
+    except CTMSNotFoundByAltIDError:
+        # TODO: raise this exception when CTMS is primary data source
+        pass
 
 
 @et_task

@@ -1661,12 +1661,27 @@ class TestUpdateCustomUnsub(TestCase):
 
 
 @override_settings(TASK_LOCKING_ENABLE=False)
+@patch("basket.news.tasks.ctms")
 @patch("basket.news.tasks.sfdc")
 class TestUpdateUserMeta(TestCase):
     token = "the-token"
     data = {"first_name": "Edmund", "last_name": "Gettier"}
 
-    def test_normal(self, mock_sfdc):
+    def test_normal(self, mock_sfdc, mock_ctms):
         """The data is updated for the token"""
         update_user_meta(self.token, self.data)
         mock_sfdc.update.assert_called_once_with({"token": self.token}, self.data)
+        mock_ctms.update_by_alt_id.assert_called_once_with(
+            "token", self.token, self.data
+        )
+
+    def test_no_ctms_record(self, mock_sfdc, mock_ctms):
+        """If there is no CTMS record, CTMS updates are skipped."""
+        mock_ctms.update_by_alt_id.side_effect = CTMSNotFoundByAltIDError(
+            "token", self.token
+        )
+        update_user_meta(self.token, self.data)
+        mock_sfdc.update.assert_called_once_with({"token": self.token}, self.data)
+        mock_ctms.update_by_alt_id.assert_called_once_with(
+            "token", self.token, self.data
+        )
