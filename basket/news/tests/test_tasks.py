@@ -412,6 +412,7 @@ class ProcessDonationReceiptTests(TestCase):
 @override_settings(TASK_LOCKING_ENABLE=False)
 @patch("basket.news.tasks.get_user_data")
 @patch("basket.news.tasks.sfdc")
+@patch("basket.news.tasks.ctms")
 class ProcessDonationTests(TestCase):
     donate_data = {
         "created": 1479746809.327,
@@ -433,7 +434,7 @@ class ProcessDonationTests(TestCase):
         "campaign_id": "were-you-listening-to-the-dudes-story",
     }
 
-    def test_one_name(self, sfdc_mock, gud_mock):
+    def test_one_name(self, ctms_mock, sfdc_mock, gud_mock):
         data = self.donate_data.copy()
         gud_mock.return_value = {
             "id": "1234",
@@ -446,13 +447,24 @@ class ProcessDonationTests(TestCase):
         sfdc_mock.update.assert_called_with(
             gud_mock(), {"_set_subscriber": False, "last_name": "Donnie"},
         )
+        ctms_mock.update.assert_called_with(gud_mock(), {"last_name": "Donnie"})
 
-    def test_name_splitting(self, sfdc_mock, gud_mock):
+    def test_name_splitting(self, ctms_mock, sfdc_mock, gud_mock):
         data = self.donate_data.copy()
         gud_mock.return_value = None
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         del data["first_name"]
         data["last_name"] = "Theodore Donald Kerabatsos"
         process_donation(data)
+        ctms_mock.add.assert_called_with(
+            {
+                "token": ANY,
+                "email": "dude@example.com",
+                "first_name": "Theodore Donald",
+                "last_name": "Kerabatsos",
+            }
+        )
         sfdc_mock.add.assert_called_with(
             {
                 "_set_subscriber": False,
@@ -461,48 +473,82 @@ class ProcessDonationTests(TestCase):
                 "email": "dude@example.com",
                 "first_name": "Theodore Donald",
                 "last_name": "Kerabatsos",
-            },
+                "email_id": email_id,
+            }
         )
 
-    def test_name_empty(self, sfdc_mock, gud_mock):
+    def test_name_empty(self, ctms_mock, sfdc_mock, gud_mock):
         """Should be okay if only last_name is provided and is just spaces.
 
         https://github.com/mozmeao/basket/issues/45
         """
         data = self.donate_data.copy()
         gud_mock.return_value = None
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         del data["first_name"]
         data["last_name"] = "  "
         process_donation(data)
+        ctms_mock.add.assert_called_with({"token": ANY, "email": "dude@example.com"})
         sfdc_mock.add.assert_called_with(
             {
                 "_set_subscriber": False,
                 "token": ANY,
-                "record_type": ANY,
                 "email": "dude@example.com",
-            },
+                "record_type": ANY,
+                "email_id": email_id,
+            }
         )
 
-    def test_name_none(self, sfdc_mock, gud_mock):
+    def test_name_none(self, ctms_mock, sfdc_mock, gud_mock):
         """Should be okay if only last_name is provided and is None.
 
         https://sentry.prod.mozaws.net/operations/basket-prod/issues/683973/
         """
         data = self.donate_data.copy()
         gud_mock.return_value = None
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         del data["first_name"]
         data["last_name"] = None
         process_donation(data)
+        ctms_mock.add.assert_called_with({"token": ANY, "email": "dude@example.com"})
         sfdc_mock.add.assert_called_with(
             {
                 "_set_subscriber": False,
                 "token": ANY,
-                "record_type": ANY,
                 "email": "dude@example.com",
-            },
+                "record_type": ANY,
+                "email_id": email_id,
+            }
         )
 
-    def test_only_update_contact_if_modified(self, sfdc_mock, gud_mock):
+    def test_ctms_add_fails(self, ctms_mock, sfdc_mock, gud_mock):
+        """If ctms.add fails, sfdc.add is still called without an email_id."""
+        data = self.donate_data.copy()
+        gud_mock.return_value = None
+        ctms_mock.add.return_value = None
+        process_donation(data)
+        ctms_mock.add.assert_called_with(
+            {
+                "token": ANY,
+                "email": "dude@example.com",
+                "first_name": "Jeffery",
+                "last_name": "Lebowski",
+            }
+        )
+        sfdc_mock.add.assert_called_with(
+            {
+                "_set_subscriber": False,
+                "token": ANY,
+                "email": "dude@example.com",
+                "first_name": "Jeffery",
+                "last_name": "Lebowski",
+                "record_type": ANY,
+            }
+        )
+
+    def test_only_update_contact_if_modified(self, ctms_mock, sfdc_mock, gud_mock):
         data = self.donate_data.copy()
         gud_mock.return_value = {
             "id": "1234",
@@ -518,8 +564,12 @@ class ProcessDonationTests(TestCase):
                 "last_name": "Lebowski",
             },
         )
+        ctms_mock.update.assert_called_with(
+            gud_mock(), {"first_name": "Jeffery", "last_name": "Lebowski"},
+        )
 
         sfdc_mock.reset_mock()
+        ctms_mock.reset_mock()
         data = self.donate_data.copy()
         gud_mock.return_value = {
             "id": "1234",
@@ -528,8 +578,9 @@ class ProcessDonationTests(TestCase):
         }
         process_donation(data)
         sfdc_mock.update.assert_not_called()
+        ctms_mock.update.assert_not_called()
 
-    def test_donation_data(self, sfdc_mock, gud_mock):
+    def test_donation_data(self, ctms_mock, sfdc_mock, gud_mock):
         data = self.donate_data.copy()
         gud_mock.return_value = {
             "id": "1234",
@@ -561,7 +612,7 @@ class ProcessDonationTests(TestCase):
             },
         )
 
-    def test_donation_data_optional_null(self, sfdc_mock, gud_mock):
+    def test_donation_data_optional_null(self, ctms_mock, sfdc_mock, gud_mock):
         """Having a `None` in an optional field used to throw a TypeError.
 
         https://github.com/mozmeao/basket/issues/366
@@ -598,7 +649,7 @@ class ProcessDonationTests(TestCase):
             },
         )
 
-    def test_donation_silent_failure_on_dupe(self, sfdc_mock, gud_mock):
+    def test_donation_silent_failure_on_dupe(self, ctms_mock, sfdc_mock, gud_mock):
         data = self.donate_data.copy()
         gud_mock.return_value = {
             "id": "1234",
@@ -617,7 +668,7 @@ class ProcessDonationTests(TestCase):
         sfdc_mock.opportunity.create.side_effect = exc
         process_donation(data)
 
-    def test_donation_normal_failure_not_dupe(self, sfdc_mock, gud_mock):
+    def test_donation_normal_failure_not_dupe(self, ctms_mock, sfdc_mock, gud_mock):
         data = self.donate_data.copy()
         gud_mock.return_value = {
             "id": "1234",
