@@ -35,6 +35,7 @@ from basket.news.tasks import (
     SUBSCRIBE,
     get_lock,
     RetryTask,
+    update_custom_unsub,
 )
 from basket.news.utils import iso_format_unix_timestamp
 
@@ -1613,3 +1614,27 @@ class TestCommonVoiceBatch(TestCase):
         process_common_voice_batch()
         assert CommonVoiceUpdate.objects.filter(ack=False).count() == 0
         assert CommonVoiceUpdate.objects.filter(ack=True).count() == 10
+
+
+@override_settings(TASK_LOCKING_ENABLE=False)
+@patch("basket.news.tasks.sfdc")
+class TestUpdateCustomUnsub(TestCase):
+    token = "the-token"
+    reason = "I would like less emails."
+
+    def test_normal(self, mock_sfdc):
+        """The reason is updated for the token"""
+        update_custom_unsub(self.token, self.reason)
+        mock_sfdc.update.assert_called_once_with(
+            {"token": self.token}, {"reason": self.reason}
+        )
+
+    def test_error_raised(self, mock_sfdc):
+        """A SF exception is not re-raised"""
+        error_content = [{"message": "something went wrong"}]
+        exc = sfapi.SalesforceMalformedRequest("url", 400, "contact", error_content)
+        mock_sfdc.update.side_effect = exc
+        update_custom_unsub(self.token, self.reason)
+        mock_sfdc.update.assert_called_once_with(
+            {"token": self.token}, {"reason": self.reason}
+        )
