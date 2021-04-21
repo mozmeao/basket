@@ -1,6 +1,7 @@
 import json
 from copy import deepcopy
 from datetime import datetime, timedelta
+from uuid import uuid4
 from urllib.error import URLError
 
 from django.conf import settings
@@ -1161,11 +1162,14 @@ class GmttimeTests(TestCase):
         self.assertEqual(formatted_time, "Fri, 09 Sep 2016 13:43:55 GMT")
 
 
+@patch("basket.news.tasks.ctms")
 @patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.get_user_data")
 class CommonVoiceGoalsTests(TestCase):
-    def test_new_user(self, gud_mock, sfdc_mock):
+    def test_new_user(self, gud_mock, sfdc_mock, ctms_mock):
         gud_mock.return_value = None
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         data = {
             "email": "dude@example.com",
             "first_contribution_date": "2018-06-27T14:56:58Z",
@@ -1177,20 +1181,21 @@ class CommonVoiceGoalsTests(TestCase):
         # ensure passed in dict was not modified in place.
         # if it is modified a retry will use the modified dict.
         assert orig_data == data
-        sfdc_mock.add.assert_called_with(
-            {
-                "email": "dude@example.com",
-                "token": ANY,
-                "source_url": "https://voice.mozilla.org",
-                "newsletters": [settings.COMMON_VOICE_NEWSLETTER],
-                "cv_first_contribution_date": "2018-06-27T14:56:58Z",
-                "cv_last_active_date": "2019-07-11T10:28:32Z",
-                "cv_two_day_streak": False,
-            },
-        )
+        insert_data = {
+            "email": "dude@example.com",
+            "token": ANY,
+            "source_url": "https://voice.mozilla.org",
+            "newsletters": [settings.COMMON_VOICE_NEWSLETTER],
+            "cv_first_contribution_date": "2018-06-27T14:56:58Z",
+            "cv_last_active_date": "2019-07-11T10:28:32Z",
+            "cv_two_day_streak": False,
+        }
+        ctms_mock.add.assert_called_with(insert_data)
+        insert_data["email_id"] = email_id
+        sfdc_mock.add.assert_called_with(insert_data)
 
-    def test_existing_user(self, gud_mock, sfdc_mock):
-        gud_mock.return_value = {"id": "the-duder"}
+    def test_existing_user(self, gud_mock, sfdc_mock, ctms_mock):
+        gud_mock.return_value = {"id": "the-duder", "email_id": str(uuid4())}
         data = {
             "email": "dude@example.com",
             "first_contribution_date": "2018-06-27T14:56:58Z",
@@ -1202,16 +1207,15 @@ class CommonVoiceGoalsTests(TestCase):
         # ensure passed in dict was not modified in place.
         # if it is modified a retry will use the modified dict.
         assert orig_data == data
-        sfdc_mock.update.assert_called_with(
-            gud_mock(),
-            {
-                "source_url": "https://voice.mozilla.org",
-                "newsletters": [settings.COMMON_VOICE_NEWSLETTER],
-                "cv_first_contribution_date": "2018-06-27T14:56:58Z",
-                "cv_last_active_date": "2019-07-11T10:28:32Z",
-                "cv_two_day_streak": False,
-            },
-        )
+        update_data = {
+            "source_url": "https://voice.mozilla.org",
+            "newsletters": [settings.COMMON_VOICE_NEWSLETTER],
+            "cv_first_contribution_date": "2018-06-27T14:56:58Z",
+            "cv_last_active_date": "2019-07-11T10:28:32Z",
+            "cv_two_day_streak": False,
+        }
+        sfdc_mock.update.assert_called_with(gud_mock(), update_data)
+        ctms_mock.update.assert_called_with(gud_mock(), update_data)
 
 
 @patch("basket.news.tasks.sfdc")
