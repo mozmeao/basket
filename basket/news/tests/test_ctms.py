@@ -16,6 +16,7 @@ from basket.news.backends.ctms import (
     CTMSNoIdsError,
     CTMSMultipleContactsError,
     CTMSUnknownKeyError,
+    CTMSNotFoundByAltIDError,
     from_vendor,
     to_vendor,
 )
@@ -754,6 +755,11 @@ class CTMSExceptionTests(TestCase):
         assert repr(exc) == "CTMSUnknownKeyError('foo')"
         assert str(exc) == "Unknown basket key 'foo'"
 
+    def test_ctms_not_found_by_alt_id(self):
+        exc = CTMSNotFoundByAltIDError("token", "foo")
+        assert repr(exc) == "CTMSNotFoundByAltIDError('token', 'foo')"
+        assert str(exc) == "No contacts returned for token='foo'"
+
 
 class CTMSTests(TestCase):
 
@@ -963,3 +969,39 @@ class CTMSTests(TestCase):
         user_data = {"token": "an-existing-user"}
         update_data = {"first_name": "Elizabeth", "email_id": "a-new-email-id"}
         assert ctms.update(user_data, update_data) is None
+
+    def test_update_by_token(self):
+        """CTMS can update a record by basket token."""
+        record = {"email": {"email_id": "the-email-id", "token": "the-token"}}
+        updated = {
+            "email": {
+                "email_id": "the-email-id",
+                "email": "test@example.com",
+                "token": "the-token",
+            }
+        }
+        interface = Mock(spec_set=["get_by_alternate_id", "patch_by_email_id"])
+        interface.get_by_alternate_id.return_value = [record]
+        interface.patch_by_email_id.return_value = updated
+        ctms = CTMS(interface)
+        resp = ctms.update_by_alt_id(
+            "token", "the-token", {"email": "test@example.com"}
+        )
+        assert resp == updated
+        interface.get_by_alternate_id.assert_called_once_with(basket_token="the-token")
+        interface.patch_by_email_id.assert_called_once_with(
+            "the-email-id", {"email": {"primary_email": "test@example.com"}}
+        )
+
+    def test_update_by_token_not_found(self):
+        """Updating by unknown basket token raises an exception."""
+        interface = Mock(spec_set=["get_by_alternate_id"])
+        interface.get_by_alternate_id.return_value = []
+        ctms = CTMS(interface)
+        self.assertRaises(
+            CTMSNotFoundByAltIDError,
+            ctms.update_by_alt_id,
+            "token",
+            "the-token",
+            {"email": "test@example.com"},
+        )
