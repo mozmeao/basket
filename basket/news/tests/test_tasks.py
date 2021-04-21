@@ -13,6 +13,7 @@ import simple_salesforce as sfapi
 from celery.exceptions import Retry
 from mock import ANY, Mock, call, patch
 
+from basket.news.backends.ctms import CTMSNotFoundByAltIDError
 from basket.news.celery import app as celery_app
 from basket.news.models import AcousticTxEmailMessage, FailedTask, CommonVoiceUpdate
 from basket.news.tasks import (
@@ -1618,19 +1619,36 @@ class TestCommonVoiceBatch(TestCase):
 
 
 @override_settings(TASK_LOCKING_ENABLE=False)
+@patch("basket.news.tasks.ctms")
 @patch("basket.news.tasks.sfdc")
 class TestUpdateCustomUnsub(TestCase):
     token = "the-token"
     reason = "I would like less emails."
 
-    def test_normal(self, mock_sfdc):
+    def test_normal(self, mock_sfdc, mock_ctms):
         """The reason is updated for the token"""
         update_custom_unsub(self.token, self.reason)
         mock_sfdc.update.assert_called_once_with(
             {"token": self.token}, {"reason": self.reason}
         )
+        mock_ctms.update_by_alt_id.assert_called_once_with(
+            "token", self.token, {"reason": self.reason}
+        )
 
-    def test_error_raised(self, mock_sfdc):
+    def test_no_ctms_record(self, mock_sfdc, mock_ctms):
+        """If there is no CTMS record, updates are skipped."""
+        mock_ctms.updates_by_alt_id.side_effect = CTMSNotFoundByAltIDError(
+            "token", self.token
+        )
+        update_custom_unsub(self.token, self.reason)
+        mock_sfdc.update.assert_called_once_with(
+            {"token": self.token}, {"reason": self.reason}
+        )
+        mock_ctms.update_by_alt_id.assert_called_once_with(
+            "token", self.token, {"reason": self.reason}
+        )
+
+    def test_error_raised(self, mock_sfdc, mock_ctms):
         """A SF exception is not re-raised"""
         error_content = [{"message": "something went wrong"}]
         exc = sfapi.SalesforceMalformedRequest("url", 400, "contact", error_content)
@@ -1639,6 +1657,7 @@ class TestUpdateCustomUnsub(TestCase):
         mock_sfdc.update.assert_called_once_with(
             {"token": self.token}, {"reason": self.reason}
         )
+        mock_ctms.get.assert_not_called()
 
 
 @override_settings(TASK_LOCKING_ENABLE=False)
