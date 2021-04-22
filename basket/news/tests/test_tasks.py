@@ -39,6 +39,7 @@ from basket.news.tasks import (
     RetryTask,
     update_custom_unsub,
     update_user_meta,
+    get_fxa_user_data,
 )
 from basket.news.utils import iso_format_unix_timestamp
 
@@ -1689,3 +1690,58 @@ class TestUpdateUserMeta(TestCase):
         mock_ctms.update_by_alt_id.assert_called_once_with(
             "token", self.token, self.data
         )
+
+
+@patch("basket.news.tasks.sfdc", spec_set=["update"])
+@patch("basket.news.tasks.get_user_data")
+class TestGetFxaUserData(TestCase):
+    def test_found_by_fxa_id_email_match(self, mock_gud, mock_sfdc):
+        """A user can be found by FxA ID."""
+        user_data = {
+            "id": "1234",
+            "token": "the-token",
+            "fxa_id": "123",
+            "email": "test@example.com",
+        }
+        mock_gud.return_value = user_data
+
+        fxa_user_data = get_fxa_user_data("123", "test@example.com")
+        assert user_data == fxa_user_data
+
+        mock_gud.assert_called_once_with(fxa_id="123", extra_fields=["id"])
+        mock_sfdc.update.assert_not_called()
+
+    def test_found_by_fxa_id_email_mismatch(self, mock_gud, mock_sfdc):
+        """If the FxA user has a different FxA email, set fxa_primary_email."""
+        user_data = {
+            "id": "1234",
+            "token": "the-token",
+            "fxa_id": "123",
+            "email": "test@example.com",
+        }
+        mock_gud.return_value = user_data
+
+        fxa_user_data = get_fxa_user_data("123", "fxa@example.com")
+        assert user_data == fxa_user_data
+
+        mock_gud.assert_called_once_with(fxa_id="123", extra_fields=["id"])
+        mock_sfdc.update.assert_called_once_with(
+            user_data, {"fxa_primary_email": "fxa@example.com"}
+        )
+
+    def test_miss_by_fxa_id(self, mock_gud, mock_sfdc):
+        """If the FxA user has a different FxA email, set fxa_primary_email."""
+        user_data = {
+            "id": "1234",
+            "token": "the-token",
+            "email": "test@example.com",
+        }
+        mock_gud.side_effect = [None, user_data]
+
+        fxa_user_data = get_fxa_user_data("123", "test@example.com")
+        assert user_data == fxa_user_data
+
+        assert mock_gud.call_count == 2
+        mock_gud.assert_any_call(fxa_id="123", extra_fields=["id"])
+        mock_gud.assert_called_with(email="test@example.com", extra_fields=["id"])
+        mock_sfdc.update.assert_not_called()
