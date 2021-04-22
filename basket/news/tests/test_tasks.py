@@ -1156,11 +1156,12 @@ class FxALoginTests(TestCase):
         upsert_mock.delay.assert_not_called()
 
 
+@patch("basket.news.tasks.ctms", spec_set=["update", "add"])
 @patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.get_user_data")
 @patch("basket.news.tasks.cache")
 class FxAEmailChangedTests(TestCase):
-    def test_timestamps_older_message(self, cache_mock, gud_mock, sfdc_mock):
+    def test_timestamps_older_message(self, cache_mock, gud_mock, sfdc_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1171,8 +1172,9 @@ class FxAEmailChangedTests(TestCase):
         gud_mock.return_value = {"id": "1234"}
         fxa_email_changed(data)
         sfdc_mock.upsert_row.assert_not_called()
+        ctms_mock.update.assert_not_called()
 
-    def test_timestamps_newer_message(self, cache_mock, gud_mock, sfdc_mock):
+    def test_timestamps_newer_message(self, cache_mock, gud_mock, sfdc_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1183,8 +1185,11 @@ class FxAEmailChangedTests(TestCase):
         # ts higher in message, do the things
         fxa_email_changed(data)
         sfdc_mock.update.assert_called_with(ANY, {"fxa_primary_email": data["email"]})
+        ctms_mock.update.assert_called_once_with(
+            ANY, {"fxa_primary_email": data["email"]}
+        )
 
-    def test_timestamps_nothin_cached(self, cache_mock, gud_mock, sfdc_mock):
+    def test_timestamps_nothin_cached(self, cache_mock, gud_mock, sfdc_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1194,8 +1199,9 @@ class FxAEmailChangedTests(TestCase):
         gud_mock.return_value = {"id": "1234"}
         fxa_email_changed(data)
         sfdc_mock.update.assert_called_with(ANY, {"fxa_primary_email": data["email"]})
+        ctms_mock.update.assert_called_with(ANY, {"fxa_primary_email": data["email"]})
 
-    def test_fxa_id_not_found(self, cache_mock, gud_mock, sfdc_mock):
+    def test_fxa_id_not_found(self, cache_mock, gud_mock, sfdc_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1213,8 +1219,11 @@ class FxAEmailChangedTests(TestCase):
         sfdc_mock.update.assert_called_with(
             {"id": "1234"}, {"fxa_id": data["uid"], "fxa_primary_email": data["email"]},
         )
+        ctms_mock.update.assert_called_with(
+            {"id": "1234"}, {"fxa_id": data["uid"], "fxa_primary_email": data["email"]},
+        )
 
-    def test_fxa_id_nor_email_found(self, cache_mock, gud_mock, sfdc_mock):
+    def test_fxa_id_nor_email_found(self, cache_mock, gud_mock, sfdc_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1222,6 +1231,8 @@ class FxAEmailChangedTests(TestCase):
         }
         cache_mock.get.return_value = 0
         gud_mock.return_value = None
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         fxa_email_changed(data)
         gud_mock.assert_has_calls(
             [
@@ -1230,6 +1241,50 @@ class FxAEmailChangedTests(TestCase):
             ],
         )
         sfdc_mock.update.assert_not_called()
+        ctms_mock.update.assert_not_called()
+        ctms_mock.add.assert_called_with(
+            {
+                "email": data["email"],
+                "fxa_id": data["uid"],
+                "fxa_primary_email": data["email"],
+            },
+        )
+        sfdc_mock.add.assert_called_with(
+            {
+                "email_id": email_id,
+                "email": data["email"],
+                "fxa_id": data["uid"],
+                "fxa_primary_email": data["email"],
+            },
+        )
+
+    def test_fxa_id_nor_email_found_ctms_add_fails(
+        self, cache_mock, gud_mock, sfdc_mock, ctms_mock
+    ):
+        data = {
+            "ts": 1234.567,
+            "uid": "the-fxa-id-for-el-dudarino",
+            "email": "the-dudes-new-email@example.com",
+        }
+        cache_mock.get.return_value = 0
+        gud_mock.return_value = None
+        ctms_mock.add.return_value = None
+        fxa_email_changed(data)
+        gud_mock.assert_has_calls(
+            [
+                call(fxa_id=data["uid"], extra_fields=["id"]),
+                call(email=data["email"], extra_fields=["id"]),
+            ],
+        )
+        sfdc_mock.update.assert_not_called()
+        ctms_mock.update.assert_not_called()
+        ctms_mock.add.assert_called_with(
+            {
+                "email": data["email"],
+                "fxa_id": data["uid"],
+                "fxa_primary_email": data["email"],
+            },
+        )
         sfdc_mock.add.assert_called_with(
             {
                 "email": data["email"],

@@ -291,14 +291,21 @@ def fxa_email_changed(data):
     user_data = get_user_data(fxa_id=fxa_id, extra_fields=["id"])
     if user_data:
         sfdc.update(user_data, {"fxa_primary_email": email})
+        ctms.update(user_data, {"fxa_primary_email": email})
     else:
         # FxA record not found, try email
         user_data = get_user_data(email=email, extra_fields=["id"])
         if user_data:
             sfdc.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
+            ctms.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
         else:
             # No matching record for Email or FxA ID. Create one.
-            sfdc.add({"email": email, "fxa_id": fxa_id, "fxa_primary_email": email})
+            data = {"email": email, "fxa_id": fxa_id, "fxa_primary_email": email}
+            ctms_data = data.copy()
+            contact = ctms.add(ctms_data)
+            if contact:
+                data["email_id"] = contact["email"]["email_id"]
+            sfdc.add(data)
             statsd.incr("news.tasks.fxa_email_changed.user_not_found")
 
     cache.set(cache_key, ts, 7200)  # 2 hr
