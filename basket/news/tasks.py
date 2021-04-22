@@ -30,6 +30,7 @@ from basket.news.backends.acoustic import acoustic_tx, acoustic
 from basket.news.backends.common import NewsletterException
 from basket.news.backends.ctms import ctms, CTMSNotFoundByAltIDError
 from basket.news.backends.sfdc import sfdc
+from basket.news.backends.sfdc import from_vendor as from_sfdc
 from basket.news.celery import app as celery_app
 from basket.news.models import (
     FailedTask,
@@ -318,6 +319,13 @@ def fxa_direct_update_contact(fxa_id, data):
         else:
             # otherwise it's something else and we should potentially retry
             raise
+
+    basket_data = from_sfdc(data)
+    try:
+        ctms.update_by_alt_id("fxa_id", fxa_id, basket_data)
+    except CTMSNotFoundByAltIDError:
+        # No associated record found, skip this update.
+        pass
 
 
 @et_task

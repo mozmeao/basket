@@ -1844,15 +1844,19 @@ class TestGetFxaUserData(TestCase):
         mock_ctms.update.assert_not_called()
 
 
+@patch("basket.news.tasks.ctms", spec_set=["update_by_alt_id"])
 @patch("basket.news.tasks.sfdc", content=Mock(spec_set=["update"]))
 class TestFxaDelete(TestCase):
-    def test_delete(self, mock_sfdc):
+    def test_delete(self, mock_sfdc, mock_ctms):
         fxa_delete({"uid": "123"})
         mock_sfdc.contact.update.assert_called_once_with(
             "FxA_Id__c/123", {"FxA_Account_Deleted__c": True}
         )
+        mock_ctms.update_by_alt_id.assert_called_once_with(
+            "fxa_id", "123", {"fxa_deleted": True, "newsletters": []}
+        )
 
-    def test_delete_does_not_exist_success(self, mock_sfdc):
+    def test_delete_does_not_exist_success(self, mock_sfdc, mock_ctms):
         """If the record doesn't exist, the exception is caught."""
         err_content = {
             "errorCode": "REQUIRED_FIELD_MISSING",
@@ -1866,8 +1870,9 @@ class TestFxaDelete(TestCase):
         mock_sfdc.contact.update.assert_called_once_with(
             "FxA_Id__c/123", {"FxA_Account_Deleted__c": True}
         )
+        mock_ctms.update_by_alt_id.assert_not_called()
 
-    def test_delete_other_exception_raised(self, mock_sfdc):
+    def test_delete_other_exception_raised(self, mock_sfdc, mock_ctms):
         """If updating raises a different error, re-raise"""
         err_content = {
             "errorCode": "SOMETHING_ELSE",
@@ -1877,3 +1882,17 @@ class TestFxaDelete(TestCase):
         exc = sfapi.SalesforceMalformedRequest("url", 400, "contact", [err_content])
         mock_sfdc.contact.update.side_effect = exc
         self.assertRaises(Retry, fxa_delete, {"uid": "123"})
+        mock_ctms.update_by_alt_id.assert_not_called()
+
+    def test_delete_ctms_not_found_succeeds(self, mock_sfdc, mock_ctms):
+        """If the CTMS record is not found by FxA ID, the exception is caught."""
+        mock_ctms.update_by_alt_id.side_effect = CTMSNotFoundByAltIDError(
+            "fxa_id", "123"
+        )
+        fxa_delete({"uid": "123"})
+        mock_sfdc.contact.update.assert_called_once_with(
+            "FxA_Id__c/123", {"FxA_Account_Deleted__c": True}
+        )
+        mock_ctms.update_by_alt_id.assert_called_once_with(
+            "fxa_id", "123", {"fxa_deleted": True, "newsletters": []}
+        )
