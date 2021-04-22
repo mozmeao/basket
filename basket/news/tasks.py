@@ -1123,10 +1123,20 @@ def process_petition_signature(data):
     user_data = get_user_data(email=data["email"], extra_fields=["id"])
     if user_data:
         sfdc.update(user_data, contact_data)
+        ctms_data = contact_data.copy()
+        del ctms_data["_set_subscriber"]
+        ctms.update(user_data, ctms_data)
     else:
         contact_data["token"] = generate_token()
         contact_data["email"] = data["email"]
+        ctms_data = contact_data.copy()
         contact_data["record_type"] = settings.DONATE_CONTACT_RECORD_TYPE
+
+        del ctms_data["_set_subscriber"]
+        contact = ctms.add(ctms_data)
+        if contact:
+            contact_data["email_id"] = contact["email"]["email_id"]
+
         sfdc.add(contact_data)
         # fetch again to get ID
         user_data = get_user_data(email=data.get("email"), extra_fields=["id"])

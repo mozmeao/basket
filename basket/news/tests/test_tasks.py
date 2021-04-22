@@ -49,6 +49,7 @@ from basket.news.utils import iso_format_unix_timestamp
 @patch("basket.news.tasks.upsert_user")
 @patch("basket.news.tasks.get_user_data")
 @patch("basket.news.tasks.sfdc")
+@patch("basket.news.tasks.ctms")
 class ProcessPetitionSignatureTests(TestCase):
     def _get_sig_data(self):
         return {
@@ -75,7 +76,9 @@ class ProcessPetitionSignatureTests(TestCase):
         contact_data.update({k: data[k] for k in PETITION_CONTACT_FIELDS if k in data})
         return contact_data
 
-    def test_signature_with_comments_metadata(self, sfdc_mock, gud_mock, uu_mock):
+    def test_signature_with_comments_metadata(
+        self, ctms_mock, sfdc_mock, gud_mock, uu_mock
+    ):
         data = self._get_sig_data()
         contact_data = self._get_contact_data(data)
         user_data = {
@@ -93,11 +96,16 @@ class ProcessPetitionSignatureTests(TestCase):
         gud_mock.return_value = user_data
         process_petition_signature(data)
         sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
+        del contact_data["_set_subscriber"]
+        ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
         sfdc_mock.add.assert_not_called()
+        ctms_mock.add.assert_not_called()
         uu_mock.delay.assert_not_called()
         sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
 
-    def test_signature_with_long_comments_metadata(self, sfdc_mock, gud_mock, uu_mock):
+    def test_signature_with_long_comments_metadata(
+        self, ctms_mock, sfdc_mock, gud_mock, uu_mock
+    ):
         data = self._get_sig_data()
         data["form"]["comments"] = "DUDER!" * 100
         data["form"]["metadata"]["location"] = "bowling alley" * 100
@@ -118,11 +126,16 @@ class ProcessPetitionSignatureTests(TestCase):
         gud_mock.return_value = user_data
         process_petition_signature(data)
         sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
+        del contact_data["_set_subscriber"]
+        ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
         sfdc_mock.add.assert_not_called()
+        ctms_mock.add.assert_not_called()
         uu_mock.delay.assert_not_called()
         sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
 
-    def test_signature_without_comments_metadata(self, sfdc_mock, gud_mock, uu_mock):
+    def test_signature_without_comments_metadata(
+        self, ctms_mock, sfdc_mock, gud_mock, uu_mock
+    ):
         data = self._get_sig_data()
         del data["form"]["comments"]
         del data["form"]["metadata"]
@@ -140,11 +153,14 @@ class ProcessPetitionSignatureTests(TestCase):
         gud_mock.return_value = user_data
         process_petition_signature(data)
         sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
+        del contact_data["_set_subscriber"]
+        ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
         sfdc_mock.add.assert_not_called()
+        ctms_mock.add.assert_not_called()
         uu_mock.delay.assert_not_called()
         sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
 
-    def test_signature_with_subscription(self, sfdc_mock, gud_mock, uu_mock):
+    def test_signature_with_subscription(self, ctms_mock, sfdc_mock, gud_mock, uu_mock):
         data = self._get_sig_data()
         data["form"]["email_subscription"] = True
         del data["form"]["comments"]
@@ -163,7 +179,10 @@ class ProcessPetitionSignatureTests(TestCase):
         gud_mock.return_value = user_data
         process_petition_signature(data)
         sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
+        del contact_data["_set_subscriber"]
+        ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
         sfdc_mock.add.assert_not_called()
+        ctms_mock.add.assert_not_called()
         uu_mock.delay.assert_called_with(
             SUBSCRIBE,
             {
@@ -176,7 +195,9 @@ class ProcessPetitionSignatureTests(TestCase):
         sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
 
     @patch("basket.news.tasks.generate_token")
-    def test_signature_with_new_user(self, gt_mock, sfdc_mock, gud_mock, uu_mock):
+    def test_signature_with_new_user(
+        self, gt_mock, ctms_mock, sfdc_mock, gud_mock, uu_mock
+    ):
         data = self._get_sig_data()
         del data["form"]["comments"]
         del data["form"]["metadata"]
@@ -195,14 +216,24 @@ class ProcessPetitionSignatureTests(TestCase):
             "Status": "Signed",
         }
         gud_mock.side_effect = [None, user_data]
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         process_petition_signature(data)
         sfdc_mock.update.assert_not_called()
+        ctms_mock.update.assert_not_called()
+        ctms_data = contact_data.copy()
+        del ctms_data["_set_subscriber"]
+        del ctms_data["record_type"]
+        ctms_mock.add.assert_called_once_with(ctms_data)
+        contact_data["email_id"] = email_id
         sfdc_mock.add.assert_called_with(contact_data)
         uu_mock.delay.assert_not_called()
         sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
 
     @patch("basket.news.tasks.generate_token")
-    def test_signature_with_new_user_retry(self, gt_mock, sfdc_mock, gud_mock, uu_mock):
+    def test_signature_with_new_user_retry(
+        self, gt_mock, ctms_mock, sfdc_mock, gud_mock, uu_mock
+    ):
         data = self._get_sig_data()
         del data["form"]["comments"]
         del data["form"]["metadata"]
@@ -211,10 +242,18 @@ class ProcessPetitionSignatureTests(TestCase):
         contact_data["email"] = data["form"]["email"]
         contact_data["record_type"] = settings.DONATE_CONTACT_RECORD_TYPE
         gud_mock.return_value = None
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         with self.assertRaises(Retry):
             process_petition_signature(data)
 
         sfdc_mock.update.assert_not_called()
+        ctms_mock.update.assert_not_called()
+        ctms_data = contact_data.copy()
+        del ctms_data["_set_subscriber"]
+        del ctms_data["record_type"]
+        ctms_mock.add.assert_called_once_with(ctms_data)
+        contact_data["email_id"] = email_id
         sfdc_mock.add.assert_called_with(contact_data)
         uu_mock.delay.assert_not_called()
         sfdc_mock.campaign_member.create.assert_not_called()
