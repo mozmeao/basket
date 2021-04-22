@@ -22,6 +22,7 @@ from basket.news.tasks import (
     amo_sync_addon,
     amo_sync_user,
     et_task,
+    fxa_delete,
     fxa_email_changed,
     fxa_login,
     fxa_verified,
@@ -1745,3 +1746,38 @@ class TestGetFxaUserData(TestCase):
         mock_gud.assert_any_call(fxa_id="123", extra_fields=["id"])
         mock_gud.assert_called_with(email="test@example.com", extra_fields=["id"])
         mock_sfdc.update.assert_not_called()
+
+
+@patch("basket.news.tasks.sfdc", content=Mock(spec_set=["update"]))
+class TestFxaDelete(TestCase):
+    def test_delete(self, mock_sfdc):
+        fxa_delete({"uid": "123"})
+        mock_sfdc.contact.update.assert_called_once_with(
+            "FxA_Id__c/123", {"FxA_Account_Deleted__c": True}
+        )
+
+    def test_delete_does_not_exist_success(self, mock_sfdc):
+        """If the record doesn't exist, the exception is caught."""
+        err_content = {
+            "errorCode": "REQUIRED_FIELD_MISSING",
+            "fields": ["Field1", "Field2"],
+            "message": "Required fields are missing: [Field1, Field2]",
+        }
+
+        exc = sfapi.SalesforceMalformedRequest("url", 400, "contact", [err_content])
+        mock_sfdc.contact.update.side_effect = exc
+        fxa_delete({"uid": "123"})
+        mock_sfdc.contact.update.assert_called_once_with(
+            "FxA_Id__c/123", {"FxA_Account_Deleted__c": True}
+        )
+
+    def test_delete_other_exception_raised(self, mock_sfdc):
+        """If updating raises a different error, re-raise"""
+        err_content = {
+            "errorCode": "SOMETHING_ELSE",
+            "message": "Something else went wrong",
+        }
+
+        exc = sfapi.SalesforceMalformedRequest("url", 400, "contact", [err_content])
+        mock_sfdc.contact.update.side_effect = exc
+        self.assertRaises(Retry, fxa_delete, {"uid": "123"})
