@@ -1783,10 +1783,11 @@ class TestUpdateUserMeta(TestCase):
         )
 
 
+@patch("basket.news.tasks.ctms", spec_set=["update"])
 @patch("basket.news.tasks.sfdc", spec_set=["update"])
 @patch("basket.news.tasks.get_user_data")
 class TestGetFxaUserData(TestCase):
-    def test_found_by_fxa_id_email_match(self, mock_gud, mock_sfdc):
+    def test_found_by_fxa_id_email_match(self, mock_gud, mock_sfdc, mock_ctms):
         """A user can be found by FxA ID."""
         user_data = {
             "id": "1234",
@@ -1801,8 +1802,9 @@ class TestGetFxaUserData(TestCase):
 
         mock_gud.assert_called_once_with(fxa_id="123", extra_fields=["id"])
         mock_sfdc.update.assert_not_called()
+        mock_ctms.update.assert_not_called()
 
-    def test_found_by_fxa_id_email_mismatch(self, mock_gud, mock_sfdc):
+    def test_found_by_fxa_id_email_mismatch(self, mock_gud, mock_sfdc, mock_ctms):
         """If the FxA user has a different FxA email, set fxa_primary_email."""
         user_data = {
             "id": "1234",
@@ -1819,8 +1821,11 @@ class TestGetFxaUserData(TestCase):
         mock_sfdc.update.assert_called_once_with(
             user_data, {"fxa_primary_email": "fxa@example.com"}
         )
+        mock_ctms.update.assert_called_once_with(
+            user_data, {"fxa_primary_email": "fxa@example.com"}
+        )
 
-    def test_miss_by_fxa_id(self, mock_gud, mock_sfdc):
+    def test_miss_by_fxa_id(self, mock_gud, mock_sfdc, mock_ctms):
         """If the FxA user has a different FxA email, set fxa_primary_email."""
         user_data = {
             "id": "1234",
@@ -1835,7 +1840,8 @@ class TestGetFxaUserData(TestCase):
         assert mock_gud.call_count == 2
         mock_gud.assert_any_call(fxa_id="123", extra_fields=["id"])
         mock_gud.assert_called_with(email="test@example.com", extra_fields=["id"])
-        mock_sfdc.update.assert_not_called()
+        mock_sfdc.update.asser
+        mock_ctms.update.assert_not_called()
 
 
 @patch("basket.news.tasks.sfdc", content=Mock(spec_set=["update"]))

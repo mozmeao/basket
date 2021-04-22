@@ -1387,6 +1387,7 @@ def get_fxa_user_data(fxa_id, email):
         # If email doesn't match, update FxA primary email field with the new email.
         if user_data_fxa["email"] != email:
             sfdc.update(user_data_fxa, {"fxa_primary_email": email})
+            ctms.update(user_data_fxa, {"fxa_primary_email": email})
 
     # if we still don't have user data try again with email this time
     if not user_data:
