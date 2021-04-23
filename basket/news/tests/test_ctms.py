@@ -181,7 +181,14 @@ class ToVendorTests(TestCase):
                 "primary_email": "my-fxa-acct@example.com",
             },
             "mofo": {"mofo_relevant": False},
-            "newsletters": [{"name": "mozilla-welcome", "subscribed": True}],
+            "newsletters": [
+                {
+                    "name": "mozilla-welcome",
+                    "subscribed": True,
+                    "format": "H",
+                    "lang": "en",
+                }
+            ],
             "vpn_waitlist": {"geo": "fr", "platform": "ios,mac"},
         }
 
@@ -277,23 +284,45 @@ class ToVendorTests(TestCase):
             ]
         }
 
+    @patch("basket.news.newsletters.newsletter_languages", return_value=["en", "es"])
     @patch(
         "basket.news.backends.ctms.newsletter_slugs",
         return_value=["slug1", "slug2", "slug3", "slug4"],
     )
-    def test_newsletter_list_with_source_url(self, mock_nl_slugs):
-        """A newsletter list can have a subscription source URL."""
+    def test_newsletter_list_with_extra_data(self, mock_nl_slugs, mock_langs):
+        """A newsletter list can have additional data."""
         data = {
             "newsletters": ["slug1", "slug2", "slug3", "other"],
             "source_url": "  https://example.com",
+            "lang": "es",
+            "format": "T",
         }
         prepared = to_vendor(data)
         assert prepared == {
+            "email": {"email_format": "T", "email_lang": "es"},
             "newsletters": [
-                {"name": "slug1", "subscribed": True, "source": "https://example.com"},
-                {"name": "slug2", "subscribed": True, "source": "https://example.com"},
-                {"name": "slug3", "subscribed": True, "source": "https://example.com"},
-            ]
+                {
+                    "name": "slug1",
+                    "subscribed": True,
+                    "format": "T",
+                    "lang": "es",
+                    "source": "https://example.com",
+                },
+                {
+                    "name": "slug2",
+                    "subscribed": True,
+                    "format": "T",
+                    "lang": "es",
+                    "source": "https://example.com",
+                },
+                {
+                    "name": "slug3",
+                    "subscribed": True,
+                    "format": "T",
+                    "lang": "es",
+                    "source": "https://example.com",
+                },
+            ],
         }
 
     @patch(
@@ -333,6 +362,34 @@ class ToVendorTests(TestCase):
                 {"name": "slug2", "subscribed": False},
                 {"name": "slug3", "subscribed": True},
             ]
+        }
+
+    @patch("basket.news.newsletters.newsletter_languages", return_value=["en", "es"])
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["slug1", "slug2", "slug3", "slug4"],
+    )
+    def test_newsletter_map_with_extra_data(self, mock_nl_slugs, mock_langs):
+        """A newsletter map adds extra data to subscriptions"""
+        data = {
+            "newsletters": {
+                "slug1": True,
+                "slug2": False,
+                "slug3": True,
+                "other": True,
+            },
+            "source_url": "  https://example.com",
+            "lang": "es",
+            "format": "T",
+        }
+        prepared = to_vendor(data)
+        assert prepared == {
+            "email": {"email_format": "T", "email_lang": "es"},
+            "newsletters": [
+                {"name": "slug1", "subscribed": True, "format": "T", "lang": "es"},
+                {"name": "slug2", "subscribed": False},
+                {"name": "slug3", "subscribed": True, "format": "T", "lang": "es"},
+            ],
         }
 
     @patch(
