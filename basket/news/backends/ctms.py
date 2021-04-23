@@ -219,7 +219,8 @@ def to_vendor(data):
     """
     ctms_data = {}
     amo_deleted = False
-    unsub_all = False
+    newsletters = None
+    newsletter_subscription_default = {}
 
     for name, raw_value in data.items():
         # Pre-process raw_value, which may remove it.
@@ -244,48 +245,57 @@ def to_vendor(data):
         if name in BASKET_TO_CTMS_NAMES:
             group_name, key = BASKET_TO_CTMS_NAMES[name]
             ctms_data.setdefault(group_name, {})[key] = value
+            if name in {"lang", "format"}:
+                newsletter_subscription_default[name] = value
         elif name == "newsletters":
-            valid_slugs = newsletter_slugs()
-            output = []
-            if isinstance(raw_value, dict):
-                # Detect unsubscribe all
-                optout = data.get("optout", False) or False
-                if (
-                    optout
-                    and (not any(raw_value.values()))
-                    and (set(valid_slugs) == set(raw_value.keys()))
-                ):
-                    unsub_all = True
-                else:
-                    # Dictionary of slugs to sub/unsub flags
-                    for slug, subscribed in raw_value.items():
-                        if slug in valid_slugs:
-                            output.append(
-                                {"name": slug, "subscribed": bool(subscribed)}
-                            )
-            else:
-                # List of slugs for subscriptions
-                source_url = (data.get("source_url", "") or "").strip()
-                for slug in raw_value:
-                    if slug in valid_slugs:
-                        sub = {"name": slug, "subscribed": True}
-                        if source_url:
-                            sub["source"] = source_url
-                        output.append(sub)
-            if output:
-                ctms_data["newsletters"] = output
+            # Process newsletters after gathering all newsletter keys
+            newsletters = value
         elif name == "amo_deleted":
             amo_deleted = bool(value)
         elif name not in DISCARD_BASKET_NAMES:
             # TODO: SFDC ignores unknown fields, maybe this should as well
             raise CTMSUnknownKeyError(name)
 
+    # Process the newsletters, which may include extra data from the email group
+    if newsletters:
+        valid_slugs = newsletter_slugs()
+        output = []
+        if isinstance(newsletters, dict):
+            # Detect unsubscribe all
+            optout = data.get("optout", False) or False
+            if (
+                optout
+                and (not any(newsletters.values()))
+                and (set(valid_slugs) == set(newsletters.keys()))
+            ):
+                # When unsubscribe all is requested, let CTMS unsubscribe from all
+                output = "UNSUBSCRIBE"
+            else:
+                # Dictionary of slugs to sub/unsub flags
+                for slug, subscribed in newsletters.items():
+                    if slug in valid_slugs:
+                        if subscribed:
+                            nl_sub = newsletter_subscription_default.copy()
+                            nl_sub.update({"name": slug, "subscribed": True})
+                        else:
+                            nl_sub = {"name": slug, "subscribed": False}
+                        output.append(nl_sub)
+        else:
+            # List of slugs for subscriptions, which may include a source
+            source_url = (data.get("source_url", "") or "").strip()
+            if source_url:
+                newsletter_subscription_default["source"] = source_url
+            for slug in newsletters:
+                if slug in valid_slugs:
+                    nl_sub = newsletter_subscription_default.copy()
+                    nl_sub.update({"name": slug, "subscribed": True})
+                    output.append(nl_sub)
+        if output:
+            ctms_data["newsletters"] = output
+
     # When an AMO account is deleted, reset data to defaults
     if amo_deleted:
         ctms_data["amo"] = "DELETE"
-    # When unsubscribe all is requested, let CTMS unsubscribe from all
-    if unsub_all:
-        ctms_data["newsletters"] = "UNSUBSCRIBE"
 
     return ctms_data
 
