@@ -325,6 +325,33 @@ class ToVendorTests(TestCase):
             ],
         }
 
+    @patch("basket.news.newsletters.newsletter_languages", return_value=["en", "fr"])
+    @patch("basket.news.backends.ctms.newsletter_slugs", return_value=["slug1"])
+    def test_newsletter_list_with_defaults(self, mock_nl_slugs, mock_langs):
+        """A newsletter list uses the default language and format"""
+        data = {"newsletters": ["slug1"]}
+        existing_data = {"lang": "fr", "format": "H"}
+        prepared = to_vendor(data, existing_data)
+        assert prepared == {
+            "newsletters": [
+                {"name": "slug1", "subscribed": True, "format": "H", "lang": "fr"},
+            ],
+        }
+
+    @patch("basket.news.newsletters.newsletter_languages", return_value=["en", "fr"])
+    @patch("basket.news.backends.ctms.newsletter_slugs", return_value=["slug1"])
+    def test_newsletter_list_with_defaults_override(self, mock_nl_slugs, mock_langs):
+        """A newsletter list uses the updated data rather than the defaults"""
+        data = {"lang": "en", "format": "T", "newsletters": ["slug1"]}
+        existing_data = {"lang": "fr", "format": "H"}
+        prepared = to_vendor(data, existing_data)
+        assert prepared == {
+            "email": {"email_format": "T", "email_lang": "en"},
+            "newsletters": [
+                {"name": "slug1", "subscribed": True, "format": "T", "lang": "en"},
+            ],
+        }
+
     @patch(
         "basket.news.backends.ctms.newsletter_slugs",
         return_value=["slug1", "slug2", "slug3", "slug4"],
@@ -1028,6 +1055,31 @@ class CTMSTests(TestCase):
         user_data = {"token": "an-existing-user"}
         update_data = {"first_name": "Elizabeth", "email_id": "a-new-email-id"}
         assert ctms.update(user_data, update_data) is None
+
+    @patch("basket.news.newsletters.newsletter_languages", return_value=["en", "fr"])
+    @patch("basket.news.backends.ctms.newsletter_slugs", return_value=["slug1"])
+    def test_update_use_existing_lang_and_format(self, mock_slugs, mock_langs):
+        """CTMS.update uses the existing language and format"""
+        updated = {"updated": "fake_response"}
+        interface = mock_interface("PATCH", 200, updated)
+        ctms = CTMS(interface)
+
+        user_data = {
+            "token": "an-existing-user",
+            "email_id": "an-existing-id",
+            "lang": "fr",
+            "format": "T",
+        }
+        update_data = {"newsletters": ["slug1"]}
+        assert ctms.update(user_data, update_data) == updated
+        interface.session.patch.assert_called_once_with(
+            "/ctms/an-existing-id",
+            json={
+                "newsletters": [
+                    {"name": "slug1", "subscribed": True, "lang": "fr", "format": "T"}
+                ]
+            },
+        )
 
     def test_update_by_token(self):
         """CTMS can update a record by basket token."""
