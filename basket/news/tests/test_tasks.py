@@ -1553,6 +1553,7 @@ class AMOSyncAddonTests(TestCase):
         sfdc_mock.addon.delete.assert_called_with("A9876")
 
 
+@patch("basket.news.tasks.ctms")
 @patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.get_user_data")
 class AMOSyncUserTests(TestCase):
@@ -1568,7 +1569,7 @@ class AMOSyncUserTests(TestCase):
         }
         self.user_data = {"id": "A1234", "amo_id": 1234, "fxa_id": "fxa_id_of_dude"}
 
-    def test_existing_user_with_amo_id(self, gud_mock, sfdc_mock):
+    def test_existing_user_with_amo_id(self, gud_mock, sfdc_mock, ctms_mock):
         gud_mock.return_value = self.user_data
         amo_sync_user(self.amo_data)
         # does not include email or amo_id
@@ -1583,8 +1584,19 @@ class AMOSyncUserTests(TestCase):
                 "amo_deleted": False,
             },
         )
+        ctms_mock.update.assert_called_with(
+            self.user_data,
+            {
+                "amo_id": 1234,
+                "amo_display_name": "His Dudeness",
+                "amo_homepage": "https://elduder.io",
+                "amo_last_login": "2019-08-06T10:39:44Z",
+                "amo_location": "California, USA, Earth",
+                "amo_deleted": False,
+            },
+        )
 
-    def test_existing_user_no_amo_id(self, gud_mock, sfdc_mock):
+    def test_existing_user_no_amo_id(self, gud_mock, sfdc_mock, ctms_mock):
         gud_mock.side_effect = [None, self.user_data]
         amo_sync_user(self.amo_data)
         # does not include email
@@ -1599,14 +1611,26 @@ class AMOSyncUserTests(TestCase):
                 "amo_deleted": False,
             },
         )
+        ctms_mock.update.assert_called_with(
+            self.user_data,
+            {
+                "amo_id": 1234,
+                "amo_display_name": "His Dudeness",
+                "amo_homepage": "https://elduder.io",
+                "amo_last_login": "2019-08-06T10:39:44Z",
+                "amo_location": "California, USA, Earth",
+                "amo_deleted": False,
+            },
+        )
 
-    def test_new_user(self, gud_mock, sfdc_mock):
+    def test_new_user(self, gud_mock, sfdc_mock, ctms_mock):
         gud_mock.return_value = None
         user = amo_sync_user(self.amo_data)
         sfdc_mock.update.assert_not_called()
+        ctms_mock.update.assert_not_called()
         assert user is None
 
-    def test_deleted_user_matching_fxa_id(self, gud_mock, sfdc_mock):
+    def test_deleted_user_matching_fxa_id(self, gud_mock, sfdc_mock, ctms_mock):
         self.amo_data["deleted"] = True
         gud_mock.return_value = self.user_data
         amo_sync_user(self.amo_data)
@@ -1621,8 +1645,19 @@ class AMOSyncUserTests(TestCase):
                 "amo_id": None,
             },
         )
+        ctms_mock.update.assert_called_with(
+            self.user_data,
+            {
+                "amo_display_name": "His Dudeness",
+                "amo_homepage": "https://elduder.io",
+                "amo_last_login": "2019-08-06T10:39:44Z",
+                "amo_location": "California, USA, Earth",
+                "amo_deleted": True,
+                "amo_id": None,
+            },
+        )
 
-    def test_deleted_user_fxa_id_is_None(self, gud_mock, sfdc_mock):
+    def test_deleted_user_fxa_id_is_None(self, gud_mock, sfdc_mock, ctms_mock):
         self.amo_data["deleted"] = True
         self.amo_data["fxa_id"] = None
         gud_mock.return_value = self.user_data
@@ -1638,8 +1673,19 @@ class AMOSyncUserTests(TestCase):
                 "amo_id": None,
             },
         )
+        ctms_mock.update.assert_called_with(
+            self.user_data,
+            {
+                "amo_display_name": "His Dudeness",
+                "amo_homepage": "https://elduder.io",
+                "amo_last_login": "2019-08-06T10:39:44Z",
+                "amo_location": "California, USA, Earth",
+                "amo_deleted": True,
+                "amo_id": None,
+            },
+        )
 
-    def test_not_deleted_user_fxa_id_is_None(self, gud_mock, sfdc_mock):
+    def test_not_deleted_user_fxa_id_is_None(self, gud_mock, sfdc_mock, ctms_mock):
         self.amo_data["fxa_id"] = None
         gud_mock.return_value = self.user_data
         amo_sync_user(self.amo_data)
@@ -1654,12 +1700,24 @@ class AMOSyncUserTests(TestCase):
                 "amo_deleted": False,
             },
         )
+        ctms_mock.update.assert_called_with(
+            self.user_data,
+            {
+                "amo_display_name": "His Dudeness",
+                "amo_homepage": "https://elduder.io",
+                "amo_last_login": "2019-08-06T10:39:44Z",
+                "amo_location": "California, USA, Earth",
+                "amo_id": None,
+                "amo_deleted": False,
+            },
+        )
 
-    def test_ignore_user_no_id_or_fxa_id(self, gud_mock, sfdc_mock):
+    def test_ignore_user_no_id_or_fxa_id(self, gud_mock, sfdc_mock, ctms_mock):
         self.amo_data["fxa_id"] = None
         self.amo_data["id"] = None
         amo_sync_user(self.amo_data)
         sfdc_mock.update.assert_not_called()
+        ctms_mock.update.assert_not_called()
 
 
 @override_settings(COMMON_VOICE_BATCH_PROCESSING=True, COMMON_VOICE_BATCH_CHUNK_SIZE=5)
