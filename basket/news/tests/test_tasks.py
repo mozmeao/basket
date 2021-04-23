@@ -1365,6 +1365,7 @@ class CommonVoiceGoalsTests(TestCase):
         ctms_mock.update.assert_called_with(gud_mock(), update_data)
 
 
+@patch("basket.news.tasks.ctms", spec_set=["update_by_alt_id"])
 @patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.upsert_amo_user_data")
 class AMOSyncAddonTests(TestCase):
@@ -1428,7 +1429,7 @@ class AMOSyncAddonTests(TestCase):
             {"id": "A4321", "amo_id": 11263, "email": "the-dude@example.com"},
         ]
 
-    def test_update_addon(self, uaud_mock, sfdc_mock):
+    def test_update_addon(self, uaud_mock, sfdc_mock, ctms_mock):
         uaud_mock.side_effect = self.users_data
         sfdc_mock.addon.get_by_custom_id.return_value = {"Id": "B5678"}
         amo_sync_addon(self.amo_data)
@@ -1466,8 +1467,9 @@ class AMOSyncAddonTests(TestCase):
                 ),
             ],
         )
+        ctms_mock.update_by_alt_id.assert_not_called()
 
-    def test_null_values(self, uaud_mock, sfdc_mock):
+    def test_null_values(self, uaud_mock, sfdc_mock, ctms_mock):
         uaud_mock.side_effect = self.users_data
         sfdc_mock.addon.get_by_custom_id.return_value = {"Id": "B5678"}
         self.amo_data["current_version"] = None
@@ -1507,8 +1509,9 @@ class AMOSyncAddonTests(TestCase):
                 ),
             ],
         )
+        ctms_mock.update_by_alt_id.assert_not_called()
 
-    def test_deleted_addon(self, uaud_mock, sfdc_mock):
+    def test_deleted_addon(self, uaud_mock, sfdc_mock, ctms_mock):
         self.amo_data["status"] = "deleted"
         sfdc_mock.addon.get_by_custom_id.return_value = {
             "Id": "A9876",
@@ -1548,6 +1551,9 @@ class AMOSyncAddonTests(TestCase):
         # it should update the 2nd user that has no returned records
         sfdc_mock.update.assert_called_once_with(
             {"id": "A4322"}, {"amo_id": None, "amo_user": False},
+        )
+        ctms_mock.update_by_alt_id.assert_called_once_with(
+            "sfdc_id", "A4322", {"amo_deleted": True}
         )
         sfdc_mock.dev_addon.delete.has_calls([call(1234), call(1235)])
         sfdc_mock.addon.delete.assert_called_with("A9876")
