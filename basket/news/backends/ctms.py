@@ -154,7 +154,7 @@ def process_country(raw_country):
             country = new_country
 
     if country not in SFDC_COUNTRIES_LIST:
-        return None
+        raise ValueError(f"{country} not in SFDC_COUNTRIES_LIST")
     return country
 
 
@@ -173,12 +173,12 @@ def process_lang(raw_lang):
 def truncate_string(max_length, raw_string):
     """Truncate the a string to a maximum length, and return None for empty."""
     if raw_string is None:
-        return None
+        raise ValueError("expected string, got None")
     string = raw_string.strip()
     if len(string) > max_length:
         statsd.incr("news.backends.ctms.data_truncated")
         return string[:max_length]
-    return string or None
+    return string
 
 
 TO_VENDOR_PROCESSORS = {
@@ -213,6 +213,7 @@ def to_vendor(data, existing_data=None):
     * No equivalent to Subscriber__c, UAT_Test_Data__c
     * Doesn't convert SFDC values Browser_Locale__c, FSA_*, CV_*, MailingCity
     * CTMS API handles boolean conversion
+    * Allows setting a value to an empty string or None, if existing is set.
 
     @params data: data to update, basket format
     @params existing_data: existing user data, basket format
@@ -233,9 +234,10 @@ def to_vendor(data, existing_data=None):
         # Pre-process raw_value, which may remove it.
         processor = TO_VENDOR_PROCESSORS.get(name)
         if processor:
-            value = processor(raw_value)
-            if value is None:
-                continue
+            try:
+                value = processor(raw_value)
+            except ValueError:
+                continue  # Skip invalid values
         else:
             value = raw_value
 
@@ -244,8 +246,8 @@ def to_vendor(data, existing_data=None):
             value = value.strip()
         except AttributeError:
             pass
-        if value is None or value == "":
-            # TODO: Should we allow clearing previously set values?
+        # Skip empty values if new record or also unset in existing data
+        if (value is None or value == "") and not existing_data.get(name):
             continue
 
         # Place in CTMS contact structure

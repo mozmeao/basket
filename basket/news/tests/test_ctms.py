@@ -268,6 +268,29 @@ class ToVendorTests(TestCase):
         prepared = to_vendor(data)
         assert prepared == {}
 
+    def test_allow_rewrite_to_empty(self):
+        """Allow setting to an empty string or None if there is an existing value"""
+        existing_data = {
+            "first_name": "Walter",
+            "last_name": "Sobchak",
+            "reason": "",
+            "fxa_id": "12345",
+            "amo_id": 54321,
+        }
+        data = {
+            "first_name": " ",
+            "last_name": "\t",
+            "reason": "",
+            "fxa_id": None,
+            "amo_id": None,
+        }
+        prepared = to_vendor(data, existing_data)
+        assert prepared == {
+            "amo": {"user_id": None},
+            "email": {"first_name": "", "last_name": ""},
+            "fxa": {"fxa_id": None},
+        }
+
     @patch(
         "basket.news.backends.ctms.newsletter_slugs",
         return_value=["slug1", "slug2", "slug3", "slug4"],
