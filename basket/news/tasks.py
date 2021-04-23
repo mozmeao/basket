@@ -1241,6 +1241,7 @@ def upsert_amo_user_data(data, user_sync=False):
         amo_data["amo_id"] = None
 
     sfdc.update(user, amo_data)
+    ctms.update(user, amo_data)
     return user
 
 
