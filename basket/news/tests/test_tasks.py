@@ -1171,7 +1171,7 @@ class FxAEmailChangedTests(TestCase):
         # ts higher in cache, should no-op
         gud_mock.return_value = {"id": "1234"}
         fxa_email_changed(data)
-        sfdc_mock.upsert_row.assert_not_called()
+        sfdc_mock.update.assert_not_called()
         ctms_mock.update.assert_not_called()
 
     def test_timestamps_newer_message(self, cache_mock, gud_mock, sfdc_mock, ctms_mock):
@@ -1546,7 +1546,7 @@ class AMOSyncAddonTests(TestCase):
             ],
         )
         # it should update the 2nd user that has no returned records
-        sfdc_mock.update.called_once_with(
+        sfdc_mock.update.assert_called_once_with(
             {"id": "A4322"}, {"amo_id": None, "amo_user": False},
         )
         sfdc_mock.dev_addon.delete.has_calls([call(1234), call(1235)])
