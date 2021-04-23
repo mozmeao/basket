@@ -1263,6 +1263,7 @@ def amo_check_user_for_deletion(user_id):
     )
     if not addons["records"]:
         sfdc.update({"id": user_id}, {"amo_id": None, "amo_user": False})
+        ctms.update_by_alt_id("sfdc_id", user_id, {"amo_deleted": True})
 
 
 @et_task
