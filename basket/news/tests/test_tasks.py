@@ -1291,6 +1291,7 @@ class FxAEmailChangedTests(TestCase):
         ctms_mock.add.assert_called_with(
             {
                 "email": data["email"],
+                "token": ANY,
                 "fxa_id": data["uid"],
                 "fxa_primary_email": data["email"],
             },
@@ -1298,6 +1299,7 @@ class FxAEmailChangedTests(TestCase):
         sfdc_mock.add.assert_called_with(
             {
                 "email_id": email_id,
+                "token": ANY,
                 "email": data["email"],
                 "fxa_id": data["uid"],
                 "fxa_primary_email": data["email"],
@@ -1327,6 +1329,7 @@ class FxAEmailChangedTests(TestCase):
         ctms_mock.add.assert_called_with(
             {
                 "email": data["email"],
+                "token": ANY,
                 "fxa_id": data["uid"],
                 "fxa_primary_email": data["email"],
             },
@@ -1334,6 +1337,7 @@ class FxAEmailChangedTests(TestCase):
         sfdc_mock.add.assert_called_with(
             {
                 "email": data["email"],
+                "token": ANY,
                 "fxa_id": data["uid"],
                 "fxa_primary_email": data["email"],
             },

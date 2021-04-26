@@ -287,7 +287,7 @@ def fxa_email_changed(data):
         # message older than our last update for this UID
         return
 
-    # Update SFDC
+    # Update SFDC / CTMS
     user_data = get_user_data(fxa_id=fxa_id, extra_fields=["id"])
     if user_data:
         sfdc.update(user_data, {"fxa_primary_email": email})
@@ -300,7 +300,12 @@ def fxa_email_changed(data):
             ctms.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
         else:
             # No matching record for Email or FxA ID. Create one.
-            data = {"email": email, "fxa_id": fxa_id, "fxa_primary_email": email}
+            data = {
+                "email": email,
+                "token": generate_token(),
+                "fxa_id": fxa_id,
+                "fxa_primary_email": email,
+            }
             ctms_data = data.copy()
             contact = ctms.add(ctms_data)
             if contact:
