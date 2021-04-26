@@ -73,7 +73,7 @@ class ProcessPetitionSignatureTests(TestCase):
 
     def _get_contact_data(self, data):
         data = data["form"]
-        contact_data = {"_set_subscriber": False}
+        contact_data = {"_set_subscriber": False, "mofo_relevant": True}
         contact_data.update({k: data[k] for k in PETITION_CONTACT_FIELDS if k in data})
         return contact_data
 
@@ -485,9 +485,12 @@ class ProcessDonationTests(TestCase):
         data["last_name"] = "Donnie"
         process_donation(data)
         sfdc_mock.update.assert_called_with(
-            gud_mock(), {"_set_subscriber": False, "last_name": "Donnie"},
+            gud_mock(),
+            {"_set_subscriber": False, "mofo_relevant": True, "last_name": "Donnie"},
         )
-        ctms_mock.update.assert_called_with(gud_mock(), {"last_name": "Donnie"})
+        ctms_mock.update.assert_called_with(
+            gud_mock(), {"last_name": "Donnie", "mofo_relevant": True}
+        )
 
     def test_name_splitting(self, ctms_mock, sfdc_mock, gud_mock):
         data = self.donate_data.copy()
@@ -503,6 +506,7 @@ class ProcessDonationTests(TestCase):
                 "email": "dude@example.com",
                 "first_name": "Theodore Donald",
                 "last_name": "Kerabatsos",
+                "mofo_relevant": True,
             }
         )
         sfdc_mock.add.assert_called_with(
@@ -514,6 +518,7 @@ class ProcessDonationTests(TestCase):
                 "first_name": "Theodore Donald",
                 "last_name": "Kerabatsos",
                 "email_id": email_id,
+                "mofo_relevant": True,
             }
         )
 
@@ -529,7 +534,9 @@ class ProcessDonationTests(TestCase):
         del data["first_name"]
         data["last_name"] = "  "
         process_donation(data)
-        ctms_mock.add.assert_called_with({"token": ANY, "email": "dude@example.com"})
+        ctms_mock.add.assert_called_with(
+            {"token": ANY, "email": "dude@example.com", "mofo_relevant": True}
+        )
         sfdc_mock.add.assert_called_with(
             {
                 "_set_subscriber": False,
@@ -537,6 +544,7 @@ class ProcessDonationTests(TestCase):
                 "email": "dude@example.com",
                 "record_type": ANY,
                 "email_id": email_id,
+                "mofo_relevant": True,
             }
         )
 
@@ -552,7 +560,9 @@ class ProcessDonationTests(TestCase):
         del data["first_name"]
         data["last_name"] = None
         process_donation(data)
-        ctms_mock.add.assert_called_with({"token": ANY, "email": "dude@example.com"})
+        ctms_mock.add.assert_called_with(
+            {"token": ANY, "email": "dude@example.com", "mofo_relevant": True}
+        )
         sfdc_mock.add.assert_called_with(
             {
                 "_set_subscriber": False,
@@ -560,6 +570,7 @@ class ProcessDonationTests(TestCase):
                 "email": "dude@example.com",
                 "record_type": ANY,
                 "email_id": email_id,
+                "mofo_relevant": True,
             }
         )
 
@@ -575,6 +586,7 @@ class ProcessDonationTests(TestCase):
                 "email": "dude@example.com",
                 "first_name": "Jeffery",
                 "last_name": "Lebowski",
+                "mofo_relevant": True,
             }
         )
         sfdc_mock.add.assert_called_with(
@@ -585,6 +597,7 @@ class ProcessDonationTests(TestCase):
                 "first_name": "Jeffery",
                 "last_name": "Lebowski",
                 "record_type": ANY,
+                "mofo_relevant": True,
             }
         )
 
@@ -602,10 +615,12 @@ class ProcessDonationTests(TestCase):
                 "_set_subscriber": False,
                 "first_name": "Jeffery",
                 "last_name": "Lebowski",
+                "mofo_relevant": True,
             },
         )
         ctms_mock.update.assert_called_with(
-            gud_mock(), {"first_name": "Jeffery", "last_name": "Lebowski"},
+            gud_mock(),
+            {"first_name": "Jeffery", "last_name": "Lebowski", "mofo_relevant": True},
         )
 
         sfdc_mock.reset_mock()

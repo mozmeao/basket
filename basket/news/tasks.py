@@ -932,8 +932,10 @@ DONATION_NEW_FIELDS = {
 @et_task
 def process_donation(data):
     get_lock(data["email"])
-    # tells the backend to leave the "subscriber" flag alone
-    contact_data = {"_set_subscriber": False}
+    contact_data = {
+        "_set_subscriber": False,  # SFDC, leave "subscriber" flag alone
+        "mofo_relevant": True,  # CTMS, set a MoFo relevant contact
+    }
     # do "or ''" because data can contain None values
     first_name = (data.get("first_name") or "").strip()
     last_name = (data.get("last_name") or "").strip()
@@ -1133,7 +1135,10 @@ def process_petition_signature(data):
     data = data["form"]
     get_lock(data["email"])
     # tells the backend to leave the "subscriber" flag alone
-    contact_data = {"_set_subscriber": False}
+    contact_data = {
+        "_set_subscriber": False,  # SFDC: leave the "subscriber" flag alone
+        "mofo_relevant": True,  # CTMS: set contact as MoFo relevant
+    }
     contact_data.update({k: data[k] for k in PETITION_CONTACT_FIELDS if data.get(k)})
 
     user_data = get_user_data(email=data["email"], extra_fields=["id"])
@@ -1149,6 +1154,7 @@ def process_petition_signature(data):
         contact_data["record_type"] = settings.DONATE_CONTACT_RECORD_TYPE
 
         del ctms_data["_set_subscriber"]
+        ctms_data["mofo_relevant"] = True
         contact = ctms.add(ctms_data)
         if contact:
             contact_data["email_id"] = contact["email"]["email_id"]
