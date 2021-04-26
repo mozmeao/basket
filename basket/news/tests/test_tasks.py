@@ -33,6 +33,7 @@ from basket.news.tasks import (
     process_donation_event,
     process_donation_receipt,
     process_petition_signature,
+    process_newsletter_subscribe,
     record_common_voice_update,
     send_acoustic_tx_message,
     SUBSCRIBE,
@@ -725,6 +726,36 @@ class ProcessDonationTests(TestCase):
         sfdc_mock.opportunity.create.side_effect = exc
         with self.assertRaises(Retry):
             process_donation(data)
+
+
+@patch("basket.news.tasks.upsert_user")
+@patch("basket.news.tasks.get_best_supported_lang")
+class ProcessNewsletterSubscribeTests(TestCase):
+    def test_process(self, mock_gbsl, mock_upsert):
+        """
+        process_newsletter_subscribe calls upsert_user
+
+        Note: The input data is a guess and may not reflect real queue items
+        """
+        data = {
+            "form": {
+                "email": "test@example.com",
+                "newsletters": ["mozilla-foundation"],
+                "lang": "fr",
+            },
+            "other": "stuff",
+        }
+        mock_gbsl.return_value = "fr"
+        process_newsletter_subscribe(data)
+        mock_gbsl.assert_called_once_with("fr")
+        mock_upsert.assert_called_once_with(
+            SUBSCRIBE,
+            {
+                "email": "test@example.com",
+                "newsletters": ["mozilla-foundation"],
+                "lang": "fr",
+            },
+        )
 
 
 @override_settings(TASK_LOCKING_ENABLE=True)
