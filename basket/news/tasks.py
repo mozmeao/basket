@@ -1110,6 +1110,7 @@ def process_donation_receipt(data):
 
 @et_task
 def process_newsletter_subscribe(data):
+    """Process a MoFo newsletter subscription."""
     data = data["form"]
     data["lang"] = get_best_supported_lang(data["lang"])
     upsert_user(SUBSCRIBE, data)
