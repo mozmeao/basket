@@ -112,6 +112,7 @@ SAMPLE_BASKET_FORMAT = {
     "lang": "en",
     "last_modified_date": "2021-01-28T21:26:57.511Z",
     "last_name": "Doe",
+    "mofo_relevant": False,
     "newsletters": ["mozilla-welcome"],
     "optin": True,
     "optout": False,
@@ -179,6 +180,7 @@ class ToVendorTests(TestCase):
                 "lang": "en,en-US",
                 "primary_email": "my-fxa-acct@example.com",
             },
+            "mofo": {"mofo_relevant": False},
             "newsletters": [{"name": "mozilla-welcome", "subscribed": True}],
             "vpn_waitlist": {"geo": "fr", "platform": "ios,mac"},
         }

@@ -80,7 +80,7 @@ CTMS_TO_BASKET_NAMES = {
         # Need more information about the future MoFo integrations
         "mofo_email_id": None,
         "mofo_contact_id": None,
-        "mofo_relevant": None,
+        "mofo_relevant": "mofo_relevant",
     },
     "vpn_waitlist": {"geo": "fpn_country", "platform": "fpn_platform"},
 }
