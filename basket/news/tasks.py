@@ -69,6 +69,7 @@ IGNORE_ERROR_MSGS = [
     "No valid subscribers were provided",
     "There are no valid subscribers",
     "email address is suppressed",
+    "invalid email address",
 ]
 # don't propagate and don't retry if these regex match the error messages
 IGNORE_ERROR_MSGS_RE = [re.compile(r"campaignId \d+ not found")]
