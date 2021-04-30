@@ -478,3 +478,99 @@ class UpsertUserTests(TestCase):
         ctms_mock.add.assert_called_with(update_data)
         sfdc_mock.add.assert_called_with(update_data)
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
+
+    def test_new_user_subscribes_to_mofo_newsletter(
+        self, get_user_data, sfdc_mock, ctms_mock, confirm_mock
+    ):
+        """Subscribing to a MoFo-relevant newsletter makes the new user mofo-relevant."""
+        get_user_data.return_value = None  # Does not exist yet
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
+        models.Newsletter.objects.create(
+            slug="mozilla-foundation",
+            title="The Mozilla Foundation News",
+            active=True,
+            languages="en,fr",
+            vendor_id="VENDOR1",
+            requires_double_optin=False,
+            is_mofo=True,
+        )
+        data = {
+            "country": "US",
+            "lang": "en",
+            "format": "H",
+            "newsletters": "mozilla-foundation",
+            "email": self.email,
+        }
+        upsert_user(SUBSCRIBE, data)
+        update_data = data.copy()
+        update_data["newsletters"] = {"mozilla-foundation": True}
+        update_data["mofo_relevant"] = True
+        update_data["optin"] = True
+        update_data["token"] = ANY
+        ctms_mock.add.assert_called_with(update_data)
+        update_data["email_id"] = email_id
+        sfdc_mock.add.assert_called_with(update_data)
+        confirm_mock.delay.assert_not_called()
+
+    def test_existing_user_subscribes_to_mofo_newsletter(
+        self, get_user_data, sfdc_mock, ctms_mock, confirm_mock
+    ):
+        """Subscribing to a MoFo-relevant newsletter makes the user mofo-relevant."""
+        user_data = self.get_user_data.copy()
+        get_user_data.return_value = user_data
+        models.Newsletter.objects.create(
+            slug="mozilla-foundation",
+            title="The Mozilla Foundation News",
+            active=True,
+            languages="en,fr",
+            vendor_id="VENDOR1",
+            requires_double_optin=False,
+            is_mofo=True,
+        )
+        data = {
+            "country": "US",
+            "lang": "en",
+            "format": "H",
+            "newsletters": "mozilla-foundation",
+            "email": self.email,
+        }
+        upsert_user(SUBSCRIBE, data)
+        update_data = data.copy()
+        update_data["newsletters"] = {"mozilla-foundation": True}
+        update_data["mofo_relevant"] = True
+        update_data["optin"] = True
+        sfdc_mock.update.assert_called_with(user_data, update_data)
+        ctms_mock.update.assert_called_with(user_data, update_data)
+        confirm_mock.delay.assert_not_called()
+
+    def test_existing_mofo_user_subscribes_to_mofo_newsletter(
+        self, get_user_data, sfdc_mock, ctms_mock, confirm_mock
+    ):
+        """If a user is already MoFo-relevant, a subscription does not set it again."""
+        user_data = self.get_user_data.copy()
+        user_data["mofo_relevant"] = True
+        get_user_data.return_value = user_data
+        models.Newsletter.objects.create(
+            slug="mozilla-foundation",
+            title="The Mozilla Foundation News",
+            active=True,
+            languages="en,fr",
+            vendor_id="VENDOR1",
+            requires_double_optin=False,
+            is_mofo=True,
+        )
+        data = {
+            "country": "US",
+            "lang": "en",
+            "format": "H",
+            "newsletters": "mozilla-foundation",
+            "email": self.email,
+        }
+        upsert_user(SUBSCRIBE, data)
+        update_data = data.copy()
+        update_data["newsletters"] = {"mozilla-foundation": True}
+        update_data["optin"] = True
+        sfdc_mock.update.assert_called_with(user_data, update_data)
+        ctms_mock.update.assert_called_with(user_data, update_data)
+        confirm_mock.delay.assert_not_called()

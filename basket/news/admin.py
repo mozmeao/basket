@@ -82,6 +82,7 @@ class NewsletterAdmin(admin.ModelAdmin):
         "requires_double_optin",
         "firefox_confirm",
         "private",
+        "is_mofo",
     )
     list_display = (
         "order",
@@ -95,6 +96,7 @@ class NewsletterAdmin(admin.ModelAdmin):
         "requires_double_optin",
         "firefox_confirm",
         "private",
+        "is_mofo",
     )
     list_display_links = ("title", "slug")
     list_editable = (
@@ -105,6 +107,7 @@ class NewsletterAdmin(admin.ModelAdmin):
         "requires_double_optin",
         "firefox_confirm",
         "private",
+        "is_mofo",
     )
     list_filter = (
         "show",
@@ -112,6 +115,7 @@ class NewsletterAdmin(admin.ModelAdmin):
         "requires_double_optin",
         "firefox_confirm",
         "private",
+        "is_mofo",
     )
     prepopulated_fields = {"slug": ("title",)}
     search_fields = ("title", "slug", "description", "vendor_id")

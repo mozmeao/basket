@@ -79,6 +79,11 @@ class Newsletter(models.Model):
         default=False,
         help_text="Whether to send the Firefox or Mozilla branded confirmation message for this newsletter",
     )
+    is_mofo = models.BooleanField(
+        default=False,
+        help_text="True if subscribing to this newsletter should mark someone"
+        " as relevant to the Mozilla Foundation",
+    )
     order = models.IntegerField(
         default=0,
         help_text="Order to display the newsletters on the web site. "
