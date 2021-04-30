@@ -565,23 +565,32 @@ def upsert_contact(api_call_type, data, user_data):
     send_confirm = False
 
     if api_call_type != UNSUBSCRIBE:
-        # Are they subscribing to any newsletters that don't require confirmation?
-        # When including any newsletter that does not
-        # require confirmation, user gets a pass on confirming and goes straight
-        # to confirmed.
-        to_subscribe = [nl for nl, sub in update_data["newsletters"].items() if sub]
-        if to_subscribe and not (
-            forced_optin or (user_data and user_data.get("optin"))
-        ):
-            to_subscribe = Newsletter.objects.filter(slug__in=to_subscribe)
-            exempt_from_confirmation = any(
-                [not o.requires_double_optin for o in to_subscribe],
-            )
-            if exempt_from_confirmation:
-                update_data["optin"] = True
-            else:
-                send_fx_confirm = all([o.firefox_confirm for o in to_subscribe])
-                send_confirm = "fx" if send_fx_confirm else "moz"
+        # Check for newsletter-specific user updates
+        to_subscribe_slugs = [
+            nl for nl, sub in update_data["newsletters"].items() if sub
+        ]
+        check_optin = not (forced_optin or (user_data and user_data.get("optin")))
+        check_mofo = not (user_data and user_data.get("mofo_relevant"))
+        if to_subscribe_slugs and (check_optin or check_mofo):
+            to_subscribe = Newsletter.objects.filter(slug__in=to_subscribe_slugs)
+
+            # Are they subscribing to any newsletters that require confirmation?
+            # If none require confirmation, user goes straight to confirmed (optin)
+            # Otherwise, prepare to send a fx or moz confirmation
+            if check_optin:
+                exempt_from_confirmation = any(
+                    [not o.requires_double_optin for o in to_subscribe],
+                )
+                if exempt_from_confirmation:
+                    update_data["optin"] = True
+                else:
+                    send_fx_confirm = all([o.firefox_confirm for o in to_subscribe])
+                    send_confirm = "fx" if send_fx_confirm else "moz"
+
+            # Update a user to MoFo-relevant if they subscribed to a MoFo newsletters
+            if check_mofo:
+                if any([ns.is_mofo for ns in to_subscribe]):
+                    update_data["mofo_relevant"] = True
 
     if user_data is None:
         # no user found. create new one.
