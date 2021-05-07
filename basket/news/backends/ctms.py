@@ -656,19 +656,20 @@ class CTMS:
         if email_id:
             contact = self.interface.get_by_email_id(email_id)
         else:
+            alt_ids = []
             if token:
-                id_name, id_value = "basket_token", token
-            elif email:
-                id_name, id_value = "primary_email", email
-            elif fxa_id:
-                id_name, id_value = "fxa_id", fxa_id
-            elif mofo_email_id:
-                id_name, id_value = "mofo_email_id", mofo_email_id
-            elif amo_id:
-                id_name, id_value = "amo_user_id", amo_id
-            elif sfdc_id:
-                id_name, id_value = "sfdc_id", sfdc_id
-            else:
+                alt_ids.append({"basket_token": token})
+            if email:
+                alt_ids.append({"primary_email": email})
+            if fxa_id:
+                alt_ids.append({"fxa_id": fxa_id})
+            if mofo_email_id:
+                alt_ids.append({"mofo_email_id": mofo_email_id})
+            if amo_id:
+                alt_ids.append({"amo_user_id": amo_id})
+            if sfdc_id:
+                alt_ids.append({"sfdc_id": sfdc_id})
+            if not alt_ids:
                 raise CTMSNoIdsError(
                     required_ids=(
                         "email_id",
@@ -681,15 +682,22 @@ class CTMS:
                     )
                 )
 
-            params = {id_name: id_value}
-            contacts = self.interface.get_by_alternate_id(**params)
+            # Try alternate IDs in order
+            first_run = True
+            first_contacts = None
+            contact = None
+            for params in alt_ids:
+                contacts = self.interface.get_by_alternate_id(**params)
+                if first_run:
+                    first_contacts = contacts
+                    first_run = False
+                if len(contacts) == 1:
+                    contact = contacts[0]
 
-            if not contacts:
-                contact = None
-            elif len(contacts) == 1:
-                contact = contacts[0]
-            else:
-                raise CTMSMultipleContactsError(id_name, id_value, contacts)
+            # Did not find single contact, did first alt ID return multiple?
+            if contact is None and first_contacts:
+                id_name, id_value = list(alt_ids[0].items())[0]
+                raise CTMSMultipleContactsError(id_name, id_value, first_contacts)
 
         if contact:
             return from_vendor(contact)
