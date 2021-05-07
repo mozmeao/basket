@@ -695,7 +695,9 @@ class CTMS:
                     contact = contacts[0]
                     break
 
-            # Did not find single contact, did first alt ID return multiple?
+            # Did not find single contact, return result of first ID check
+            # If first alt ID returned multiple, raise exception
+            # If it returned an empty list, return None below
             if contact is None and first_contacts:
                 id_name, id_value = list(alt_ids[0].items())[0]
                 raise CTMSMultipleContactsError(id_name, id_value, first_contacts)
