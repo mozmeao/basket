@@ -448,12 +448,11 @@ class CTMSInterface:
         "email_id",
         "basket_token",
         "primary_email",
-        "sfdc_id",
         "fxa_id",
         "mofo_email_id",
     ]
     # Identifiers that can be shared by multiple CTMS records
-    shared_ids = ["mofo_contact_id", "amo_user_id", "fxa_primary_email"]
+    shared_ids = ["sfdc_id", "mofo_contact_id", "amo_user_id", "fxa_primary_email"]
     all_ids = unique_ids + shared_ids
 
     def __init__(self, session):
