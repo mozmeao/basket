@@ -693,6 +693,7 @@ class CTMS:
                     first_run = False
                 if len(contacts) == 1:
                     contact = contacts[0]
+                    break
 
             # Did not find single contact, did first alt ID return multiple?
             if contact is None and first_contacts:
