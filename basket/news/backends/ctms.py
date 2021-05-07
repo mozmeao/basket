@@ -632,10 +632,10 @@ class CTMS:
         email_id=None,
         token=None,
         email=None,
-        sfdc_id=None,
         fxa_id=None,
         mofo_email_id=None,
         amo_id=None,
+        sfdc_id=None,
     ):
         """
         Get a contact record, using the first ID provided.
@@ -643,10 +643,10 @@ class CTMS:
         @param email_id: CTMS email ID
         @param token: external ID
         @param email: email address
-        @param sfdc_id: legacy SFDC ID
         @param fxa_id: external ID from FxA
         @param mofo_email_id: external ID from MoFo
         @param amo_id: external ID from AMO
+        @param sfdc_id: legacy SFDC ID
         @return: dict, or None if disabled
         @raises CTMSNoIds: no IDs are set
         @raises CTMSMultipleContacts:: multiple contacts returned
@@ -661,14 +661,14 @@ class CTMS:
                 id_name, id_value = "basket_token", token
             elif email:
                 id_name, id_value = "primary_email", email
-            elif sfdc_id:
-                id_name, id_value = "sfdc_id", sfdc_id
             elif fxa_id:
                 id_name, id_value = "fxa_id", fxa_id
             elif mofo_email_id:
                 id_name, id_value = "mofo_email_id", mofo_email_id
             elif amo_id:
                 id_name, id_value = "amo_user_id", amo_id
+            elif sfdc_id:
+                id_name, id_value = "sfdc_id", sfdc_id
             else:
                 raise CTMSNoIdsError(
                     required_ids=(
