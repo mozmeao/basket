@@ -436,9 +436,21 @@ class ToVendorTests(TestCase):
         assert prepared == {
             "email": {"email_format": "T", "email_lang": "es"},
             "newsletters": [
-                {"name": "slug1", "subscribed": True, "format": "T", "lang": "es"},
+                {
+                    "name": "slug1",
+                    "subscribed": True,
+                    "format": "T",
+                    "lang": "es",
+                    "source": "https://example.com",
+                },
                 {"name": "slug2", "subscribed": False},
-                {"name": "slug3", "subscribed": True, "format": "T", "lang": "es"},
+                {
+                    "name": "slug3",
+                    "subscribed": True,
+                    "format": "T",
+                    "lang": "es",
+                    "source": "https://example.com",
+                },
             ],
         }
 
