@@ -123,7 +123,6 @@ DISCARD_BASKET_NAMES = {
     "_set_subscriber",  # Identify newsletter subscribers in SFDC
     "record_type",  # Identify donors with associated opportunity
     "postal_code",  # Extra data for MoFo petitions
-    "source_url",  # Skipped unless individual newsletter subscription(s)
     #
     # fsa_* is Firefox Student Ambassador data, deprecated
     "fsa_school",
@@ -258,6 +257,8 @@ def to_vendor(data, existing_data=None):
             ctms_data.setdefault(group_name, {})[key] = value
             if name in {"lang", "format"}:
                 newsletter_subscription_default[name] = value
+        elif name == "source_url":
+            newsletter_subscription_default["source"] = value
         elif name == "newsletters":
             # Process newsletters after gathering all newsletter keys
             newsletters = value
@@ -293,9 +294,6 @@ def to_vendor(data, existing_data=None):
                         output.append(nl_sub)
         else:
             # List of slugs for subscriptions, which may include a source
-            source_url = (data.get("source_url", "") or "").strip()
-            if source_url:
-                newsletter_subscription_default["source"] = source_url
             for slug in newsletters:
                 if slug in valid_slugs:
                     nl_sub = newsletter_subscription_default.copy()
