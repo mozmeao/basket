@@ -226,6 +226,8 @@ SFDC_SETTINGS = {
     "security_token": config("SFDC_SEC_TOKEN", None),
     "domain": "test" if SFDC_USE_SANDBOX else "login",
 }
+default_sfdc_enabled = bool(SFDC_SETTINGS["username"])
+SFDC_ENABLED = config("SFDC_ENABLED", default_sfdc_enabled, cast=bool)
 # default SFDC sessions timeout after 2 hours of inactivity. so they never timeout on
 # prod. Let's make it every 4 hours by default.
 SFDC_SESSION_TIMEOUT = config("SFDC_SESSION_TIMEOUT", 60 * 60 * 4, cast=int)
