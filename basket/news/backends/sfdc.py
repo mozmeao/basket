@@ -348,8 +348,15 @@ class RefreshingSFType(RefreshingSFMixin, sfapi.SFType):
         )
 
 
+class SFDCDisabled(RuntimeError):
+    """SFDC called but disabled."""
+
+
 class SFDC:
     def _get_type(self, name):
+        if not settings.SFDC_ENABLED:
+            raise SFDCDisabled("SFDC is not enabled")
+
         if not settings.SFDC_SETTINGS.get("username"):
             return None
 
@@ -409,6 +416,9 @@ class SFDC:
         @param fxa_id: external ID from FxA
         @return: dict
         """
+        if not settings.SFDC_ENABLED:
+            raise SFDCDisabled("SFDC is not enabled")
+
         arg_values = locals()
         args = ("token", "email", "payee_id", "amo_id", "fxa_id")
         field = None
@@ -436,6 +446,9 @@ class SFDC:
         @param data: user data to add as a new contact.
         @return: None
         """
+        if not settings.SFDC_ENABLED:
+            return None
+
         if not data.get("last_name", "").strip():
             data["last_name"] = LAST_NAME_DEFAULT_VALUE
 
@@ -450,6 +463,9 @@ class SFDC:
         @param data: dict of user data
         @return: None
         """
+        if not settings.SFDC_ENABLED:
+            return None
+
         # need a copy because we'll modify it
         data = data.copy()
         if "id" in record:
