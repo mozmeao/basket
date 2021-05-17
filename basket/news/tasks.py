@@ -29,7 +29,7 @@ from basket.base.utils import email_is_testing
 from basket.news.backends.acoustic import acoustic_tx, acoustic
 from basket.news.backends.common import NewsletterException
 from basket.news.backends.ctms import ctms, CTMSNotFoundByAltIDError
-from basket.news.backends.sfdc import sfdc
+from basket.news.backends.sfdc import sfdc, SFDCDisabled
 from basket.news.backends.sfdc import from_vendor as from_sfdc
 from basket.news.celery import app as celery_app
 from basket.news.models import (
@@ -332,6 +332,8 @@ def fxa_direct_update_contact(fxa_id, data):
         else:
             # otherwise it's something else and we should potentially retry
             raise
+    except SFDCDisabled:
+        pass
 
     basket_data = from_sfdc(data)
     try:
