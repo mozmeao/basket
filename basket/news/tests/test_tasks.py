@@ -450,7 +450,7 @@ class ProcessDonationReceiptTests(TestCase):
         )
 
 
-@override_settings(TASK_LOCKING_ENABLE=False)
+@override_settings(TASK_LOCKING_ENABLE=False, SFDC_ENABLED=True)
 @patch("basket.news.tasks.get_user_data")
 @patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.ctms")
@@ -742,6 +742,36 @@ class ProcessDonationTests(TestCase):
         sfdc_mock.opportunity.create.side_effect = exc
         with self.assertRaises(Retry):
             process_donation(data)
+
+    @override_settings(SFDC_ENABLED=False)
+    def test_donation_data_new_user(self, ctms_mock, sfdc_mock, gud_mock):
+        """Donation data is skipped for new user."""
+        data = self.donate_data.copy()
+        gud_mock.return_value = None
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
+        del data["first_name"]
+        data["last_name"] = "  "
+        process_donation(data)
+        ctms_mock.add.assert_called_with(
+            {"token": ANY, "email": "dude@example.com", "mofo_relevant": True}
+        )
+        assert not sfdc_mock.add.called
+        assert not sfdc_mock.opportunity.create.called
+
+    @override_settings(SFDC_ENABLED=False)
+    def test_donation_data_existing_user(self, ctms_mock, sfdc_mock, gud_mock):
+        """Donation data is skipped for existing, unchanged user."""
+        data = self.donate_data.copy()
+        gud_mock.return_value = {
+            "id": "1234",
+            "first_name": "Jeffery",
+            "last_name": "Lebowski",
+        }
+        process_donation(data)
+        assert not ctms_mock.update.called
+        assert not sfdc_mock.update.called
+        assert not sfdc_mock.opportunity.create.called
 
 
 @patch("basket.news.tasks.upsert_user")

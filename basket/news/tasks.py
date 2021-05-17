@@ -1000,11 +1000,17 @@ def process_donation(data):
         if contact:
             contact_data["email_id"] = contact["email"]["email_id"]
 
+        if not settings.SFDC_ENABLED:
+            return
+
         # returns a dict with the new ID but no other user data, but that's enough here
         user_data = sfdc.add(contact_data)
         if not user_data.get("id"):
             # retry here to make sure we associate the donation data with the proper account
             raise RetryTask("User not yet available")
+
+    if not settings.SFDC_ENABLED:
+        return
 
     # add opportunity
     donation = {
