@@ -277,7 +277,7 @@ def to_vendor(data, existing_data=None):
             optout = data.get("optout", False) or False
             if optout:
                 # When unsubscribe all is requested, let CTMS unsubscribe from all
-                output = "UNSUBSCRIBE"
+                ctms_data["newsletters"] = "UNSUBSCRIBE"
             else:
                 # Dictionary of slugs to sub/unsub flags
                 for slug, subscribed in newsletters.items():
