@@ -15,6 +15,7 @@ from celery.exceptions import Retry
 from mock import ANY, Mock, call, patch
 
 from basket.news.backends.ctms import CTMSNotFoundByAltIDError
+from basket.news.backends.sfdc import SFDCDisabled
 from basket.news.celery import app as celery_app
 from basket.news.models import AcousticTxEmailMessage, FailedTask, CommonVoiceUpdate
 from basket.news.tasks import (
@@ -2017,6 +2018,17 @@ class TestGetFxaUserData(TestCase):
 @patch("basket.news.tasks.sfdc", content=Mock(spec_set=["update"]))
 class TestFxaDelete(TestCase):
     def test_delete(self, mock_sfdc, mock_ctms):
+        fxa_delete({"uid": "123"})
+        mock_sfdc.contact.update.assert_called_once_with(
+            "FxA_Id__c/123", {"FxA_Account_Deleted__c": True}
+        )
+        mock_ctms.update_by_alt_id.assert_called_once_with(
+            "fxa_id", "123", {"fxa_deleted": True, "newsletters": []}
+        )
+
+    def test_delete_with_sfdc_disabled(self, mock_sfdc, mock_ctms):
+        """The FxA data is deleted in CTMS."""
+        mock_sfdc.contact.update.side_effect = SFDCDisabled("not enabled")
         fxa_delete({"uid": "123"})
         mock_sfdc.contact.update.assert_called_once_with(
             "FxA_Id__c/123", {"FxA_Account_Deleted__c": True}
