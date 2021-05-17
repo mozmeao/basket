@@ -268,26 +268,25 @@ def to_vendor(data, existing_data=None):
             # TODO: SFDC ignores unknown fields, maybe this should as well
             raise CTMSUnknownKeyError(name)
 
-    # Process the newsletters, which may include extra data from the email group
-    if newsletters:
+    # Detect unsubscribe all
+    optout = data.get("optout", False) or False
+    if optout:  # When unsubscribe all is requested, let CTMS unsubscribe from all
+        ctms_data["newsletters"] = "UNSUBSCRIBE"
+    elif (
+        newsletters
+    ):  # Process the newsletters, which may include extra data from the email group
         valid_slugs = newsletter_slugs()
         output = []
         if isinstance(newsletters, dict):
-            # Detect unsubscribe all
-            optout = data.get("optout", False) or False
-            if optout:
-                # When unsubscribe all is requested, let CTMS unsubscribe from all
-                ctms_data["newsletters"] = "UNSUBSCRIBE"
-            else:
-                # Dictionary of slugs to sub/unsub flags
-                for slug, subscribed in newsletters.items():
-                    if slug in valid_slugs:
-                        if subscribed:
-                            nl_sub = newsletter_subscription_default.copy()
-                            nl_sub.update({"name": slug, "subscribed": True})
-                        else:
-                            nl_sub = {"name": slug, "subscribed": False}
-                        output.append(nl_sub)
+            # Dictionary of slugs to sub/unsub flags
+            for slug, subscribed in newsletters.items():
+                if slug in valid_slugs:
+                    if subscribed:
+                        nl_sub = newsletter_subscription_default.copy()
+                        nl_sub.update({"name": slug, "subscribed": True})
+                    else:
+                        nl_sub = {"name": slug, "subscribed": False}
+                    output.append(nl_sub)
         else:
             # List of slugs for subscriptions, which may include a source
             for slug in newsletters:
