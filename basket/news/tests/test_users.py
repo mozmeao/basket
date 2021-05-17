@@ -14,6 +14,8 @@ from basket import errors
 
 from basket.news import views
 from basket.news.backends.common import NewsletterException
+from basket.news.backends.ctms import CTMSNotConfigured, CTMSMultipleContactsError
+from basket.news.backends.sfdc import SFDCDisabled
 from basket.news.models import APIUser
 from basket.news.utils import SET, generate_token
 
@@ -105,6 +107,19 @@ class TestLookupUser(TestCase):
             amo_id=None, email=None, fxa_id=None, sfdc_id=None, token="dummy"
         )
 
+    @patch("basket.news.utils.sfdc", spec_set=["get"])
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_with_token_with_sfdc_disabled(self, ctms_mock, sfdc_mock):
+        """Passing a token gets back that user's data"""
+        sfdc_mock.get.side_effect = SFDCDisabled("not enabled")
+        ctms_mock.get.return_value = {"token": "dummy"}
+        rsp = self.get(params={"token": "dummy"})
+        assert rsp.status_code == 200
+        assert rsp.json() == {"status": "ok", "token": "dummy"}
+        ctms_mock.get.assert_called_once_with(
+            amo_id=None, email=None, fxa_id=None, sfdc_id=None, token="dummy"
+        )
+
     @patch("basket.news.utils.sfdc")
     @patch("basket.news.utils.ctms", spec_set=["get"])
     def test_get_fxa_status(self, ctms_mock, sfdc_mock):
@@ -124,6 +139,24 @@ class TestLookupUser(TestCase):
         self.assertEqual(200, rsp.status_code, rsp.content)
         self.assertEqual(response, json.loads(rsp.content))
 
+    @patch("basket.news.utils.sfdc", spec_set=["get"])
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_get_fxa_status_with_sfdc_disabled(self, ctms_mock, sfdc_mock):
+        """Should return FxA status"""
+        sfdc_mock.get.side_effect = SFDCDisabled("not enabled")
+        ctms_mock.get.return_value = {
+            "email": "hisdudeness@example.com",
+            "fxa_id": "the-dude-abides",
+        }
+        rsp = self.get(params={"token": "dummy", "fxa": "1"})
+        assert rsp.status_code == 200
+        assert rsp.json() == {
+            "email": "hisdudeness@example.com",
+            "fxa_id": "the-dude-abides",
+            "has_fxa": True,
+            "status": "ok",
+        }
+
     @patch("basket.news.utils.sfdc")
     @patch("basket.news.utils.ctms", spec_set=["get"])
     def test_get_fxa_status_false(self, ctms_mock, sfdc_mock):
@@ -141,6 +174,20 @@ class TestLookupUser(TestCase):
         rsp = self.get(params=params)
         self.assertEqual(200, rsp.status_code, rsp.content)
         self.assertEqual(response, json.loads(rsp.content))
+
+    @patch("basket.news.utils.sfdc", spec_set=["get"])
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_get_fxa_status_false_with_sfdc_disabled(self, ctms_mock, sfdc_mock):
+        """Should return FxA status"""
+        sfdc_mock.get.side_effect = SFDCDisabled("not enabled")
+        ctms_mock.get.return_value = {"email": "hisdudeness@example.com"}
+        rsp = self.get(params={"token": "dummy", "fxa": "1"})
+        assert rsp.status_code == 200
+        assert rsp.json() == {
+            "email": "hisdudeness@example.com",
+            "has_fxa": False,
+            "status": "ok",
+        }
 
     @patch("basket.news.utils.sfdc")
     @patch("basket.news.utils.ctms", spec_set=["get"])
@@ -168,6 +215,15 @@ class TestLookupUser(TestCase):
         self.assertEqual(200, rsp.status_code, rsp.content)
         self.assertEqual(self.user_data, json.loads(rsp.content))
 
+    @patch("basket.news.utils.sfdc", spec_set=["get"])
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_ctms_user_not_found_with_sfdc_disabled(self, ctms_mock, sfdc_mock):
+        """If CTMS return no records, return is None"""
+        sfdc_mock.get.side_effect = SFDCDisabled("not enabled")
+        ctms_mock.get.return_value = None
+        rsp = self.get(params={"token": "dummy"})
+        assert rsp.status_code == 404
+
     @patch("basket.news.utils.sfdc")
     @patch("basket.news.utils.ctms", spec_set=["get"])
     @patch("basket.news.utils.sentry_sdk")
@@ -183,18 +239,94 @@ class TestLookupUser(TestCase):
         self.assertEqual(self.user_data, json.loads(rsp.content))
         sentry_mock.capture_exception.assert_called_once()
 
+    @patch("basket.news.utils.sfdc", spec_set=["get"])
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_ctms_user_not_authenticated_with_sfdc_disabled(self, ctms_mock, sfdc_mock):
+        """If CTMS is not authenticated, an exception is raised"""
+        sfdc_mock.get.side_effect = SFDCDisabled("not enabled")
+        ctms_mock.get.side_effect = self.ctms_error(
+            401, "Unauthorized", "Not authenticated"
+        )
+        rsp = self.get(params={"token": "dummy"})
+        assert rsp.status_code == 500
+        assert rsp.json() == {
+            "code": errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
+            "desc": "Email service provider auth failure",
+            "status": "error",
+        }
+
+    @patch("basket.news.utils.sfdc", spec_set=["get"])
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_ctms_user_not_configured_with_sfdc_disabled(self, ctms_mock, sfdc_mock):
+        """If CTMS was not configured, an exception is raised"""
+        sfdc_mock.get.side_effect = SFDCDisabled("not enabled")
+        ctms_mock.get.side_effect = CTMSNotConfigured()
+        rsp = self.get(params={"token": "dummy"})
+        assert rsp.status_code == 500
+        assert rsp.json() == {
+            "code": errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
+            "desc": "Email service provider auth failure",
+            "status": "error",
+        }
+
     @patch("basket.news.utils.sfdc")
     @patch("basket.news.utils.ctms", spec_set=["get"])
     @patch("basket.news.utils.sentry_sdk")
-    def test_ctms_user_runtime_error(self, sentry_mock, ctms_mock, sfdc_mock):
-        """If CTMS raises a RuntimeError, it is logged and email_id is unset"""
+    def test_ctms_user_multiple_contact_error(self, sentry_mock, ctms_mock, sfdc_mock):
+        """If CTMS finds multiple contacts, it is logged and email_id is unset"""
         sfdc_mock.get.return_value = self.user_data
-        ctms_mock.get.side_effect = RuntimeError("Multiple contacts returned for token")
-        params = {"token": "dummy"}
-        rsp = self.get(params=params)
-        self.assertEqual(200, rsp.status_code, rsp.content)
-        self.assertEqual(self.user_data, json.loads(rsp.content))
+        ctms_mock.get.side_effect = CTMSMultipleContactsError(
+            "token",
+            "dummy",
+            [
+                {"email": {"email_id": "id_1", "basket_token": "dummy"}},
+                {"email": {"email_id": "id_2", "basket_token": "dummy"}},
+            ],
+        )
+        rsp = self.get(params={"token": "dummy"})
+        assert rsp.status_code == 200
+        assert rsp.json() == {"status": "ok"}
         sentry_mock.capture_exception.assert_called_once()
+
+    @patch("basket.news.utils.sfdc")
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_ctms_user_runtime_error_with_sfdc_disabled(self, ctms_mock, sfdc_mock):
+        """If CTMS finds multiple contacts, an error is returned"""
+        sfdc_mock.get.side_effect = SFDCDisabled("not enabled")
+        ctms_mock.get.side_effect = CTMSMultipleContactsError(
+            "token",
+            "dummy",
+            [
+                {"email": {"email_id": "id_1", "basket_token": "dummy"}},
+                {"email": {"email_id": "id_2", "basket_token": "dummy"}},
+            ],
+        )
+        rsp = self.get(params={"token": "dummy"})
+        assert rsp.status_code == 400
+        assert rsp.json() == {
+            "status": "error",
+            "code": errors.BASKET_NETWORK_FAILURE,
+            "desc": (
+                "2 contacts returned for token='dummy' with email_ids"
+                " ['id_1', 'id_2']"
+            ),
+        }
+
+    @patch("basket.news.utils.sfdc")
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_ctms_user_server_error_sfdc_disabled(self, ctms_mock, sfdc_mock):
+        """If CTMS has a network failure, an error is returned"""
+        sfdc_mock.get.side_effect = SFDCDisabled("not enabled")
+        ctms_mock.get.side_effect = self.ctms_error(
+            500, "CTMS is rebooting...", "Server Error"
+        )
+        rsp = self.get(params={"token": "dummy"})
+        assert rsp.status_code == 400
+        assert rsp.json() == {
+            "status": "error",
+            "code": errors.BASKET_NETWORK_FAILURE,
+            "desc": "",
+        }
 
     def test_with_email_no_api_key(self):
         """Passing email without api key is a 401"""

@@ -618,11 +618,19 @@ class CTMSNotFoundByAltIDError(CTMSError):
         return f"No contacts returned for {self.id_name}={self.id_value!r}"
 
 
+class CTMSNotConfigured(CTMSError):
+    """CTMS is not configured."""
+
+    def __str__(self):
+        return "CTMS is not configured" ""
+
+
 class CTMS:
     """Basket interface to CTMS"""
 
-    def __init__(self, interface):
+    def __init__(self, interface, is_primary=False):
         self.interface = interface
+        self.is_primary = is_primary
 
     def get(
         self,
@@ -649,7 +657,10 @@ class CTMS:
         @raises CTMSMultipleContacts:: multiple contacts returned
         """
         if not self.interface:
-            return None
+            if self.is_primary:
+                raise CTMSNotConfigured()
+            else:
+                return None
 
         if email_id:
             contact = self.interface.get_by_email_id(email_id)
@@ -713,7 +724,10 @@ class CTMS:
         @return: new user data, CTMS format
         """
         if not self.interface:
-            return None
+            if self.is_primary:
+                raise CTMSNotConfigured()
+            else:
+                return None
         try:
             return self.interface.post_to_create(to_vendor(data))
         except Exception:
@@ -729,7 +743,10 @@ class CTMS:
         @return: updated user data, CTMS format
         """
         if not self.interface:
-            return None
+            if self.is_primary:
+                raise CTMSNotConfigured()
+            else:
+                return None
         email_id = existing_data.get("email_id")
         if not email_id:
             # TODO: When CTMS is primary, this should be an error
@@ -752,7 +769,10 @@ class CTMS:
         @raises CTMSNotFoundByAltID: when no record found
         """
         if not self.interface:
-            return None
+            if self.is_primary:
+                raise CTMSNotConfigured()
+            else:
+                return None
 
         contact = self.get(**{alt_id_name: alt_id_value})
         if contact:
@@ -782,4 +802,4 @@ def ctms_interface():
         return None
 
 
-ctms = CTMS(ctms_interface())
+ctms = CTMS(ctms_interface(), not settings.SFDC_ENABLED)
