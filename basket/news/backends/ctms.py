@@ -275,11 +275,7 @@ def to_vendor(data, existing_data=None):
         if isinstance(newsletters, dict):
             # Detect unsubscribe all
             optout = data.get("optout", False) or False
-            if (
-                optout
-                and (not any(newsletters.values()))
-                and (set(valid_slugs) == set(newsletters.keys()))
-            ):
+            if optout:
                 # When unsubscribe all is requested, let CTMS unsubscribe from all
                 output = "UNSUBSCRIBE"
             else:
@@ -375,10 +371,10 @@ class CTMSSession:
             token_updater=self.save_token,
         )
         session.register_compliance_hook(
-            "access_token_response", CTMSSession.check_2xx_response
+            "access_token_response", CTMSSession.check_2xx_response,
         )
         session.register_compliance_hook(
-            "refresh_token_response", CTMSSession.check_2xx_response
+            "refresh_token_response", CTMSSession.check_2xx_response,
         )
         if not session.authorized:
             session = self._authorize_session(session)
@@ -594,7 +590,7 @@ class CTMSMultipleContactsError(CTMSError):
     def __str__(self):
         try:
             email_ids = repr(
-                [contact["email"]["email_id"] for contact in self.contacts]
+                [contact["email"]["email_id"] for contact in self.contacts],
             )
         except Exception:
             email_ids = "(unable to extract email_ids)"
@@ -677,7 +673,7 @@ class CTMS:
                         "fxa_id",
                         "mofo_email_id",
                         "amo_id",
-                    )
+                    ),
                 )
 
             # Try alternate IDs in order
