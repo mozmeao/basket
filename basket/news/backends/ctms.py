@@ -275,13 +275,21 @@ def to_vendor(data, existing_data=None):
         if isinstance(newsletters, dict):
             # Detect unsubscribe all
             optout = data.get("optout", False) or False
+            secondary_check = not any(newsletters.values()) and set(valid_slugs) == set(newsletters.keys())
             if (
-                optout
-                and (not any(newsletters.values()))
-                and (set(valid_slugs) == set(newsletters.keys()))
+                optout or secondary_check
             ):
                 # When unsubscribe all is requested, let CTMS unsubscribe from all
                 output = "UNSUBSCRIBE"
+
+                # Set has_opted_out_of_email for email
+                if "email" not in ctms_data.keys():
+                    ctms_data["email"] = {}
+                elif ctms_data["email"] is None:
+                    ctms_data["email"] = {}
+
+                ctms_data["email"]["has_opted_out_of_email"] = True
+
             else:
                 # Dictionary of slugs to sub/unsub flags
                 for slug, subscribed in newsletters.items():
