@@ -84,7 +84,7 @@ SAMPLE_CTMS_RESPONSE = json.loads(
   },
   "status": "ok"
 }
-"""
+""",
 )
 
 SAMPLE_BASKET_FORMAT = {
@@ -142,7 +142,7 @@ class FromVendorTests(TestCase):
 
 class ToVendorTests(TestCase):
     @patch(
-        "basket.news.backends.ctms.newsletter_slugs", return_value=["mozilla-welcome"]
+        "basket.news.backends.ctms.newsletter_slugs", return_value=["mozilla-welcome"],
     )
     def test_sample_format(self, mock_nl_slugs):
         """The output of from_vendor is a valid input to to_vendor"""
@@ -187,7 +187,7 @@ class ToVendorTests(TestCase):
                     "subscribed": True,
                     "format": "H",
                     "lang": "en",
-                }
+                },
             ],
             "vpn_waitlist": {"geo": "fr", "platform": "ios,mac"},
         }
@@ -304,7 +304,7 @@ class ToVendorTests(TestCase):
                 {"name": "slug1", "subscribed": True},
                 {"name": "slug2", "subscribed": True},
                 {"name": "slug3", "subscribed": True},
-            ]
+            ],
         }
 
     @patch("basket.news.newsletters.newsletter_languages", return_value=["en", "es"])
@@ -388,7 +388,7 @@ class ToVendorTests(TestCase):
                 {"name": "slug1", "subscribed": True},
                 {"name": "slug2", "subscribed": True},
                 {"name": "slug3", "subscribed": True},
-            ]
+            ],
         }
 
     @patch(
@@ -403,7 +403,7 @@ class ToVendorTests(TestCase):
                 "slug2": False,
                 "slug3": True,
                 "other": True,
-            }
+            },
         }
         prepared = to_vendor(data)
         assert prepared == {
@@ -411,7 +411,7 @@ class ToVendorTests(TestCase):
                 {"name": "slug1", "subscribed": True},
                 {"name": "slug2", "subscribed": False},
                 {"name": "slug3", "subscribed": True},
-            ]
+            ],
         }
 
     @patch("basket.news.newsletters.newsletter_languages", return_value=["en", "es"])
@@ -479,6 +479,21 @@ class ToVendorTests(TestCase):
         "basket.news.backends.ctms.newsletter_slugs",
         return_value=["slug1", "slug2", "slug3", "slug4"],
     )
+    def test_output_with_unsubscribe_without_newsletters(self, mock_nl_slugs):
+        """An 'unsubscribe all' request is detected."""
+        data = {
+            "optout": True,
+        }
+        prepared = to_vendor(data)
+        assert prepared == {
+            "email": {"has_opted_out_of_email": True},
+            "newsletters": "UNSUBSCRIBE",
+        }
+
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["slug1", "slug2", "slug3", "slug4"],
+    )
     def test_output_with_manual_unsubscribe_all(self, mock_nl_slugs):
         """Manually unsubscribing is different from 'unsubscribe all'."""
         data = {
@@ -496,7 +511,7 @@ class ToVendorTests(TestCase):
                 {"name": "slug2", "subscribed": False},
                 {"name": "slug3", "subscribed": False},
                 {"name": "slug4", "subscribed": False},
-            ]
+            ],
         }
 
     def test_amo_deleted(self):
@@ -564,7 +579,7 @@ class CTMSSessionTests(TestCase):
                 "fetch_token",
                 "request",
                 "register_compliance_hook",
-            )
+            ),
         )
         mock_session.authorized = False
         mock_session.fetch_token.return_value = self.EXAMPLE_TOKEN
@@ -593,7 +608,7 @@ class CTMSSessionTests(TestCase):
             token_url="https://ctms.example.com/token",
         )
         mock_cache.set.assert_called_once_with(
-            "ctms_token", self.EXAMPLE_TOKEN, timeout=3420
+            "ctms_token", self.EXAMPLE_TOKEN, timeout=3420,
         )
         mock_session.request.assert_called_once_with(
             "GET",
@@ -606,7 +621,7 @@ class CTMSSessionTests(TestCase):
     def test_get_with_existing_auth(self, mock_oauth2_session, mock_cache):
         """An existing OAuth2 token is reused without calling fetch_token."""
         mock_session = Mock(
-            spec_set=("authorized", "request", "register_compliance_hook")
+            spec_set=("authorized", "request", "register_compliance_hook"),
         )
         mock_session.authorized = True
         mock_response = Mock(spec_set=("status_code",))
@@ -644,7 +659,7 @@ class CTMSSessionTests(TestCase):
                 "fetch_token",
                 "request",
                 "register_compliance_hook",
-            )
+            ),
         )
         mock_session.authorized = True
         new_token = {
@@ -687,7 +702,7 @@ class CTMSSessionTests(TestCase):
     def test_get_with_failed_auth(self, mock_oauth2_session, mock_cache):
         """A new OAuth2 token is fetched on an auth error."""
         mock_session = Mock(
-            spec_set=("authorized", "fetch_token", "register_compliance_hook")
+            spec_set=("authorized", "fetch_token", "register_compliance_hook"),
         )
         mock_session.authorized = False
         err_resp = Response()
@@ -739,7 +754,7 @@ class CTMSSessionTests(TestCase):
         """CTMSSession() uses protocol and netloc of api_url."""
 
         session = CTMSSession(
-            "https://ctms.example.com/docs?refresh=1", "client_id", "client_secret"
+            "https://ctms.example.com/docs?refresh=1", "client_id", "client_secret",
         )
         assert session.api_url == "https://ctms.example.com"
 
@@ -803,7 +818,7 @@ class MockInterfaceTests(TestCase):
         }
         interface = mock_interface("POST", 200, expected)
         resp = interface.post_to_create(
-            {"email": {"primary_email": "test@example.com"}}
+            {"email": {"primary_email": "test@example.com"}},
         )
         assert resp == expected
 
@@ -814,8 +829,8 @@ class MockInterfaceTests(TestCase):
                     "loc": ["body", "email"],
                     "msg": "field required",
                     "type": "value_error.missing",
-                }
-            ]
+                },
+            ],
         }
         interface = mock_interface("POST", 422, expected)
         with self.assertRaises(HTTPError) as context:
@@ -937,7 +952,7 @@ class CTMSTests(TestCase):
         user_data = ctms.get(token=token)
         assert user_data == self.TEST_BASKET_FORMAT
         interface.session.get.assert_called_once_with(
-            "/ctms", params={"basket_token": token}
+            "/ctms", params={"basket_token": token},
         )
 
     def test_get_by_token_not_found(self):
@@ -953,7 +968,7 @@ class CTMSTests(TestCase):
         user_data = ctms.get(email=email)
         assert user_data == self.TEST_BASKET_FORMAT
         interface.session.get.assert_called_once_with(
-            "/ctms", params={"primary_email": email}
+            "/ctms", params={"primary_email": email},
         )
 
     def test_get_by_sfdc_id(self):
@@ -964,7 +979,7 @@ class CTMSTests(TestCase):
         user_data = ctms.get(sfdc_id=sfdc_id)
         assert user_data == self.TEST_BASKET_FORMAT
         interface.session.get.assert_called_once_with(
-            "/ctms", params={"sfdc_id": sfdc_id}
+            "/ctms", params={"sfdc_id": sfdc_id},
         )
 
     def test_get_by_fxa_id(self):
@@ -975,7 +990,7 @@ class CTMSTests(TestCase):
         user_data = ctms.get(fxa_id=fxa_id)
         assert user_data == self.TEST_BASKET_FORMAT
         interface.session.get.assert_called_once_with(
-            "/ctms", params={"fxa_id": fxa_id}
+            "/ctms", params={"fxa_id": fxa_id},
         )
 
     def test_get_by_mofo_email_id(self):
@@ -986,7 +1001,7 @@ class CTMSTests(TestCase):
         user_data = ctms.get(mofo_email_id=mofo_email_id)
         assert user_data == self.TEST_BASKET_FORMAT
         interface.session.get.assert_called_once_with(
-            "/ctms", params={"mofo_email_id": mofo_email_id}
+            "/ctms", params={"mofo_email_id": mofo_email_id},
         )
 
     def test_get_by_amo_id(self):
@@ -997,7 +1012,7 @@ class CTMSTests(TestCase):
         user_data = ctms.get(amo_id=amo_id)
         assert user_data == self.TEST_BASKET_FORMAT
         interface.session.get.assert_called_once_with(
-            "/ctms", params={"amo_user_id": amo_id}
+            "/ctms", params={"amo_user_id": amo_id},
         )
 
     def test_get_by_several_ids(self):
@@ -1006,7 +1021,7 @@ class CTMSTests(TestCase):
         interface = mock_interface("GET", 200, self.TEST_CTMS_CONTACT)
         ctms = CTMS(interface)
         user_data = ctms.get(
-            email_id=email_id, token="some-token", email="some-email@example.com"
+            email_id=email_id, token="some-token", email="some-email@example.com",
         )
         assert user_data == self.TEST_BASKET_FORMAT
         interface.session.get.assert_called_once_with(f"/ctms/{email_id}")
@@ -1042,7 +1057,7 @@ class CTMSTests(TestCase):
             [
                 call(basket_token="some-token"),
                 call(primary_email="some-email@example.com"),
-            ]
+            ],
         )
 
     def test_get_by_several_ids_both_none(self):
@@ -1056,7 +1071,7 @@ class CTMSTests(TestCase):
             [
                 call(basket_token="some-token"),
                 call(primary_email="some-email@example.com"),
-            ]
+            ],
         )
 
     def test_get_by_several_ids_mult_then_one(self):
@@ -1070,7 +1085,7 @@ class CTMSTests(TestCase):
         user_data = ctms.get(sfdc_id="sfdc-123", amo_id="amo-123")
         assert user_data == self.TEST_BASKET_FORMAT
         interface.get_by_alternate_id.assert_has_calls(
-            [call(amo_user_id="amo-123"), call(sfdc_id="sfdc-123")]
+            [call(amo_user_id="amo-123"), call(sfdc_id="sfdc-123")],
         )
 
     def test_get_by_several_ids_mult_then_none(self):
@@ -1082,10 +1097,10 @@ class CTMSTests(TestCase):
         )
         ctms = CTMS(interface)
         self.assertRaises(
-            CTMSMultipleContactsError, ctms.get, sfdc_id="sfdc-456", amo_id="amo-456"
+            CTMSMultipleContactsError, ctms.get, sfdc_id="sfdc-456", amo_id="amo-456",
         )
         interface.get_by_alternate_id.assert_has_calls(
-            [call(amo_user_id="amo-456"), call(sfdc_id="sfdc-456")]
+            [call(amo_user_id="amo-456"), call(sfdc_id="sfdc-456")],
         )
 
     def test_get_no_ids(self):
@@ -1101,13 +1116,13 @@ class CTMSTests(TestCase):
     def test_add(self):
         """CTMS.add calls POST /ctms."""
         created = {
-            "email": {"basket_token": "a-new-user", "email_id": "a-new-email_id"}
+            "email": {"basket_token": "a-new-user", "email_id": "a-new-email_id"},
         }
         interface = mock_interface("POST", 201, created)
         ctms = CTMS(interface)
         assert ctms.add({"token": "a-new-user"}) == created
         interface.session.post.assert_called_once_with(
-            "/ctms", json={"email": {"basket_token": "a-new-user"}}
+            "/ctms", json={"email": {"basket_token": "a-new-user"}},
         )
 
     def test_update_no_interface(self):
@@ -1124,7 +1139,7 @@ class CTMSTests(TestCase):
                 "basket_token": "an-existing-user",
                 "email_id": "an-existing-id",
                 "first_name": "Jane",
-            }
+            },
         }
         interface = mock_interface("PATCH", 200, updated)
         ctms = CTMS(interface)
@@ -1133,7 +1148,7 @@ class CTMSTests(TestCase):
         update_data = {"first_name": "Jane"}
         assert ctms.update(user_data, update_data) == updated
         interface.session.patch.assert_called_once_with(
-            "/ctms/an-existing-id", json={"email": {"first_name": "Jane"}}
+            "/ctms/an-existing-id", json={"email": {"first_name": "Jane"}},
         )
 
     def test_update_email_id_not_in_existing_data(self):
@@ -1169,8 +1184,8 @@ class CTMSTests(TestCase):
             "/ctms/an-existing-id",
             json={
                 "newsletters": [
-                    {"name": "slug1", "subscribed": True, "lang": "fr", "format": "T"}
-                ]
+                    {"name": "slug1", "subscribed": True, "lang": "fr", "format": "T"},
+                ],
             },
         )
 
@@ -1182,19 +1197,19 @@ class CTMSTests(TestCase):
                 "email_id": "the-email-id",
                 "email": "test@example.com",
                 "token": "the-token",
-            }
+            },
         }
         interface = Mock(spec_set=["get_by_alternate_id", "patch_by_email_id"])
         interface.get_by_alternate_id.return_value = [record]
         interface.patch_by_email_id.return_value = updated
         ctms = CTMS(interface)
         resp = ctms.update_by_alt_id(
-            "token", "the-token", {"email": "test@example.com"}
+            "token", "the-token", {"email": "test@example.com"},
         )
         assert resp == updated
         interface.get_by_alternate_id.assert_called_once_with(basket_token="the-token")
         interface.patch_by_email_id.assert_called_once_with(
-            "the-email-id", {"email": {"primary_email": "test@example.com"}}
+            "the-email-id", {"email": {"primary_email": "test@example.com"}},
         )
 
     def test_update_by_token_not_found(self):
