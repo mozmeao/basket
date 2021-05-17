@@ -498,8 +498,8 @@ def update_user_meta(token, data):
     try:
         ctms.update_by_alt_id("token", token, data)
     except CTMSNotFoundByAltIDError:
-        # TODO: raise this exception when CTMS is primary data source
-        pass
+        if not settings.SFDC_ENABLED:
+            raise
 
 
 @et_task
