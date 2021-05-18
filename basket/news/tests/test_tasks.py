@@ -1579,6 +1579,7 @@ class CommonVoiceGoalsTests(TestCase):
         ctms_mock.update.assert_called_with(gud_mock(), update_data)
 
 
+@override_settings(SFDC_ENABLED=True)
 @patch("basket.news.tasks.ctms", spec_set=["update_by_alt_id"])
 @patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.upsert_amo_user_data")
@@ -1771,6 +1772,14 @@ class AMOSyncAddonTests(TestCase):
         )
         sfdc_mock.dev_addon.delete.has_calls([call(1234), call(1235)])
         sfdc_mock.addon.delete.assert_called_with("A9876")
+
+    @override_settings(SFDC_ENABLED=False)
+    def test_update_addon_sfdc_disabled(self, uaud_mock, sfdc_mock, ctms_mock):
+        amo_sync_addon(self.amo_data)
+        uaud_mock.assert_not_called()
+        sfdc_mock.addon.upsert.assert_not_called()
+        sfdc_mock.dev_addon.upsert.assert_not_called()
+        ctms_mock.update_by_alt_id.assert_not_called()
 
 
 @patch("basket.news.tasks.ctms")

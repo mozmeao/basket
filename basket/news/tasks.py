@@ -1313,6 +1313,8 @@ def amo_check_user_for_deletion(user_id):
 
 @et_task
 def amo_sync_addon(data):
+    if not settings.SFDC_ENABLED:
+        return
     data = deepcopy(data)
     if data["status"] == "deleted":
         try:
