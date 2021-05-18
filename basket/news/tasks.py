@@ -885,6 +885,8 @@ def process_donation_event(data):
     else:
         reason_lost = data["failure_code"]
 
+    fail_reason = None
+    email_title = None
     try:
         # will raise a SalesforceMalformedRequest if not found
         sfdc.opportunity.update(
@@ -900,30 +902,38 @@ def process_donation_event(data):
         with sentry_sdk.push_scope() as scope:
             scope.set_tag("action", "ignored")
             sentry_sdk.capture_exception(e)
-        # we don't know about this tx_id. Let someone know.
-        do_notify = cache.add("donate-notify-{}".format(txn_id), 1, 86400)
-        if do_notify and settings.DONATE_NOTIFY_EMAIL:
-            # don't notify about a transaction more than once per day
-            first_mail = cache.add("donate-notify-{}".format(txn_id), 1, 86400)
-            if first_mail:
-                body = render_to_string(
-                    "news/donation_notify_email.txt",
-                    {
-                        "txn_id": txn_id,
-                        "type_lost": etype,
-                        "reason_lost": reason_lost,
-                        "server_name": settings.STATSD_PREFIX,
-                    },
-                )
-                send_mail(
-                    "Donation Record Not Found",
-                    body,
-                    "noreply@mozilla.com",
-                    [settings.DONATE_NOTIFY_EMAIL],
-                )
+        fail_reason = "it could not be found in Salesforce"
+        email_title = "Donation Record Not Found"
 
         # uncomment below to retry
         # raise
+    except SFDCDisabled:
+        fail_reason = "Salesforce integration is disabled"
+        email_title = "Donation Record Not Updated"
+    finally:
+        if fail_reason and email_title:
+            # We failed to update this donation. Let someone know.
+            do_notify = cache.add("donate-notify-{}".format(txn_id), 1, 86400)
+            if do_notify and settings.DONATE_NOTIFY_EMAIL:
+                # don't notify about a transaction more than once per day
+                first_mail = cache.add("donate-notify-{}".format(txn_id), 1, 86400)
+                if first_mail:
+                    body = render_to_string(
+                        "news/donation_notify_email.txt",
+                        {
+                            "txn_id": txn_id,
+                            "type_lost": etype,
+                            "reason_lost": reason_lost,
+                            "server_name": settings.STATSD_PREFIX,
+                            "fail_reason": fail_reason,
+                        },
+                    )
+                    send_mail(
+                        email_title,
+                        body,
+                        "noreply@mozilla.com",
+                        [settings.DONATE_NOTIFY_EMAIL],
+                    )
 
 
 # all strings and truncated at 2000 chars

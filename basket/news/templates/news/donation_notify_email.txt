@@ -1,4 +1,4 @@
-A donation transaction update failed to apply because it could not be found in Salesforce.
+A donation transaction update failed to apply because {{ fail_reason }}.
 
 Transaction ID: {{ txn_id }}
 Type Lost:      {{ type_lost }}
