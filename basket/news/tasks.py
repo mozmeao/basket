@@ -1163,7 +1163,9 @@ PETITION_CONTACT_FIELDS = [
 @et_task
 def process_petition_signature(data):
     """
-    Add petition signature to SFDC
+    Add petition signature to CTMS / SFDC
+
+    If SFDC is enabled, a campaign member record is created.
     """
     data = data["form"]
     get_lock(data["email"])
@@ -1209,6 +1211,9 @@ def process_petition_signature(data):
                 "source_url": data["source_url"],
             },
         )
+
+    if not settings.SFDC_ENABLED:
+        return
 
     campaign_id = data["campaign_id"]
     # Fix a specific issue with a specific campaign where the ID was entered without

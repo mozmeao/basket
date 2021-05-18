@@ -47,7 +47,7 @@ from basket.news.tasks import (
 from basket.news.utils import iso_format_unix_timestamp
 
 
-@override_settings(TASK_LOCKING_ENABLE=False)
+@override_settings(TASK_LOCKING_ENABLE=False, SFDC_ENABLED=True)
 @patch("basket.news.tasks.upsert_user")
 @patch("basket.news.tasks.get_user_data")
 @patch("basket.news.tasks.sfdc")
@@ -234,6 +234,139 @@ class ProcessPetitionSignatureTests(TestCase):
 
     @patch("basket.news.tasks.generate_token")
     def test_signature_with_new_user_retry(
+        self, gt_mock, ctms_mock, sfdc_mock, gud_mock, uu_mock
+    ):
+        data = self._get_sig_data()
+        del data["form"]["comments"]
+        del data["form"]["metadata"]
+        contact_data = self._get_contact_data(data)
+        contact_data["token"] = gt_mock()
+        contact_data["email"] = data["form"]["email"]
+        contact_data["record_type"] = settings.DONATE_CONTACT_RECORD_TYPE
+        gud_mock.return_value = None
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
+        with self.assertRaises(Retry):
+            process_petition_signature(data)
+
+        sfdc_mock.update.assert_not_called()
+        ctms_mock.update.assert_not_called()
+        ctms_data = contact_data.copy()
+        del ctms_data["_set_subscriber"]
+        del ctms_data["record_type"]
+        ctms_mock.add.assert_called_once_with(ctms_data)
+        contact_data["email_id"] = email_id
+        sfdc_mock.add.assert_called_with(contact_data)
+        uu_mock.delay.assert_not_called()
+        sfdc_mock.campaign_member.create.assert_not_called()
+
+    @override_settings(SFDC_ENABLED=False)
+    def test_signature_metadata_sfdc_disabled(
+        self, ctms_mock, sfdc_mock, gud_mock, uu_mock
+    ):
+        data = self._get_sig_data()
+        contact_data = self._get_contact_data(data)
+        user_data = {
+            "id": "1234",
+            "token": "the-token",
+        }
+        gud_mock.return_value = user_data
+        process_petition_signature(data)
+        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
+        del contact_data["_set_subscriber"]
+        ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
+        sfdc_mock.add.assert_not_called()
+        ctms_mock.add.assert_not_called()
+        uu_mock.delay.assert_not_called()
+        sfdc_mock.campaign_member.create.assert_not_called()
+
+    @override_settings(SFDC_ENABLED=False)
+    def test_signature_without_comments_metadata_sfdc_disabled(
+        self, ctms_mock, sfdc_mock, gud_mock, uu_mock
+    ):
+        data = self._get_sig_data()
+        del data["form"]["comments"]
+        del data["form"]["metadata"]
+        contact_data = self._get_contact_data(data)
+        user_data = {
+            "id": "1234",
+            "token": "the-token",
+        }
+        gud_mock.return_value = user_data
+        process_petition_signature(data)
+        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
+        del contact_data["_set_subscriber"]
+        ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
+        sfdc_mock.add.assert_not_called()
+        ctms_mock.add.assert_not_called()
+        uu_mock.delay.assert_not_called()
+        sfdc_mock.campaign_member.create.assert_not_called()
+
+    @override_settings(SFDC_ENABLED=False)
+    def test_signature_with_subscription_sfdc_disabled(
+        self, ctms_mock, sfdc_mock, gud_mock, uu_mock
+    ):
+        data = self._get_sig_data()
+        data["form"]["email_subscription"] = True
+        del data["form"]["comments"]
+        del data["form"]["metadata"]
+        contact_data = self._get_contact_data(data)
+        user_data = {
+            "id": "1234",
+            "token": "the-token",
+        }
+        gud_mock.return_value = user_data
+        process_petition_signature(data)
+        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
+        del contact_data["_set_subscriber"]
+        ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
+        sfdc_mock.add.assert_not_called()
+        ctms_mock.add.assert_not_called()
+        uu_mock.delay.assert_called_with(
+            SUBSCRIBE,
+            {
+                "token": user_data["token"],
+                "lang": "en-US",
+                "newsletters": "mozilla-foundation",
+                "source_url": data["form"]["source_url"],
+            },
+        )
+        sfdc_mock.campaign_member.create.assert_not_called()
+
+    @override_settings(SFDC_ENABLED=False)
+    @patch("basket.news.tasks.generate_token")
+    def test_signature_with_new_user_sfdc_disabled(
+        self, gt_mock, ctms_mock, sfdc_mock, gud_mock, uu_mock
+    ):
+        data = self._get_sig_data()
+        del data["form"]["comments"]
+        del data["form"]["metadata"]
+        contact_data = self._get_contact_data(data)
+        contact_data["token"] = gt_mock()
+        contact_data["email"] = data["form"]["email"]
+        contact_data["record_type"] = settings.DONATE_CONTACT_RECORD_TYPE
+        user_data = {
+            "id": "1234",
+            "token": "the-token",
+        }
+        gud_mock.side_effect = [None, user_data]
+        email_id = str(uuid4())
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
+        process_petition_signature(data)
+        sfdc_mock.update.assert_not_called()
+        ctms_mock.update.assert_not_called()
+        ctms_data = contact_data.copy()
+        del ctms_data["_set_subscriber"]
+        del ctms_data["record_type"]
+        ctms_mock.add.assert_called_once_with(ctms_data)
+        contact_data["email_id"] = email_id
+        sfdc_mock.add.assert_called_with(contact_data)
+        uu_mock.delay.assert_not_called()
+        sfdc_mock.campaign_member.create.assert_not_called()
+
+    @override_settings(SFDC_ENABLED=False)
+    @patch("basket.news.tasks.generate_token")
+    def test_signature_with_new_user_retry_sfdc_disabled(
         self, gt_mock, ctms_mock, sfdc_mock, gud_mock, uu_mock
     ):
         data = self._get_sig_data()
