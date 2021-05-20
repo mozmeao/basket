@@ -142,6 +142,7 @@ DISCARD_BASKET_NAMES = {
     #
     "fxa_last_login",  # Imported into Acoustic periodically from FxA
     "api_key",  # Added from authenticated calls
+    "api-key",  # Alternate spelling for authenticated calls
     "privacy",  # Common in newsletter forms as privacy policy checkbox
 }
 
