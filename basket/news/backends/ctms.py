@@ -144,6 +144,7 @@ DISCARD_BASKET_NAMES = {
     "api_key",  # Added from authenticated calls
     "api-key",  # Alternate spelling for authenticated calls
     "privacy",  # Common in newsletter forms as privacy policy checkbox
+    "trigger_welcome",  # "N" to avoid sending a (deprecated) welcome email.
 }
 
 
