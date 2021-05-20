@@ -535,6 +535,7 @@ class ToVendorTests(TestCase):
             "api_key": "a-basket-api-key",
             "api-key": "a_different_key",
             "privacy": True,
+            "trigger_welcome": "N",
         }
         prepared = to_vendor(data)
         assert prepared == {}
