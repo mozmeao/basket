@@ -533,6 +533,7 @@ class ToVendorTests(TestCase):
             "cv_last_active_date": "2021-04-11",
             "fxa_last_login": "2020-04-11",
             "api_key": "a-basket-api-key",
+            "api-key": "a_different_key",
             "privacy": True,
         }
         prepared = to_vendor(data)
