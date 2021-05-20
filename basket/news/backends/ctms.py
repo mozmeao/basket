@@ -193,19 +193,6 @@ TO_VENDOR_PROCESSORS = {
 }
 
 
-class CTMSUnknownKeyError(CTMSError):
-    """A unknown key was encountered when converting to CTMS format."""
-
-    def __init__(self, unknown_key):
-        self.unknown_key = unknown_key
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.unknown_key!r})"
-
-    def __str__(self):
-        return f"Unknown basket key {self.unknown_key!r}"
-
-
 def to_vendor(data, existing_data=None):
     """
     Transform basket key-value data and convert to CTMS nested data
@@ -221,6 +208,7 @@ def to_vendor(data, existing_data=None):
     @return: dict in CTMS format
     """
     ctms_data = {}
+    unknown_data = {}
     amo_deleted = False
     newsletters = None
     newsletter_subscription_default = {}
@@ -265,8 +253,7 @@ def to_vendor(data, existing_data=None):
         elif name == "amo_deleted":
             amo_deleted = bool(value)
         elif name not in DISCARD_BASKET_NAMES:
-            # TODO: SFDC ignores unknown fields, maybe this should as well
-            raise CTMSUnknownKeyError(name)
+            unknown_data[name] = raw_value
 
     # Process the newsletters, which may include extra data from the email group
     if newsletters:
@@ -305,6 +292,11 @@ def to_vendor(data, existing_data=None):
     # When an AMO account is deleted, reset data to defaults
     if amo_deleted:
         ctms_data["amo"] = "DELETE"
+
+    if unknown_data:
+        sentry_sdk.capture_message(
+            "ctms.to_vendor() could not convert unknown data", unknown_data=unknown_data
+        )
 
     return ctms_data
 

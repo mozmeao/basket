@@ -15,7 +15,6 @@ from basket.news.backends.ctms import (
     CTMSSession,
     CTMSNoIdsError,
     CTMSMultipleContactsError,
-    CTMSUnknownKeyError,
     CTMSNotFoundByAltIDError,
     from_vendor,
     to_vendor,
@@ -539,10 +538,25 @@ class ToVendorTests(TestCase):
         prepared = to_vendor(data)
         assert prepared == {}
 
-    def test_unknown_field_raises(self):
-        """An unknown basket field is an exception."""
-        data = {"foo": "bar"}
-        self.assertRaises(CTMSUnknownKeyError, to_vendor, data)
+    @patch("basket.news.backends.ctms.sentry_sdk.capture_message")
+    def test_unknown_field_is_reported(self, mock_sentry):
+        """Unknown basket fields are reported to Sentry."""
+        data = {
+            "foo": "bar",
+            "email": "contact@example.com",
+            "email_id": "332de237-cab7-4461-bcc3-48e68f42bd5c",
+        }
+        ctms_data = to_vendor(data)
+        assert ctms_data == {
+            "email": {
+                "email_id": "332de237-cab7-4461-bcc3-48e68f42bd5c",
+                "primary_email": "contact@example.com",
+            }
+        }
+        mock_sentry.assert_called_once_with(
+            "ctms.to_vendor() could not convert unknown data",
+            unknown_data={"foo": "bar"},
+        )
 
 
 class CTMSSessionTests(TestCase):
@@ -871,11 +885,6 @@ class CTMSExceptionTests(TestCase):
             "2 contacts returned for amo_id='id1' with email_ids"
             " (unable to extract email_ids)"
         )
-
-    def test_ctms_unknown_basket_key(self):
-        exc = CTMSUnknownKeyError("foo")
-        assert repr(exc) == "CTMSUnknownKeyError('foo')"
-        assert str(exc) == "Unknown basket key 'foo'"
 
     def test_ctms_not_found_by_alt_id(self):
         exc = CTMSNotFoundByAltIDError("token", "foo")
