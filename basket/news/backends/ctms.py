@@ -297,7 +297,8 @@ def to_vendor(data, existing_data=None):
 
     if unknown_data:
         sentry_sdk.capture_message(
-            "ctms.to_vendor() could not convert unknown data", unknown_data=unknown_data
+            "ctms.to_vendor() could not convert unknown data",
+            unknown_data=unknown_data,
         )
 
     return ctms_data
@@ -369,10 +370,10 @@ class CTMSSession:
             token_updater=self.save_token,
         )
         session.register_compliance_hook(
-            "access_token_response", CTMSSession.check_2xx_response
+            "access_token_response", CTMSSession.check_2xx_response,
         )
         session.register_compliance_hook(
-            "refresh_token_response", CTMSSession.check_2xx_response
+            "refresh_token_response", CTMSSession.check_2xx_response,
         )
         if not session.authorized:
             session = self._authorize_session(session)
@@ -405,9 +406,16 @@ class CTMSSession:
         session = self._session
         url = urljoin(self.api_url, path)
         resp = session.request(method, url, *args, **kwargs)
+        statsd.incr("news.backends.ctms.request")
+        statsd.incr(f"news.backends.ctms.request.{method}")
+        statsd.incr(f"news.backends.ctms.response.{resp.status_code}")
         if resp.status_code == 401:
             self._session = self._authorize_session(session)
+            statsd.incr("news.backends.ctms.session_refresh")
             resp = session.request(method, url, *args, **kwargs)
+            statsd.incr("news.backends.ctms.request")
+            statsd.incr(f"news.backends.ctms.request.{method}")
+            statsd.incr(f"news.backends.ctms.response.{resp.status_code}")
         return resp
 
     get = partialmethod(request, "GET")
@@ -588,7 +596,7 @@ class CTMSMultipleContactsError(CTMSError):
     def __str__(self):
         try:
             email_ids = repr(
-                [contact["email"]["email_id"] for contact in self.contacts]
+                [contact["email"]["email_id"] for contact in self.contacts],
             )
         except Exception:
             email_ids = "(unable to extract email_ids)"
@@ -682,7 +690,7 @@ class CTMS:
                         "fxa_id",
                         "mofo_email_id",
                         "amo_id",
-                    )
+                    ),
                 )
 
             # Try alternate IDs in order
