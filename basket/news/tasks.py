@@ -231,7 +231,7 @@ def et_task(func):
             SilverpopResponseException,
         ) as e:
             # These could all be connection issues, so try again later.
-            # IOError covers URLError and SSLError.
+            # IOError covers URLError, SSLError, and requests.HTTPError.
             if ignore_error(e):
                 with sentry_sdk.push_scope() as scope:
                     scope.set_tag("action", "ignored")

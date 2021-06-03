@@ -13,6 +13,7 @@ from django.utils.timezone import now
 import simple_salesforce as sfapi
 from celery.exceptions import Retry
 from mock import ANY, Mock, call, patch
+from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from basket.news.backends.ctms import CTMSNotFoundByAltIDError
 from basket.news.backends.sfdc import SFDCDisabled
@@ -1013,13 +1014,11 @@ class RetryTaskTest(TestCase):
 
 
 class ETTaskTests(TestCase):
-    @patch("basket.news.tasks.exponential_backoff")
-    def test_retry_increase(self, mock_backoff):
+    def _test_retry_increase(self, mock_backoff, error):
         """
         The delay for retrying a task should increase geometrically by a
         power of 2. I really hope I said that correctly.
         """
-        error = URLError(reason=Exception("foo bar!"))
 
         @et_task
         def myfunc():
@@ -1033,6 +1032,16 @@ class ETTaskTests(TestCase):
 
         mock_backoff.assert_called_with(4)
         myfunc.retry.assert_called_with(countdown=mock_backoff())
+
+    @patch("basket.news.tasks.exponential_backoff")
+    def test_urlerror(self, mock_backoff):
+        self._test_retry_increase(mock_backoff, URLError(reason=Exception("foo bar!")))
+
+    @patch("basket.news.tasks.exponential_backoff")
+    def test_requests_connection_error(self, mock_backoff):
+        self._test_retry_increase(
+            mock_backoff, RequestsConnectionError("Connection aborted.")
+        )
 
 
 class AddFxaActivityTests(TestCase):
