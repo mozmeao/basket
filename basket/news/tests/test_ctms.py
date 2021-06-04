@@ -16,6 +16,9 @@ from basket.news.backends.ctms import (
     CTMSNoIdsError,
     CTMSMultipleContactsError,
     CTMSNotFoundByAltIDError,
+    CTMSNotFoundByEmailIDError,
+    CTMSUniqueIDConflictError,
+    CTMSValidationError,
     from_vendor,
     to_vendor,
 )
@@ -834,11 +837,10 @@ class MockInterfaceTests(TestCase):
             ]
         }
         interface = mock_interface("POST", 422, expected)
-        with self.assertRaises(HTTPError) as context:
+        with self.assertRaises(CTMSValidationError) as context:
             interface.post_to_create({})
         error = context.exception
-        assert error.response.status_code == 422
-        assert error.response.json() == expected
+        assert error.detail == expected["detail"]
 
     def test_post_to_create_auth_failure(self):
         expected = {"detail": "Incorrect username or password"}
@@ -848,6 +850,14 @@ class MockInterfaceTests(TestCase):
         error = context.exception
         assert error.response.status_code == 400
         assert error.response.json() == expected
+
+    def test_post_to_create_conflict(self):
+        expected = {"detail": "Contact already exists"}
+        interface = mock_interface("POST", 409, expected)
+        with self.assertRaises(CTMSUniqueIDConflictError) as context:
+            interface.post_to_create({"email": {"primary_email": "test@example.com"}})
+        error = context.exception
+        assert error.detail == expected["detail"]
 
 
 class CTMSExceptionTests(TestCase):
@@ -893,6 +903,50 @@ class CTMSExceptionTests(TestCase):
         assert repr(exc) == "CTMSNotFoundByAltIDError('token', 'foo')"
         assert str(exc) == "No contacts returned for token='foo'"
 
+    def test_ctms_not_found_by_email_id(self):
+        exc = CTMSNotFoundByEmailIDError("4a6dd742-...")
+        assert repr(exc) == "CTMSNotFoundByEmailIDError('4a6dd742-...')"
+        assert str(exc) == "Contact not found with email ID '4a6dd742-...'"
+
+    def test_ctms_unique_id_conflict(self):
+        detail = (
+            "Contact with primary_email, basket_token, mofo_email_id, or fxa_id"
+            " already exists"
+        )
+        exc = CTMSUniqueIDConflictError(detail)
+        assert repr(exc) == (
+            "CTMSUniqueIDConflictError('Contact with primary_email, basket_token,"
+            " mofo_email_id, or fxa_id already exists')"
+        )
+        assert str(exc) == (
+            "Unique ID conflict: 'Contact with primary_email, basket_token,"
+            " mofo_email_id, or fxa_id already exists'"
+        )
+
+    def test_ctms_validation_error(self):
+        # Error when newsletter source is not a URL
+        detail = [
+            {
+                "loc": ["body", "newsletters", 0, "source"],
+                "msg": "invalid or missing URL scheme",
+                "type": "value_error.url.scheme",
+            },
+            {
+                "loc": ["body", "newsletters"],
+                "msg": "unhashable type: 'list'",
+                "type": "type_error",
+            },
+        ]
+        detail_repr = (
+            "[{'loc': ['body', 'newsletters', 0, 'source'],"
+            " 'msg': 'invalid or missing URL scheme', 'type': 'value_error.url.scheme'},"
+            " {'loc': ['body', 'newsletters'],"
+            " 'msg': \"unhashable type: 'list'\", 'type': 'type_error'}]"
+        )
+        exc = CTMSValidationError(detail)
+        assert repr(exc) == f"CTMSValidationError({detail_repr})"
+        assert str(exc) == f"CTMS rejected the invalid request: {detail_repr}"
+
 
 class CTMSTests(TestCase):
 
@@ -936,9 +990,9 @@ class CTMSTests(TestCase):
     def test_get_by_email_id_not_found(self):
         """If a contact is not found by email_id, an exception is raised."""
         ctms = CTMS(mock_interface("GET", 404, {"detail": "Unknown contact_id"}))
-        with self.assertRaises(HTTPError) as context:
+        with self.assertRaises(CTMSNotFoundByEmailIDError) as context:
             ctms.get(email_id="unknown-id")
-        assert context.exception.response.status_code == 404
+        assert context.exception.email_id == "unknown-id"
 
     def test_get_by_token(self):
         """If token is passed, GET /ctms?basket_token={token} is called."""
