@@ -28,7 +28,11 @@ from silverpop.api import SilverpopResponseException
 from basket.base.utils import email_is_testing
 from basket.news.backends.acoustic import acoustic_tx, acoustic
 from basket.news.backends.common import NewsletterException
-from basket.news.backends.ctms import ctms, CTMSNotFoundByAltIDError
+from basket.news.backends.ctms import (
+    ctms,
+    CTMSNotFoundByAltIDError,
+    CTMSUniqueIDConflictError,
+)
 from basket.news.backends.sfdc import sfdc, SFDCDisabled
 from basket.news.backends.sfdc import from_vendor as from_sfdc
 from basket.news.celery import app as celery_app
@@ -649,35 +653,31 @@ def upsert_contact(api_call_type, data, user_data):
 
 @et_task
 def sfdc_add_update(update_data, user_data=None):
-    # for use with maintenance mode only
-    # TODO remove after maintenance is over and queue is processed
-    if user_data:
-        sfdc.update(user_data, update_data)
-        ctms.update(user_data, update_data)
-    else:
-        ctms_data = update_data.copy()
-        ctms_contact = ctms.add(ctms_data)
-        if ctms_contact:
-            update_data["email_id"] = ctms_contact["email"]["email_id"]
+    """
+    Add or update contact data when maintainance mode is completed.
 
-        try:
-            sfdc.add(update_data)
-        except sfapi.SalesforceMalformedRequest as e:  # noqa
-            # possibly a duplicate email. try the update below.
-            user_data = get_user_data(email=update_data["email"], extra_fields=["id"])
-            if user_data:
-                # we have a user, delete generated token and email_id
-                # and continue with an update
-                update_data.pop("token", None)
-                update_data.pop("email_id", None)
-                sfdc.update(user_data, update_data)
-                ctms.update(user_data, update_data)
-            else:
-                # still no user, try the add one more time
-                ctms_contact = ctms.add(update_data)
-                if ctms_contact:
-                    update_data["email_id"] = ctms_contact["email"]["email_id"]
-                sfdc.add(update_data)
+    The first version was temporary, with:
+    TODO remove after maintenance is over and queue is processed
+
+    The next version allowed SFDC / CTMS dual-write mode.
+
+    This version only writes to CTMS, so it is now misnamed, but task
+    renames require coordination.
+    """
+    if user_data:
+        ctms.update(user_data, update_data)
+        return
+
+    try:
+        ctms.add(update_data)
+    except CTMSUniqueIDConflictError:
+        # Try as an update
+        user_data = get_user_data(email=update_data["email"])
+        if not user_data:
+            raise
+        update_data.pop("token", None)
+        update_data.pop("email_id", None)
+        ctms.update(user_data, update_data)
 
 
 @et_task
