@@ -800,11 +800,7 @@ class CTMS:
                 raise CTMSNotConfigured()
             else:
                 return None
-        try:
-            return self.interface.post_to_create(to_vendor(data))
-        except Exception:
-            sentry_sdk.capture_exception()
-            return None
+        return self.interface.post_to_create(to_vendor(data))
 
     def update(self, existing_data, update_data):
         """
@@ -823,12 +819,8 @@ class CTMS:
         if not email_id:
             # TODO: When CTMS is primary, this should be an error
             return None
-        try:
-            ctms_data = to_vendor(update_data, existing_data)
-            return self.interface.patch_by_email_id(email_id, ctms_data)
-        except Exception:
-            sentry_sdk.capture_exception()
-            return None
+        ctms_data = to_vendor(update_data, existing_data)
+        return self.interface.patch_by_email_id(email_id, ctms_data)
 
     def update_by_alt_id(self, alt_id_name, alt_id_value, update_data):
         """
