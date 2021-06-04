@@ -440,6 +440,57 @@ class CTMSNoIdsError(CTMSError):
         )
 
 
+class CTMSNotFoundByEmailIDError(CTMSError):
+    """
+    A CTMS record was not found by the primary email_id.
+
+    This replaces a 404 HTTPError when the email_id is part of the URL.
+    """
+
+    def __init__(self, email_id):
+        self.email_id = email_id
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.email_id!r})"
+
+    def __str__(self):
+        return f"Contact not found with email ID {self.email_id!r}"
+
+
+class CTMSUniqueIDConflictError(CTMSError):
+    """
+    The update was rejected because it would create a duplicate ID.
+
+    This replaces a 409 HTTPError.
+    """
+
+    def __init__(self, detail):
+        self.detail = detail
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.detail!r})"
+
+    def __str__(self):
+        return f"Unique ID conflict: {self.detail!r}"
+
+
+class CTMSValidationError(CTMSError):
+    """
+    An invalid parameter was sent in the request.
+
+    This replaces a 422 HTTPError, used by CTMS to report a validation error.
+    """
+
+    def __init__(self, detail):
+        self.detail = detail
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.detail!r})"
+
+    def __str__(self):
+        return f"CTMS rejected the invalid request: {self.detail!r}"
+
+
 class CTMSInterface:
     """Basic Interface to the CTMS API"""
 
@@ -497,7 +548,7 @@ class CTMSInterface:
         if not ids:
             raise CTMSNoIdsError(self.all_ids)
         resp = self.session.get("/ctms", params=ids)
-        resp.raise_for_status()
+        self._check_response(resp)
         return resp.json()
 
     @time_request
@@ -513,7 +564,7 @@ class CTMSInterface:
         @return: The created contact data
         """
         resp = self.session.post("/ctms", json=data)
-        resp.raise_for_status()
+        self._check_response(resp)
         return resp.json()
 
     @time_request
@@ -528,7 +579,7 @@ class CTMSInterface:
         @raises: request.HTTPError, status_code 404, on unknown email_id
         """
         resp = self.session.get(f"/ctms/{email_id}")
-        resp.raise_for_status()
+        self._check_response(resp, email_id)
         return resp.json()
 
     @time_request
@@ -541,7 +592,7 @@ class CTMSInterface:
         @return: The created or replaced contact data
         """
         resp = self.session.put(f"/ctms/{email_id}", json=data)
-        resp.raise_for_status()
+        self._check_response(resp, email_id)
         return resp.json()
 
     def put(self, data):
@@ -575,8 +626,27 @@ class CTMSInterface:
         @return: The updated contact data
         """
         resp = self.session.patch(f"/ctms/{email_id}", json=data)
-        resp.raise_for_status()
+        self._check_response(resp, email_id)
         return resp.json()
+
+    def _check_response(self, response, email_id=None):
+        """
+        Check a CTMS response, and raise exceptions as needed.
+
+        @param response: The response from CTMS
+        @param email_id: The email_id, implies a 404 is a CTMSNotFoundByEmailIDError
+        """
+        if response.status_code == 404 and email_id:
+            raise CTMSNotFoundByEmailIDError(email_id)
+        if response.status_code == 409:
+            body = response.json()
+            raise CTMSUniqueIDConflictError(body["detail"])
+        if response.status_code == 422:
+            body = response.json()
+            raise CTMSValidationError(body["detail"])
+
+        # Raise HTTPError for other non-2xx status
+        response.raise_for_status()
 
 
 class CTMSMultipleContactsError(CTMSError):
