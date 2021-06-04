@@ -25,7 +25,12 @@ from django_statsd.clients import statsd
 from email_validator import validate_email, EmailNotValidError
 
 from basket.news.backends.common import NewsletterException
-from basket.news.backends.ctms import ctms, CTMSError, CTMSNotConfigured
+from basket.news.backends.ctms import (
+    ctms,
+    CTMSError,
+    CTMSNotConfigured,
+    CTMSNotFoundByAltIDError,
+)
 from basket.news.backends.sfdc import sfdc, SFDCDisabled
 from basket.news.models import APIUser, BlockedEmail
 from basket.news.newsletters import (
@@ -391,22 +396,23 @@ def get_user_data(
                 amo_id=amo_id,
                 fxa_id=fxa_id,
             )
+        except CTMSNotFoundByAltIDError:
+            return None
         except requests.exceptions.HTTPError as error:
-            if error.response.status_code != 404:
-                if sfdc_enabled:
-                    sentry_sdk.capture_exception()
-                elif error.response.status_code == 401:
-                    raise NewsletterException(
-                        "Email service provider auth failure",
-                        error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
-                        status_code=500,
-                    )
-                else:
-                    raise NewsletterException(
-                        str(error),
-                        error_code=errors.BASKET_NETWORK_FAILURE,
-                        status_code=400,
-                    )
+            if sfdc_enabled:
+                sentry_sdk.capture_exception()
+            elif error.response.status_code == 401:
+                raise NewsletterException(
+                    "Email service provider auth failure",
+                    error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
+                    status_code=500,
+                )
+            else:
+                raise NewsletterException(
+                    str(error),
+                    error_code=errors.BASKET_NETWORK_FAILURE,
+                    status_code=400,
+                )
         except CTMSNotConfigured:
             raise NewsletterException(
                 "Email service provider auth failure",
