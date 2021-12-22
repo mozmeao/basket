@@ -1,5 +1,5 @@
 # prod
-APScheduler==3.6.3
+APScheduler==3.8.1
 boto3==1.16.59
 celery==4.4.7
 configparser==5.0.1
@@ -9,7 +9,7 @@ django==2.2.25
 django-allow-cidr==0.3.1
 django-cache-url==3.0.0
 django-cors-headers==3.10.1
-django-extensions==2.2.6
+django-extensions==3.1.5
 django-jsonfield==1.4.1
 django-mozilla-product-details==0.14.1
 django-picklefield==3.0.1
@@ -23,7 +23,7 @@ gunicorn==20.0.4
 hiredis==2.0.0
 importlib-metadata==3.4.0
 ipaddress==1.0.23
-lxml==4.6.5
+lxml==4.7.1
 meinheld==1.0.2
 mozilla-django-oidc==1.2.4
 msgpack-python==0.5.6
@@ -38,7 +38,7 @@ https://github.com/mozmeao/FuelSDK-Python/archive/172815bd74009e36b728b16f774f1a
 sentry-sdk==0.19.5
 simple-salesforce==1.10.1
 user-agents==2.2.0
-whitenoise==5.2.0
+whitenoise==5.3.0
 
 # testing / dev
 black==19.10b0
