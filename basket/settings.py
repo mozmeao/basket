@@ -4,12 +4,12 @@ import socket
 import struct
 import sys
 from datetime import timedelta
+from pathlib import Path
 
 import dj_database_url
 import django_cache_url
 import sentry_sdk
-from decouple import config, Csv, UndefinedValueError
-from pathlib import Path
+from decouple import Csv, UndefinedValueError, config
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 
@@ -360,6 +360,7 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
         },
+        "null": {"class": "logging.NullHandler"},
     },
     "loggers": {
         "django.db.backends": {
@@ -367,6 +368,7 @@ LOGGING = {
             "handlers": ["console"],
             "propagate": False,
         },
+        "django.security.DisallowedHost": {"handlers": ["null"], "propagate": False},
         "suds.client": {"level": "ERROR", "handlers": ["console"], "propagate": False},
     },
 }
