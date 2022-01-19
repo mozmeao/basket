@@ -17,6 +17,7 @@ ENV DJANGO_SETTINGS_MODULE=basket.settings
 
 # Install app
 COPY requirements.txt /app/
+
 RUN pip install --require-hashes --no-cache-dir -r requirements.txt
 
 COPY . /app
