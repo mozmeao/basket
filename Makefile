@@ -6,6 +6,11 @@ all: help
 .env:
 	@touch .env
 
+.make.pip-compile-multi.setup:
+	# This is unpinned to keep this up to date every time it's used, because dependency-checkers
+	# won't spot it, but updateds might introduce larger-than-expected changes
+	pip install -U pip-compile-multi
+
 .make.docker.build:
 	${MAKE} build
 
@@ -59,11 +64,11 @@ test: .make.docker.pull
 test-image: .make.docker.build
 	${DC} run --rm test-image
 
-compile-requirements: .make.docker.pull
-	${DC} run --rm compile-requirements
+compile-requirements: .make.pip-compile-multi.setup
+	./bin/compile-requirements.sh
 
-upgrade-requirements: .make.docker.pull
-	${DC} run --rm upgrade-requirements
+upgrade-requirements: .make.pip-compile-multi.setup
+	./bin/compile-requirements.sh --upgrade
 
 docs: .make.docker.pull
 	${DC} run --rm web make -C docs/ clean html
