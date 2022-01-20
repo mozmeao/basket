@@ -16,9 +16,22 @@ WORKDIR /app
 ENV DJANGO_SETTINGS_MODULE=basket.settings
 
 # Install app
-COPY requirements.txt /app/
+COPY pyproject.toml /app/
 
-RUN pip install --require-hashes --no-cache-dir -r requirements.txt
+RUN pip install poetry==1.1.12
+
+# The above is a lot simpler than the (broken) attempt below
+# RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
+# RUN ls -la .
+# ENV POETRY_HOME="/opt/poetry/FIXME"  # Where is does poetry get installed to?
+# ENV PATH="$POETRY_HOME/bin:$PATH"
+# RUN . $POETRY_HOME/.poetry/env
+
+# TODO with a separate docker output for dev and prod: production builds will use this
+# RUN POETRY_VIRTUALENVS_CREATE=false poetry install --no-interaction --no-ansi --no-dev
+
+# Dev-only builds will use this
+RUN POETRY_VIRTUALENVS_CREATE=false poetry install --no-interaction --no-ansi -vvv
 
 COPY . /app
 RUN DEBUG=False SECRET_KEY=foo ALLOWED_HOSTS=localhost, DATABASE_URL=sqlite:// \

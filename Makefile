@@ -1,15 +1,15 @@
 DC_CI = bin/dc.sh
 DC = docker-compose
+POETRY := $(shell command -v poetry 2> /dev/null)
 
 all: help
 
 .env:
 	@touch .env
 
-.make.pip-tools.setup:
-	# This is unpinned to keep this up to date every time it's used, because dependency-checkers
-	# won't spot it, but updateds might introduce larger-than-expected changes
-	pip install -U pip-tools
+.make.check-for-poetry:
+	# You can ignore the post-installation message about poetry self update not working - it does.
+	@if [ -z $(POETRY) ]; then echo "Poetry could not be found. See https://python-poetry.org/docs/"; exit 2; fi
 
 .make.docker.build:
 	${MAKE} build
@@ -64,11 +64,11 @@ test: .make.docker.pull
 test-image: .make.docker.build
 	${DC} run --rm test-image
 
-compile-requirements: .make.pip-tools.setup
-	./bin/compile-requirements.sh
+install-requirements-locally: .make.check-for-poetry
+	${POETRY} install
 
-upgrade-requirements: .make.pip-tools.setup
-	./bin/compile-requirements.sh --upgrade
+update-requirements: .make.check-for-poetry
+	${POETRY} update
 
 docs: .make.docker.pull
 	${DC} run --rm web make -C docs/ clean html
