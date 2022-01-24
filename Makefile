@@ -69,6 +69,9 @@ compile-requirements: .make.pip-compile-multi.check-installed
 upgrade-requirements: .make.pip-compile-multi.check-installed
 	./bin/compile-requirements.sh --upgrade
 
+check-requirements:
+	pip list -o
+
 docs: .make.docker.pull
 	${DC} run --rm web make -C docs/ clean html
 

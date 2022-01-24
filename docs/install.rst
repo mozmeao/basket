@@ -80,8 +80,8 @@ And if you need to debug a running container, you can open another terminal to y
     $ docker-compose exec web python manage.py shell
 
 
-Update requirements
--------------------
+Maintaining Python requirements
+-------------------------------
 
 .. code-block:: bash
 
@@ -89,6 +89,8 @@ Update requirements
     $ make compile-requirements
     $ # or if you wantt upgrade all dependencies
     $ make upgrade-requirements
-
+    $ # or to just check if there are stale deps so you can
+    $ # update the hard pinning in the *.in files
+    $ make check-requirements
 
 
