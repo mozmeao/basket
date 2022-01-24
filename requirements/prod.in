@@ -1,5 +1,6 @@
 APScheduler==3.8.1
 boto3==1.16.59
+backports.zoneinfo==0.2.1
 celery==4.4.7
 configparser==5.0.1
 contextlib2==0.6.0.post1
@@ -33,7 +34,6 @@ PyFxA==0.7.7
 pysilverpop==0.2.6
 python-decouple==3.4
 PyYAML==6.0
-https://github.com/mozmeao/FuelSDK-Python/archive/172815bd74009e36b728b16f774f1aafecb06d03.tar.gz#egg=Salesforce-FuelSDK==1.2.0
 sentry-sdk==0.19.5
 simple-salesforce==1.10.1
 user-agents==2.2.0

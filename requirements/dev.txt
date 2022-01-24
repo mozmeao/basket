@@ -171,8 +171,6 @@ regex==2022.1.18 \
     --hash=sha256:f99112aed4fb7cee00c7f77e8b964a9b10f69488cdff626ffd797d02e2e4484f \
     --hash=sha256:fd914db437ec25bfa410f8aa0aa2f3ba87cdfc04d9919d608d02330947afaeab
     # via black
-salesforce-fuelsdk @ https://github.com/mozmeao/FuelSDK-Python/archive/172815bd74009e36b728b16f774f1aafecb06d03.tar.gz     --hash=sha256:f1511723f4acdc71fde91e4a2b232946cbf9013804bba27e034932cabd2d7709
-    # via -r requirements/prod.in
 toml==0.10.2 \
     --hash=sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b \
     --hash=sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f
