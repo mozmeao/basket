@@ -87,7 +87,7 @@ Maintaining Python requirements
 
     $ # If you've added a new dependency
     $ make compile-requirements
-    $ # or if you wantt upgrade all dependencies
+    $ # or if you want to upgrade all dependencies
     $ make upgrade-requirements
     $ # or to just check if there are stale deps so you can
     $ # update the hard pinning in the *.in files
