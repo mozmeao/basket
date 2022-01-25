@@ -1,14 +1,10 @@
 DC_CI = bin/dc.sh
 DC = docker-compose
-PIP_COMPILE_MULTI_INSTALLED := $(shell command -v pip-compile-multi 2> /dev/null)
 
 all: help
 
 .env:
 	@touch .env
-
-.make.pip-compile-multi.check-installed:
-	@if [ -z $(PIP_COMPILE_MULTI_INSTALLED) ]; then echo "pip-compile-multi could not be found. Install with 'pipx install -U pip-compile-multi' and review https://pip-compile-multi.readthedocs.io"; exit 2; fi
 
 .make.docker.build:
 	${MAKE} build
@@ -63,11 +59,11 @@ test: .make.docker.pull
 test-image: .make.docker.build
 	${DC} run --rm test-image
 
-compile-requirements: .make.pip-compile-multi.check-installed
-	./bin/compile-requirements.sh
+compile-requirements: .make.docker.pull
+	${DC} run --rm compile-requirements
 
-upgrade-requirements: .make.pip-compile-multi.check-installed
-	./bin/compile-requirements.sh --upgrade
+upgrade-requirements: .make.docker.pull
+	${DC} run --rm upgrade-requirements
 
 check-requirements:
 	pip list -o

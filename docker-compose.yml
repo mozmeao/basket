@@ -121,3 +121,19 @@ services:
       target: builder
     image: mozmeao/basket:builder-${GIT_COMMIT_SHORT:-latest}
     platform: linux/amd64
+
+  compile-requirements:
+    image: mozmeao/basket:builder-${GIT_COMMIT_SHORT:-latest}
+    platform: linux/amd64
+    command:
+      ./bin/compile-requirements.sh
+    volumes:
+      - .:/app
+
+  upgrade-requirements:
+    image: mozmeao/basket:builder-${GIT_COMMIT_SHORT:-latest}
+    platform: linux/amd64
+    command:
+      ./bin/compile-requirements.sh --upgrade
+    volumes:
+      - .:/app
