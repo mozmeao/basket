@@ -65,8 +65,8 @@ compile-requirements: .make.docker.pull
 upgrade-requirements: .make.docker.pull
 	${DC} run --rm upgrade-requirements
 
-check-requirements:
-	pip list -o
+check-requirements: .make.docker.pull
+	${DC} run --rm test pip list -o
 
 docs: .make.docker.pull
 	${DC} run --rm web make -C docs/ clean html
@@ -106,4 +106,4 @@ help:
 	@echo "  build-ci             - build docker images for use in our CI pipeline"
 	@echo "  test-ci              - run tests against files in docker image built by CI"
 
-.PHONY: all clean build pull docs lint run run-shell shell test test-image build-ci test-ci push-ci djshell stop kill compile-requirements upgrade-requirements
+.PHONY: all clean build pull docs lint run run-shell shell test test-image build-ci test-ci push-ci djshell stop kill compile-requirements upgrade-requirements check-requirements
