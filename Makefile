@@ -68,9 +68,6 @@ upgrade-requirements: .make.docker.pull
 check-requirements: .make.docker.pull
 	${DC} run --rm test pip list -o
 
-docs: .make.docker.pull
-	${DC} run --rm web make -C docs/ clean html
-
 ###############
 # For use in CI
 ###############
