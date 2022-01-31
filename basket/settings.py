@@ -51,9 +51,7 @@ if REDIS_URL:
     os.environ["CACHE_URL"] = REDIS_URL + "/" + config("REDIS_CACHE_DB", "1")
 
 # Production uses MySQL, but Sqlite should be sufficient for local development.
-# Our CI server tests against MySQL. See travis.py in this directory
-# for an example if you'd like to run MySQL locally, and add that to your
-# local.py.
+# Our CI server tests against MySQL.
 DATABASES = {
     "default": config(
         "DATABASE_URL", default="sqlite:///basket.db", cast=dj_database_url.parse,
