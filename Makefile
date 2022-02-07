@@ -62,9 +62,6 @@ test-image: .make.docker.build
 compile-requirements: .make.docker.pull
 	${DC} run --rm compile-requirements
 
-upgrade-requirements: .make.docker.pull
-	${DC} run --rm upgrade-requirements
-
 check-requirements: .make.docker.pull
 	${DC} run --rm test pip list -o
 
@@ -92,7 +89,8 @@ help:
 	@echo "  build                - build docker images for dev"
 	@echo "  pull                 - pull the latest production images from Docker Hub"
 	@echo "  run-shell            - open a bash shell in a fresh container"
-	@echo "  compile-requirements - compile requirements.in to requirements.txt"
+	@echo "  compile-requirements - regenerate requirements *.txt files based on *.in files"
+	@echo "  check-requirements   - identify stale Python requirements that need upgrading"
 	@echo "  shell                - open a bash shell in the running app"
 	@echo "  djshell              - start the Django Python shell in the running app"
 	@echo "  clean                - remove all build, test, coverage and Python artifacts"
