@@ -85,10 +85,8 @@ Maintaining Python requirements
 
 .. code-block:: bash
 
-    $ # If you've added a new dependency
+    $ # If you've added a new dependency or changed the hard pinning of one
     $ make compile-requirements
-    $ # or if you want to upgrade all dependencies
-    $ make upgrade-requirements
     $ # or to just check if there are stale deps so you can
     $ # update the hard pinning in the *.in files
     $ make check-requirements

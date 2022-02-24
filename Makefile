@@ -101,4 +101,4 @@ help:
 	@echo "  build-ci             - build docker images for use in our CI pipeline"
 	@echo "  test-ci              - run tests against files in docker image built by CI"
 
-.PHONY: all clean build pull docs lint run run-shell shell test test-image build-ci test-ci push-ci djshell stop kill compile-requirements upgrade-requirements check-requirements
+.PHONY: all clean build pull docs lint run run-shell shell test test-image build-ci test-ci push-ci djshell stop kill compile-requirements check-requirements
