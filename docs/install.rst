@@ -52,7 +52,7 @@ The steps to get up and running are these:
     $ # this starts the server and dependencies
     $ docker-compose up web
 
-If you've made changes to the `Dockerfile` or `requirements.txt` you'll need to rebuild the image to run the app and tests:
+If you've made changes to the `Dockerfile` or `requirements/*.txt` you'll need to rebuild the image to run the app and tests:
 
 .. code-block:: bash
 
@@ -78,4 +78,17 @@ And if you need to debug a running container, you can open another terminal to y
     $ docker-compose exec web bash
     $ # or
     $ docker-compose exec web python manage.py shell
+
+
+Maintaining Python requirements
+-------------------------------
+
+.. code-block:: bash
+
+    $ # If you've added a new dependency or changed the hard pinning of one
+    $ make compile-requirements
+    $ # or to just check if there are stale deps so you can
+    $ # update the hard pinning in the *.in files
+    $ make check-requirements
+
 

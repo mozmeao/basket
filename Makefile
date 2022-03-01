@@ -62,11 +62,8 @@ test-image: .make.docker.build
 compile-requirements: .make.docker.pull
 	${DC} run --rm compile-requirements
 
-upgrade-requirements: .make.docker.pull
-	${DC} run --rm upgrade-requirements
-
-docs: .make.docker.pull
-	${DC} run --rm web make -C docs/ clean html
+check-requirements: .make.docker.pull
+	${DC} run --rm test pip list -o
 
 ###############
 # For use in CI
@@ -92,7 +89,8 @@ help:
 	@echo "  build                - build docker images for dev"
 	@echo "  pull                 - pull the latest production images from Docker Hub"
 	@echo "  run-shell            - open a bash shell in a fresh container"
-	@echo "  compile-requirements - compile requirements.in to requirements.txt"
+	@echo "  compile-requirements - regenerate requirements *.txt files based on *.in files"
+	@echo "  check-requirements   - identify stale Python requirements that need upgrading"
 	@echo "  shell                - open a bash shell in the running app"
 	@echo "  djshell              - start the Django Python shell in the running app"
 	@echo "  clean                - remove all build, test, coverage and Python artifacts"
@@ -103,4 +101,4 @@ help:
 	@echo "  build-ci             - build docker images for use in our CI pipeline"
 	@echo "  test-ci              - run tests against files in docker image built by CI"
 
-.PHONY: all clean build pull docs lint run run-shell shell test test-image build-ci test-ci push-ci djshell stop kill compile-requirements upgrade-requirements
+.PHONY: all clean build pull docs lint run run-shell shell test test-image build-ci test-ci push-ci djshell stop kill compile-requirements check-requirements
