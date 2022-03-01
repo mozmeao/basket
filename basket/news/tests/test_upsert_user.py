@@ -30,7 +30,11 @@ class UpsertUserTests(TestCase):
         }
 
     def test_update_first_last_names(
-        self, get_user_data, sfdc_mock, ctms_mock, confirm_mock
+        self,
+        get_user_data,
+        sfdc_mock,
+        ctms_mock,
+        confirm_mock,
     ):
         """sending name fields should result in names being passed to SF/CTMS"""
         get_user_data.return_value = None  # Does not exist yet
@@ -62,7 +66,11 @@ class UpsertUserTests(TestCase):
         sfdc_mock.add.assert_called_with(update_data)
 
     def test_update_user_set_works_if_no_newsletters(
-        self, get_user_data, sfdc_mock, ctms_mock, confirm_mock,
+        self,
+        get_user_data,
+        sfdc_mock,
+        ctms_mock,
+        confirm_mock,
     ):
         """
         A blank `newsletters` field when the update type is SET indicates
@@ -98,7 +106,11 @@ class UpsertUserTests(TestCase):
         ctms_mock.update.assert_called_with(self.get_user_data, update_data)
 
     def test_resubscribe_doesnt_update_newsletter(
-        self, get_user_data, sfdc_mock, ctms_mock, confirm_mock,
+        self,
+        get_user_data,
+        sfdc_mock,
+        ctms_mock,
+        confirm_mock,
     ):
         """
         When subscribing to things the user is already subscribed to, we
@@ -133,7 +145,11 @@ class UpsertUserTests(TestCase):
         ctms_mock.update.assert_called_with(self.get_user_data, update_data)
 
     def test_set_doesnt_update_newsletter(
-        self, get_user_data, sfdc_mock, ctms_mock, confirm_mock
+        self,
+        get_user_data,
+        sfdc_mock,
+        ctms_mock,
+        confirm_mock,
     ):
         """
         When setting the newsletters to ones the user is already subscribed
@@ -208,7 +224,11 @@ class UpsertUserTests(TestCase):
         ctms_mock.update.assert_called_with(self.get_user_data, update_data)
 
     def test_update_user_without_format_doesnt_send_format(
-        self, get_user_mock, sfdc_mock, ctms_mock, confirm_mock,
+        self,
+        get_user_mock,
+        sfdc_mock,
+        ctms_mock,
+        confirm_mock,
     ):
         """
         SF/CTMS format not changed if update_user call doesn't specify.
@@ -249,7 +269,11 @@ class UpsertUserTests(TestCase):
         ctms_mock.update.assert_called_with(get_user_mock.return_value, update_data)
 
     def test_update_user_with_email_id(
-        self, get_user_mock, sfdc_mock, ctms_mock, confirm_mock
+        self,
+        get_user_mock,
+        sfdc_mock,
+        ctms_mock,
+        confirm_mock,
     ):
         """
         If the SF data has an email_id, updates are sent to CTMS as well.
@@ -278,7 +302,7 @@ class UpsertUserTests(TestCase):
         }
         update_data = data.copy()
         update_data["newsletters"] = {
-            "slug": True
+            "slug": True,
         }  # Only the set newsletter is mentioned
         upsert_user(SUBSCRIBE, data)
         sfdc_mock.update.assert_called_with(get_user_mock.return_value, update_data)
@@ -383,7 +407,11 @@ class UpsertUserTests(TestCase):
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
     def test_no_send_confirm_newsletter(
-        self, get_user_data, sfdc_mock, ctms_mock, confirm_mock
+        self,
+        get_user_data,
+        sfdc_mock,
+        ctms_mock,
+        confirm_mock,
     ):
         """
         Subscribing to a newsletter should not send a confirm email
@@ -418,7 +446,11 @@ class UpsertUserTests(TestCase):
         confirm_mock.delay.assert_not_called()
 
     def test_no_send_confirm_user(
-        self, get_user_data, sfdc_mock, ctms_mock, confirm_mock
+        self,
+        get_user_data,
+        sfdc_mock,
+        ctms_mock,
+        confirm_mock,
     ):
         """
         Subscribing to a newsletter should not send a confirm email
@@ -451,7 +483,11 @@ class UpsertUserTests(TestCase):
         confirm_mock.delay.assert_not_called()
 
     def test_new_subscription_with_ctms_conflict(
-        self, get_user_data, sfdc_mock, ctms_mock, confirm_mock
+        self,
+        get_user_data,
+        sfdc_mock,
+        ctms_mock,
+        confirm_mock,
     ):
         """When CTMS returns an error for a new contact, the email_id is not sent to SF"""
         get_user_data.return_value = None  # Does not exist yet
@@ -480,7 +516,11 @@ class UpsertUserTests(TestCase):
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
     def test_new_user_subscribes_to_mofo_newsletter(
-        self, get_user_data, sfdc_mock, ctms_mock, confirm_mock
+        self,
+        get_user_data,
+        sfdc_mock,
+        ctms_mock,
+        confirm_mock,
     ):
         """Subscribing to a MoFo-relevant newsletter makes the new user mofo-relevant."""
         get_user_data.return_value = None  # Does not exist yet
@@ -514,7 +554,11 @@ class UpsertUserTests(TestCase):
         confirm_mock.delay.assert_not_called()
 
     def test_existing_user_subscribes_to_mofo_newsletter(
-        self, get_user_data, sfdc_mock, ctms_mock, confirm_mock
+        self,
+        get_user_data,
+        sfdc_mock,
+        ctms_mock,
+        confirm_mock,
     ):
         """Subscribing to a MoFo-relevant newsletter makes the user mofo-relevant."""
         user_data = self.get_user_data.copy()
@@ -545,7 +589,11 @@ class UpsertUserTests(TestCase):
         confirm_mock.delay.assert_not_called()
 
     def test_existing_mofo_user_subscribes_to_mofo_newsletter(
-        self, get_user_data, sfdc_mock, ctms_mock, confirm_mock
+        self,
+        get_user_data,
+        sfdc_mock,
+        ctms_mock,
+        confirm_mock,
     ):
         """If a user is already MoFo-relevant, a subscription does not set it again."""
         user_data = self.get_user_data.copy()

@@ -24,7 +24,7 @@ class TestConfirmTask(TestCase):
 
     def test_normal(self, get_user_data, sfdc_mock, ctms_mock):
         """If user_data is okay, and not yet confirmed, the task calls
-         the right stuff"""
+        the right stuff"""
         token = "TOKEN"
         user_data = {
             "status": "ok",

@@ -15,7 +15,8 @@ class Migration(migrations.Migration):
             model_name="apiuser",
             name="name",
             field=models.CharField(
-                help_text="Descriptive name of this user", max_length=256,
+                help_text="Descriptive name of this user",
+                max_length=256,
             ),
         ),
         migrations.AlterField(
@@ -49,7 +50,8 @@ class Migration(migrations.Migration):
             model_name="interest",
             name="title",
             field=models.CharField(
-                help_text="Public name of interest in English", max_length=128,
+                help_text="Public name of interest in English",
+                max_length=128,
             ),
         ),
         migrations.AlterField(
@@ -759,7 +761,8 @@ class Migration(migrations.Migration):
             model_name="newsletter",
             name="title",
             field=models.CharField(
-                help_text="Public name of newsletter in English", max_length=128,
+                help_text="Public name of newsletter in English",
+                max_length=128,
             ),
         ),
         migrations.AlterField(
@@ -807,7 +810,8 @@ class Migration(migrations.Migration):
             model_name="newslettergroup",
             name="title",
             field=models.CharField(
-                help_text="Public name of group in English", max_length=128,
+                help_text="Public name of group in English",
+                max_length=128,
             ),
         ),
         migrations.AlterField(

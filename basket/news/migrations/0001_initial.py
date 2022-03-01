@@ -28,7 +28,8 @@ class Migration(migrations.Migration):
                 (
                     "name",
                     models.CharField(
-                        help_text=b"Descriptive name of this user", max_length=256,
+                        help_text=b"Descriptive name of this user",
+                        max_length=256,
                     ),
                 ),
                 (
@@ -76,7 +77,8 @@ class Migration(migrations.Migration):
                 (
                     "when",
                     models.DateTimeField(
-                        default=django.utils.timezone.now, editable=False,
+                        default=django.utils.timezone.now,
+                        editable=False,
                     ),
                 ),
                 ("task_id", models.CharField(unique=True, max_length=255)),
@@ -86,7 +88,9 @@ class Migration(migrations.Migration):
                 (
                     "exc",
                     models.TextField(
-                        default=None, help_text="repr(exception)", null=True,
+                        default=None,
+                        help_text="repr(exception)",
+                        null=True,
                     ),
                 ),
                 (
@@ -112,7 +116,8 @@ class Migration(migrations.Migration):
                 (
                     "title",
                     models.CharField(
-                        help_text=b"Public name of interest in English", max_length=128,
+                        help_text=b"Public name of interest in English",
+                        max_length=128,
                     ),
                 ),
                 (
@@ -437,7 +442,8 @@ class Migration(migrations.Migration):
                 (
                     "title",
                     models.CharField(
-                        help_text=b"Public name of group in English", max_length=128,
+                        help_text=b"Public name of group in English",
+                        max_length=128,
                     ),
                 ),
                 (
@@ -465,7 +471,8 @@ class Migration(migrations.Migration):
                 (
                     "newsletters",
                     models.ManyToManyField(
-                        related_name="newsletter_groups", to="news.Newsletter",
+                        related_name="newsletter_groups",
+                        to="news.Newsletter",
                     ),
                 ),
             ],
@@ -520,7 +527,10 @@ class Migration(migrations.Migration):
                 (
                     "fxa_id",
                     models.CharField(
-                        db_index=True, max_length=100, null=True, blank=True,
+                        db_index=True,
+                        max_length=100,
+                        null=True,
+                        blank=True,
                     ),
                 ),
             ],
@@ -528,6 +538,7 @@ class Migration(migrations.Migration):
             bases=(models.Model,),
         ),
         migrations.AlterUniqueTogether(
-            name="localestewards", unique_together=set([("interest", "locale")]),
+            name="localestewards",
+            unique_together=set([("interest", "locale")]),
         ),
     ]

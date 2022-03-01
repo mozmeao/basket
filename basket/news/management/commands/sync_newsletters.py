@@ -18,7 +18,10 @@ class Command(BaseCommand):
             help="Domain of the Basket from which to sync",
         )
         parser.add_argument(
-            "-k", "--key", default=settings.SYNC_KEY, help="Auth key for the sync",
+            "-k",
+            "--key",
+            default=settings.SYNC_KEY,
+            help="Auth key for the sync",
         )
         parser.add_argument(
             "-c",

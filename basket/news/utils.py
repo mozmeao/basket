@@ -76,7 +76,9 @@ def generate_token():
 class HttpResponseJSON(HttpResponse):
     def __init__(self, data, status=None):
         super(HttpResponseJSON, self).__init__(
-            content=json.dumps(data), content_type="application/json", status=status,
+            content=json.dumps(data),
+            content_type="application/json",
+            status=status,
         )
 
 
@@ -367,13 +369,19 @@ def get_user_data(
     sfdc_enabled = True
     try:
         user = sfdc.get(
-            token=token, email=email, payee_id=payee_id, amo_id=amo_id, fxa_id=fxa_id,
+            token=token,
+            email=email,
+            payee_id=payee_id,
+            amo_id=amo_id,
+            fxa_id=fxa_id,
         )
     except sfapi.SalesforceResourceNotFound:
         return None
     except requests.exceptions.RequestException as e:
         raise NewsletterException(
-            str(e), error_code=errors.BASKET_NETWORK_FAILURE, status_code=400,
+            str(e),
+            error_code=errors.BASKET_NETWORK_FAILURE,
+            status_code=400,
         )
     except sfapi.SalesforceAuthenticationFailed:
         raise NewsletterException(
@@ -424,7 +432,9 @@ def get_user_data(
                 sentry_sdk.capture_exception()
             else:
                 raise NewsletterException(
-                    str(e), error_code=errors.BASKET_NETWORK_FAILURE, status_code=400,
+                    str(e),
+                    error_code=errors.BASKET_NETWORK_FAILURE,
+                    status_code=400,
                 )
         if sfdc_enabled:
             if ctms_user and "email_id" in ctms_user:

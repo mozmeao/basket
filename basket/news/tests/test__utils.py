@@ -27,7 +27,9 @@ from basket.news.utils import (
 
 
 @override_settings(
-    FXA_OAUTH_SERVER_ENV="stable", FXA_CLIENT_ID="dude", FXA_CLIENT_SECRET="abides",
+    FXA_OAUTH_SERVER_ENV="stable",
+    FXA_CLIENT_ID="dude",
+    FXA_CLIENT_SECRET="abides",
 )
 @patch("basket.news.utils.fxa.oauth")
 @patch("basket.news.utils.fxa.profile")
@@ -225,7 +227,8 @@ class TestGetAcceptLanguages(TestCase):
         self._test("fr-FR", ["fr"])
         self._test("en-us,en;q=0.5", ["en"])
         self._test(
-            "pt-pt,fr;q=0.8,it-it;q=0.5,de;q=0.3", ["pt-PT", "fr", "it-IT", "de"],
+            "pt-pt,fr;q=0.8,it-it;q=0.5,de;q=0.3",
+            ["pt-PT", "fr", "it-IT", "de"],
         )
         self._test("ja-JP-mac,ja-JP;q=0.7,ja;q=0.3", ["ja-JP", "ja"])
         self._test("foo,bar;q=0.5", ["foo", "bar"])
@@ -237,7 +240,8 @@ class TestGetAcceptLanguages(TestCase):
         """
         self._test("en_US", ["en"])
         self._test(
-            "pt_pt,fr;q=0.8,it_it;q=0.5,de;q=0.3", ["pt-PT", "fr", "it-IT", "de"],
+            "pt_pt,fr;q=0.8,it_it;q=0.5,de;q=0.3",
+            ["pt-PT", "fr", "it-IT", "de"],
         )
 
     def test_invalid_lang_codes(self):
@@ -415,7 +419,8 @@ class TestSplitName(TestCase):
         self.assertEqual(split_name("Dude"), ("", "Dude"))
         self.assertEqual(split_name("Walter Sobchak"), ("Walter", "Sobchak"))
         self.assertEqual(
-            split_name("Theodore Donald Kerabatsos"), ("Theodore Donald", "Kerabatsos"),
+            split_name("Theodore Donald Kerabatsos"),
+            ("Theodore Donald", "Kerabatsos"),
         )
 
     def test_removes_suffixes(self):

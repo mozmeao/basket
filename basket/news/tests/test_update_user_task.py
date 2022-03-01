@@ -45,7 +45,9 @@ class UpdateUserTaskTests(TestCase):
         with patch("basket.news.views.newsletter_slugs") as newsletter_slugs:
             newsletter_slugs.return_value = ["foo", "baz"]
             response = views.update_user_task(
-                request, SUBSCRIBE, {"newsletters": "foo,bar"},
+                request,
+                SUBSCRIBE,
+                {"newsletters": "foo,bar"},
             )
 
             self.assert_response_error(response, 400, errors.BASKET_INVALID_NEWSLETTER)
@@ -190,7 +192,9 @@ class UpdateUserTaskTests(TestCase):
     @patch("basket.news.views.newsletter_slugs")
     @patch("basket.news.views.newsletter_private_slugs")
     def test_success_with_unsubscribe_private_newsletter(
-        self, mock_private, mock_slugs,
+        self,
+        mock_private,
+        mock_slugs,
     ):
         """
         Should be able to unsubscribe from a private newsletter regardless.
@@ -208,7 +212,10 @@ class UpdateUserTaskTests(TestCase):
     @patch("basket.news.views.newsletter_private_slugs")
     @patch("basket.news.views.is_authorized")
     def test_subscribe_private_newsletter_invalid_api_key(
-        self, mock_api_key, mock_private, mock_slugs,
+        self,
+        mock_api_key,
+        mock_private,
+        mock_slugs,
     ):
         """
         If subscribing to a private newsletter and the request has an invalid API key,
@@ -228,7 +235,10 @@ class UpdateUserTaskTests(TestCase):
     @patch("basket.news.views.newsletter_private_slugs")
     @patch("basket.news.views.is_authorized")
     def test_set_private_newsletter_invalid_api_key(
-        self, mock_api_key, mock_private, mock_slugs,
+        self,
+        mock_api_key,
+        mock_private,
+        mock_slugs,
     ):
         """
         If subscribing to a private newsletter and the request has an invalid API key,
@@ -249,7 +259,11 @@ class UpdateUserTaskTests(TestCase):
     @patch("basket.news.views.newsletter_private_slugs")
     @patch("basket.news.views.is_authorized")
     def test_private_newsletter_success(
-        self, mock_api_key, mock_private, mock_group_slugs, mock_slugs,
+        self,
+        mock_api_key,
+        mock_private,
+        mock_group_slugs,
+        mock_slugs,
     ):
         """
         If subscribing to a private newsletter and the request has an invalid API key,

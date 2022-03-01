@@ -157,7 +157,8 @@ class QueuedTaskAdmin(admin.ModelAdmin):
             old_task.retry()
             count += 1
         messages.info(
-            request, "Queued %d task%s to process" % (count, "" if count == 1 else "s"),
+            request,
+            "Queued %d task%s to process" % (count, "" if count == 1 else "s"),
         )
 
     retry_task_action.short_description = "Process task(s)"

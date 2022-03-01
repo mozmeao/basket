@@ -13,7 +13,9 @@ def test_is_ip_address():
 
 
 @override_settings(
-    DEBUG=False, ENFORCE_HOSTNAME=["basket.mozilla.org"], ALLOWED_HOSTS=["*"],
+    DEBUG=False,
+    ENFORCE_HOSTNAME=["basket.mozilla.org"],
+    ALLOWED_HOSTS=["*"],
 )
 def test_enforce_hostname_middleware():
     get_resp_mock = Mock()

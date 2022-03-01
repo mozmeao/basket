@@ -37,13 +37,19 @@ class TestNewsletterUtils(TestCase):
         ]
         self.groupies = [
             NewsletterGroup.objects.create(
-                slug="bowling", title="Bowling in Groups", active=True,
+                slug="bowling",
+                title="Bowling in Groups",
+                active=True,
             ),
             NewsletterGroup.objects.create(
-                slug="abiding", title="Be like The Dude", active=True,
+                slug="abiding",
+                title="Be like The Dude",
+                active=True,
             ),
             NewsletterGroup.objects.create(
-                slug="failing", title="The Bums Lost!", active=False,
+                slug="failing",
+                title="The Bums Lost!",
+                active=False,
             ),
         ]
         self.groupies[0].newsletters.add(self.newsies[1], self.newsies[2])
@@ -59,7 +65,8 @@ class TestNewsletterUtils(TestCase):
 
     def test_newsletter_group_slugs(self):
         self.assertEqual(
-            set(newsletters.newsletter_group_slugs()), {"bowling", "abiding"},
+            set(newsletters.newsletter_group_slugs()),
+            {"bowling", "abiding"},
         )
 
     def test_newsletter_and_group_slugs(self):
@@ -88,6 +95,8 @@ class TestNewsletterUtils(TestCase):
     def test_parse_newsletters_not_groups_unsubscribe(self):
         """If newsletter slug is a group for SET mode, don't expand to group's newsletters."""
         subs = utils.parse_newsletters(
-            utils.UNSUBSCRIBE, ["bowling"], ["bowling", "surfing", "extorting"],
+            utils.UNSUBSCRIBE,
+            ["bowling"],
+            ["bowling", "surfing", "extorting"],
         )
         self.assertDictEqual(subs, {"bowling": False})

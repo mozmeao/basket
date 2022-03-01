@@ -308,7 +308,11 @@ class CTMSSession:
     """Add authentication to requests to the CTMS API"""
 
     def __init__(
-        self, api_url, client_id, client_secret, token_cache_key="ctms_token",
+        self,
+        api_url,
+        client_id,
+        client_secret,
+        token_cache_key="ctms_token",
     ):
         """Initialize a CTMSSession
 
@@ -370,10 +374,12 @@ class CTMSSession:
             token_updater=self.save_token,
         )
         session.register_compliance_hook(
-            "access_token_response", CTMSSession.check_2xx_response,
+            "access_token_response",
+            CTMSSession.check_2xx_response,
         )
         session.register_compliance_hook(
-            "refresh_token_response", CTMSSession.check_2xx_response,
+            "refresh_token_response",
+            CTMSSession.check_2xx_response,
         )
         if not session.authorized:
             session = self._authorize_session(session)

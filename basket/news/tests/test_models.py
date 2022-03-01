@@ -9,29 +9,39 @@ from basket.news import models
 class AcousticTxEmailTests(TestCase):
     def setUp(self):
         self.message1 = models.AcousticTxEmailMessage.objects.create(
-            message_id="the-dude", vendor_id="12345", language="en-US",
+            message_id="the-dude",
+            vendor_id="12345",
+            language="en-US",
         )
         self.message2 = models.AcousticTxEmailMessage.objects.create(
-            message_id="the-dude", vendor_id="22345", language="es-ES",
+            message_id="the-dude",
+            vendor_id="22345",
+            language="es-ES",
         )
         self.message3 = models.AcousticTxEmailMessage.objects.create(
-            message_id="the-dude", vendor_id="32345", language="fr",
+            message_id="the-dude",
+            vendor_id="32345",
+            language="fr",
         )
 
     def test_get_vendor_id(self):
         # default language is en-US
         assert "12345" == models.AcousticTxEmailMessage.objects.get_vendor_id(
-            "the-dude", "de",
+            "the-dude",
+            "de",
         )
         # get best match
         assert "22345" == models.AcousticTxEmailMessage.objects.get_vendor_id(
-            "the-dude", "es-AR",
+            "the-dude",
+            "es-AR",
         )
         assert "32345" == models.AcousticTxEmailMessage.objects.get_vendor_id(
-            "the-dude", "fr-FR",
+            "the-dude",
+            "fr-FR",
         )
         assert "12345" == models.AcousticTxEmailMessage.objects.get_vendor_id(
-            "the-dude", "en",
+            "the-dude",
+            "en",
         )
 
 
@@ -42,7 +52,9 @@ class FailedTaskTest(TestCase):
         """When given args with a simple dict, subtask should get matching arguments."""
         task_name = "make_a_caucasian"
         task = models.FailedTask.objects.create(
-            task_id="el-dudarino", name=task_name, args=self.good_task_args,
+            task_id="el-dudarino",
+            name=task_name,
+            args=self.good_task_args,
         )
         with patch.object(models.celery_app, "send_task") as sub_mock:
             task.retry()
@@ -54,7 +66,9 @@ class FailedTaskTest(TestCase):
         task_name = "make_a_caucasian"
         task_args = [{"case_type": ["ringer"], "email": ["dude@example.com"]}, "walter"]
         task = models.FailedTask.objects.create(
-            task_id="el-dudarino", name=task_name, args=task_args,
+            task_id="el-dudarino",
+            name=task_name,
+            args=task_args,
         )
         with patch.object(models.celery_app, "send_task") as sub_mock:
             task.retry()
@@ -70,13 +84,17 @@ class FailedTaskTest(TestCase):
             "walter",
         ]
         task = models.FailedTask.objects.create(
-            task_id="el-dudarino", name=task_name, args=task_args,
+            task_id="el-dudarino",
+            name=task_name,
+            args=task_args,
         )
         with patch.object(models.celery_app, "send_task") as sub_mock:
             task.retry()
 
         sub_mock.assert_called_with(
-            task_name, args=["donny"] + self.good_task_args, kwargs={},
+            task_name,
+            args=["donny"] + self.good_task_args,
+            kwargs={},
         )
 
     def test_retry_with_almost_querydict(self):
@@ -84,7 +102,9 @@ class FailedTaskTest(TestCase):
         task_name = "make_a_caucasian"
         task_args = [{"case_type": "ringer", "email": ["dude@example.com"]}, "walter"]
         task = models.FailedTask.objects.create(
-            task_id="el-dudarino", name=task_name, args=task_args,
+            task_id="el-dudarino",
+            name=task_name,
+            args=task_args,
         )
         with patch.object(models.celery_app, "send_task") as sub_mock:
             task.retry()
@@ -99,7 +119,8 @@ class InterestTests(TestCase):
         notify the default stewards.
         """
         interest = models.Interest(
-            title="mytest", default_steward_emails="bob@example.com,bill@example.com",
+            title="mytest",
+            default_steward_emails="bob@example.com,bill@example.com",
         )
         interest.notify_stewards("Steve", "interested@example.com", "en-US", "BYE")
 
@@ -114,10 +135,13 @@ class InterestTests(TestCase):
         notify them instead of the default stewards.
         """
         interest = models.Interest.objects.create(
-            title="mytest", default_steward_emails="bob@example.com,bill@example.com",
+            title="mytest",
+            default_steward_emails="bob@example.com,bill@example.com",
         )
         models.LocaleStewards.objects.create(
-            interest=interest, locale="ach", emails="ach@example.com",
+            interest=interest,
+            locale="ach",
+            emails="ach@example.com",
         )
         interest.notify_stewards("Steve", "interested@example.com", "ach", "BYE")
 
