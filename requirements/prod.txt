@@ -119,9 +119,9 @@ configparser==5.0.1 \
     --hash=sha256:005c3b102c96f4be9b8f40dafbd4997db003d07d1caa19f37808be8031475f2a \
     --hash=sha256:08e8a59ef1817ac4ed810bb8e17d049566dd6e024e7566f6285c756db2bb4ff8
     # via -r requirements/prod.in
-contextlib2==0.6.0.post1 \
-    --hash=sha256:01f490098c18b19d2bd5bb5dc445b2054d2fa97f09a4280ba2c5f3c394c8162e \
-    --hash=sha256:3355078a159fbb44ee60ea80abd0d87b80b78c248643b49aa6d94673b413609b
+contextlib2==21.6.0 \
+    --hash=sha256:3fbdb64466afd23abaf6c977627b75b6139a5a3e8ce38405c5b413aed7a0471f \
+    --hash=sha256:ab1e2bfe1d01d968e1b7e8d9023bc51ef3509bba217bb730cee3827e1ee82869
     # via -r requirements/prod.in
 cryptography==36.0.1 \
     --hash=sha256:0a817b961b46894c5ca8a66b599c745b9a3d9f822725221f0e0fe49dc043a3a3 \
