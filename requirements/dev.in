@@ -1,5 +1,5 @@
 -r prod.in
-black==19.10b0
+black==22.1.0
 flake8==3.7.9
 mock==3.0.5
 pbr==5.4.4
