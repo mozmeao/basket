@@ -306,14 +306,20 @@ class RefreshingSFMixin:
             usage = self.api_usage.get("api-usage")
             if usage:
                 statsd.gauge(
-                    "news.backends.sfdc.daily_api_used", int(usage.used), rate=0.5,
+                    "news.backends.sfdc.daily_api_used",
+                    int(usage.used),
+                    rate=0.5,
                 )
                 statsd.gauge(
-                    "news.backends.sfdc.daily_api_limit", int(usage.total), rate=0.5,
+                    "news.backends.sfdc.daily_api_limit",
+                    int(usage.total),
+                    rate=0.5,
                 )
                 percentage = float(usage.used) / float(usage.total) * 100
                 statsd.gauge(
-                    "news.backends.sfdc.percent_daily_api_used", percentage, rate=0.5,
+                    "news.backends.sfdc.percent_daily_api_used",
+                    percentage,
+                    rate=0.5,
                 )
 
         return resp
@@ -344,7 +350,12 @@ class RefreshingSFType(RefreshingSFMixin, sfapi.SFType):
     ):
         self.session_expires = session_expires
         super().__init__(
-            object_name, session_id, sf_instance, sf_version, proxies, session,
+            object_name,
+            session_id,
+            sf_instance,
+            sf_version,
+            proxies,
+            session,
         )
 
 
@@ -434,7 +445,8 @@ class SFDC:
 
         id_field = FIELD_MAP[field]
         contact = self.contact.get_by_custom_id(
-            custom_id_field=id_field, custom_id=value,
+            custom_id_field=id_field,
+            custom_id=value,
         )
         return from_vendor(contact)
 

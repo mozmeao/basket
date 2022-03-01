@@ -211,7 +211,9 @@ def et_task(func):
             if not settings.READ_ONLY_MODE:
                 # record task for later
                 QueuedTask.objects.create(
-                    name=self.name, args=args, kwargs=kwargs,
+                    name=self.name,
+                    args=args,
+                    kwargs=kwargs,
                 )
                 statsd.incr(self.name + ".queued")
             else:
@@ -458,7 +460,8 @@ def _add_fxa_activity(data):
         "OS_NAME": user_agent.os.family,
         "OS_VERSION": user_agent.os.version_string,
         "BROWSER": "{0} {1}".format(
-            user_agent.browser.family, user_agent.browser.version_string,
+            user_agent.browser.family,
+            user_agent.browser.version_string,
         ),
         "DEVICE_NAME": user_agent.device.family,
         "DEVICE_TYPE": device_type,
@@ -469,7 +472,8 @@ def _add_fxa_activity(data):
 @et_task
 def fxa_activity_acoustic(data):
     acoustic.insert_update_relational_table(
-        table_id=settings.ACOUSTIC_FXA_TABLE_ID, rows=[data],
+        table_id=settings.ACOUSTIC_FXA_TABLE_ID,
+        rows=[data],
     )
 
 
@@ -522,7 +526,9 @@ def upsert_user(api_call_type, data):
         api_call_type,
         data,
         get_user_data(
-            token=data.get("token"), email=data.get("email"), extra_fields=["id"],
+            token=data.get("token"),
+            email=data.get("email"),
+            extra_fields=["id"],
         ),
     )
 
@@ -557,7 +563,9 @@ def upsert_contact(api_call_type, data, user_data):
         if transactionals:
             newsletters = list(newsletters_set - transactionals)
             send_acoustic_tx_messages(
-                data["email"], data.get("lang", "en-US"), list(transactionals),
+                data["email"],
+                data.get("lang", "en-US"),
+                list(transactionals),
             )
             if not newsletters:
                 # no regular newsletters
@@ -566,7 +574,9 @@ def upsert_contact(api_call_type, data, user_data):
     # Set the newsletter flags in the record by comparing to their
     # current subscriptions.
     update_data["newsletters"] = parse_newsletters(
-        api_call_type, newsletters, cur_newsletters,
+        api_call_type,
+        newsletters,
+        cur_newsletters,
     )
     send_confirm = False
 
@@ -615,7 +625,10 @@ def upsert_contact(api_call_type, data, user_data):
 
         if send_confirm and settings.SEND_CONFIRM_MESSAGES:
             send_confirm_message.delay(
-                data["email"], token, data.get("lang", "en-US"), send_confirm,
+                data["email"],
+                token,
+                data.get("lang", "en-US"),
+                send_confirm,
             )
 
         return token, True
@@ -1131,7 +1144,8 @@ def process_donation_receipt(data):
         DONATION_RECEIPT_FIELDS_MAP.get(k, k): v for k, v in message_data.items()
     }
     message_id = AcousticTxEmailMessage.objects.get_vendor_id(
-        "donation-receipt", data.get("locale", "en-US"),
+        "donation-receipt",
+        data.get("locale", "en-US"),
     )
     if message_id:
         acoustic_tx.send_mail(

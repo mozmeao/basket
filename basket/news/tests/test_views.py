@@ -38,7 +38,8 @@ class UpdateUserMetaTests(TestCase):
         resp = views.user_meta(req, "the-dudes-token-man")
         assert resp.status_code == 200
         uum_mock.delay.assert_called_with(
-            "the-dudes-token-man", {"country": "gb", "_set_subscriber": False},
+            "the-dudes-token-man",
+            {"country": "gb", "_set_subscriber": False},
         )
 
     def test_only_send_given_values(self, uum_mock):
@@ -65,7 +66,8 @@ class TestIsToken(TestCase):
 class GetInvolvedTests(TestCase):
     def setUp(self):
         self.interest = models.Interest.objects.create(
-            title="Bowling", interest_id="bowling",
+            title="Bowling",
+            interest_id="bowling",
         )
         self.rf = RequestFactory()
         self.base_data = {
@@ -294,7 +296,8 @@ class SubscribeEmailValidationTest(TestCase):
     def test_empty_email_invalid(self, update_user_mock):
         """Should report an error for missing or empty value."""
         req = self.rf.post(
-            "/news/subscribe/", data={"email": "", "newsletters": "firefox-os"},
+            "/news/subscribe/",
+            data={"email": "", "newsletters": "firefox-os"},
         )
         resp = views.subscribe(req)
         resp_data = json.loads(resp.content)
@@ -340,7 +343,9 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
         models.Newsletter.objects.create(slug="slug2", vendor_id="VENDOR2")
         models.Newsletter.objects.create(slug="slug3", vendor_id="VENDOR3")
         models.Newsletter.objects.create(
-            slug="slug-private", vendor_id="VENDOR4", private=True,
+            slug="slug-private",
+            vendor_id="VENDOR4",
+            private=True,
         )
 
     def tearDown(self):
@@ -441,7 +446,8 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
         self.process_email.return_value = "dude@example.com"
         self.email_is_blocked.return_value = False
         response = self._request(
-            {"email": "dude@example.com", "privacy": "true"}, HTTP_X_REQUESTED_WITH="",
+            {"email": "dude@example.com", "privacy": "true"},
+            HTTP_X_REQUESTED_WITH="",
         )
         assert response.status_code == 400
         assert b"This field is required" in response.content
@@ -682,7 +688,11 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         response = views.subscribe(request)
         self.assertEqual(response, self.update_user_task.return_value)
         self.update_user_task.assert_called_with(
-            request, SUBSCRIBE, data=update_data, optin=False, sync=False,
+            request,
+            SUBSCRIBE,
+            data=update_data,
+            optin=False,
+            sync=False,
         )
 
     def test_sync_invalid_api_key(self):
@@ -691,7 +701,8 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         return a 401.
         """
         request = self.factory.post(
-            "/", {"newsletters": "asdf", "sync": "Y", "email": "dude@example.com"},
+            "/",
+            {"newsletters": "asdf", "sync": "Y", "email": "dude@example.com"},
         )
         self.is_authorized.return_value = False
 
@@ -797,7 +808,9 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         update_data["source_url"] = "https://example.com/newsletter"
         self.process_email.return_value = update_data["email"]
         request = self.factory.post(
-            "/", request_data, HTTP_REFERER=update_data["source_url"],
+            "/",
+            request_data,
+            HTTP_REFERER=update_data["source_url"],
         )
 
         response = views.subscribe(request)
@@ -805,7 +818,11 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         self.assertEqual(response, self.update_user_task.return_value)
         self.process_email.assert_called_with(request_data["email"])
         self.update_user_task.assert_called_with(
-            request, SUBSCRIBE, data=update_data, optin=False, sync=False,
+            request,
+            SUBSCRIBE,
+            data=update_data,
+            optin=False,
+            sync=False,
         )
 
     def test_source_url_overrides_referrer(self):
@@ -824,7 +841,9 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         del update_data["sync"]
         self.process_email.return_value = update_data["email"]
         request = self.factory.post(
-            "/", request_data, HTTP_REFERER="https://example.com/donnie",
+            "/",
+            request_data,
+            HTTP_REFERER="https://example.com/donnie",
         )
 
         response = views.subscribe(request)
@@ -832,7 +851,11 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         self.assertEqual(response, self.update_user_task.return_value)
         self.process_email.assert_called_with(request_data["email"])
         self.update_user_task.assert_called_with(
-            request, SUBSCRIBE, data=update_data, optin=False, sync=False,
+            request,
+            SUBSCRIBE,
+            data=update_data,
+            optin=False,
+            sync=False,
         )
 
     def test_success(self):
@@ -856,7 +879,11 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         self.assertEqual(response, self.update_user_task.return_value)
         self.process_email.assert_called_with(request_data["email"])
         self.update_user_task.assert_called_with(
-            request, SUBSCRIBE, data=update_data, optin=False, sync=False,
+            request,
+            SUBSCRIBE,
+            data=update_data,
+            optin=False,
+            sync=False,
         )
 
     def test_success_sync_optin(self):
@@ -880,7 +907,11 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         self.assertEqual(response, self.update_user_task.return_value)
         self.process_email.assert_called_with("dude@example.com")
         self.update_user_task.assert_called_with(
-            request, SUBSCRIBE, data=update_data, optin=True, sync=True,
+            request,
+            SUBSCRIBE,
+            data=update_data,
+            optin=True,
+            sync=True,
         )
 
     def test_success_sync_optin_lowercase(self):
@@ -903,7 +934,11 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         self.assertEqual(response, self.update_user_task.return_value)
         self.process_email.assert_called_with("dude@example.com")
         self.update_user_task.assert_called_with(
-            request, SUBSCRIBE, data=update_data, optin=True, sync=True,
+            request,
+            SUBSCRIBE,
+            data=update_data,
+            optin=True,
+            sync=True,
         )
 
 
@@ -913,7 +948,9 @@ class TestRateLimitingFunctions(ViewsPatcherMixin, TestCase):
 
     def test_ip_rate_limit_key(self):
         req = self.rf.get(
-            "/", HTTP_X_CLUSTER_CLIENT_IP="1.1.1.1", REMOTE_ADDR="2.2.2.2",
+            "/",
+            HTTP_X_CLUSTER_CLIENT_IP="1.1.1.1",
+            REMOTE_ADDR="2.2.2.2",
         )
         self.assertEqual(views.ip_rate_limit_key(None, req), "1.1.1.1")
 
@@ -963,7 +1000,9 @@ class TestNewslettersAPI(TestCase):
 
         models.Newsletter.objects.create(slug="slug2", vendor_id="VENDOR2", indent=True)
         models.Newsletter.objects.create(
-            slug="slug3", vendor_id="VENDOR3", private=True,
+            slug="slug3",
+            vendor_id="VENDOR3",
+            private=True,
         )
 
         req = self.rf.get(self.url)
@@ -1111,7 +1150,9 @@ class RecoveryViewTest(TestCase):
     @patch("basket.news.utils.get_email_block_list")
     @patch("basket.news.views.send_recovery_message_acoustic.delay", autospec=True)
     def test_blocked_email(
-        self, mock_send_recovery_message_task, mock_get_email_block_list,
+        self,
+        mock_send_recovery_message_task,
+        mock_get_email_block_list,
     ):
         """email provided - pass to the task, return 200"""
         email = "dude@example.com"
@@ -1132,7 +1173,10 @@ class RecoveryViewTest(TestCase):
         resp = self.client.post(self.url, {"email": email})
         self.assertEqual(200, resp.status_code)
         mock_send_recovery_message_task.assert_called_with(
-            email, "el-dudarino", "en", "H",
+            email,
+            "el-dudarino",
+            "en",
+            "H",
         )
 
 
@@ -1288,7 +1332,8 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         session.save()
         # no state
         resp = self.client.get(
-            "/fxa/callback/", {"code": "thecode", "state": "thedude"},
+            "/fxa/callback/",
+            {"code": "thecode", "state": "thedude"},
         )
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
@@ -1307,11 +1352,13 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         session.save()
         # no state
         resp = self.client.get(
-            "/fxa/callback/", {"code": "thecode", "state": "thedude"},
+            "/fxa/callback/",
+            {"code": "thecode", "state": "thedude"},
         )
         assert resp.status_code == 302
         fxa_oauth_mock.trade_code.assert_called_with(
-            "thecode", ttl=settings.FXA_OAUTH_TOKEN_TTL,
+            "thecode",
+            ttl=settings.FXA_OAUTH_TOKEN_TTL,
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         self.statsd.incr.assert_not_called()
@@ -1337,11 +1384,13 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         session.save()
         # no state
         resp = self.client.get(
-            "/fxa/callback/", {"code": "thecode", "state": "thedude"},
+            "/fxa/callback/",
+            {"code": "thecode", "state": "thedude"},
         )
         assert resp.status_code == 302
         fxa_oauth_mock.trade_code.assert_called_with(
-            "thecode", ttl=settings.FXA_OAUTH_TOKEN_TTL,
+            "thecode",
+            ttl=settings.FXA_OAUTH_TOKEN_TTL,
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         self.statsd.incr.assert_not_called()
@@ -1380,11 +1429,13 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         session.save()
         # no state
         resp = self.client.get(
-            "/fxa/callback/", {"code": "thecode", "state": "thedude"},
+            "/fxa/callback/",
+            {"code": "thecode", "state": "thedude"},
         )
         assert resp.status_code == 302
         fxa_oauth_mock.trade_code.assert_called_with(
-            "thecode", ttl=settings.FXA_OAUTH_TOKEN_TTL,
+            "thecode",
+            ttl=settings.FXA_OAUTH_TOKEN_TTL,
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         self.statsd.incr.assert_not_called()
@@ -1421,7 +1472,9 @@ class FxAPrefCenterOauthStartTests(ViewsPatcherMixin, TestCase):
         self.generate_fxa_state.return_value = "the-dude-abides"
         resp = self.client.get("/fxa/")
         self.get_fxa_authorization_url.assert_called_with(
-            "the-dude-abides", "http://testserver/fxa/callback/", None,
+            "the-dude-abides",
+            "http://testserver/fxa/callback/",
+            None,
         )
         assert resp.status_code == 302
         assert resp["location"] == good_redirect
@@ -1433,7 +1486,9 @@ class FxAPrefCenterOauthStartTests(ViewsPatcherMixin, TestCase):
         self.generate_fxa_state.return_value = "the-dude-abides"
         resp = self.client.get("/fxa/?email=dude%40example.com")
         self.get_fxa_authorization_url.assert_called_with(
-            "the-dude-abides", "http://testserver/fxa/callback/", "dude@example.com",
+            "the-dude-abides",
+            "http://testserver/fxa/callback/",
+            "dude@example.com",
         )
         assert resp.status_code == 302
         assert resp["location"] == good_redirect
@@ -1447,7 +1502,8 @@ class AMOSyncTests(ViewsPatcherMixin, TestCase):
         self._patch_views("has_valid_api_key")
         # the above patch doesn't replace in the dict
         views.AMO_SYNC_TYPES.update(
-            userprofile=self.amo_sync_user, addon=self.amo_sync_addon,
+            userprofile=self.amo_sync_user,
+            addon=self.amo_sync_addon,
         )
 
     def test_require_valid_api_key(self):

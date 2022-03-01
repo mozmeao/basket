@@ -27,7 +27,10 @@ class GraphiteViewHitCountMiddleware(GraphiteRequestTimingMiddleware):
 
     def process_view(self, request, view_func, view_args, view_kwargs):
         super(GraphiteViewHitCountMiddleware, self).process_view(
-            request, view_func, view_args, view_kwargs,
+            request,
+            view_func,
+            view_args,
+            view_kwargs,
         )
         if hasattr(request, "_view_name"):
             vmodule = request._view_module

@@ -33,7 +33,9 @@ class UserTest(TestCase):
             update_user_task.return_value = HttpResponse()
             views.user(request, "asdf")
             update_user_task.assert_called_with(
-                request, SET, {"fake": "data", "token": "asdf"},
+                request,
+                SET,
+                {"fake": "data", "token": "asdf"},
             )
 
     @patch("basket.news.utils.sfdc")
@@ -104,7 +106,11 @@ class TestLookupUser(TestCase):
         self.assertEqual(200, rsp.status_code, rsp.content)
         self.assertEqual(self.user_data, json.loads(rsp.content))
         ctms_mock.get.assert_called_once_with(
-            amo_id=None, email=None, fxa_id=None, sfdc_id=None, token="dummy"
+            amo_id=None,
+            email=None,
+            fxa_id=None,
+            sfdc_id=None,
+            token="dummy",
         )
 
     @patch("basket.news.utils.sfdc", spec_set=["get"])
@@ -117,7 +123,11 @@ class TestLookupUser(TestCase):
         assert rsp.status_code == 200
         assert rsp.json() == {"status": "ok", "token": "dummy"}
         ctms_mock.get.assert_called_once_with(
-            amo_id=None, email=None, fxa_id=None, sfdc_id=None, token="dummy"
+            amo_id=None,
+            email=None,
+            fxa_id=None,
+            sfdc_id=None,
+            token="dummy",
         )
 
     @patch("basket.news.utils.sfdc")
@@ -208,7 +218,9 @@ class TestLookupUser(TestCase):
         """If CTMS returns a 404, email_id is unset"""
         sfdc_mock.get.return_value = self.user_data
         ctms_mock.get.side_effect = self.ctms_error(
-            404, "Not Found", "Unknown contact_id"
+            404,
+            "Not Found",
+            "Unknown contact_id",
         )
         params = {"token": "dummy"}
         rsp = self.get(params=params)
@@ -231,7 +243,9 @@ class TestLookupUser(TestCase):
         """If CTMS returns a non-404 error, it is logged and email_id is unset"""
         sfdc_mock.get.return_value = self.user_data
         ctms_mock.get.side_effect = self.ctms_error(
-            401, "Unauthorized", "Not authenticated"
+            401,
+            "Unauthorized",
+            "Not authenticated",
         )
         params = {"token": "dummy"}
         rsp = self.get(params=params)
@@ -245,7 +259,9 @@ class TestLookupUser(TestCase):
         """If CTMS is not authenticated, an exception is raised"""
         sfdc_mock.get.side_effect = SFDCDisabled("not enabled")
         ctms_mock.get.side_effect = self.ctms_error(
-            401, "Unauthorized", "Not authenticated"
+            401,
+            "Unauthorized",
+            "Not authenticated",
         )
         rsp = self.get(params={"token": "dummy"})
         assert rsp.status_code == 500
@@ -318,7 +334,9 @@ class TestLookupUser(TestCase):
         """If CTMS has a network failure, an error is returned"""
         sfdc_mock.get.side_effect = SFDCDisabled("not enabled")
         ctms_mock.get.side_effect = self.ctms_error(
-            500, "CTMS is rebooting...", "Server Error"
+            500,
+            "CTMS is rebooting...",
+            "Server Error",
         )
         rsp = self.get(params={"token": "dummy"})
         assert rsp.status_code == 400

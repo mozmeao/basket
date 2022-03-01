@@ -89,16 +89,24 @@ class CommonVoiceForm(forms.Form):
     email = EmailField()
     days_interval = forms.IntegerField(required=False)
     created_at = forms.CharField(
-        required=False, max_length=20, validators=[validate_datetime_str],
+        required=False,
+        max_length=20,
+        validators=[validate_datetime_str],
     )
     goal_reached_at = forms.CharField(
-        required=False, max_length=20, validators=[validate_datetime_str],
+        required=False,
+        max_length=20,
+        validators=[validate_datetime_str],
     )
     first_contribution_date = forms.CharField(
-        required=False, max_length=20, validators=[validate_datetime_str],
+        required=False,
+        max_length=20,
+        validators=[validate_datetime_str],
     )
     last_active_date = forms.CharField(
-        required=False, max_length=20, validators=[validate_datetime_str],
+        required=False,
+        max_length=20,
+        validators=[validate_datetime_str],
     )
     two_day_streak = forms.NullBooleanField()
 

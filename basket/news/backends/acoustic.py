@@ -88,12 +88,16 @@ class Acoustic(Silverpop):
         logger.debug("Request: %s" % xml)
         try:
             response = self.session.post(
-                self.api_endpoint, data=force_bytes(xml), timeout=10,
+                self.api_endpoint,
+                data=force_bytes(xml),
+                timeout=10,
             )
         except ConnectionError:
             # try one more time
             response = self.session.post(
-                self.api_endpoint, data=force_bytes(xml), timeout=10,
+                self.api_endpoint,
+                data=force_bytes(xml),
+                timeout=10,
             )
 
         return process_response(response)
@@ -109,7 +113,9 @@ class AcousticTransact(Silverpop):
     def _call_xt(self, xml):
         logger.debug("Request: %s" % xml)
         response = self.session.post(
-            self.api_xt_endpoint, data=force_bytes(xml), timeout=10,
+            self.api_xt_endpoint,
+            data=force_bytes(xml),
+            timeout=10,
         )
         return process_tx_response(response)
 

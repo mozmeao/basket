@@ -28,7 +28,8 @@ class Migration(migrations.Migration):
                 (
                     "when",
                     models.DateTimeField(
-                        default=django.utils.timezone.now, editable=False,
+                        default=django.utils.timezone.now,
+                        editable=False,
                     ),
                 ),
                 ("name", models.CharField(max_length=255)),

@@ -49,17 +49,20 @@ class CommaSeparatedEmailFieldTests(TestCase):
         # Basic
         instance.blah = "bob@example.com,larry@example.com"
         self.assertEqual(
-            self.field.pre_save(instance, False), "bob@example.com,larry@example.com",
+            self.field.pre_save(instance, False),
+            "bob@example.com,larry@example.com",
         )
 
         # Excess whitespace
         instance.blah = "   bob@example.com ,larry@example.com    "
         self.assertEqual(
-            self.field.pre_save(instance, False), "bob@example.com,larry@example.com",
+            self.field.pre_save(instance, False),
+            "bob@example.com,larry@example.com",
         )
 
         # Extra commas
         instance.blah = "bob@example.com  ,,,, larry@example.com "
         self.assertEqual(
-            self.field.pre_save(instance, False), "bob@example.com,larry@example.com",
+            self.field.pre_save(instance, False),
+            "bob@example.com,larry@example.com",
         )

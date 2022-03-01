@@ -32,10 +32,12 @@ class BlockedEmail(models.Model):
 
 class Newsletter(models.Model):
     slug = models.SlugField(
-        unique=True, help_text="The ID for the newsletter that will be used by clients",
+        unique=True,
+        help_text="The ID for the newsletter that will be used by clients",
     )
     title = models.CharField(
-        max_length=128, help_text="Public name of newsletter in English",
+        max_length=128,
+        help_text="Public name of newsletter in English",
     )
     description = models.CharField(
         max_length=256,
@@ -63,7 +65,8 @@ class Newsletter(models.Model):
         help_text="Whether this newsletter is indented in the email preference center.",
     )
     vendor_id = models.CharField(
-        max_length=128, help_text="The backend vendor's identifier for this newsletter",
+        max_length=128,
+        help_text="The backend vendor's identifier for this newsletter",
     )
     languages = models.CharField(
         max_length=200,
@@ -109,10 +112,12 @@ class Newsletter(models.Model):
 
 class NewsletterGroup(models.Model):
     slug = models.SlugField(
-        unique=True, help_text="The ID for the group that will be used by clients",
+        unique=True,
+        help_text="The ID for the group that will be used by clients",
     )
     title = models.CharField(
-        max_length=128, help_text="Public name of group in English",
+        max_length=128,
+        help_text="Public name of group in English",
     )
     description = models.CharField(
         max_length=256,
@@ -225,7 +230,8 @@ class FailedTask(models.Model):
 
 class Interest(models.Model):
     title = models.CharField(
-        max_length=128, help_text="Public name of interest in English",
+        max_length=128,
+        help_text="Public name of interest in English",
     )
     interest_id = models.SlugField(
         unique=True,
@@ -297,11 +303,14 @@ class LocaleStewards(models.Model):
     """
 
     interest = models.ForeignKey(
-        Interest, on_delete=models.CASCADE, related_name="stewards",
+        Interest,
+        on_delete=models.CASCADE,
+        related_name="stewards",
     )
     locale = LocaleField()
     emails = CommaSeparatedEmailField(
-        blank=False, help_text="Comma-separated list of the stewards' email addresses.",
+        blank=False,
+        help_text="Comma-separated list of the stewards' email addresses.",
     )
 
     @property
@@ -359,7 +368,8 @@ class AcousticTxEmailMessage(models.Model):
         help_text="The ID for the message that will be used by clients",
     )
     vendor_id = models.CharField(
-        max_length=10, help_text="The backend vendor's identifier for this message",
+        max_length=10,
+        help_text="The backend vendor's identifier for this message",
     )
     description = models.CharField(
         max_length=200,

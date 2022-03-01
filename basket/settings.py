@@ -40,7 +40,8 @@ READ_ONLY_MODE = config("READ_ONLY_MODE", False, cast=bool)
 # Disables the API and changes redirects
 ADMIN_ONLY_MODE = config("ADMIN_ONLY_MODE", False, cast=bool)
 BASKET_RW_URL = config(
-    "BASKET_RW_URL", default="https://prod-oregon-b.basket.moz.works",
+    "BASKET_RW_URL",
+    default="https://prod-oregon-b.basket.moz.works",
 )
 
 REDIS_URL = config("REDIS_URL", None)
@@ -54,7 +55,9 @@ if REDIS_URL:
 # Our CI server tests against MySQL.
 DATABASES = {
     "default": config(
-        "DATABASE_URL", default="sqlite:///basket.db", cast=dj_database_url.parse,
+        "DATABASE_URL",
+        default="sqlite:///basket.db",
+        cast=dj_database_url.parse,
     ),
 }
 if DATABASES["default"]["ENGINE"] == "django.db.backends.mysql":
@@ -109,14 +112,16 @@ USE_X_FORWARDED_HOST = True
 
 SESSION_COOKIE_SECURE = config("SESSION_COOKIE_SECURE", not DEBUG, cast=bool)
 SESSION_ENGINE = config(
-    "SESSION_ENGINE", default="django.contrib.sessions.backends.cache",
+    "SESSION_ENGINE",
+    default="django.contrib.sessions.backends.cache",
 )
 CSRF_COOKIE_SECURE = config("CSRF_COOKIE_SECURE", not DEBUG, cast=bool)
 DISABLE_ADMIN = config("DISABLE_ADMIN", READ_ONLY_MODE, cast=bool)
 STORE_TASK_FAILURES = config("STORE_TASK_FAILURES", not READ_ONLY_MODE, cast=bool)
 # if DISABLE_ADMIN is True redirect /admin/ to this URL
 ADMIN_REDIRECT_URL = config(
-    "ADMIN_REDIRECT_URL", "https://admin.basket.moz.works/admin/",
+    "ADMIN_REDIRECT_URL",
+    "https://admin.basket.moz.works/admin/",
 )
 
 TIME_ZONE = "UTC"
@@ -196,7 +201,9 @@ SECURE_HSTS_SECONDS = config("SECURE_HSTS_SECONDS", default="0", cast=int)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = False
 SECURE_BROWSER_XSS_FILTER = config("SECURE_BROWSER_XSS_FILTER", default=True, cast=bool)
 SECURE_CONTENT_TYPE_NOSNIFF = config(
-    "SECURE_CONTENT_TYPE_NOSNIFF", default=True, cast=bool,
+    "SECURE_CONTENT_TYPE_NOSNIFF",
+    default=True,
+    cast=bool,
 )
 SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", default=False, cast=bool)
 SECURE_REDIRECT_EXEMPT = [
@@ -281,7 +288,9 @@ CELERY_REDIS_MAX_CONNECTIONS = config("CELERY_REDIS_MAX_CONNECTIONS", 2, cast=in
 CELERY_WORKER_DISABLE_RATE_LIMITS = True
 CELERY_TASK_IGNORE_RESULT = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = config(
-    "CELERY_WORKER_PREFETCH_MULTIPLIER", 1, cast=int,
+    "CELERY_WORKER_PREFETCH_MULTIPLIER",
+    1,
+    cast=int,
 )
 CELERY_TASK_COMPRESSION = "gzip"
 CELERY_TASK_ROUTES = {
@@ -290,7 +299,9 @@ CELERY_TASK_ROUTES = {
 
 # size in kb
 CELERY_WORKER_MAX_MEMORY_PER_CHILD = config(
-    "CELERY_WORKER_MAX_MEMORY_PER_CHILD", 200000, cast=int,
+    "CELERY_WORKER_MAX_MEMORY_PER_CHILD",
+    200000,
+    cast=int,
 )
 
 SNITCH_ID = config("SNITCH_ID", None)
@@ -381,7 +392,9 @@ EXTRA_SUPPORTED_LANGS = config("EXTRA_SUPPORTED_LANGS", "", cast=Csv())
 
 SYNC_KEY = config("SYNC_KEY", None)
 TESTING_EMAIL_DOMAINS = config(
-    "TESTING_EMAIL_DOMAINS", "restmail.net,restmail.lcip.org,example.com", cast=Csv(),
+    "TESTING_EMAIL_DOMAINS",
+    "restmail.net,restmail.lcip.org,example.com",
+    cast=Csv(),
 )
 
 MAINTENANCE_MODE = config("MAINTENANCE_MODE", False, cast=bool)
@@ -410,7 +423,9 @@ DONATE_UPDATE_FAIL_DE = config("DONATE_UPDATE_FAIL_DE", default="Donation_Diff")
 
 FXA_EVENTS_QUEUE_ENABLE = config("FXA_EVENTS_QUEUE_ENABLE", cast=bool, default=False)
 FXA_EVENTS_QUEUE_IGNORE_MODE = config(
-    "FXA_EVENTS_QUEUE_IGNORE_MODE", cast=bool, default=False,
+    "FXA_EVENTS_QUEUE_IGNORE_MODE",
+    cast=bool,
+    default=False,
 )
 FXA_EVENTS_ACCESS_KEY_ID = config("FXA_EVENTS_ACCESS_KEY_ID", default="")
 FXA_EVENTS_SECRET_ACCESS_KEY = config("FXA_EVENTS_SECRET_ACCESS_KEY", default="")
@@ -419,7 +434,9 @@ FXA_EVENTS_QUEUE_URL = config("FXA_EVENTS_QUEUE_URL", default="")
 FXA_EVENTS_QUEUE_WAIT_TIME = config("FXA_EVENTS_QUEUE_WAIT_TIME", cast=int, default=10)
 FXA_EVENTS_SNITCH_ID = config("FXA_EVENTS_SNITCH_ID", default="")
 FXA_EVENTS_VERIFIED_SFDC_ENABLE = config(
-    "FXA_EVENTS_VERIFIED_SFDC_ENABLE", cast=bool, default=False,
+    "FXA_EVENTS_VERIFIED_SFDC_ENABLE",
+    cast=bool,
+    default=False,
 )
 
 # stable, stage, or production
@@ -431,10 +448,12 @@ FXA_OAUTH_TOKEN_TTL = config("FXA_OAUTH_TOKEN_TTL", default=300, cast=int)  # 5 
 
 FXA_EMAIL_PREFS_DOMAIN = config("FXA_EMAIL_PREFS_DOMAIN", default="www.mozilla.org")
 FXA_REGISTER_NEWSLETTER = config(
-    "FXA_REGISTER_NEWSLETTER", default="firefox-accounts-journey",
+    "FXA_REGISTER_NEWSLETTER",
+    default="firefox-accounts-journey",
 )
 FXA_REGISTER_SOURCE_URL = config(
-    "FXA_REGISTER_SOURCE_URL", default="https://accounts.firefox.com/",
+    "FXA_REGISTER_SOURCE_URL",
+    default="https://accounts.firefox.com/",
 )
 # TODO move this to the DB
 FXA_LOGIN_CAMPAIGNS = {
@@ -448,13 +467,19 @@ FXA_LOGIN_CAMPAIGNS = {
 
 COMMON_VOICE_NEWSLETTER = config("COMMON_VOICE_NEWSLETTER", default="common-voice")
 COMMON_VOICE_BATCH_UPDATES = config(
-    "COMMON_VOICE_BATCH_UPDATES", default=False, cast=bool,
+    "COMMON_VOICE_BATCH_UPDATES",
+    default=False,
+    cast=bool,
 )
 COMMON_VOICE_BATCH_PROCESSING = config(
-    "COMMON_VOICE_BATCH_PROCESSING", default=False, cast=bool,
+    "COMMON_VOICE_BATCH_PROCESSING",
+    default=False,
+    cast=bool,
 )
 COMMON_VOICE_BATCH_CHUNK_SIZE = config(
-    "COMMON_VOICE_BATCH_CHUNK_SIZE", default=1000, cast=int,
+    "COMMON_VOICE_BATCH_CHUNK_SIZE",
+    default=1000,
+    cast=int,
 )
 
 OIDC_ENABLE = config("OIDC_ENABLE", default=False, cast=bool)

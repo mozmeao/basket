@@ -27,7 +27,8 @@ class Migration(migrations.Migration):
                 (
                     "when",
                     models.DateTimeField(
-                        default=django.utils.timezone.now, editable=False,
+                        default=django.utils.timezone.now,
+                        editable=False,
                     ),
                 ),
                 ("data", jsonfield.fields.JSONField(default=dict)),
