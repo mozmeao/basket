@@ -83,6 +83,14 @@ test-ci: .make.docker.build.ci
 push-ci: .make.docker.build.ci
 	docker/bin/push2dockerhub.sh
 
+######################################################
+# For use in local-machine development (not in Docker)
+######################################################
+
+install-local-python-deps:
+	pip install -r requirements/dev.txt  # At the moment, this extends prod.txt
+
+
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
 	@echo "  run                  - docker-compose up the entire system for dev"
@@ -101,4 +109,4 @@ help:
 	@echo "  build-ci             - build docker images for use in our CI pipeline"
 	@echo "  test-ci              - run tests against files in docker image built by CI"
 
-.PHONY: all clean build pull docs lint run run-shell shell test test-image build-ci test-ci push-ci djshell stop kill compile-requirements check-requirements
+.PHONY: all clean build pull docs lint run run-shell shell test test-image build-ci test-ci push-ci djshell stop kill compile-requirements check-requirements install-local-python-deps
