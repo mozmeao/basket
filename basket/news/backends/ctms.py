@@ -83,6 +83,7 @@ CTMS_TO_BASKET_NAMES = {
         "mofo_relevant": "mofo_relevant",
     },
     "vpn_waitlist": {"geo": "fpn_country", "platform": "fpn_platform"},
+    "relay_waitlist": {"geo": "relay_country"},
 }
 
 
