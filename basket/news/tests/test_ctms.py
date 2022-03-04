@@ -84,6 +84,9 @@ SAMPLE_CTMS_RESPONSE = json.loads(
     "geo": "fr",
     "platform": "ios,mac"
   },
+  "relay_waitlist": {
+    "geo": "fr",
+  },
   "status": "ok"
 }
 """
@@ -104,6 +107,7 @@ SAMPLE_BASKET_FORMAT = {
     "format": "H",
     "fpn_country": "fr",
     "fpn_platform": "ios,mac",
+    "relay_country": "fr",
     "fxa_create_date": "2021-01-29T18:43:49.082375+00:00",
     "fxa_deleted": False,
     "fxa_id": "6eb6ed6ac3b64259968aa490c6c0b9df",
