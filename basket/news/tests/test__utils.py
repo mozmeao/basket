@@ -1,10 +1,10 @@
 # -*- coding: utf8 -*-
 
-from django.test import override_settings, TestCase, RequestFactory
+from unittest.mock import Mock, patch
 
 import fxa.constants
 import fxa.errors
-from mock import Mock, patch
+from django.test import RequestFactory, TestCase, override_settings
 
 from basket.news.models import BlockedEmail
 from basket.news.utils import (
@@ -13,12 +13,12 @@ from basket.news.utils import (
     email_is_blocked,
     get_accept_languages,
     get_best_language,
+    get_best_supported_lang,
     get_email_block_list,
     get_fxa_clients,
     has_valid_fxa_oauth,
     is_authorized,
     language_code_is_valid,
-    get_best_supported_lang,
     parse_newsletters_csv,
     parse_phone_number,
     process_email,

@@ -1,7 +1,7 @@
+from unittest.mock import Mock, call, patch
+
 from django.core.exceptions import ValidationError
 from django.test import TestCase
-
-from mock import call, Mock, patch
 
 from basket.news.fields import CommaSeparatedEmailField
 

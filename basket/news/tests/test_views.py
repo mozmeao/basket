@@ -1,23 +1,20 @@
 # -*- coding: utf8 -*-
 
 import json
+from unittest.mock import ANY, Mock, patch
 
 from django.conf import settings
 from django.core.cache import cache
-from django.test import TestCase
-from django.test import override_settings
-from django.test.client import RequestFactory, Client
+from django.test import TestCase, override_settings
+from django.test.client import Client, RequestFactory
 from django.urls import reverse
+from email_validator import EmailSyntaxError
 
 from basket import errors
-from email_validator import EmailSyntaxError
-from mock import Mock, patch, ANY
-
-from basket.news import models, views, utils
-from basket.news.newsletters import newsletter_languages, newsletter_fields
+from basket.news import models, utils, views
+from basket.news.newsletters import newsletter_fields, newsletter_languages
 from basket.news.tasks import SUBSCRIBE
 from basket.news.utils import email_block_list_cache
-
 
 none_mock = Mock(return_value=None)
 

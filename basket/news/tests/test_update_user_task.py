@@ -1,14 +1,13 @@
 import json
+from unittest.mock import ANY, patch
 
 from django.core.cache import cache
-from django.test import TestCase, RequestFactory
-
-from basket import errors
-from mock import patch, ANY
+from django.test import RequestFactory, TestCase
 from ratelimit.exceptions import Ratelimited
 
-from basket.news.utils import SUBSCRIBE, UNSUBSCRIBE, SET
+from basket import errors
 from basket.news import views
+from basket.news.utils import SET, SUBSCRIBE, UNSUBSCRIBE
 
 
 class UpdateUserTaskTests(TestCase):

@@ -1,20 +1,17 @@
 import json
+from unittest.mock import patch
 
 from django.http import HttpResponse
 from django.test import TestCase
 from django.test.client import RequestFactory
 from django.urls import reverse
-
-from mock import patch
-
 from requests import Response
 from requests.exceptions import HTTPError
 
 from basket import errors
-
 from basket.news import views
 from basket.news.backends.common import NewsletterException
-from basket.news.backends.ctms import CTMSNotConfigured, CTMSMultipleContactsError
+from basket.news.backends.ctms import CTMSMultipleContactsError, CTMSNotConfigured
 from basket.news.backends.sfdc import SFDCDisabled
 from basket.news.models import APIUser
 from basket.news.utils import SET, generate_token

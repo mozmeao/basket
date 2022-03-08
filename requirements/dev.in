@@ -1,7 +1,6 @@
 -r prod.in
 black==22.1.0
 flake8==3.7.9
-mock==3.0.5
 pep8==1.7.1
 pytest-django==4.5.2
 pytest-pythonpath==0.7.3

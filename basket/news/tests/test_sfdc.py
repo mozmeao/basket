@@ -1,9 +1,9 @@
+from unittest.mock import Mock, patch
+
 from django.test import TestCase
 from django.test.utils import override_settings
 
-from mock import patch, Mock
-
-from basket.news.backends.sfdc import to_vendor, from_vendor
+from basket.news.backends.sfdc import from_vendor, to_vendor
 
 
 @patch(
