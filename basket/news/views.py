@@ -18,7 +18,7 @@ import sentry_sdk
 from basket import errors
 from django_statsd.clients import statsd
 from ratelimit.exceptions import Ratelimited
-from ratelimit.utils import is_ratelimited
+from ratelimit.core import is_ratelimited
 from simple_salesforce import SalesforceError
 from synctool.routing import Route
 
