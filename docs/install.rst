@@ -92,3 +92,12 @@ Maintaining Python requirements
     $ make check-requirements
 
 
+Install Python requirements locally
+-----------------------------------
+
+Ideally, do this in a virtual environment (eg a `venv` or `virtualenv`)
+
+.. code-block:: bash
+
+    $ make install-local-python-deps
+
