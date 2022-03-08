@@ -1,4 +1,4 @@
-# SHA1:0eedda3fd094e80064dab145e7f400595f07299c
+# SHA1:d0ffbf6a98282b11dae621e358d5187342252a29
 # Please recompile requirements inside the Docker image, not on your local, host machine.
 #
 # To do this, just use the following from your host:
@@ -196,9 +196,9 @@ django-jsonfield==1.4.1 \
     --hash=sha256:ccb2fe623e1bf7799e49c593b0a89a85084ef8d3debbf26d92a54e27b5305d72 \
     --hash=sha256:f789a0ea1f80b48aff7d6c36dd356ce125dbf1b7cd97a82d315607ac758f50ff
     # via -r requirements/prod.in
-django-mozilla-product-details==1.0.2 \
-    --hash=sha256:404639d91e774241a9b37e7b7576bb020835730d6fafd3b5ec9eaf03afff6b08 \
-    --hash=sha256:8ed5f548be1fc8e471fc2f0236f95c9be053619caa2b6761428a651d021547cf
+django-mozilla-product-details==1.0.3 \
+    --hash=sha256:1d139ba01f4484f3bb43b72864ce33f249835405449e0dc940217cfa42ce5b46 \
+    --hash=sha256:a4aba6a68b296dffe8c1afb95d236cdbd402bd855cd49eef4d8a1a610105fd36
     # via -r requirements/prod.in
 django-picklefield==3.0.1 \
     --hash=sha256:15ccba592ca953b9edf9532e64640329cd47b136b7f8f10f2939caa5f9ce4287 \
