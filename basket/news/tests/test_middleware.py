@@ -1,6 +1,6 @@
-from django.test import RequestFactory, override_settings
+from unittest.mock import Mock
 
-from mock import Mock
+from django.test import RequestFactory, override_settings
 
 from basket.news.middleware import EnforceHostnameMiddleware, is_ip_address
 

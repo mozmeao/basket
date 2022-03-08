@@ -1,25 +1,27 @@
 import json
 from copy import deepcopy
 from datetime import datetime, timedelta
-from uuid import uuid4
+from unittest.mock import ANY, Mock, call, patch
 from urllib.error import URLError
+from uuid import uuid4
 
+import simple_salesforce as sfapi
+from celery.exceptions import Retry
 from django.conf import settings
 from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils.timezone import now
-
-import simple_salesforce as sfapi
-from celery.exceptions import Retry
-from mock import ANY, Mock, call, patch
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from basket.news.backends.ctms import CTMSNotFoundByAltIDError
 from basket.news.backends.sfdc import SFDCDisabled
 from basket.news.celery import app as celery_app
-from basket.news.models import AcousticTxEmailMessage, FailedTask, CommonVoiceUpdate
+from basket.news.models import AcousticTxEmailMessage, CommonVoiceUpdate, FailedTask
 from basket.news.tasks import (
+    PETITION_CONTACT_FIELDS,
+    SUBSCRIBE,
+    RetryTask,
     _add_fxa_activity,
     amo_sync_addon,
     amo_sync_user,
@@ -28,22 +30,19 @@ from basket.news.tasks import (
     fxa_email_changed,
     fxa_login,
     fxa_verified,
+    get_fxa_user_data,
+    get_lock,
     gmttime,
-    PETITION_CONTACT_FIELDS,
     process_common_voice_batch,
     process_donation,
     process_donation_event,
     process_donation_receipt,
-    process_petition_signature,
     process_newsletter_subscribe,
+    process_petition_signature,
     record_common_voice_update,
     send_acoustic_tx_message,
-    SUBSCRIBE,
-    get_lock,
-    RetryTask,
     update_custom_unsub,
     update_user_meta,
-    get_fxa_user_data,
 )
 from basket.news.utils import iso_format_unix_timestamp
 

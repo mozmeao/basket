@@ -1,7 +1,7 @@
+from unittest.mock import patch
+
 from django.core import mail
 from django.test import TestCase
-
-from mock import patch
 
 from basket.news import models
 

@@ -1,7 +1,7 @@
-from django.test import TestCase
+from unittest.mock import Mock, patch
 
 from celery.exceptions import Retry
-from mock import patch, Mock
+from django.test import TestCase
 
 from basket.news.backends.common import NewsletterException
 from basket.news.tasks import confirm_user

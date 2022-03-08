@@ -1,8 +1,7 @@
+from unittest.mock import ANY, patch
 from uuid import uuid4
 
 from django.test import TestCase, override_settings
-
-from mock import patch, ANY
 
 from basket.news import models
 from basket.news.tasks import upsert_user
