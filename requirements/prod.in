@@ -5,7 +5,7 @@ celery==4.4.7
 configparser==5.2.0
 contextlib2==21.6.0
 dj-database-url==0.5.0
-django==2.2.27
+django>=3.0,<3.1
 django-allow-cidr==0.4.0
 django-cache-url==3.3.0
 django-cors-headers==3.11.0
