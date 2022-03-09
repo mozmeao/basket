@@ -94,7 +94,7 @@ def is_token(word):
 
 
 def ip_rate_limit_key(group, request):
-    return request.META.get("HTTP_X_CLUSTER_CLIENT_IP", request.META.get("REMOTE_ADDR"))
+    return request.headers.get("X-Cluster-Client-Ip", request.META.get("REMOTE_ADDR"))
 
 
 def ip_rate_limit_rate(group, request):
@@ -107,7 +107,7 @@ def ip_rate_limit_rate(group, request):
 
 
 def source_ip_rate_limit_key(group, request):
-    return request.META.get("HTTP_X_SOURCE_IP", None)
+    return request.headers.get("X-Source-Ip", None)
 
 
 def source_ip_rate_limit_rate(group, request):
@@ -482,7 +482,7 @@ def subscribe_main(request):
         # if source_url not provided we should store the referrer header
         # NOTE this is not a typo; Referrer is misspelled in the HTTP spec
         # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
-        if not data["source_url"] and request.META.get("HTTP_REFERER"):
+        if not data["source_url"] and request.headers.get("Referer"):
             referrer = request.META["HTTP_REFERER"]
             if SOURCE_URL_RE.match(referrer):
                 statsd.incr("news.views.subscribe_main.use_referrer")
@@ -595,7 +595,7 @@ def subscribe(request):
 
     # NOTE this is not a typo; Referrer is misspelled in the HTTP spec
     # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
-    if not data.get("source_url") and request.META.get("HTTP_REFERER"):
+    if not data.get("source_url") and request.headers.get("Referer"):
         # try to get it from referrer
         statsd.incr("news.views.subscribe.use_referrer")
         data["source_url"] = request.META["HTTP_REFERER"]
