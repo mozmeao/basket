@@ -355,7 +355,7 @@ def respond_ok(request, data, template_name="news/thankyou.html"):
     @param template_name: the template name in case of HTML response
     @return: HttpResponse object
     """
-    if request.is_ajax():
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return HttpResponseJSON({"status": "ok"})
     else:
         return render(request, template_name, data)
@@ -372,7 +372,7 @@ def respond_error(request, form, message, code, template_name="news/formerror.ht
     @param template_name: the template name in case of HTML response
     @return: HttpResponse object
     """
-    if request.is_ajax():
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return HttpResponseJSON(
             {
                 "status": "error",
@@ -507,7 +507,7 @@ def subscribe_main(request):
 
     else:
         # form is invalid
-        if request.is_ajax():
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return HttpResponseJSON(
                 {
                     "status": "error",
