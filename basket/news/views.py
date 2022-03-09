@@ -20,7 +20,6 @@ from django_statsd.clients import statsd
 from ratelimit.exceptions import Ratelimited
 from ratelimit.core import is_ratelimited
 from simple_salesforce import SalesforceError
-from synctool.routing import Route
 
 from basket.news.forms import (
     CommonVoiceForm,
@@ -31,9 +30,7 @@ from basket.news.forms import (
 from basket.news.models import (
     CommonVoiceUpdate,
     Interest,
-    LocaleStewards,
     Newsletter,
-    NewsletterGroup,
 )
 from basket.news.newsletters import (
     newsletter_slugs,
@@ -86,7 +83,6 @@ IP_RATE_LIMIT_INTERNAL = getattr(settings, "IP_RATE_LIMIT_INTERNAL", "400/m")
 PHONE_NUMBER_RATE_LIMIT = getattr(settings, "PHONE_NUMBER_RATE_LIMIT", "4/5m")
 # four submissions for a set of newsletters per email address per 5 minutes
 EMAIL_SUBSCRIBE_RATE_LIMIT = getattr(settings, "EMAIL_SUBSCRIBE_RATE_LIMIT", "4/5m")
-sync_route = Route(api_token=settings.SYNC_KEY)
 AMO_SYNC_TYPES = {
     "addon": amo_sync_addon,
     "userprofile": amo_sync_user,
@@ -95,16 +91,6 @@ AMO_SYNC_TYPES = {
 
 def is_token(word):
     return bool(TOKEN_RE.match(word))
-
-
-@sync_route.queryset("sync")
-def news_sync():
-    return [
-        Newsletter.objects.all(),
-        NewsletterGroup.objects.all(),
-        Interest.objects.all(),
-        LocaleStewards.objects.all(),
-    ]
 
 
 def ip_rate_limit_key(group, request):

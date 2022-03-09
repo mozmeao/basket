@@ -16,7 +16,6 @@ django-picklefield==3.0.1
 django-ratelimit==3.0.1
 django-redis==5.2.0
 django-statsd-mozilla==0.4.0
-https://github.com/pmclanahan/django-synctool/archive/5f7cf9bad741e60bd9df32aa90e71425d98e437c.tar.gz#egg=django-synctool==1.1.1
 django-watchman==1.2.0
 email-validator==1.1.3
 gunicorn==20.0.4

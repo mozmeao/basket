@@ -11,7 +11,6 @@ from .views import (
     newsletters,
     send_recovery_message,
     subscribe,
-    sync_route,
     unsubscribe,
     user,
     user_meta,
@@ -32,4 +31,4 @@ urlpatterns = (
     path("custom_unsub_reason/", custom_unsub_reason),
     path("newsletters/", newsletters, name="newsletters_api"),
     path("", list_newsletters),
-) + sync_route.urlpatterns
+)
