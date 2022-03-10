@@ -139,7 +139,7 @@ try:
     SECRET_KEY = config("SECRET_KEY")
 except UndefinedValueError:
     raise UndefinedValueError(
-        "The SECRET_KEY environment varialbe is required. "
+        "The SECRET_KEY environment variable is required. "
         "Move env-dist to .env if you want the defaults.",
     )
 
