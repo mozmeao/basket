@@ -10,6 +10,7 @@ import dj_database_url
 import django_cache_url
 import sentry_sdk
 from decouple import Csv, UndefinedValueError, config
+from sentry_processor import POSITION, DesensitizationProcessor
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 
@@ -341,11 +342,49 @@ CLUSTER_NAME = config("CLUSTER_NAME", default=None)
 K8S_NAMESPACE = config("K8S_NAMESPACE", default=None)
 K8S_POD_NAME = config("K8S_POD_NAME", default=None)
 
+# Data scrubbing before Sentry
+# https://github.com/laiyongtao/sentry-processor
+SENSITIVE_FIELDS_TO_MASK_ENTIRELY = [
+    "email",
+    "token",
+    # "fxa_id",  # partially masked, see below
+    # "amo_id",  # partially masked, see below
+    "custom_id",
+    "payee_id",
+    "mobile_number",
+    "user",
+    # "uid",  # partially masked, see below
+    # "id",  # partially masked, see below
+    "first_name",
+    "last_name",
+]
+
+SENSITIVE_FIELDS_TO_MASK_PARTIALLY = [
+    "amo_id",
+    "fxa_id",
+    "id",
+    "uid",
+]
+
+
+def before_send(event, hint):
+    processor = DesensitizationProcessor(
+        sensitive_keys=SENSITIVE_FIELDS_TO_MASK_ENTIRELY,
+        with_default_keys=True,
+        partial_keys=SENSITIVE_FIELDS_TO_MASK_PARTIALLY,
+        mask_position=POSITION.RIGHT,
+        off_set=3,
+    )
+    event = processor.process(event, hint)
+    return event
+
+
 sentry_sdk.init(
     dsn=config("SENTRY_DSN", None),
     release=config("GIT_SHA", None),
     server_name=".".join(x for x in [K8S_NAMESPACE, CLUSTER_NAME, HOSTNAME] if x),
     integrations=[CeleryIntegration(), DjangoIntegration()],
+    before_send=before_send,
 )
 
 STATSD_HOST = config("STATSD_HOST", get_default_gateway_linux())
