@@ -20,7 +20,6 @@ from django_statsd.clients import statsd
 from ratelimit.exceptions import Ratelimited
 from ratelimit.core import is_ratelimited
 from simple_salesforce import SalesforceError
-from synctool.routing import Route
 
 from basket.news.forms import (
     CommonVoiceForm,
@@ -31,9 +30,7 @@ from basket.news.forms import (
 from basket.news.models import (
     CommonVoiceUpdate,
     Interest,
-    LocaleStewards,
     Newsletter,
-    NewsletterGroup,
 )
 from basket.news.newsletters import (
     newsletter_slugs,
@@ -86,7 +83,6 @@ IP_RATE_LIMIT_INTERNAL = getattr(settings, "IP_RATE_LIMIT_INTERNAL", "400/m")
 PHONE_NUMBER_RATE_LIMIT = getattr(settings, "PHONE_NUMBER_RATE_LIMIT", "4/5m")
 # four submissions for a set of newsletters per email address per 5 minutes
 EMAIL_SUBSCRIBE_RATE_LIMIT = getattr(settings, "EMAIL_SUBSCRIBE_RATE_LIMIT", "4/5m")
-sync_route = Route(api_token=settings.SYNC_KEY)
 AMO_SYNC_TYPES = {
     "addon": amo_sync_addon,
     "userprofile": amo_sync_user,
@@ -97,18 +93,8 @@ def is_token(word):
     return bool(TOKEN_RE.match(word))
 
 
-@sync_route.queryset("sync")
-def news_sync():
-    return [
-        Newsletter.objects.all(),
-        NewsletterGroup.objects.all(),
-        Interest.objects.all(),
-        LocaleStewards.objects.all(),
-    ]
-
-
 def ip_rate_limit_key(group, request):
-    return request.META.get("HTTP_X_CLUSTER_CLIENT_IP", request.META.get("REMOTE_ADDR"))
+    return request.headers.get("X-Cluster-Client-Ip", request.META.get("REMOTE_ADDR"))
 
 
 def ip_rate_limit_rate(group, request):
@@ -121,7 +107,7 @@ def ip_rate_limit_rate(group, request):
 
 
 def source_ip_rate_limit_key(group, request):
-    return request.META.get("HTTP_X_SOURCE_IP", None)
+    return request.headers.get("X-Source-Ip", None)
 
 
 def source_ip_rate_limit_rate(group, request):
@@ -369,7 +355,7 @@ def respond_ok(request, data, template_name="news/thankyou.html"):
     @param template_name: the template name in case of HTML response
     @return: HttpResponse object
     """
-    if request.is_ajax():
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return HttpResponseJSON({"status": "ok"})
     else:
         return render(request, template_name, data)
@@ -386,7 +372,7 @@ def respond_error(request, form, message, code, template_name="news/formerror.ht
     @param template_name: the template name in case of HTML response
     @return: HttpResponse object
     """
-    if request.is_ajax():
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return HttpResponseJSON(
             {
                 "status": "error",
@@ -496,7 +482,7 @@ def subscribe_main(request):
         # if source_url not provided we should store the referrer header
         # NOTE this is not a typo; Referrer is misspelled in the HTTP spec
         # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
-        if not data["source_url"] and request.META.get("HTTP_REFERER"):
+        if not data["source_url"] and request.headers.get("Referer"):
             referrer = request.META["HTTP_REFERER"]
             if SOURCE_URL_RE.match(referrer):
                 statsd.incr("news.views.subscribe_main.use_referrer")
@@ -521,7 +507,7 @@ def subscribe_main(request):
 
     else:
         # form is invalid
-        if request.is_ajax():
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return HttpResponseJSON(
                 {
                     "status": "error",
@@ -609,7 +595,7 @@ def subscribe(request):
 
     # NOTE this is not a typo; Referrer is misspelled in the HTTP spec
     # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
-    if not data.get("source_url") and request.META.get("HTTP_REFERER"):
+    if not data.get("source_url") and request.headers.get("Referer"):
         # try to get it from referrer
         statsd.incr("news.views.subscribe.use_referrer")
         data["source_url"] = request.META["HTTP_REFERER"]

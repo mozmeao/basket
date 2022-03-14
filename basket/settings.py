@@ -64,7 +64,7 @@ if DATABASES["default"]["ENGINE"] == "django.db.backends.mysql":
     DATABASES["default"]["OPTIONS"] = {
         "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
     }
-
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 CACHES = {
     "default": config("CACHE_URL", default="locmem://", cast=django_cache_url.parse),
@@ -139,7 +139,7 @@ try:
     SECRET_KEY = config("SECRET_KEY")
 except UndefinedValueError:
     raise UndefinedValueError(
-        "The SECRET_KEY environment varialbe is required. "
+        "The SECRET_KEY environment variable is required. "
         "Move env-dist to .env if you want the defaults.",
     )
 

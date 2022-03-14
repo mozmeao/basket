@@ -135,7 +135,7 @@ def has_valid_api_key(request):
         or request.POST.get("api_key", None)
         or request.GET.get("api-key", None)
         or request.GET.get("api_key", None)
-        or request.META.get("HTTP_X_API_KEY", None)
+        or request.headers.get("X-Api-Key", None)
     )
     if api_key:
         return APIUser.is_valid(api_key)
@@ -168,7 +168,7 @@ def has_valid_fxa_oauth(request, email):
         return False
 
     # Grab the token out of the Authorization header
-    authorization = request.META.get("HTTP_AUTHORIZATION")
+    authorization = request.headers.get("Authorization")
     if not authorization:
         return False
 
@@ -546,7 +546,7 @@ def get_best_language(languages):
 
 
 def get_best_request_lang(request):
-    accept_lang = request.META.get("HTTP_ACCEPT_LANGUAGE")
+    accept_lang = request.headers.get("Accept-Language")
     if accept_lang:
         lang = get_best_language(get_accept_languages(accept_lang))
         if lang:
