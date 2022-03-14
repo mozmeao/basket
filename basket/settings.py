@@ -345,18 +345,18 @@ K8S_POD_NAME = config("K8S_POD_NAME", default=None)
 # Data scrubbing before Sentry
 # https://github.com/laiyongtao/sentry-processor
 SENSITIVE_FIELDS_TO_MASK_ENTIRELY = [
-    "email",
-    "token",
-    # "fxa_id",  # partially masked, see below
-    # "amo_id",  # partially masked, see below
     "custom_id",
-    "payee_id",
-    "mobile_number",
-    "user",
-    # "uid",  # partially masked, see below
-    # "id",  # partially masked, see below
+    "email",
     "first_name",
+    "ip_address",
     "last_name",
+    "mobile_number",
+    "payee_id",
+    "remote_addr",
+    "remoteaddresschain",
+    "token",
+    "user",
+    "x-forwarded-for",
 ]
 
 SENSITIVE_FIELDS_TO_MASK_PARTIALLY = [
@@ -369,10 +369,10 @@ SENSITIVE_FIELDS_TO_MASK_PARTIALLY = [
 
 def before_send(event, hint):
     processor = DesensitizationProcessor(
-        sensitive_keys=SENSITIVE_FIELDS_TO_MASK_ENTIRELY,
         with_default_keys=True,
+        sensitive_keys=SENSITIVE_FIELDS_TO_MASK_ENTIRELY,
         partial_keys=SENSITIVE_FIELDS_TO_MASK_PARTIALLY,
-        mask_position=POSITION.RIGHT,
+        mask_position=POSITION.LEFT,
         off_set=3,
     )
     event = processor.process(event, hint)
