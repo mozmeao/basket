@@ -1,4 +1,4 @@
-# SHA1:fc8f68f1265809087c39f0e03eba567d9d2b24d1
+# SHA1:177ab78ee646ad53ee0546af02cae9385d9139be
 # Please recompile requirements inside the Docker image, not on your local, host machine.
 #
 # To do this, just use the following from your host:
@@ -545,9 +545,9 @@ s3transfer==0.5.2 \
 sentry-processor==0.0.1 \
     --hash=sha256:fd7a30fb57aaf05c01cd04cf7d949c628376b2b55d7a0aaa222efe58a8f122bc
     # via -r requirements/prod.in
-sentry-sdk==1.5.6 \
-    --hash=sha256:1ab34e3851a34aeb3d1af1a0f77cec73978c4e9698e5210d050e4932953cb241 \
-    --hash=sha256:ac2a50128409d57655279817aedcb7800cace1f76b266f3dd62055d5afd6e098
+sentry-sdk==1.5.7 \
+    --hash=sha256:411a8495bd18cf13038e5749e4710beb4efa53da6351f67b4c2f307c2d9b6d49 \
+    --hash=sha256:aa52da941c56b5a76fd838f8e9e92a850bf893a9eb1e33ffce6c21431d07ee30
     # via -r requirements/prod.in
 simple-salesforce==1.10.1 \
     --hash=sha256:20fd66cf40da732b9cdcb2f7160dde7bb298ef0c31702d1fdd767d1fc68cfe1b \
