@@ -1,0 +1,337 @@
+{
+	"error_id": "1a45b0df-33db-4823-80fc-3bf4d8a690be",
+	"payload": {
+		"breadcrumbs": {
+			"values": [{
+				"category": "query",
+				"data": {},
+				"message": "PRAGMA foreign_key_check",
+				"timestamp": "2022-03-14T10:11:45.584943Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "ROLLBACK TO SAVEPOINT \"s4308090176_x161\"",
+				"timestamp": "2022-03-14T10:11:45.584997Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "RELEASE SAVEPOINT \"s4308090176_x161\"",
+				"timestamp": "2022-03-14T10:11:45.585027Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "SAVEPOINT \"s4308090176_x162\"",
+				"timestamp": "2022-03-14T10:11:45.585721Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "INSERT INTO \"news_acoustictxemailmessage\" (\"message_id\", \"vendor_id\", \"description\", \"language\", \"private\") VALUES (%s, %s, %s, %s, %s)",
+				"timestamp": "2022-03-14T10:11:45.585829Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "SELECT \"news_acoustictxemailmessage\".\"id\", \"news_acoustictxemailmessage\".\"message_id\", \"news_acoustictxemailmessage\".\"vendor_id\", \"news_acoustictxemailmessage\".\"description\", \"news_acoustictxemailmessage\".\"language\", \"news_acoustictxemailmessage\".\"private\" FROM \"news_acoustictxemailmessage\" WHERE (\"news_acoustictxemailmessage\".\"language\" = %s AND \"news_acoustictxemailmessage\".\"message_id\" = %s)",
+				"timestamp": "2022-03-14T10:11:45.586247Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "SELECT \"news_acoustictxemailmessage\".\"id\", \"news_acoustictxemailmessage\".\"message_id\", \"news_acoustictxemailmessage\".\"vendor_id\", \"news_acoustictxemailmessage\".\"description\", \"news_acoustictxemailmessage\".\"language\", \"news_acoustictxemailmessage\".\"private\" FROM \"news_acoustictxemailmessage\" WHERE (\"news_acoustictxemailmessage\".\"language\" LIKE %s ESCAPE '\\' AND \"news_acoustictxemailmessage\".\"message_id\" = %s)",
+				"timestamp": "2022-03-14T10:11:45.586465Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "SELECT \"news_acoustictxemailmessage\".\"id\", \"news_acoustictxemailmessage\".\"message_id\", \"news_acoustictxemailmessage\".\"vendor_id\", \"news_acoustictxemailmessage\".\"description\", \"news_acoustictxemailmessage\".\"language\", \"news_acoustictxemailmessage\".\"private\" FROM \"news_acoustictxemailmessage\" WHERE (\"news_acoustictxemailmessage\".\"language\" = %s AND \"news_acoustictxemailmessage\".\"message_id\" = %s)",
+				"timestamp": "2022-03-14T10:11:45.586701Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "PRAGMA foreign_key_check",
+				"timestamp": "2022-03-14T10:11:45.587024Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "ROLLBACK TO SAVEPOINT \"s4308090176_x162\"",
+				"timestamp": "2022-03-14T10:11:45.587072Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "RELEASE SAVEPOINT \"s4308090176_x162\"",
+				"timestamp": "2022-03-14T10:11:45.587099Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "SAVEPOINT \"s4308090176_x163\"",
+				"timestamp": "2022-03-14T10:11:45.587750Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "INSERT INTO \"news_acoustictxemailmessage\" (\"message_id\", \"vendor_id\", \"description\", \"language\", \"private\") VALUES (%s, %s, %s, %s, %s)",
+				"timestamp": "2022-03-14T10:11:45.587850Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "SELECT \"news_acoustictxemailmessage\".\"id\", \"news_acoustictxemailmessage\".\"message_id\", \"news_acoustictxemailmessage\".\"vendor_id\", \"news_acoustictxemailmessage\".\"description\", \"news_acoustictxemailmessage\".\"language\", \"news_acoustictxemailmessage\".\"private\" FROM \"news_acoustictxemailmessage\" WHERE (\"news_acoustictxemailmessage\".\"language\" = %s AND \"news_acoustictxemailmessage\".\"message_id\" = %s)",
+				"timestamp": "2022-03-14T10:11:45.588176Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "SELECT \"news_acoustictxemailmessage\".\"id\", \"news_acoustictxemailmessage\".\"message_id\", \"news_acoustictxemailmessage\".\"vendor_id\", \"news_acoustictxemailmessage\".\"description\", \"news_acoustictxemailmessage\".\"language\", \"news_acoustictxemailmessage\".\"private\" FROM \"news_acoustictxemailmessage\" WHERE (\"news_acoustictxemailmessage\".\"language\" LIKE %s ESCAPE '\\' AND \"news_acoustictxemailmessage\".\"message_id\" = %s)",
+				"timestamp": "2022-03-14T10:11:45.588378Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "SELECT \"news_acoustictxemailmessage\".\"id\", \"news_acoustictxemailmessage\".\"message_id\", \"news_acoustictxemailmessage\".\"vendor_id\", \"news_acoustictxemailmessage\".\"description\", \"news_acoustictxemailmessage\".\"language\", \"news_acoustictxemailmessage\".\"private\" FROM \"news_acoustictxemailmessage\" WHERE (\"news_acoustictxemailmessage\".\"language\" = %s AND \"news_acoustictxemailmessage\".\"message_id\" = %s)",
+				"timestamp": "2022-03-14T10:11:45.588594Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "PRAGMA foreign_key_check",
+				"timestamp": "2022-03-14T10:11:45.588953Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "ROLLBACK TO SAVEPOINT \"s4308090176_x163\"",
+				"timestamp": "2022-03-14T10:11:45.588999Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "RELEASE SAVEPOINT \"s4308090176_x163\"",
+				"timestamp": "2022-03-14T10:11:45.589024Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "PRAGMA foreign_key_check",
+				"timestamp": "2022-03-14T10:11:45.635445Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "ROLLBACK TO SAVEPOINT \"s4308090176_x181\"",
+				"timestamp": "2022-03-14T10:11:45.635504Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "RELEASE SAVEPOINT \"s4308090176_x181\"",
+				"timestamp": "2022-03-14T10:11:45.635533Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "BEGIN",
+				"timestamp": "2022-03-14T10:11:45.636192Z",
+				"type": "default"
+			}, {
+				"category": "query",
+				"data": {},
+				"message": "SAVEPOINT \"s4308090176_x182\"",
+				"timestamp": "2022-03-14T10:11:45.636462Z",
+				"type": "default"
+			}]
+		},
+		"contexts": {
+			"runtime": {
+				"build": "3.9.10 (main, Jan 27 2022, 13:52:54) \n[Clang 13.0.0 (clang-1300.0.29.30)]",
+				"name": "CPython",
+				"version": "3.9.10"
+			}
+		},
+		"environment": "production",
+		"event_id": "308a70f2086a461fa800f443ff26cd89",
+		"exception": {
+			"values": [{
+				"mechanism": null,
+				"module": "requests.exceptions",
+				"stacktrace": {
+					"frames": [{
+						"abs_path": "/Users/testharness/Code/basket/basket/news/tasks.py",
+						"context_line": "            return func(*args, **kwargs)",
+						"filename": "basket/news/tasks.py",
+						"function": "wrapped",
+						"in_app": true,
+						"lineno": 225,
+						"module": "basket.news.tasks",
+						"post_context": ["        except (", "            IOError,", "            NewsletterException,", "            requests.RequestException,", "            RetryTask,"],
+						"pre_context": ["                statsd.incr(self.name + \".not_queued\")", "", "            return", "", "        try:"],
+						"vars": {
+							"args": [],
+							"e": "ConnectionError('Connection aborted.')",
+							"func": "<function ETTaskTests._test_retry_increase.<locals>.myfunc at 0x10ba51e50>",
+							"kwargs": {},
+							"scope": "<Scope id=0x10afb0720 name=None>",
+							"self": "<@task: news.tasks.myfunc of basket at 0x107e59910>",
+							"start_time": "None"
+						}
+					}, {
+						"abs_path": "/Users/testharness/Code/basket/basket/news/tests/test_tasks.py",
+						"context_line": "            raise error",
+						"filename": "basket/news/tests/test_tasks.py",
+						"function": "myfunc",
+						"in_app": true,
+						"lineno": 1071,
+						"module": "basket.news.tests.test_tasks",
+						"post_context": ["", "        myfunc.push_request(retries=4)", "        myfunc.retry = Mock(side_effect=Exception)", "        # have to use run() to make sure our request above is used", "        with self.assertRaises(Exception):  # noqa: B017"],
+						"pre_context": ["        power of 2.testharness", "        \"\"\"", "", "        @et_task", "        def myfunc():"],
+						"vars": {
+							"error": "ConnectionError('Connection aborted.')"
+						}
+					}]
+				},
+				"type": "ConnectionError",
+				"value": "Connection aborted."
+			}]
+		},
+		"extra": {
+			"sys.argv": ["/Users/testharness/.pyenv/versions/basket39/bin/pytest"]
+		},
+		"level": "error",
+		"modules": {
+			"amqp": "2.6.1",
+			"apscheduler": "3.8.1",
+			"attrs": "21.4.0",
+			"authlib": "0.15.5",
+			"backports.zoneinfo": "0.2.1",
+			"billiard": "3.6.4.0",
+			"black": "22.1.0",
+			"boto3": "1.21.11",
+			"botocore": "1.24.17",
+			"celery": "4.4.7",
+			"certifi": "2021.10.8",
+			"cffi": "1.15.0",
+			"charset-normalizer": "2.0.12",
+			"click": "8.0.4",
+			"configparser": "5.2.0",
+			"contextlib2": "21.6.0",
+			"coverage": "6.3.2",
+			"cryptography": "36.0.1",
+			"deprecated": "1.2.13",
+			"dj-database-url": "0.5.0",
+			"django": "2.2.27",
+			"django-allow-cidr": "0.4.0",
+			"django-cache-url": "3.3.0",
+			"django-cors-headers": "3.11.0",
+			"django-extensions": "3.1.5",
+			"django-jsonfield": "1.4.1",
+			"django-mozilla-product-details": "1.0.3",
+			"django-picklefield": "3.0.1",
+			"django-ratelimit": "3.0.1",
+			"django-redis": "5.2.0",
+			"django-statsd-mozilla": "0.4.0",
+			"django-synctool": "1.1.1",
+			"django-watchman": "1.2.0",
+			"dnspython": "2.2.1",
+			"email-validator": "1.1.3",
+			"entrypoints": "0.3",
+			"flake8": "3.7.9",
+			"greenlet": "0.4.17",
+			"gunicorn": "20.0.4",
+			"hawkauthlib": "2.0.0",
+			"hiredis": "2.0.0",
+			"idna": "3.3",
+			"importlib-metadata": "3.4.0",
+			"iniconfig": "1.1.1",
+			"ipaddress": "1.0.23",
+			"jmespath": "0.10.0",
+			"josepy": "1.13.0",
+			"kombu": "4.6.11",
+			"lxml": "4.8.0",
+			"mccabe": "0.6.1",
+			"meinheld": "1.0.2",
+			"mock": "3.0.5",
+			"mozilla-django-oidc": "2.0.0",
+			"msgpack-python": "0.5.6",
+			"mypy-extensions": "0.4.3",
+			"mysqlclient": "2.1.0",
+			"netaddr": "0.8.0",
+			"newrelic": "7.6.0.173",
+			"oauthlib": "3.2.0",
+			"packaging": "21.3",
+			"pathspec": "0.9.0",
+			"pbr": "5.4.4",
+			"pep8": "1.7.1",
+			"phonenumbers": "8.12.44",
+			"pip": "22.0.3",
+			"platformdirs": "2.5.1",
+			"pluggy": "1.0.0",
+			"py": "1.11.0",
+			"pybrowserid": "0.14.0",
+			"pycodestyle": "2.5.0",
+			"pycparser": "2.21",
+			"pyflakes": "2.1.1",
+			"pyfxa": "0.7.7",
+			"pyjwt": "2.3.0",
+			"pyopenssl": "22.0.0",
+			"pyparsing": "3.0.7",
+			"pysilverpop": "0.2.6",
+			"pytest": "7.0.1",
+			"pytest-cov": "3.0.0",
+			"pytest-django": "4.5.2",
+			"pytest-pythonpath": "0.7.3",
+			"python-dateutil": "2.8.2",
+			"python-decouple": "3.6",
+			"pytz": "2021.3",
+			"pytz-deprecation-shim": "0.1.0.post0",
+			"pyyaml": "6.0",
+			"redis": "4.1.4",
+			"requests": "2.27.1",
+			"requests-oauthlib": "1.3.1",
+			"s3transfer": "0.5.2",
+			"sentry-processor": "0.0.1",
+			"sentry-sdk": "1.5.7",
+			"setuptools": "60.7.1",
+			"simple-salesforce": "1.10.1",
+			"six": "1.16.0",
+			"sqlparse": "0.4.2",
+			"statsd": "3.3.0",
+			"tomli": "2.0.1",
+			"typing-extensions": "4.1.1",
+			"tzdata": "2021.5",
+			"tzlocal": "4.1",
+			"ua-parser": "0.10.0",
+			"urllib3": "1.26.8",
+			"urlwait": "1.0",
+			"user-agents": "2.2.0",
+			"vine": "1.3.0",
+			"webob": "1.8.7",
+			"wheel": "0.37.1",
+			"whitenoise": "6.0.0",
+			"wrapt": "1.14.0",
+			"zipp": "3.7.0"
+		},
+		"platform": "python",
+		"release": "f3c52e4cc509f88ecbb97e72d7c1d0f0148fe0e1",
+		"sdk": {
+			"integrations": ["argv", "atexit", "boto3", "celery", "dedupe", "django", "excepthook", "logging", "modules", "stdlib", "threading"],
+			"name": "sentry.python",
+			"packages": [{
+				"name": "pypi:sentry-sdk",
+				"version": "1.5.7"
+			}],
+			"version": "1.5.7"
+		},
+		"server_name": "testharness.lan",
+		"tags": {
+			"action": "retried"
+		},
+		"timestamp": "2022-03-14T10:11:45.637672Z"
+	}
+}
