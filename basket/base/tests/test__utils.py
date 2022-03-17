@@ -28,14 +28,17 @@ def test_pre_sentry_sanitisation__before_send_setup():
     _func_source = inspect.getsource(before_send)
     assert "with_default_keys=True,\n" in _func_source
     assert "sensitive_keys=SENSITIVE_FIELDS_TO_MASK_ENTIRELY,\n" in _func_source
-    assert "partial_keys=SENSITIVE_FIELDS_TO_MASK_PARTIALLY,\n" in _func_source
-    assert "mask_position=POSITION.LEFT,\n" in _func_source
-    assert "off_set=3" in _func_source
+    assert "# partial_keys=SENSITIVE_FIELDS_TO_MASK_PARTIALLY,\n" in _func_source
+    assert "# mask_position=POSITION.LEFT," in _func_source
+    assert "# off_set=3" in _func_source
 
     assert SENSITIVE_FIELDS_TO_MASK_ENTIRELY == [
+        "amo_id",
         "custom_id",
         "email",
         "first_name",
+        "fxa_id",
+        "id",
         "ip_address",
         "last_name",
         "mobile_number",
@@ -43,16 +46,12 @@ def test_pre_sentry_sanitisation__before_send_setup():
         "remote_addr",
         "remoteaddresschain",
         "token",
+        "uid",
         "user",
         "x-forwarded-for",
     ]
 
-    assert SENSITIVE_FIELDS_TO_MASK_PARTIALLY == [
-        "amo_id",
-        "fxa_id",
-        "id",
-        "uid",
-    ]
+    assert SENSITIVE_FIELDS_TO_MASK_PARTIALLY == []
 
 
 example_unsanitised_data = {
@@ -76,11 +75,10 @@ example_unsanitised_data = {
     "user": "These items are on our blocklist and should be removed entirely",
     "first_name": "These items are on our blocklist and should be removed entirely",
     "last_name": "These items are on our blocklist and should be removed entirely",
-    # Partial masking expected
-    "amo_id": "Should be partially masked.",
-    "fxa_id": "Should be partially masked.",
-    "id": "Should be partially masked.",
-    "uid": "Should be partially masked.",
+    "amo_id": "These items are on our blocklist and should be removed entirely",
+    "fxa_id": "These items are on our blocklist and should be removed entirely",
+    "id": "These items are on our blocklist and should be removed entirely",
+    "uid": "These items are on our blocklist and should be removed entirely",
 }
 
 expected_sanitised_data = {
@@ -103,11 +101,10 @@ expected_sanitised_data = {
     "user": "********",
     "first_name": "********",
     "last_name": "********",
-    # Partial masking expected
-    "amo_id": "Sho****be partially masked.",
-    "fxa_id": "Sho****be partially masked.",
-    "id": "Sho****be partially masked.",
-    "uid": "Sho****be partially masked.",
+    "amo_id": "********",
+    "fxa_id": "********",
+    "id": "********",
+    "uid": "********",
 }
 
 
@@ -163,7 +160,6 @@ def test_pre_sentry_sanitisation(shared_datadir):
     stringified = json.dumps(input_event)
 
     assert "blocklist" in stringified
-    assert "Should be partially masked" in stringified
 
     output = before_send(
         event=input_event,
@@ -175,4 +171,3 @@ def test_pre_sentry_sanitisation(shared_datadir):
     stringified = json.dumps(output)
 
     assert "blocklist" not in stringified
-    assert "Should be partially masked" not in stringified
