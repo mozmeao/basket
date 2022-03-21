@@ -10,7 +10,7 @@ import dj_database_url
 import django_cache_url
 import sentry_sdk
 from decouple import Csv, UndefinedValueError, config
-from sentry_processor import POSITION, DesensitizationProcessor
+from sentry_processor import DesensitizationProcessor
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 
@@ -345,9 +345,12 @@ K8S_POD_NAME = config("K8S_POD_NAME", default=None)
 # Data scrubbing before Sentry
 # https://github.com/laiyongtao/sentry-processor
 SENSITIVE_FIELDS_TO_MASK_ENTIRELY = [
+    "amo_id",
     "custom_id",
     "email",
     "first_name",
+    "fxa_id",
+    "id",
     "ip_address",
     "last_name",
     "mobile_number",
@@ -355,25 +358,21 @@ SENSITIVE_FIELDS_TO_MASK_ENTIRELY = [
     "remote_addr",
     "remoteaddresschain",
     "token",
+    "uid",
     "user",
     "x-forwarded-for",
 ]
 
-SENSITIVE_FIELDS_TO_MASK_PARTIALLY = [
-    "amo_id",
-    "fxa_id",
-    "id",
-    "uid",
-]
+SENSITIVE_FIELDS_TO_MASK_PARTIALLY = []
 
 
 def before_send(event, hint):
     processor = DesensitizationProcessor(
         with_default_keys=True,
         sensitive_keys=SENSITIVE_FIELDS_TO_MASK_ENTIRELY,
-        partial_keys=SENSITIVE_FIELDS_TO_MASK_PARTIALLY,
-        mask_position=POSITION.LEFT,
-        off_set=3,
+        # partial_keys=SENSITIVE_FIELDS_TO_MASK_PARTIALLY,
+        # mask_position=POSITION.LEFT,  # import from sentry_processor if you need it
+        # off_set=3,
     )
     event = processor.process(event, hint)
     return event
