@@ -13,6 +13,7 @@ from decouple import Csv, UndefinedValueError, config
 from sentry_processor import DesensitizationProcessor
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.logging import ignore_logger
 
 # Application version.
 VERSION = (0, 1)
@@ -415,10 +416,15 @@ LOGGING = {
             "handlers": ["console"],
             "propagate": False,
         },
-        "django.security.DisallowedHost": {"handlers": ["null"], "propagate": False},
         "suds.client": {"level": "ERROR", "handlers": ["console"], "propagate": False},
     },
 }
+
+# DisallowedHost gets a lot of action thanks to scans/bots/scripts,
+# but we need not take any action because it's already HTTP 400-ed.
+# Note that we ignore at the Sentry client level
+
+ignore_logger("django.security.DisallowedHost")
 
 PROD_DETAILS_CACHE_NAME = "product_details"
 PROD_DETAILS_CACHE_TIMEOUT = None
