@@ -1,7 +1,7 @@
 APScheduler==3.8.1
 boto3==1.21.11
 backports.zoneinfo==0.2.1
-celery==4.4.7
+celery==5.2.5
 configparser==5.2.0
 contextlib2==21.6.0
 dj-database-url==0.5.0
