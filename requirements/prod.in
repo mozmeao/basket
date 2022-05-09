@@ -27,7 +27,7 @@ mozilla-django-oidc==2.0.0
 msgpack-python==0.5.6
 mysqlclient==2.1.0
 newrelic==7.6.0.173
-phonenumbers==8.12.44
+phonenumbers==8.12.48
 PyFxA==0.7.7
 pysilverpop==0.2.6
 python-decouple==3.6
