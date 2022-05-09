@@ -43,6 +43,7 @@ def test_pre_sentry_sanitisation__before_send_setup():
         "last_name",
         "mobile_number",
         "payee_id",
+        "primary_email",
         "remote_addr",
         "remoteaddresschain",
         "token",
