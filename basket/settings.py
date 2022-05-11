@@ -356,6 +356,7 @@ SENSITIVE_FIELDS_TO_MASK_ENTIRELY = [
     "last_name",
     "mobile_number",
     "payee_id",
+    "primary_email",
     "remote_addr",
     "remoteaddresschain",
     "token",
