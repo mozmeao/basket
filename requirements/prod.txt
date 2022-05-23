@@ -42,21 +42,18 @@ backports-zoneinfo==0.2.1 \
     --hash=sha256:e8236383a20872c0cdf5a62b554b27538db7fa1bbec52429d8d106effbaeca08 \
     --hash=sha256:f04e857b59d9d1ccc39ce2da1021d196e47234873820cbeaad210724b1ee28ac \
     --hash=sha256:fadbfe37f74051d024037f223b8e001611eac868b5c5b06144ef4d8b799862f2
-    # via
-    #   -r requirements/prod.in
-    #   pytz-deprecation-shim
-    #   tzlocal
+    # via -r requirements/prod.in
 billiard==3.6.4.0 \
     --hash=sha256:299de5a8da28a783d51b197d496bef4f1595dd023a93a4f59dde1886ae905547 \
     --hash=sha256:87103ea78fa6ab4d5c751c4909bcff74617d985de7fa8b672cf8618afd5a875b
     # via celery
-boto3==1.21.11 \
-    --hash=sha256:bf5f6a8997ed11a66280ace67cc25ec31c28525940da91d309c3976a9955d4cf \
-    --hash=sha256:f2cecf5d176f398a39bfde0008df83c03f2142b2be5eabe32bf104961df68810
+boto3==1.23.5 \
+    --hash=sha256:5cbbd985171b1e278b722dca48f71455b4938378962734828daeb76f73be6fba \
+    --hash=sha256:73a0d092aaea1649150f43fb3f41451d5a0883940549a64d72781a23ce6b2d44
     # via -r requirements/prod.in
-botocore==1.24.37 \
-    --hash=sha256:21e164a213beca36033c46026bffa62f2ee2cd2600777271f9a551fb34dba006 \
-    --hash=sha256:70c48c4ae3c2b9ec0ca025385979d01f4c7dae4d9a61c82758d4cf7caa7082cd
+botocore==1.26.5 \
+    --hash=sha256:32541873924e3ff0ad95f02dc331e9f278721a3b864a4e2a8d514346b2598ce5 \
+    --hash=sha256:805db3ecf85ff89edfb6788f862b87426f990e3e6383ef3fca3076f7659a5454
     # via
     #   boto3
     #   s3transfer
