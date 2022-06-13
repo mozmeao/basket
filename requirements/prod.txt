@@ -42,21 +42,18 @@ backports-zoneinfo==0.2.1 \
     --hash=sha256:e8236383a20872c0cdf5a62b554b27538db7fa1bbec52429d8d106effbaeca08 \
     --hash=sha256:f04e857b59d9d1ccc39ce2da1021d196e47234873820cbeaad210724b1ee28ac \
     --hash=sha256:fadbfe37f74051d024037f223b8e001611eac868b5c5b06144ef4d8b799862f2
-    # via
-    #   -r requirements/prod.in
-    #   pytz-deprecation-shim
-    #   tzlocal
+    # via -r requirements/prod.in
 billiard==3.6.4.0 \
     --hash=sha256:299de5a8da28a783d51b197d496bef4f1595dd023a93a4f59dde1886ae905547 \
     --hash=sha256:87103ea78fa6ab4d5c751c4909bcff74617d985de7fa8b672cf8618afd5a875b
     # via celery
-boto3==1.21.11 \
-    --hash=sha256:bf5f6a8997ed11a66280ace67cc25ec31c28525940da91d309c3976a9955d4cf \
-    --hash=sha256:f2cecf5d176f398a39bfde0008df83c03f2142b2be5eabe32bf104961df68810
+boto3==1.24.7 \
+    --hash=sha256:6e243e28c804dccd2015935acfac0567e1861b20fdd96aa47f232b47aa214a69 \
+    --hash=sha256:925a34a55257219f4601e803951fd4d61ed6eac2208dc834a04fe150b03f265e
     # via -r requirements/prod.in
-botocore==1.24.46 \
-    --hash=sha256:663d8f02b98641846eb959c54c840cc33264d5f2dee5b8fc09ee8adbef0f8dcf \
-    --hash=sha256:89a203bba3c8f2299287e48a9e112e2dbe478cf67eaac26716f0e7f176446146
+botocore==1.27.7 \
+    --hash=sha256:3e0cbe26f08fe9a3f6df5de4dcc3bef686e01ba5f79ad03ffbe79d92f51ecea5 \
+    --hash=sha256:dc83ef991c730ab0f06b51fcefda74f493b990903b882452aff78c123e3040e2
     # via
     #   boto3
     #   s3transfer
@@ -544,9 +541,9 @@ requests-oauthlib==1.3.1 \
     --hash=sha256:2577c501a2fb8d05a304c09d090d6e47c306fef15809d102b327cf8364bddab5 \
     --hash=sha256:75beac4a47881eeb94d5ea5d6ad31ef88856affe2332b9aafb52c6452ccf0d7a
     # via pysilverpop
-s3transfer==0.5.2 \
-    --hash=sha256:7a6f4c4d1fdb9a2b640244008e142cbc2cd3ae34b386584ef044dd0f27101971 \
-    --hash=sha256:95c58c194ce657a5f4fb0b9e60a84968c808888aed628cd98ab8771fe1db98ed
+s3transfer==0.6.0 \
+    --hash=sha256:06176b74f3a15f61f1b4f25a1fc29a4429040b7647133a463da8fa5bd28d5ecd \
+    --hash=sha256:2ed07d3866f523cc561bf4a00fc5535827981b117dd7876f036b0c1aca42c947
     # via boto3
 sentry-processor==0.0.1 \
     --hash=sha256:fd7a30fb57aaf05c01cd04cf7d949c628376b2b55d7a0aaa222efe58a8f122bc
