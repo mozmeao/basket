@@ -196,9 +196,8 @@ django==3.2.14 \
     #   django-redis
     #   django-watchman
     #   mozilla-django-oidc
-django-allow-cidr==0.4.0 \
-    --hash=sha256:9f6c3ffbad47f0e722fb208bc857e10153054d6ef02c462047fa4815671adc57 \
-    --hash=sha256:b9758a7c9626fa2b00735ce0e3f45b46471a2bb7c21edc7cee1d52ec04e63788
+django-allow-cidr==0.4.1 \
+    --hash=sha256:6807727e590bfa9ee69dd8ec4ea816668a0b4ae78aaba9b02e68b5ab5e2a5209
     # via -r requirements/prod.in
 django-cache-url==3.3.0 \
     --hash=sha256:888c6954fdb3c7223e771b61528d7f7dc5987965cd93a6881b9bb31f0ef6d394 \
@@ -460,7 +459,9 @@ oauthlib==3.2.0 \
 packaging==21.3 \
     --hash=sha256:dd47c42927d89ab911e606518907cc2d3a1f38bbd026385970643f9c5b8ecfeb \
     --hash=sha256:ef103e05f519cdc783ae24ea4e2e0f508a9c99b2d4969652eed6a2e1ea5bd522
-    # via redis
+    # via
+    #   django-allow-cidr
+    #   redis
 phonenumbers==8.12.51 \
     --hash=sha256:9d4a9460127ffd288ae071dd1f7942e2329da5b5c5d57d8aabe7103427ca7cbf \
     --hash=sha256:ac13b944e18ecb3ad58d9a090a2053dfe3d30dbe3711ebc2945a461b855ad4bf
