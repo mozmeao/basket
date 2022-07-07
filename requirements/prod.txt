@@ -5,9 +5,9 @@
 #
 # $ make compile-requirements
 #
-amqp==2.6.1 \
-    --hash=sha256:70cdb10628468ff14e57ec2f751c7aa9e48e7e3651cfd62d431213c0c4e58f21 \
-    --hash=sha256:aa7f313fb887c91f15474c1229907a04dac0b8135822d6603437803424c0aa59
+amqp==5.1.1 \
+    --hash=sha256:2c1b13fecc0893e946c65cbd5f36427861cffa4ea2201d8f6fca22e2a373b5e2 \
+    --hash=sha256:6f0956d2c23d8fa6e7691934d8c3930eadb44972cbbd1a7ae3a520f735d43359
     # via kombu
 apscheduler==3.9.1 \
     --hash=sha256:65e6574b6395498d371d045f2a8a7e4f7d50c6ad21ef7313d15b1c7cf20df1e3 \
@@ -57,9 +57,9 @@ botocore==1.27.24 \
     # via
     #   boto3
     #   s3transfer
-celery==4.4.7 \
-    --hash=sha256:a92e1d56e650781fb747032a3997d16236d037c8199eacd5217d1a72893bca45 \
-    --hash=sha256:d220b13a8ed57c78149acf82c006785356071844afe0b27012a4991d44026f9f
+celery==5.2.7 \
+    --hash=sha256:138420c020cd58d6707e6257b6beda91fd39af7afde5d36c6334d175302c0e14 \
+    --hash=sha256:fafbd82934d30f8a004f81e8f7a062e31413a23d444be8ee3326553915958c6d
     # via -r requirements/prod.in
 certifi==2022.6.15 \
     --hash=sha256:84c85a9078b11105f04f3036a9482ae10e4621616db313fe045dd24743a0820d \
@@ -137,6 +137,26 @@ charset-normalizer==2.1.0 \
     --hash=sha256:5189b6f22b01957427f35b6a08d9a0bc45b46d3788ef5a92e978433c7a35f8a5 \
     --hash=sha256:575e708016ff3a5e3681541cb9d79312c416835686d054a23accb873b254f413
     # via requests
+click==8.1.3 \
+    --hash=sha256:7682dc8afb30297001674575ea00d1814d808d6a36af415a82bd481d37ba7b8e \
+    --hash=sha256:bb4d8133cb15a609f44e8213d9b391b0809795062913b383c62be0ee95b1db48
+    # via
+    #   celery
+    #   click-didyoumean
+    #   click-plugins
+    #   click-repl
+click-didyoumean==0.3.0 \
+    --hash=sha256:a0713dc7a1de3f06bc0df5a9567ad19ead2d3d5689b434768a6145bff77c0667 \
+    --hash=sha256:f184f0d851d96b6d29297354ed981b7dd71df7ff500d82fa6d11f0856bee8035
+    # via celery
+click-plugins==1.1.1 \
+    --hash=sha256:46ab999744a9d831159c3411bb0c79346d94a444df9a3a3742e9ed63645f264b \
+    --hash=sha256:5d262006d3222f5057fd81e1623d4443e41dcda5dc815c06b442aa3c02889fc8
+    # via celery
+click-repl==0.2.0 \
+    --hash=sha256:94b3fbbc9406a236f176e0506524b2937e4b23b6f4c0c0b2a0a83f8a64e9194b \
+    --hash=sha256:cd12f68d745bf6151210790540b4cb064c7b13e571bc64b6957d98d120dacfd8
+    # via celery
 configparser==5.2.0 \
     --hash=sha256:1b35798fdf1713f1c3139016cfcbc461f09edbf099d1fb658d4b7479fcaa3daa \
     --hash=sha256:e8b39238fb6f0153a069aa253d349467c3c4737934f253ef6abac5fe0eca1e5d
@@ -338,9 +358,9 @@ josepy==1.13.0 \
     --hash=sha256:6f64eb35186aaa1776b7a1768651b1c616cab7f9685f9660bffc6491074a5390 \
     --hash=sha256:8931daf38f8a4c85274a0e8b7cb25addfd8d1f28f9fb8fbed053dd51aec75dc9
     # via mozilla-django-oidc
-kombu==4.6.11 \
-    --hash=sha256:be48cdffb54a2194d93ad6533d73f69408486483d189fe9f5990ee24255b0e0a \
-    --hash=sha256:ca1b45faac8c0b18493d02a8571792f3c40291cf2bcf1f55afed3d8f3aa7ba74
+kombu==5.2.4 \
+    --hash=sha256:37cee3ee725f94ea8bb173eaab7c1760203ea53bbebae226328600f9d2799610 \
+    --hash=sha256:8b213b24293d3417bcf0d2f5537b7f756079e3ea232a8386dcc89a59fd2361a4
     # via celery
 lxml==4.9.1 \
     --hash=sha256:04da965dfebb5dac2619cb90fcf93efdb35b3c6994fea58a157a834f2f94b318 \
@@ -468,6 +488,10 @@ phonenumbers==8.12.51 \
     --hash=sha256:9d4a9460127ffd288ae071dd1f7942e2329da5b5c5d57d8aabe7103427ca7cbf \
     --hash=sha256:ac13b944e18ecb3ad58d9a090a2053dfe3d30dbe3711ebc2945a461b855ad4bf
     # via -r requirements/prod.in
+prompt-toolkit==3.0.30 \
+    --hash=sha256:859b283c50bde45f5f97829f77a4674d1c1fcd88539364f1b28a37805cfd89c0 \
+    --hash=sha256:d8916d3f62a7b67ab353a952ce4ced6a1d2587dfe9ef8ebc30dd7c386751f289
+    # via click-repl
 pybrowserid==0.14.0 \
     --hash=sha256:6c227669e87cc25796ae76f6a0ef65025528c8ad82d352679fa9a3e5663a71e3 \
     --hash=sha256:8e237d6a2bc9ead849a4472a84d3e6a9309bec99cf8e10d36213710dda8df8ca
@@ -587,6 +611,7 @@ six==1.16.0 \
     --hash=sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254
     # via
     #   apscheduler
+    #   click-repl
     #   django-jsonfield
     #   pyfxa
     #   pysilverpop
@@ -622,12 +647,17 @@ user-agents==2.2.0 \
     --hash=sha256:a98c4dc72ecbc64812c4534108806fb0a0b3a11ec3fd1eafe807cee5b0a942e7 \
     --hash=sha256:d36d25178db65308d1458c5fa4ab39c9b2619377010130329f3955e7626ead26
     # via -r requirements/prod.in
-vine==1.3.0 \
-    --hash=sha256:133ee6d7a9016f177ddeaf191c1f58421a1dcc6ee9a42c58b34bed40e1d2cd87 \
-    --hash=sha256:ea4947cc56d1fd6f2095c8d543ee25dad966f78692528e68b4fada11ba3f98af
+vine==5.0.0 \
+    --hash=sha256:4c9dceab6f76ed92105027c49c823800dd33cacce13bdedc5b914e3514b7fb30 \
+    --hash=sha256:7d3b1624a953da82ef63462013bbd271d3eb75751489f9807598e8f340bd637e
     # via
     #   amqp
     #   celery
+    #   kombu
+wcwidth==0.2.5 \
+    --hash=sha256:beb4802a9cebb9144e99086eff703a642a13d6a0052920003a230f3294bbe784 \
+    --hash=sha256:c4d647b99872929fdb7bdcaa4fbe7f01413ed3d98077df798530e5b04f116c83
+    # via prompt-toolkit
 webob==1.8.7 \
     --hash=sha256:73aae30359291c14fa3b956f8b5ca31960e420c28c1bec002547fb04928cf89b \
     --hash=sha256:b64ef5141be559cfade448f044fa45c2260351edcb6a8ef6b7e00c7dcef0c323
