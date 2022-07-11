@@ -196,8 +196,9 @@ django==3.2.14 \
     #   django-redis
     #   django-watchman
     #   mozilla-django-oidc
-django-allow-cidr==0.4.1 \
-    --hash=sha256:6807727e590bfa9ee69dd8ec4ea816668a0b4ae78aaba9b02e68b5ab5e2a5209
+django-allow-cidr==0.5.0 \
+    --hash=sha256:2fd88ffe697caf0c1d0fd147b88cf44d81282c069bbc475166a2ff1637ad9155 \
+    --hash=sha256:d17347e75d6c02864022f52ed608775a5e9ab144d1a82bb40853714f125f5d87
     # via -r requirements/prod.in
 django-cache-url==3.4.2 \
     --hash=sha256:6cc9901a99a99751f5458aa7de08ce06e48c1441b1a94c9457d78af74fab9a26 \
@@ -433,10 +434,6 @@ mysqlclient==2.1.1 \
     --hash=sha256:c812b67e90082a840efb82a8978369e6e69fc62ce1bda4ca8f3084a9d862308b \
     --hash=sha256:dea88c8d3f5a5d9293dfe7f087c16dd350ceb175f2f6631c9cf4caf3e19b7a96
     # via -r requirements/prod.in
-netaddr==0.8.0 \
-    --hash=sha256:9666d0232c32d2656e5e5f8d735f58fd6c7457ce52fc21c98d45f2af78f990ac \
-    --hash=sha256:d6cc57c7a07b1d9d2e917aa8b36ae8ce61c35ba3fcd1b83ca31c5a0ee2b5a243
-    # via django-allow-cidr
 newrelic==7.14.0.177 \
     --hash=sha256:0340e93e30ef7dbf36748b5001272b1bd62430835fcbb7f9f06651eddcac7ad7 \
     --hash=sha256:1cfeeba603a4abe85b4447a4fb33ad9daa544240bf8ac51a7570d8c5da1ce3fd \
