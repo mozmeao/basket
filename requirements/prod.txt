@@ -464,9 +464,9 @@ packaging==21.3 \
     # via
     #   django-allow-cidr
     #   redis
-phonenumbers==8.12.51 \
-    --hash=sha256:9d4a9460127ffd288ae071dd1f7942e2329da5b5c5d57d8aabe7103427ca7cbf \
-    --hash=sha256:ac13b944e18ecb3ad58d9a090a2053dfe3d30dbe3711ebc2945a461b855ad4bf
+phonenumbers==8.12.53 \
+    --hash=sha256:b945c1410d52448bb560a869e0a77af343422c96da55efbb2a44c5da38df299a \
+    --hash=sha256:ebad336027f008eed8f2fe571ecb20c574c9c52f68b85ed2e2a2519d92ed318d
     # via -r requirements/prod.in
 pybrowserid==0.14.0 \
     --hash=sha256:6c227669e87cc25796ae76f6a0ef65025528c8ad82d352679fa9a3e5663a71e3 \
