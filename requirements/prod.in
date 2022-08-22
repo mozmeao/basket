@@ -2,7 +2,7 @@ APScheduler==3.9.1
 boto3==1.24.50
 backports.zoneinfo==0.2.1
 celery==4.4.7
-configparser==5.2.0
+configparser==5.3.0
 contextlib2==21.6.0
 dj-database-url==1.0.0
 django==3.2.15
