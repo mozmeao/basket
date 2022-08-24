@@ -5,7 +5,6 @@ from unittest.mock import ANY, Mock, call, patch
 from urllib.error import URLError
 from uuid import uuid4
 
-import simple_salesforce as sfapi
 from celery.exceptions import Retry
 from django.conf import settings
 from django.core.cache import cache
@@ -15,7 +14,6 @@ from django.utils.timezone import now
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from basket.news.backends.ctms import CTMSNotFoundByAltIDError
-from basket.news.backends.sfdc import SFDCDisabled
 from basket.news.celery import app as celery_app
 from basket.news.models import AcousticTxEmailMessage, CommonVoiceUpdate, FailedTask
 from basket.news.tasks import (
@@ -23,7 +21,6 @@ from basket.news.tasks import (
     SUBSCRIBE,
     RetryTask,
     _add_fxa_activity,
-    amo_sync_addon,
     amo_sync_user,
     et_task,
     fxa_delete,
@@ -47,10 +44,9 @@ from basket.news.tasks import (
 from basket.news.utils import iso_format_unix_timestamp
 
 
-@override_settings(TASK_LOCKING_ENABLE=False, SFDC_ENABLED=True)
+@override_settings(TASK_LOCKING_ENABLE=False)
 @patch("basket.news.tasks.upsert_user")
 @patch("basket.news.tasks.get_user_data")
-@patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.ctms")
 class ProcessPetitionSignatureTests(TestCase):
     def _get_sig_data(self):
@@ -74,14 +70,13 @@ class ProcessPetitionSignatureTests(TestCase):
 
     def _get_contact_data(self, data):
         data = data["form"]
-        contact_data = {"_set_subscriber": False, "mofo_relevant": True}
+        contact_data = {"mofo_relevant": True}
         contact_data.update({k: data[k] for k in PETITION_CONTACT_FIELDS if k in data})
         return contact_data
 
     def test_signature_with_comments_metadata(
         self,
         ctms_mock,
-        sfdc_mock,
         gud_mock,
         uu_mock,
     ):
@@ -91,28 +86,15 @@ class ProcessPetitionSignatureTests(TestCase):
             "id": "1234",
             "token": "the-token",
         }
-        campaign_member = {
-            "CampaignId": data["form"]["campaign_id"],
-            "ContactId": user_data["id"],
-            "Full_URL__c": data["form"]["source_url"],
-            "Status": "Signed",
-            "Petition_Comments__c": data["form"]["comments"],
-            "Petition_Flex__c": json.dumps(data["form"]["metadata"]),
-        }
         gud_mock.return_value = user_data
         process_petition_signature(data)
-        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
-        del contact_data["_set_subscriber"]
         ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
-        sfdc_mock.add.assert_not_called()
         ctms_mock.add.assert_not_called()
         uu_mock.delay.assert_not_called()
-        sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
 
     def test_signature_with_long_comments_metadata(
         self,
         ctms_mock,
-        sfdc_mock,
         gud_mock,
         uu_mock,
     ):
@@ -135,18 +117,13 @@ class ProcessPetitionSignatureTests(TestCase):
         assert data["form"]["comments"] != campaign_member["Petition_Comments__c"]
         gud_mock.return_value = user_data
         process_petition_signature(data)
-        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
-        del contact_data["_set_subscriber"]
         ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
-        sfdc_mock.add.assert_not_called()
         ctms_mock.add.assert_not_called()
         uu_mock.delay.assert_not_called()
-        sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
 
     def test_signature_without_comments_metadata(
         self,
         ctms_mock,
-        sfdc_mock,
         gud_mock,
         uu_mock,
     ):
@@ -158,23 +135,13 @@ class ProcessPetitionSignatureTests(TestCase):
             "id": "1234",
             "token": "the-token",
         }
-        campaign_member = {
-            "CampaignId": data["form"]["campaign_id"],
-            "ContactId": user_data["id"],
-            "Full_URL__c": data["form"]["source_url"],
-            "Status": "Signed",
-        }
         gud_mock.return_value = user_data
         process_petition_signature(data)
-        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
-        del contact_data["_set_subscriber"]
         ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
-        sfdc_mock.add.assert_not_called()
         ctms_mock.add.assert_not_called()
         uu_mock.delay.assert_not_called()
-        sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
 
-    def test_signature_with_subscription(self, ctms_mock, sfdc_mock, gud_mock, uu_mock):
+    def test_signature_with_subscription(self, ctms_mock, gud_mock, uu_mock):
         data = self._get_sig_data()
         data["form"]["email_subscription"] = True
         del data["form"]["comments"]
@@ -184,18 +151,9 @@ class ProcessPetitionSignatureTests(TestCase):
             "id": "1234",
             "token": "the-token",
         }
-        campaign_member = {
-            "CampaignId": data["form"]["campaign_id"],
-            "ContactId": user_data["id"],
-            "Full_URL__c": data["form"]["source_url"],
-            "Status": "Signed",
-        }
         gud_mock.return_value = user_data
         process_petition_signature(data)
-        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
-        del contact_data["_set_subscriber"]
         ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
-        sfdc_mock.add.assert_not_called()
         ctms_mock.add.assert_not_called()
         uu_mock.delay.assert_called_with(
             SUBSCRIBE,
@@ -206,14 +164,12 @@ class ProcessPetitionSignatureTests(TestCase):
                 "source_url": data["form"]["source_url"],
             },
         )
-        sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
 
     @patch("basket.news.tasks.generate_token")
     def test_signature_with_new_user(
         self,
         gt_mock,
         ctms_mock,
-        sfdc_mock,
         gud_mock,
         uu_mock,
     ):
@@ -228,33 +184,20 @@ class ProcessPetitionSignatureTests(TestCase):
             "id": "1234",
             "token": "the-token",
         }
-        campaign_member = {
-            "CampaignId": data["form"]["campaign_id"],
-            "ContactId": user_data["id"],
-            "Full_URL__c": data["form"]["source_url"],
-            "Status": "Signed",
-        }
         gud_mock.side_effect = [None, user_data]
         email_id = str(uuid4())
         ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         process_petition_signature(data)
-        sfdc_mock.update.assert_not_called()
         ctms_mock.update.assert_not_called()
-        ctms_data = contact_data.copy()
-        del ctms_data["_set_subscriber"]
-        del ctms_data["record_type"]
-        ctms_mock.add.assert_called_once_with(ctms_data)
         contact_data["email_id"] = email_id
-        sfdc_mock.add.assert_called_with(contact_data)
+        ctms_mock.add.assert_called_once_with(contact_data)
         uu_mock.delay.assert_not_called()
-        sfdc_mock.campaign_member.create.assert_called_with(campaign_member)
 
     @patch("basket.news.tasks.generate_token")
     def test_signature_with_new_user_retry(
         self,
         gt_mock,
         ctms_mock,
-        sfdc_mock,
         gud_mock,
         uu_mock,
     ):
@@ -271,22 +214,14 @@ class ProcessPetitionSignatureTests(TestCase):
         with self.assertRaises(Retry):
             process_petition_signature(data)
 
-        sfdc_mock.update.assert_not_called()
         ctms_mock.update.assert_not_called()
-        ctms_data = contact_data.copy()
-        del ctms_data["_set_subscriber"]
-        del ctms_data["record_type"]
-        ctms_mock.add.assert_called_once_with(ctms_data)
         contact_data["email_id"] = email_id
-        sfdc_mock.add.assert_called_with(contact_data)
+        ctms_mock.add.assert_called_once_with(contact_data)
         uu_mock.delay.assert_not_called()
-        sfdc_mock.campaign_member.create.assert_not_called()
 
-    @override_settings(SFDC_ENABLED=False)
-    def test_signature_metadata_sfdc_disabled(
+    def test_signature_metadata(
         self,
         ctms_mock,
-        sfdc_mock,
         gud_mock,
         uu_mock,
     ):
@@ -298,150 +233,14 @@ class ProcessPetitionSignatureTests(TestCase):
         }
         gud_mock.return_value = user_data
         process_petition_signature(data)
-        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
-        del contact_data["_set_subscriber"]
         ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
-        sfdc_mock.add.assert_not_called()
         ctms_mock.add.assert_not_called()
         uu_mock.delay.assert_not_called()
-        sfdc_mock.campaign_member.create.assert_not_called()
-
-    @override_settings(SFDC_ENABLED=False)
-    def test_signature_without_comments_metadata_sfdc_disabled(
-        self,
-        ctms_mock,
-        sfdc_mock,
-        gud_mock,
-        uu_mock,
-    ):
-        data = self._get_sig_data()
-        del data["form"]["comments"]
-        del data["form"]["metadata"]
-        contact_data = self._get_contact_data(data)
-        user_data = {
-            "id": "1234",
-            "token": "the-token",
-        }
-        gud_mock.return_value = user_data
-        process_petition_signature(data)
-        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
-        del contact_data["_set_subscriber"]
-        ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
-        sfdc_mock.add.assert_not_called()
-        ctms_mock.add.assert_not_called()
-        uu_mock.delay.assert_not_called()
-        sfdc_mock.campaign_member.create.assert_not_called()
-
-    @override_settings(SFDC_ENABLED=False)
-    def test_signature_with_subscription_sfdc_disabled(
-        self,
-        ctms_mock,
-        sfdc_mock,
-        gud_mock,
-        uu_mock,
-    ):
-        data = self._get_sig_data()
-        data["form"]["email_subscription"] = True
-        del data["form"]["comments"]
-        del data["form"]["metadata"]
-        contact_data = self._get_contact_data(data)
-        user_data = {
-            "id": "1234",
-            "token": "the-token",
-        }
-        gud_mock.return_value = user_data
-        process_petition_signature(data)
-        sfdc_mock.update.assert_called_with(gud_mock(), contact_data)
-        del contact_data["_set_subscriber"]
-        ctms_mock.update.assert_called_once_with(gud_mock(), contact_data)
-        sfdc_mock.add.assert_not_called()
-        ctms_mock.add.assert_not_called()
-        uu_mock.delay.assert_called_with(
-            SUBSCRIBE,
-            {
-                "token": user_data["token"],
-                "lang": "en-US",
-                "newsletters": "mozilla-foundation",
-                "source_url": data["form"]["source_url"],
-            },
-        )
-        sfdc_mock.campaign_member.create.assert_not_called()
-
-    @override_settings(SFDC_ENABLED=False)
-    @patch("basket.news.tasks.generate_token")
-    def test_signature_with_new_user_sfdc_disabled(
-        self,
-        gt_mock,
-        ctms_mock,
-        sfdc_mock,
-        gud_mock,
-        uu_mock,
-    ):
-        data = self._get_sig_data()
-        del data["form"]["comments"]
-        del data["form"]["metadata"]
-        contact_data = self._get_contact_data(data)
-        contact_data["token"] = gt_mock()
-        contact_data["email"] = data["form"]["email"]
-        contact_data["record_type"] = settings.DONATE_CONTACT_RECORD_TYPE
-        user_data = {
-            "id": "1234",
-            "token": "the-token",
-        }
-        gud_mock.side_effect = [None, user_data]
-        email_id = str(uuid4())
-        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
-        process_petition_signature(data)
-        sfdc_mock.update.assert_not_called()
-        ctms_mock.update.assert_not_called()
-        ctms_data = contact_data.copy()
-        del ctms_data["_set_subscriber"]
-        del ctms_data["record_type"]
-        ctms_mock.add.assert_called_once_with(ctms_data)
-        contact_data["email_id"] = email_id
-        sfdc_mock.add.assert_called_with(contact_data)
-        uu_mock.delay.assert_not_called()
-        sfdc_mock.campaign_member.create.assert_not_called()
-
-    @override_settings(SFDC_ENABLED=False)
-    @patch("basket.news.tasks.generate_token")
-    def test_signature_with_new_user_retry_sfdc_disabled(
-        self,
-        gt_mock,
-        ctms_mock,
-        sfdc_mock,
-        gud_mock,
-        uu_mock,
-    ):
-        data = self._get_sig_data()
-        del data["form"]["comments"]
-        del data["form"]["metadata"]
-        contact_data = self._get_contact_data(data)
-        contact_data["token"] = gt_mock()
-        contact_data["email"] = data["form"]["email"]
-        contact_data["record_type"] = settings.DONATE_CONTACT_RECORD_TYPE
-        gud_mock.return_value = None
-        email_id = str(uuid4())
-        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
-        with self.assertRaises(Retry):
-            process_petition_signature(data)
-
-        sfdc_mock.update.assert_not_called()
-        ctms_mock.update.assert_not_called()
-        ctms_data = contact_data.copy()
-        del ctms_data["_set_subscriber"]
-        del ctms_data["record_type"]
-        ctms_mock.add.assert_called_once_with(ctms_data)
-        contact_data["email_id"] = email_id
-        sfdc_mock.add.assert_called_with(contact_data)
-        uu_mock.delay.assert_not_called()
-        sfdc_mock.campaign_member.create.assert_not_called()
 
 
 @override_settings(TASK_LOCKING_ENABLE=False)
-@patch("basket.news.tasks.sfdc")
 class ProcessDonationEventTests(TestCase):
-    def test_charge_failed(self, sfdc_mock):
+    def test_charge_failed(self):
         process_donation_event(
             {
                 "event_type": "charge.failed",
@@ -449,16 +248,8 @@ class ProcessDonationEventTests(TestCase):
                 "failure_code": "expired_card",
             },
         )
-        sfdc_mock.opportunity.update.assert_called_with(
-            "PMT_Transaction_ID__c/el-dudarino",
-            {
-                "PMT_Type_Lost__c": "charge.failed",
-                "PMT_Reason_Lost__c": "expired_card",
-                "StageName": "Closed Lost",
-            },
-        )
 
-    def test_charge_refunded_ignored(self, sfdc_mock):
+    def test_charge_refunded_ignored(self):
         process_donation_event(
             {
                 "event_type": "charge.refunded",
@@ -467,9 +258,8 @@ class ProcessDonationEventTests(TestCase):
                 "status": "pending",
             },
         )
-        sfdc_mock.opportunity.update.assert_not_called()
 
-    def test_charge_refunded(self, sfdc_mock):
+    def test_charge_refunded(self):
         process_donation_event(
             {
                 "event_type": "charge.refunded",
@@ -478,16 +268,8 @@ class ProcessDonationEventTests(TestCase):
                 "status": "succeeded",
             },
         )
-        sfdc_mock.opportunity.update.assert_called_with(
-            "PMT_Transaction_ID__c/el-dudarino",
-            {
-                "PMT_Type_Lost__c": "charge.refunded",
-                "PMT_Reason_Lost__c": "requested_by_customer",
-                "StageName": "Closed Lost",
-            },
-        )
 
-    def test_charge_disputed_ignored(self, sfdc_mock):
+    def test_charge_disputed_ignored(self):
         process_donation_event(
             {
                 "event_type": "charge.dispute.closed",
@@ -496,23 +278,14 @@ class ProcessDonationEventTests(TestCase):
                 "status": "under_review",
             },
         )
-        sfdc_mock.opportunity.update.assert_not_called()
 
-    def test_charge_disputed(self, sfdc_mock):
+    def test_charge_disputed(self):
         process_donation_event(
             {
                 "event_type": "charge.dispute.closed",
                 "transaction_id": "el-dudarino",
                 "reason": "fraudulent",
                 "status": "lost",
-            },
-        )
-        sfdc_mock.opportunity.update.assert_called_with(
-            "PMT_Transaction_ID__c/el-dudarino",
-            {
-                "PMT_Type_Lost__c": "charge.dispute.closed",
-                "PMT_Reason_Lost__c": "fraudulent",
-                "StageName": "Closed Lost",
             },
         )
 
@@ -629,9 +402,8 @@ class ProcessDonationReceiptTests(TestCase):
         )
 
 
-@override_settings(TASK_LOCKING_ENABLE=False, SFDC_ENABLED=True)
+@override_settings(TASK_LOCKING_ENABLE=False)
 @patch("basket.news.tasks.get_user_data")
-@patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.ctms")
 class ProcessDonationTests(TestCase):
     donate_data = {
@@ -654,7 +426,7 @@ class ProcessDonationTests(TestCase):
         "campaign_id": "were-you-listening-to-the-dudes-story",
     }
 
-    def test_one_name(self, ctms_mock, sfdc_mock, gud_mock):
+    def test_one_name(self, ctms_mock, gud_mock):
         data = self.donate_data.copy()
         gud_mock.return_value = {
             "id": "1234",
@@ -664,16 +436,12 @@ class ProcessDonationTests(TestCase):
         del data["first_name"]
         data["last_name"] = "Donnie"
         process_donation(data)
-        sfdc_mock.update.assert_called_with(
-            gud_mock(),
-            {"_set_subscriber": False, "mofo_relevant": True, "last_name": "Donnie"},
-        )
         ctms_mock.update.assert_called_with(
             gud_mock(),
             {"last_name": "Donnie", "mofo_relevant": True},
         )
 
-    def test_name_splitting(self, ctms_mock, sfdc_mock, gud_mock):
+    def test_name_splitting(self, ctms_mock, gud_mock):
         data = self.donate_data.copy()
         gud_mock.return_value = None
         email_id = str(uuid4())
@@ -690,20 +458,8 @@ class ProcessDonationTests(TestCase):
                 "mofo_relevant": True,
             },
         )
-        sfdc_mock.add.assert_called_with(
-            {
-                "_set_subscriber": False,
-                "token": ANY,
-                "record_type": ANY,
-                "email": "dude@example.com",
-                "first_name": "Theodore Donald",
-                "last_name": "Kerabatsos",
-                "email_id": email_id,
-                "mofo_relevant": True,
-            },
-        )
 
-    def test_name_empty(self, ctms_mock, sfdc_mock, gud_mock):
+    def test_name_empty(self, ctms_mock, gud_mock):
         """Should be okay if only last_name is provided and is just spaces.
 
         https://github.com/mozmeao/basket/issues/45
@@ -718,18 +474,8 @@ class ProcessDonationTests(TestCase):
         ctms_mock.add.assert_called_with(
             {"token": ANY, "email": "dude@example.com", "mofo_relevant": True},
         )
-        sfdc_mock.add.assert_called_with(
-            {
-                "_set_subscriber": False,
-                "token": ANY,
-                "email": "dude@example.com",
-                "record_type": ANY,
-                "email_id": email_id,
-                "mofo_relevant": True,
-            },
-        )
 
-    def test_name_none(self, ctms_mock, sfdc_mock, gud_mock):
+    def test_name_none(self, ctms_mock, gud_mock):
         """Should be okay if only last_name is provided and is None.
 
         https://sentry.prod.mozaws.net/operations/basket-prod/issues/683973/
@@ -744,45 +490,8 @@ class ProcessDonationTests(TestCase):
         ctms_mock.add.assert_called_with(
             {"token": ANY, "email": "dude@example.com", "mofo_relevant": True},
         )
-        sfdc_mock.add.assert_called_with(
-            {
-                "_set_subscriber": False,
-                "token": ANY,
-                "email": "dude@example.com",
-                "record_type": ANY,
-                "email_id": email_id,
-                "mofo_relevant": True,
-            },
-        )
 
-    def test_ctms_add_fails(self, ctms_mock, sfdc_mock, gud_mock):
-        """If ctms.add fails, sfdc.add is still called without an email_id."""
-        data = self.donate_data.copy()
-        gud_mock.return_value = None
-        ctms_mock.add.return_value = None
-        process_donation(data)
-        ctms_mock.add.assert_called_with(
-            {
-                "token": ANY,
-                "email": "dude@example.com",
-                "first_name": "Jeffery",
-                "last_name": "Lebowski",
-                "mofo_relevant": True,
-            },
-        )
-        sfdc_mock.add.assert_called_with(
-            {
-                "_set_subscriber": False,
-                "token": ANY,
-                "email": "dude@example.com",
-                "first_name": "Jeffery",
-                "last_name": "Lebowski",
-                "record_type": ANY,
-                "mofo_relevant": True,
-            },
-        )
-
-    def test_only_update_contact_if_modified(self, ctms_mock, sfdc_mock, gud_mock):
+    def test_only_update_contact_if_modified(self, ctms_mock, gud_mock):
         data = self.donate_data.copy()
         gud_mock.return_value = {
             "id": "1234",
@@ -790,21 +499,11 @@ class ProcessDonationTests(TestCase):
             "last_name": "_",
         }
         process_donation(data)
-        sfdc_mock.update.assert_called_with(
-            gud_mock(),
-            {
-                "_set_subscriber": False,
-                "first_name": "Jeffery",
-                "last_name": "Lebowski",
-                "mofo_relevant": True,
-            },
-        )
         ctms_mock.update.assert_called_with(
             gud_mock(),
             {"first_name": "Jeffery", "last_name": "Lebowski", "mofo_relevant": True},
         )
 
-        sfdc_mock.reset_mock()
         ctms_mock.reset_mock()
         data = self.donate_data.copy()
         gud_mock.return_value = {
@@ -813,10 +512,9 @@ class ProcessDonationTests(TestCase):
             "last_name": "Lebowski",
         }
         process_donation(data)
-        sfdc_mock.update.assert_not_called()
         ctms_mock.update.assert_not_called()
 
-    def test_donation_data(self, ctms_mock, sfdc_mock, gud_mock):
+    def test_donation_data(self, ctms_mock, gud_mock):
         data = self.donate_data.copy()
         gud_mock.return_value = {
             "id": "1234",
@@ -824,31 +522,8 @@ class ProcessDonationTests(TestCase):
             "last_name": "Lebowski",
         }
         process_donation(data)
-        sfdc_mock.opportunity.create.assert_called_with(
-            {
-                "RecordTypeId": ANY,
-                "Name": "Foundation Donation",
-                "Donation_Contact__c": "1234",
-                "StageName": "Closed Won",
-                # calculated from data['created']
-                "CloseDate": "2016-11-21T16:46:49.327000",
-                "Amount": float(data["donation_amount"]),
-                "Currency__c": "USD",
-                "Payment_Source__c": "paypal",
-                "PMT_Transaction_ID__c": data["transaction_id"],
-                "Payment_Type__c": "Recurring",
-                "SourceURL__c": data["source_url"],
-                "Project__c": data["project"],
-                "Donation_Locale__c": data["locale"],
-                "Processors_Fee__c": data["transaction_fee"],
-                "Net_Amount__c": data["net_amount"],
-                "Conversion_Amount__c": data["conversion_amount"],
-                "Last_4_Digits__c": data["last_4"],
-                "CampaignId": data["campaign_id"],
-            },
-        )
 
-    def test_donation_data_optional_null(self, ctms_mock, sfdc_mock, gud_mock):
+    def test_donation_data_optional_null(self, ctms_mock, gud_mock):
         """Having a `None` in an optional field used to throw a TypeError.
 
         https://github.com/mozmeao/basket/issues/366
@@ -861,70 +536,8 @@ class ProcessDonationTests(TestCase):
             "last_name": "Lebowski",
         }
         process_donation(data)
-        sfdc_mock.opportunity.create.assert_called_with(
-            {
-                "RecordTypeId": ANY,
-                "Name": "Foundation Donation",
-                "Donation_Contact__c": "1234",
-                "StageName": "Closed Won",
-                # calculated from data['created']
-                "CloseDate": "2016-11-21T16:46:49.327000",
-                "Amount": float(data["donation_amount"]),
-                "Currency__c": "USD",
-                "Payment_Source__c": "paypal",
-                "PMT_Transaction_ID__c": data["transaction_id"],
-                "Payment_Type__c": "Recurring",
-                "SourceURL__c": data["source_url"],
-                "Project__c": data["project"],
-                "Donation_Locale__c": data["locale"],
-                "Processors_Fee__c": data["transaction_fee"],
-                "Net_Amount__c": data["net_amount"],
-                "Conversion_Amount__c": data["conversion_amount"],
-                "Last_4_Digits__c": data["last_4"],
-                "CampaignId": data["campaign_id"],
-            },
-        )
 
-    def test_donation_silent_failure_on_dupe(self, ctms_mock, sfdc_mock, gud_mock):
-        data = self.donate_data.copy()
-        gud_mock.return_value = {
-            "id": "1234",
-            "first_name": "Jeffery",
-            "last_name": "Lebowski",
-        }
-        error_content = [
-            {
-                "errorCode": "DUPLICATE_VALUE",
-                "fields": [],
-                "message": "duplicate value found: PMT_Transaction_ID__c "
-                "duplicates value on record with id: blah-blah",
-            },
-        ]
-        exc = sfapi.SalesforceMalformedRequest("url", 400, "opportunity", error_content)
-        sfdc_mock.opportunity.create.side_effect = exc
-        process_donation(data)
-
-    def test_donation_normal_failure_not_dupe(self, ctms_mock, sfdc_mock, gud_mock):
-        data = self.donate_data.copy()
-        gud_mock.return_value = {
-            "id": "1234",
-            "first_name": "Jeffery",
-            "last_name": "Lebowski",
-        }
-        error_content = [
-            {
-                "errorCode": "OTHER_ERROR",
-                "fields": [],
-                "message": "Some other non-dupe problem",
-            },
-        ]
-        exc = sfapi.SalesforceMalformedRequest("url", 400, "opportunity", error_content)
-        sfdc_mock.opportunity.create.side_effect = exc
-        with self.assertRaises(Retry):
-            process_donation(data)
-
-    @override_settings(SFDC_ENABLED=False)
-    def test_donation_data_new_user(self, ctms_mock, sfdc_mock, gud_mock):
+    def test_donation_data_new_user(self, ctms_mock, gud_mock):
         """Donation data is skipped for new user."""
         data = self.donate_data.copy()
         gud_mock.return_value = None
@@ -936,11 +549,8 @@ class ProcessDonationTests(TestCase):
         ctms_mock.add.assert_called_with(
             {"token": ANY, "email": "dude@example.com", "mofo_relevant": True},
         )
-        assert not sfdc_mock.add.called
-        assert not sfdc_mock.opportunity.create.called
 
-    @override_settings(SFDC_ENABLED=False)
-    def test_donation_data_existing_user(self, ctms_mock, sfdc_mock, gud_mock):
+    def test_donation_data_existing_user(self, ctms_mock, gud_mock):
         """Donation data is skipped for existing, unchanged user."""
         data = self.donate_data.copy()
         gud_mock.return_value = {
@@ -950,8 +560,6 @@ class ProcessDonationTests(TestCase):
         }
         process_donation(data)
         assert not ctms_mock.update.called
-        assert not sfdc_mock.update.called
-        assert not sfdc_mock.opportunity.create.called
 
 
 @patch("basket.news.tasks.upsert_user")
@@ -1209,7 +817,6 @@ class AddFxaActivityTests(TestCase):
 
 
 @override_settings(
-    FXA_EVENTS_VERIFIED_SFDC_ENABLE=True,
     FXA_REGISTER_NEWSLETTER="firefox-accounts-journey",
 )
 @patch("basket.news.tasks.get_best_language", Mock(return_value="en-US"))
@@ -1423,11 +1030,10 @@ class FxALoginTests(TestCase):
 
 
 @patch("basket.news.tasks.ctms", spec_set=["update", "add"])
-@patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.get_user_data")
 @patch("basket.news.tasks.cache")
 class FxAEmailChangedTests(TestCase):
-    def test_timestamps_older_message(self, cache_mock, gud_mock, sfdc_mock, ctms_mock):
+    def test_timestamps_older_message(self, cache_mock, gud_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1437,10 +1043,9 @@ class FxAEmailChangedTests(TestCase):
         # ts higher in cache, should no-op
         gud_mock.return_value = {"id": "1234"}
         fxa_email_changed(data)
-        sfdc_mock.update.assert_not_called()
         ctms_mock.update.assert_not_called()
 
-    def test_timestamps_newer_message(self, cache_mock, gud_mock, sfdc_mock, ctms_mock):
+    def test_timestamps_newer_message(self, cache_mock, gud_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1450,13 +1055,12 @@ class FxAEmailChangedTests(TestCase):
         gud_mock.return_value = {"id": "1234"}
         # ts higher in message, do the things
         fxa_email_changed(data)
-        sfdc_mock.update.assert_called_with(ANY, {"fxa_primary_email": data["email"]})
         ctms_mock.update.assert_called_once_with(
             ANY,
             {"fxa_primary_email": data["email"]},
         )
 
-    def test_timestamps_nothin_cached(self, cache_mock, gud_mock, sfdc_mock, ctms_mock):
+    def test_timestamps_nothin_cached(self, cache_mock, gud_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1465,10 +1069,9 @@ class FxAEmailChangedTests(TestCase):
         cache_mock.get.return_value = 0
         gud_mock.return_value = {"id": "1234"}
         fxa_email_changed(data)
-        sfdc_mock.update.assert_called_with(ANY, {"fxa_primary_email": data["email"]})
         ctms_mock.update.assert_called_with(ANY, {"fxa_primary_email": data["email"]})
 
-    def test_fxa_id_not_found(self, cache_mock, gud_mock, sfdc_mock, ctms_mock):
+    def test_fxa_id_not_found(self, cache_mock, gud_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1483,16 +1086,12 @@ class FxAEmailChangedTests(TestCase):
                 call(email=data["email"], extra_fields=["id"]),
             ],
         )
-        sfdc_mock.update.assert_called_with(
-            {"id": "1234"},
-            {"fxa_id": data["uid"], "fxa_primary_email": data["email"]},
-        )
         ctms_mock.update.assert_called_with(
             {"id": "1234"},
             {"fxa_id": data["uid"], "fxa_primary_email": data["email"]},
         )
 
-    def test_fxa_id_nor_email_found(self, cache_mock, gud_mock, sfdc_mock, ctms_mock):
+    def test_fxa_id_nor_email_found(self, cache_mock, gud_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -1509,7 +1108,6 @@ class FxAEmailChangedTests(TestCase):
                 call(email=data["email"], extra_fields=["id"]),
             ],
         )
-        sfdc_mock.update.assert_not_called()
         ctms_mock.update.assert_not_called()
         ctms_mock.add.assert_called_with(
             {
@@ -1519,21 +1117,11 @@ class FxAEmailChangedTests(TestCase):
                 "fxa_primary_email": data["email"],
             },
         )
-        sfdc_mock.add.assert_called_with(
-            {
-                "email_id": email_id,
-                "token": ANY,
-                "email": data["email"],
-                "fxa_id": data["uid"],
-                "fxa_primary_email": data["email"],
-            },
-        )
 
     def test_fxa_id_nor_email_found_ctms_add_fails(
         self,
         cache_mock,
         gud_mock,
-        sfdc_mock,
         ctms_mock,
     ):
         data = {
@@ -1551,17 +1139,8 @@ class FxAEmailChangedTests(TestCase):
                 call(email=data["email"], extra_fields=["id"]),
             ],
         )
-        sfdc_mock.update.assert_not_called()
         ctms_mock.update.assert_not_called()
         ctms_mock.add.assert_called_with(
-            {
-                "email": data["email"],
-                "token": ANY,
-                "fxa_id": data["uid"],
-                "fxa_primary_email": data["email"],
-            },
-        )
-        sfdc_mock.add.assert_called_with(
             {
                 "email": data["email"],
                 "token": ANY,
@@ -1587,10 +1166,9 @@ class GmttimeTests(TestCase):
 
 
 @patch("basket.news.tasks.ctms")
-@patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.get_user_data")
 class CommonVoiceGoalsTests(TestCase):
-    def test_new_user(self, gud_mock, sfdc_mock, ctms_mock):
+    def test_new_user(self, gud_mock, ctms_mock):
         gud_mock.return_value = None
         email_id = str(uuid4())
         ctms_mock.add.return_value = {"email": {"email_id": email_id}}
@@ -1615,10 +1193,8 @@ class CommonVoiceGoalsTests(TestCase):
             "cv_two_day_streak": False,
         }
         ctms_mock.add.assert_called_with(insert_data)
-        insert_data["email_id"] = email_id
-        sfdc_mock.add.assert_called_with(insert_data)
 
-    def test_existing_user(self, gud_mock, sfdc_mock, ctms_mock):
+    def test_existing_user(self, gud_mock, ctms_mock):
         gud_mock.return_value = {"id": "the-duder", "email_id": str(uuid4())}
         data = {
             "email": "dude@example.com",
@@ -1638,218 +1214,10 @@ class CommonVoiceGoalsTests(TestCase):
             "cv_last_active_date": "2019-07-11T10:28:32Z",
             "cv_two_day_streak": False,
         }
-        sfdc_mock.update.assert_called_with(gud_mock(), update_data)
         ctms_mock.update.assert_called_with(gud_mock(), update_data)
 
 
-@override_settings(SFDC_ENABLED=True)
-@patch("basket.news.tasks.ctms", spec_set=["update_by_alt_id"])
-@patch("basket.news.tasks.sfdc")
-@patch("basket.news.tasks.upsert_amo_user_data")
-class AMOSyncAddonTests(TestCase):
-    def setUp(self):
-        # test data from
-        # https://addons-server.readthedocs.io/en/latest/topics/basket.html#example-data
-        self.amo_data = {
-            "authors": [
-                {
-                    "id": 12345,
-                    "display_name": "His Dudeness",
-                    "email": "dude@example.com",
-                    "homepage": "https://elduder.io",
-                    "last_login": "2019-08-06T10:39:44Z",
-                    "location": "California, USA, Earth",
-                    "deleted": False,
-                },
-                {
-                    "display_name": "serses",
-                    "email": "mozilla@virgule.net",
-                    "homepage": "",
-                    "id": 11263,
-                    "last_login": "2019-08-06T10:39:44Z",
-                    "location": "",
-                    "deleted": False,
-                },
-            ],
-            "average_daily_users": 0,
-            "categories": {"firefox": ["games-entertainment"]},
-            "current_version": {
-                "compatibility": {"firefox": {"max": "*", "min": "48.0"}},
-                "id": 35900,
-                "is_strict_compatibility_enabled": False,
-                "version": "2.0",
-            },
-            "default_locale": "en-US",
-            "guid": "{85ee4a2a-51b6-4f5e-a99c-6d9abcf6782d}",
-            "id": 35896,
-            "is_disabled": False,
-            "is_recommended": True,
-            "last_updated": "2019-06-26T11:38:13Z",
-            "latest_unlisted_version": {
-                "compatibility": {"firefox": {"max": "*", "min": "48.0"}},
-                "id": 35899,
-                "is_strict_compatibility_enabled": False,
-                "version": "1.0",
-            },
-            "name": "Ibird Jelewt Boartrica",
-            "ratings": {
-                "average": 4.1,
-                "bayesian_average": 4.2,
-                "count": 43,
-                "text_count": 40,
-            },
-            "slug": "ibird-jelewt-boartrica",
-            "status": "nominated",
-            "type": "extension",
-        }
-        self.users_data = [
-            {"id": "A1234", "amo_id": 12345, "email": "the-dude@example.com"},
-            {"id": "A4321", "amo_id": 11263, "email": "the-dude@example.com"},
-        ]
-
-    def test_update_addon(self, uaud_mock, sfdc_mock, ctms_mock):
-        uaud_mock.side_effect = self.users_data
-        sfdc_mock.addon.get_by_custom_id.return_value = {"Id": "B5678"}
-        amo_sync_addon(self.amo_data)
-        uaud_mock.assert_has_calls(
-            [call(self.amo_data["authors"][0]), call(self.amo_data["authors"][1])],
-        )
-        sfdc_mock.addon.upsert.assert_called_with(
-            f'AMO_AddOn_Id__c/{self.amo_data["id"]}',
-            {
-                "AMO_Category__c": "firefox-games-entertainment",
-                "AMO_Current_Version__c": "2.0",
-                "AMO_Current_Version_Unlisted__c": "1.0",
-                "AMO_Default_Language__c": "en-US",
-                "AMO_GUID__c": "{85ee4a2a-51b6-4f5e-a99c-6d9abcf6782d}",
-                "AMO_Rating__c": 4.1,
-                "AMO_Slug__c": "ibird-jelewt-boartrica",
-                "AMO_Status__c": "nominated",
-                "AMO_Type__c": "extension",
-                "AMO_Update__c": "2019-06-26T11:38:13Z",
-                "Average_Daily_Users__c": 0,
-                "Dev_Disabled__c": "No",
-                "AMO_Recommended__c": True,
-                "Name": "Ibird Jelewt Boartrica",
-            },
-        )
-        sfdc_mock.dev_addon.upsert.assert_has_calls(
-            [
-                call(
-                    "ConcatenateAMOID__c/12345-35896",
-                    {"AMO_AddOn_ID__c": "B5678", "AMO_Contact_ID__c": "A1234"},
-                ),
-                call(
-                    "ConcatenateAMOID__c/11263-35896",
-                    {"AMO_AddOn_ID__c": "B5678", "AMO_Contact_ID__c": "A4321"},
-                ),
-            ],
-        )
-        ctms_mock.update_by_alt_id.assert_not_called()
-
-    def test_null_values(self, uaud_mock, sfdc_mock, ctms_mock):
-        uaud_mock.side_effect = self.users_data
-        sfdc_mock.addon.get_by_custom_id.return_value = {"Id": "B5678"}
-        self.amo_data["current_version"] = None
-        self.amo_data["latest_unlisted_version"] = None
-        amo_sync_addon(self.amo_data)
-        uaud_mock.assert_has_calls(
-            [call(self.amo_data["authors"][0]), call(self.amo_data["authors"][1])],
-        )
-        sfdc_mock.addon.upsert.assert_called_with(
-            f'AMO_AddOn_Id__c/{self.amo_data["id"]}',
-            {
-                "AMO_Category__c": "firefox-games-entertainment",
-                "AMO_Default_Language__c": "en-US",
-                "AMO_GUID__c": "{85ee4a2a-51b6-4f5e-a99c-6d9abcf6782d}",
-                "AMO_Rating__c": 4.1,
-                "AMO_Slug__c": "ibird-jelewt-boartrica",
-                "AMO_Status__c": "nominated",
-                "AMO_Type__c": "extension",
-                "AMO_Update__c": "2019-06-26T11:38:13Z",
-                "Average_Daily_Users__c": 0,
-                "Dev_Disabled__c": "No",
-                "AMO_Recommended__c": True,
-                "Name": "Ibird Jelewt Boartrica",
-                "AMO_Current_Version__c": "",
-                "AMO_Current_Version_Unlisted__c": "",
-            },
-        )
-        sfdc_mock.dev_addon.upsert.assert_has_calls(
-            [
-                call(
-                    "ConcatenateAMOID__c/12345-35896",
-                    {"AMO_AddOn_ID__c": "B5678", "AMO_Contact_ID__c": "A1234"},
-                ),
-                call(
-                    "ConcatenateAMOID__c/11263-35896",
-                    {"AMO_AddOn_ID__c": "B5678", "AMO_Contact_ID__c": "A4321"},
-                ),
-            ],
-        )
-        ctms_mock.update_by_alt_id.assert_not_called()
-
-    def test_deleted_addon(self, uaud_mock, sfdc_mock, ctms_mock):
-        self.amo_data["status"] = "deleted"
-        sfdc_mock.addon.get_by_custom_id.return_value = {
-            "Id": "A9876",
-        }
-        sfdc_mock.sf.query.side_effect = [
-            {
-                # 1st response is the addon's users
-                "records": [
-                    {"Id": 1234, "AMO_Contact_ID__c": "A4321"},
-                    {"Id": 1235, "AMO_Contact_ID__c": "A4322"},
-                ],
-            },
-            {
-                # 1st user has records
-                "records": [{"Id": "123456"}],
-            },
-            {
-                # 2nd user has none
-                "records": [],
-            },
-        ]
-        amo_sync_addon(self.amo_data)
-        uaud_mock.assert_not_called()
-        sfdc_mock.sf.query.assert_has_calls(
-            [
-                call(
-                    "SELECT Id, AMO_Contact_ID__c FROM DevAddOn__c WHERE AMO_AddOn_ID__c = 'A9876'",
-                ),
-                call(
-                    "SELECT Id FROM DevAddOn__c WHERE AMO_Contact_ID__c = 'A4321' LIMIT 1",
-                ),
-                call(
-                    "SELECT Id FROM DevAddOn__c WHERE AMO_Contact_ID__c = 'A4322' LIMIT 1",
-                ),
-            ],
-        )
-        # it should update the 2nd user that has no returned records
-        sfdc_mock.update.assert_called_once_with(
-            {"id": "A4322"},
-            {"amo_id": None, "amo_user": False},
-        )
-        ctms_mock.update_by_alt_id.assert_called_once_with(
-            "sfdc_id",
-            "A4322",
-            {"amo_deleted": True},
-        )
-        sfdc_mock.dev_addon.delete.has_calls([call(1234), call(1235)])
-        sfdc_mock.addon.delete.assert_called_with("A9876")
-
-    @override_settings(SFDC_ENABLED=False)
-    def test_update_addon_sfdc_disabled(self, uaud_mock, sfdc_mock, ctms_mock):
-        amo_sync_addon(self.amo_data)
-        uaud_mock.assert_not_called()
-        sfdc_mock.addon.upsert.assert_not_called()
-        sfdc_mock.dev_addon.upsert.assert_not_called()
-        ctms_mock.update_by_alt_id.assert_not_called()
-
-
 @patch("basket.news.tasks.ctms")
-@patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.get_user_data")
 class AMOSyncUserTests(TestCase):
     def setUp(self):
@@ -1864,21 +1232,10 @@ class AMOSyncUserTests(TestCase):
         }
         self.user_data = {"id": "A1234", "amo_id": 1234, "fxa_id": "fxa_id_of_dude"}
 
-    def test_existing_user_with_amo_id(self, gud_mock, sfdc_mock, ctms_mock):
+    def test_existing_user_with_amo_id(self, gud_mock, ctms_mock):
         gud_mock.return_value = self.user_data
         amo_sync_user(self.amo_data)
         # does not include email or amo_id
-        sfdc_mock.update.assert_called_with(
-            self.user_data,
-            {
-                "amo_id": 1234,
-                "amo_display_name": "His Dudeness",
-                "amo_homepage": "https://elduder.io",
-                "amo_last_login": "2019-08-06T10:39:44Z",
-                "amo_location": "California, USA, Earth",
-                "amo_deleted": False,
-            },
-        )
         ctms_mock.update.assert_called_with(
             self.user_data,
             {
@@ -1891,21 +1248,10 @@ class AMOSyncUserTests(TestCase):
             },
         )
 
-    def test_existing_user_no_amo_id(self, gud_mock, sfdc_mock, ctms_mock):
+    def test_existing_user_no_amo_id(self, gud_mock, ctms_mock):
         gud_mock.side_effect = [None, self.user_data]
         amo_sync_user(self.amo_data)
         # does not include email
-        sfdc_mock.update.assert_called_with(
-            self.user_data,
-            {
-                "amo_id": 1234,
-                "amo_display_name": "His Dudeness",
-                "amo_homepage": "https://elduder.io",
-                "amo_last_login": "2019-08-06T10:39:44Z",
-                "amo_location": "California, USA, Earth",
-                "amo_deleted": False,
-            },
-        )
         ctms_mock.update.assert_called_with(
             self.user_data,
             {
@@ -1918,28 +1264,16 @@ class AMOSyncUserTests(TestCase):
             },
         )
 
-    def test_new_user(self, gud_mock, sfdc_mock, ctms_mock):
+    def test_new_user(self, gud_mock, ctms_mock):
         gud_mock.return_value = None
         user = amo_sync_user(self.amo_data)
-        sfdc_mock.update.assert_not_called()
         ctms_mock.update.assert_not_called()
         assert user is None
 
-    def test_deleted_user_matching_fxa_id(self, gud_mock, sfdc_mock, ctms_mock):
+    def test_deleted_user_matching_fxa_id(self, gud_mock, ctms_mock):
         self.amo_data["deleted"] = True
         gud_mock.return_value = self.user_data
         amo_sync_user(self.amo_data)
-        sfdc_mock.update.assert_called_with(
-            self.user_data,
-            {
-                "amo_display_name": "His Dudeness",
-                "amo_homepage": "https://elduder.io",
-                "amo_last_login": "2019-08-06T10:39:44Z",
-                "amo_location": "California, USA, Earth",
-                "amo_deleted": True,
-                "amo_id": None,
-            },
-        )
         ctms_mock.update.assert_called_with(
             self.user_data,
             {
@@ -1952,22 +1286,11 @@ class AMOSyncUserTests(TestCase):
             },
         )
 
-    def test_deleted_user_fxa_id_is_None(self, gud_mock, sfdc_mock, ctms_mock):
+    def test_deleted_user_fxa_id_is_None(self, gud_mock, ctms_mock):
         self.amo_data["deleted"] = True
         self.amo_data["fxa_id"] = None
         gud_mock.return_value = self.user_data
         amo_sync_user(self.amo_data)
-        sfdc_mock.update.assert_called_with(
-            self.user_data,
-            {
-                "amo_display_name": "His Dudeness",
-                "amo_homepage": "https://elduder.io",
-                "amo_last_login": "2019-08-06T10:39:44Z",
-                "amo_location": "California, USA, Earth",
-                "amo_deleted": True,
-                "amo_id": None,
-            },
-        )
         ctms_mock.update.assert_called_with(
             self.user_data,
             {
@@ -1980,21 +1303,10 @@ class AMOSyncUserTests(TestCase):
             },
         )
 
-    def test_not_deleted_user_fxa_id_is_None(self, gud_mock, sfdc_mock, ctms_mock):
+    def test_not_deleted_user_fxa_id_is_None(self, gud_mock, ctms_mock):
         self.amo_data["fxa_id"] = None
         gud_mock.return_value = self.user_data
         amo_sync_user(self.amo_data)
-        sfdc_mock.update.assert_called_with(
-            self.user_data,
-            {
-                "amo_display_name": "His Dudeness",
-                "amo_homepage": "https://elduder.io",
-                "amo_last_login": "2019-08-06T10:39:44Z",
-                "amo_location": "California, USA, Earth",
-                "amo_id": None,
-                "amo_deleted": False,
-            },
-        )
         ctms_mock.update.assert_called_with(
             self.user_data,
             {
@@ -2007,11 +1319,10 @@ class AMOSyncUserTests(TestCase):
             },
         )
 
-    def test_ignore_user_no_id_or_fxa_id(self, gud_mock, sfdc_mock, ctms_mock):
+    def test_ignore_user_no_id_or_fxa_id(self, gud_mock, ctms_mock):
         self.amo_data["fxa_id"] = None
         self.amo_data["id"] = None
         amo_sync_user(self.amo_data)
-        sfdc_mock.update.assert_not_called()
         ctms_mock.update.assert_not_called()
 
 
@@ -2124,88 +1435,54 @@ class TestCommonVoiceBatch(TestCase):
 
 @override_settings(TASK_LOCKING_ENABLE=False)
 @patch("basket.news.tasks.ctms")
-@patch("basket.news.tasks.sfdc")
 class TestUpdateCustomUnsub(TestCase):
     token = "the-token"
     reason = "I would like less emails."
 
-    def test_normal(self, mock_sfdc, mock_ctms):
+    def test_normal(self, mock_ctms):
         """The reason is updated for the token"""
         update_custom_unsub(self.token, self.reason)
-        mock_sfdc.update.assert_called_once_with(
-            {"token": self.token},
-            {"reason": self.reason},
-        )
         mock_ctms.update_by_alt_id.assert_called_once_with(
             "token",
             self.token,
             {"reason": self.reason},
         )
 
-    def test_no_ctms_record(self, mock_sfdc, mock_ctms):
+    def test_no_ctms_record(self, mock_ctms):
         """If there is no CTMS record, updates are skipped."""
         mock_ctms.updates_by_alt_id.side_effect = CTMSNotFoundByAltIDError(
             "token",
             self.token,
         )
         update_custom_unsub(self.token, self.reason)
-        mock_sfdc.update.assert_called_once_with(
-            {"token": self.token},
-            {"reason": self.reason},
-        )
         mock_ctms.update_by_alt_id.assert_called_once_with(
             "token",
             self.token,
             {"reason": self.reason},
         )
 
-    def test_error_raised(self, mock_sfdc, mock_ctms):
+    def test_error_raised(self, mock_ctms):
         """A SF exception is not re-raised"""
-        error_content = [{"message": "something went wrong"}]
-        exc = sfapi.SalesforceMalformedRequest("url", 400, "contact", error_content)
-        mock_sfdc.update.side_effect = exc
         update_custom_unsub(self.token, self.reason)
-        mock_sfdc.update.assert_called_once_with(
-            {"token": self.token},
-            {"reason": self.reason},
-        )
         mock_ctms.get.assert_not_called()
 
 
 @override_settings(TASK_LOCKING_ENABLE=False)
 @patch("basket.news.tasks.ctms")
-@patch("basket.news.tasks.sfdc")
 class TestUpdateUserMeta(TestCase):
     token = "the-token"
     data = {"first_name": "Edmund", "last_name": "Gettier"}
 
-    def test_normal(self, mock_sfdc, mock_ctms):
+    def test_normal(self, mock_ctms):
         """The data is updated for the token"""
         update_user_meta(self.token, self.data)
-        mock_sfdc.update.assert_called_once_with({"token": self.token}, self.data)
         mock_ctms.update_by_alt_id.assert_called_once_with(
             "token",
             self.token,
             self.data,
         )
 
-    @override_settings(SFDC_ENABLED=True)
-    def test_no_ctms_record(self, mock_sfdc, mock_ctms):
-        """If there is no CTMS record, CTMS updates are skipped."""
-        mock_ctms.update_by_alt_id.side_effect = CTMSNotFoundByAltIDError(
-            "token",
-            self.token,
-        )
-        update_user_meta(self.token, self.data)
-        mock_sfdc.update.assert_called_once_with({"token": self.token}, self.data)
-        mock_ctms.update_by_alt_id.assert_called_once_with(
-            "token",
-            self.token,
-            self.data,
-        )
-
-    @override_settings(SFDC_ENABLED=False)
-    def test_no_ctms_record_with_sfdc_disabled(self, mock_sfdc, mock_ctms):
+    def test_no_ctms_record(self, mock_ctms):
         """If there is no CTMS record, an exception is raised."""
         mock_ctms.update_by_alt_id.side_effect = CTMSNotFoundByAltIDError(
             "token",
@@ -2217,7 +1494,6 @@ class TestUpdateUserMeta(TestCase):
             self.token,
             self.data,
         )
-        mock_sfdc.update.assert_called_once_with({"token": self.token}, self.data)
         mock_ctms.update_by_alt_id.assert_called_once_with(
             "token",
             self.token,
@@ -2226,10 +1502,9 @@ class TestUpdateUserMeta(TestCase):
 
 
 @patch("basket.news.tasks.ctms", spec_set=["update"])
-@patch("basket.news.tasks.sfdc", spec_set=["update"])
 @patch("basket.news.tasks.get_user_data")
 class TestGetFxaUserData(TestCase):
-    def test_found_by_fxa_id_email_match(self, mock_gud, mock_sfdc, mock_ctms):
+    def test_found_by_fxa_id_email_match(self, mock_gud, mock_ctms):
         """A user can be found by FxA ID."""
         user_data = {
             "id": "1234",
@@ -2243,10 +1518,9 @@ class TestGetFxaUserData(TestCase):
         assert user_data == fxa_user_data
 
         mock_gud.assert_called_once_with(fxa_id="123", extra_fields=["id"])
-        mock_sfdc.update.assert_not_called()
         mock_ctms.update.assert_not_called()
 
-    def test_found_by_fxa_id_email_mismatch(self, mock_gud, mock_sfdc, mock_ctms):
+    def test_found_by_fxa_id_email_mismatch(self, mock_gud, mock_ctms):
         """If the FxA user has a different FxA email, set fxa_primary_email."""
         user_data = {
             "id": "1234",
@@ -2260,16 +1534,12 @@ class TestGetFxaUserData(TestCase):
         assert user_data == fxa_user_data
 
         mock_gud.assert_called_once_with(fxa_id="123", extra_fields=["id"])
-        mock_sfdc.update.assert_called_once_with(
-            user_data,
-            {"fxa_primary_email": "fxa@example.com"},
-        )
         mock_ctms.update.assert_called_once_with(
             user_data,
             {"fxa_primary_email": "fxa@example.com"},
         )
 
-    def test_miss_by_fxa_id(self, mock_gud, mock_sfdc, mock_ctms):
+    def test_miss_by_fxa_id(self, mock_gud, mock_ctms):
         """If the FxA user has a different FxA email, set fxa_primary_email."""
         user_data = {
             "id": "1234",
@@ -2284,81 +1554,28 @@ class TestGetFxaUserData(TestCase):
         assert mock_gud.call_count == 2
         mock_gud.assert_any_call(fxa_id="123", extra_fields=["id"])
         mock_gud.assert_called_with(email="test@example.com", extra_fields=["id"])
-        mock_sfdc.update.asser
         mock_ctms.update.assert_not_called()
 
 
 @patch("basket.news.tasks.ctms", spec_set=["update_by_alt_id"])
-@patch("basket.news.tasks.sfdc", content=Mock(spec_set=["update"]))
 class TestFxaDelete(TestCase):
-    def test_delete(self, mock_sfdc, mock_ctms):
+    def test_delete(self, mock_ctms):
         fxa_delete({"uid": "123"})
-        mock_sfdc.contact.update.assert_called_once_with(
-            "FxA_Id__c/123",
-            {"FxA_Account_Deleted__c": True},
-        )
         mock_ctms.update_by_alt_id.assert_called_once_with(
             "fxa_id",
             "123",
-            {"fxa_deleted": True, "newsletters": []},
+            {"fxa_deleted": True},
         )
 
-    def test_delete_with_sfdc_disabled(self, mock_sfdc, mock_ctms):
-        """The FxA data is deleted in CTMS."""
-        mock_sfdc.contact.update.side_effect = SFDCDisabled("not enabled")
-        fxa_delete({"uid": "123"})
-        mock_sfdc.contact.update.assert_called_once_with(
-            "FxA_Id__c/123",
-            {"FxA_Account_Deleted__c": True},
-        )
-        mock_ctms.update_by_alt_id.assert_called_once_with(
-            "fxa_id",
-            "123",
-            {"fxa_deleted": True, "newsletters": []},
-        )
-
-    def test_delete_does_not_exist_success(self, mock_sfdc, mock_ctms):
-        """If the record doesn't exist, the exception is caught."""
-        err_content = {
-            "errorCode": "REQUIRED_FIELD_MISSING",
-            "fields": ["Field1", "Field2"],
-            "message": "Required fields are missing: [Field1, Field2]",
-        }
-
-        exc = sfapi.SalesforceMalformedRequest("url", 400, "contact", [err_content])
-        mock_sfdc.contact.update.side_effect = exc
-        fxa_delete({"uid": "123"})
-        mock_sfdc.contact.update.assert_called_once_with(
-            "FxA_Id__c/123",
-            {"FxA_Account_Deleted__c": True},
-        )
-        mock_ctms.update_by_alt_id.assert_not_called()
-
-    def test_delete_other_exception_raised(self, mock_sfdc, mock_ctms):
-        """If updating raises a different error, re-raise"""
-        err_content = {
-            "errorCode": "SOMETHING_ELSE",
-            "message": "Something else went wrong",
-        }
-
-        exc = sfapi.SalesforceMalformedRequest("url", 400, "contact", [err_content])
-        mock_sfdc.contact.update.side_effect = exc
-        self.assertRaises(Retry, fxa_delete, {"uid": "123"})
-        mock_ctms.update_by_alt_id.assert_not_called()
-
-    def test_delete_ctms_not_found_succeeds(self, mock_sfdc, mock_ctms):
+    def test_delete_ctms_not_found_succeeds(self, mock_ctms):
         """If the CTMS record is not found by FxA ID, the exception is caught."""
         mock_ctms.update_by_alt_id.side_effect = CTMSNotFoundByAltIDError(
             "fxa_id",
             "123",
         )
         fxa_delete({"uid": "123"})
-        mock_sfdc.contact.update.assert_called_once_with(
-            "FxA_Id__c/123",
-            {"FxA_Account_Deleted__c": True},
-        )
         mock_ctms.update_by_alt_id.assert_called_once_with(
             "fxa_id",
             "123",
-            {"fxa_deleted": True, "newsletters": []},
+            {"fxa_deleted": True},
         )

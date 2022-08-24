@@ -1,7 +1,5 @@
-import json
 import logging
 import re
-from copy import deepcopy
 from datetime import date, datetime, timedelta
 from email.utils import formatdate
 from functools import wraps
@@ -33,8 +31,6 @@ from basket.news.backends.ctms import (
     CTMSNotFoundByAltIDError,
     CTMSUniqueIDConflictError,
 )
-from basket.news.backends.sfdc import sfdc, SFDCDisabled
-from basket.news.backends.sfdc import from_vendor as from_sfdc
 from basket.news.celery import app as celery_app
 from basket.news.models import (
     FailedTask,
@@ -294,16 +290,14 @@ def fxa_email_changed(data):
         # message older than our last update for this UID
         return
 
-    # Update SFDC / CTMS
+    # Update CTMS
     user_data = get_user_data(fxa_id=fxa_id, extra_fields=["id"])
     if user_data:
-        sfdc.update(user_data, {"fxa_primary_email": email})
         ctms.update(user_data, {"fxa_primary_email": email})
     else:
         # FxA record not found, try email
         user_data = get_user_data(email=email, extra_fields=["id"])
         if user_data:
-            sfdc.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
             ctms.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
         else:
             # No matching record for Email or FxA ID. Create one.
@@ -317,7 +311,6 @@ def fxa_email_changed(data):
             contact = ctms.add(ctms_data)
             if contact:
                 data["email_id"] = contact["email"]["email_id"]
-            sfdc.add(data)
             statsd.incr("news.tasks.fxa_email_changed.user_not_found")
 
     cache.set(cache_key, ts, 7200)  # 2 hr
@@ -329,21 +322,7 @@ def fxa_direct_update_contact(fxa_id, data):
     Ignore if contact with FxA ID can't be found
     """
     try:
-        sfdc.contact.update(f"FxA_Id__c/{fxa_id}", data)
-    except sfapi.SalesforceMalformedRequest as e:
-        if e.content[0]["errorCode"] == "REQUIRED_FIELD_MISSING":
-            # couldn't find the fxa_id and tried to create a record but doesn't
-            # have the required data to do so. We can drop this one.
-            return
-        else:
-            # otherwise it's something else and we should potentially retry
-            raise
-    except SFDCDisabled:
-        pass
-
-    basket_data = from_sfdc(data)
-    try:
-        ctms.update_by_alt_id("fxa_id", fxa_id, basket_data)
+        ctms.update_by_alt_id("fxa_id", fxa_id, data)
     except CTMSNotFoundByAltIDError:
         # No associated record found, skip this update.
         pass
@@ -351,12 +330,12 @@ def fxa_direct_update_contact(fxa_id, data):
 
 @et_task
 def fxa_delete(data):
-    fxa_direct_update_contact(data["uid"], {"FxA_Account_Deleted__c": True})
+    fxa_direct_update_contact(data["uid"], {"fxa_deleted": True})
 
 
 @et_task
 def fxa_verified(data):
-    """Add new FxA users to SFDC"""
+    """Add new FxA users"""
     # if we're not using the sandbox ignore testing domains
     if email_is_testing(data["email"]):
         return
@@ -502,18 +481,16 @@ def update_get_involved(
 @et_task
 def update_user_meta(token, data):
     """Update a user's metadata, not newsletters"""
-    sfdc.update({"token": token}, data)
     try:
         ctms.update_by_alt_id("token", token, data)
     except CTMSNotFoundByAltIDError:
-        if not settings.SFDC_ENABLED:
-            raise
+        raise
 
 
 @et_task
 def upsert_user(api_call_type, data):
     """
-    Update or insert (upsert) a contact record in SFDC
+    Update or insert (upsert) a contact record
 
     @param int api_call_type: What kind of API call it was. Could be
         SUBSCRIBE, UNSUBSCRIBE, or SET.
@@ -535,12 +512,12 @@ def upsert_user(api_call_type, data):
 
 def upsert_contact(api_call_type, data, user_data):
     """
-    Update or insert (upsert) a contact record in SFDC
+    Update or insert (upsert) a contact record
 
     @param int api_call_type: What kind of API call it was. Could be
         SUBSCRIBE, UNSUBSCRIBE, or SET.
     @param dict data: POST data from the form submission
-    @param dict user_data: existing contact data from SFDC
+    @param dict user_data: existing contact data
     @return: token, created
     """
     update_data = data.copy()
@@ -614,14 +591,7 @@ def upsert_contact(api_call_type, data, user_data):
         if settings.MAINTENANCE_MODE:
             sfdc_add_update.delay(update_data)
         else:
-            ctms_data = update_data.copy()
-            ctms_contact = ctms.add(ctms_data)
-            if ctms_contact:
-                # Successfully added to CTMS, send email_id to SFDC
-                update_data["email_id"] = ctms_contact["email"]["email_id"]
-
-            # don't catch exceptions here. SalesforceError subclasses will retry.
-            sfdc.add(update_data)
+            ctms.add(update_data)
 
         if send_confirm and settings.SEND_CONFIRM_MESSAGES:
             send_confirm_message.delay(
@@ -650,7 +620,6 @@ def upsert_contact(api_call_type, data, user_data):
     if settings.MAINTENANCE_MODE:
         sfdc_add_update.delay(update_data, user_data)
     else:
-        sfdc.update(user_data, update_data)
         ctms.update(user_data, update_data)
 
     if send_confirm and settings.SEND_CONFIRM_MESSAGES:
@@ -750,34 +719,13 @@ def confirm_user(token):
     if not ("email" in user_data and user_data["email"]):
         raise BasketError("token has no email in ET")
 
-    sfdc.update(user_data, {"optin": True})
     ctms.update(user_data, {"optin": True})
-
-
-@et_task
-def add_sms_user(send_name, mobile_number, optin, vendor_id=None):
-    # TODO remove this task after first deployment
-    # just here to drain remaining taasks
-    pass
-
-
-@et_task
-def add_sms_user_optin(mobile_number):
-    # TODO remove this task after first deployment
-    # just here to drain remaining taasks
-    pass
 
 
 @et_task
 def update_custom_unsub(token, reason):
     """Record a user's custom unsubscribe reason."""
     get_lock(token)
-    try:
-        sfdc.update({"token": token}, {"reason": reason})
-    except sfapi.SalesforceMalformedRequest:
-        # likely the record can't be found. nothing to do.
-        return
-
     try:
         ctms.update_by_alt_id("token", token, {"reason": reason})
     except CTMSNotFoundByAltIDError:
@@ -817,15 +765,10 @@ def record_common_voice_update(data):
         new_data["cv_" + k] = v
 
     if user_data:
-        sfdc.update(user_data, new_data)
         ctms.update(user_data, new_data)
     else:
         new_data.update({"email": email, "token": generate_token()})
-        ctms_data = new_data.copy()
-        ctms_contact = ctms.add(ctms_data)
-        if ctms_contact:
-            new_data["email_id"] = ctms_contact["email"]["email_id"]
-        sfdc.add(new_data)
+        ctms.add(new_data)
 
 
 @celery_app.task()
@@ -898,55 +841,31 @@ def process_donation_event(data):
     else:
         reason_lost = data["failure_code"]
 
-    fail_reason = None
-    email_title = None
-    try:
-        # will raise a SalesforceMalformedRequest if not found
-        sfdc.opportunity.update(
-            "PMT_Transaction_ID__c/{}".format(txn_id),
-            {
-                "PMT_Type_Lost__c": etype,
-                "PMT_Reason_Lost__c": reason_lost,
-                "StageName": "Closed Lost",
-            },
-        )
-    except sfapi.SalesforceMalformedRequest as e:
-        statsd.incr("news.tasks.process_donation_event.not_found")
-        with sentry_sdk.push_scope() as scope:
-            scope.set_tag("action", "ignored")
-            sentry_sdk.capture_exception(e)
-        fail_reason = "it could not be found in Salesforce"
-        email_title = "Donation Record Not Found"
+    fail_reason = "Salesforce integration is disabled"
+    email_title = "Donation Record Not Updated"
 
-        # uncomment below to retry
-        # raise
-    except SFDCDisabled:
-        fail_reason = "Salesforce integration is disabled"
-        email_title = "Donation Record Not Updated"
-    finally:
-        if fail_reason and email_title:
-            # We failed to update this donation. Let someone know.
-            do_notify = cache.add("donate-notify-{}".format(txn_id), 1, 86400)
-            if do_notify and settings.DONATE_NOTIFY_EMAIL:
-                # don't notify about a transaction more than once per day
-                first_mail = cache.add("donate-notify-{}".format(txn_id), 1, 86400)
-                if first_mail:
-                    body = render_to_string(
-                        "news/donation_notify_email.txt",
-                        {
-                            "txn_id": txn_id,
-                            "type_lost": etype,
-                            "reason_lost": reason_lost,
-                            "server_name": settings.STATSD_PREFIX,
-                            "fail_reason": fail_reason,
-                        },
-                    )
-                    send_mail(
-                        email_title,
-                        body,
-                        "noreply@mozilla.com",
-                        [settings.DONATE_NOTIFY_EMAIL],
-                    )
+    # We failed to update this donation. Let someone know.
+    do_notify = cache.add("donate-notify-{}".format(txn_id), 1, 86400)
+    if do_notify and settings.DONATE_NOTIFY_EMAIL:
+        # don't notify about a transaction more than once per day
+        first_mail = cache.add("donate-notify-{}".format(txn_id), 1, 86400)
+        if first_mail:
+            body = render_to_string(
+                "news/donation_notify_email.txt",
+                {
+                    "txn_id": txn_id,
+                    "type_lost": etype,
+                    "reason_lost": reason_lost,
+                    "server_name": settings.STATSD_PREFIX,
+                    "fail_reason": fail_reason,
+                },
+            )
+            send_mail(
+                email_title,
+                body,
+                "noreply@mozilla.com",
+                [settings.DONATE_NOTIFY_EMAIL],
+            )
 
 
 # all strings and truncated at 2000 chars
@@ -973,7 +892,6 @@ DONATION_NEW_FIELDS = {
 def process_donation(data):
     get_lock(data["email"])
     contact_data = {
-        "_set_subscriber": False,  # SFDC, leave "subscriber" flag alone
         "mofo_relevant": True,  # CTMS, set a MoFo relevant contact
     }
     # do "or ''" because data can contain None values
@@ -1007,74 +925,12 @@ def process_donation(data):
                 and contact_data["last_name"] != user_data["last_name"]
             )
         ):
-            sfdc.update(user_data, contact_data)
-            ctms_data = contact_data.copy()
-            del ctms_data["_set_subscriber"]
-            ctms.update(user_data, ctms_data)
+            ctms.update(user_data, contact_data)
     else:
         contact_data["token"] = generate_token()
         contact_data["email"] = data["email"]
-        contact_data["record_type"] = settings.DONATE_CONTACT_RECORD_TYPE
 
-        ctms_data = contact_data.copy()
-        del ctms_data["_set_subscriber"]
-        del ctms_data["record_type"]
-        contact = ctms.add(ctms_data)
-        if contact:
-            contact_data["email_id"] = contact["email"]["email_id"]
-
-        if not settings.SFDC_ENABLED:
-            return
-
-        # returns a dict with the new ID but no other user data, but that's enough here
-        user_data = sfdc.add(contact_data)
-        if not user_data.get("id"):
-            # retry here to make sure we associate the donation data with the proper account
-            raise RetryTask("User not yet available")
-
-    if not settings.SFDC_ENABLED:
-        return
-
-    # add opportunity
-    donation = {
-        "RecordTypeId": settings.DONATE_OPP_RECORD_TYPE,
-        "Name": "Foundation Donation",
-        "Donation_Contact__c": user_data["id"],
-        "StageName": "Closed Won",
-        "Amount": float(data["donation_amount"]),
-        "Currency__c": data["currency"].upper(),
-        "Payment_Source__c": data["service"],
-        "PMT_Transaction_ID__c": data["transaction_id"],
-        "Payment_Type__c": "Recurring" if data["recurring"] else "One-Time",
-    }
-    # https://github.com/mozmeao/basket/issues/364
-    if "campaign_id" in data:
-        donation["CampaignId"] = data["campaign_id"]
-
-    # this is a unix timestamp in ms since epoc
-    timestamp = data.get("created")
-    if timestamp:
-        donation["CloseDate"] = iso_format_unix_timestamp(timestamp)
-
-    for dest_name, source_name in DONATION_NEW_FIELDS.items():
-        if source_name in data:
-            donation[dest_name] = data[source_name]
-
-    for dest_name, source_name in DONATION_OPTIONAL_FIELDS.items():
-        if data.get(source_name):
-            # truncate at 2000 chars as that's the max for
-            # a SFDC text field. We may do more granular
-            # truncation per field in future.
-            donation[dest_name] = data[source_name][:2000]
-
-    try:
-        sfdc.opportunity.create(donation)
-    except sfapi.SalesforceMalformedRequest as e:
-        if e.content and e.content[0].get("errorCode") == "DUPLICATE_VALUE":
-            # already in the system, ignore
-            pass
-        else:
-            raise
+        ctms.add(contact_data)
 
 
 def mofo_donation_receipt_datetime(ts):
@@ -1177,38 +1033,28 @@ PETITION_CONTACT_FIELDS = [
 @et_task
 def process_petition_signature(data):
     """
-    Add petition signature to CTMS / SFDC
-
-    If SFDC is enabled, a campaign member record is created.
+    Add petition signature to CTMS
     """
     data = data["form"]
     get_lock(data["email"])
     # tells the backend to leave the "subscriber" flag alone
     contact_data = {
-        "_set_subscriber": False,  # SFDC: leave the "subscriber" flag alone
         "mofo_relevant": True,  # CTMS: set contact as MoFo relevant
     }
     contact_data.update({k: data[k] for k in PETITION_CONTACT_FIELDS if data.get(k)})
 
     user_data = get_user_data(email=data["email"], extra_fields=["id"])
     if user_data:
-        sfdc.update(user_data, contact_data)
-        ctms_data = contact_data.copy()
-        del ctms_data["_set_subscriber"]
-        ctms.update(user_data, ctms_data)
+        ctms.update(user_data, contact_data)
     else:
         contact_data["token"] = generate_token()
         contact_data["email"] = data["email"]
-        ctms_data = contact_data.copy()
         contact_data["record_type"] = settings.DONATE_CONTACT_RECORD_TYPE
 
-        del ctms_data["_set_subscriber"]
-        ctms_data["mofo_relevant"] = True
-        contact = ctms.add(ctms_data)
+        contact = ctms.add(contact_data)
         if contact:
             contact_data["email_id"] = contact["email"]["email_id"]
 
-        sfdc.add(contact_data)
         # fetch again to get ID
         user_data = get_user_data(email=data.get("email"), extra_fields=["id"])
         if not user_data:
@@ -1226,47 +1072,15 @@ def process_petition_signature(data):
             },
         )
 
-    if not settings.SFDC_ENABLED:
-        return
-
-    campaign_id = data["campaign_id"]
-    # Fix a specific issue with a specific campaign where the ID was entered without
-    # the leading 7
-    if len(campaign_id) == 17 and not campaign_id.startswith("7"):
-        campaign_id = f"7{campaign_id}"
-
-    campaign_member = {
-        "CampaignId": campaign_id,
-        "ContactId": user_data["id"],
-        "Full_URL__c": data["source_url"],
-        "Status": "Signed",
-    }
-    comments = data.get("comments")
-    if comments:
-        campaign_member["Petition_Comments__c"] = comments[:500]
-
-    metadata = data.get("metadata")
-    if metadata:
-        campaign_member["Petition_Flex__c"] = json.dumps(metadata)[:500]
-
-    try:
-        sfdc.campaign_member.create(campaign_member)
-    except sfapi.SalesforceMalformedRequest as e:
-        if e.content and e.content[0].get("errorCode") == "DUPLICATE_VALUE":
-            # already in the system, ignore
-            pass
-        else:
-            raise
-
 
 def upsert_amo_user_data(data, user_sync=False):
     """
-    Update AMO user data in the SFDC contact, or create a contact.
+    Update AMO user data in the contact, or create a contact.
     Return the Contact data (the contact ID at a minimum).
 
     :param data: dict of amo user data
     :param user_sync: bool True if this is a User Sync request
-    :return: dict of SFDC contact data
+    :return: dict of contact data
     """
     data = data.copy()
     fxa_id = data.pop("fxa_id", None)
@@ -1299,7 +1113,6 @@ def upsert_amo_user_data(data, user_sync=False):
     if amo_deleted or fxa_id is None:
         amo_data["amo_id"] = None
 
-    sfdc.update(user, amo_data)
     ctms.update(user, amo_data)
     return user
 
@@ -1314,122 +1127,12 @@ def amo_compress_categories(categories):
 
 def amo_check_user_for_deletion(user_id):
     """If a user has no addons their AMO info should be removed"""
-    addons = sfdc.sf.query(
-        sfapi.format_soql(
-            "SELECT Id FROM DevAddOn__c WHERE AMO_Contact_ID__c = {contact_id} LIMIT 1",
-            contact_id=user_id,
-        ),
-    )
-    if not addons["records"]:
-        sfdc.update({"id": user_id}, {"amo_id": None, "amo_user": False})
-        ctms.update_by_alt_id("sfdc_id", user_id, {"amo_deleted": True})
+    ctms.update_by_alt_id("sfdc_id", user_id, {"amo_deleted": True})
 
 
 @et_task
 def amo_sync_addon(data):
-    if not settings.SFDC_ENABLED:
-        return
-    data = deepcopy(data)
-    if data["status"] == "deleted":
-        try:
-            addon_record = sfdc.addon.get_by_custom_id("AMO_AddOn_Id__c", data["id"])
-        except sfapi.SalesforceResourceNotFound:
-            return
-        # if deleted, go ahead and delete the author associations and addon
-        addon_users = sfdc.sf.query(
-            sfapi.format_soql(
-                "SELECT Id, AMO_Contact_ID__c FROM DevAddOn__c WHERE AMO_AddOn_ID__c = {addon_id}",
-                addon_id=addon_record["Id"],
-            ),
-        )
-        for record in addon_users["records"]:
-            sfdc.dev_addon.delete(record["Id"])
-            amo_check_user_for_deletion(record["AMO_Contact_ID__c"])
-
-        sfdc.addon.delete(addon_record["Id"])
-        return
-
-    users = [upsert_amo_user_data(author) for author in data["authors"]]
-    # filter out the users that couldn't be found
-    users = [user for user in users if user]
-    addon_data = {
-        "AMO_Category__c": amo_compress_categories(data["categories"]),
-        "AMO_Default_Language__c": data["default_locale"],
-        "AMO_GUID__c": data["guid"],
-        "AMO_Rating__c": data["ratings"]["average"],
-        "AMO_Slug__c": data["slug"],
-        "AMO_Status__c": data["status"],
-        "AMO_Type__c": data["type"],
-        "AMO_Update__c": data["last_updated"],
-        "Average_Daily_Users__c": data["average_daily_users"],
-        "Dev_Disabled__c": "Yes" if data["is_disabled"] else "No",
-        "AMO_Recommended__c": data["is_recommended"],
-    }
-    # check for possible None or empty values
-    if data["name"]:
-        addon_data["Name"] = data["name"]
-
-    # versions can be removed, so they should be removed if they are null
-    if data["current_version"]:
-        addon_data["AMO_Current_Version__c"] = data["current_version"]["version"]
-    else:
-        addon_data["AMO_Current_Version__c"] = ""
-
-    if data["latest_unlisted_version"]:
-        addon_data["AMO_Current_Version_Unlisted__c"] = data["latest_unlisted_version"][
-            "version"
-        ]
-    else:
-        addon_data["AMO_Current_Version_Unlisted__c"] = ""
-
-    sfdc.addon.upsert(f'AMO_AddOn_Id__c/{data["id"]}', addon_data)
-    addon_record = sfdc.addon.get_by_custom_id("AMO_AddOn_Id__c", data["id"])
-
-    # delete users no longer associated with the addon
-    existing_users = sfdc.sf.query(
-        sfapi.format_soql(
-            "SELECT Id, AMO_Contact_ID__c FROM DevAddOn__c WHERE AMO_AddOn_ID__c = {addon_id}",
-            addon_id=addon_record["Id"],
-        ),
-    )
-    user_ids_to_records = {
-        i["AMO_Contact_ID__c"]: i["Id"] for i in existing_users["records"]
-    }
-    existing_user_ids = set(user_ids_to_records.keys())
-    new_user_ids = {user["id"] for user in users}
-    if new_user_ids == existing_user_ids:
-        # no need to continue as no users have been added or removed
-        return
-
-    to_delete = existing_user_ids - new_user_ids
-    for delete_user_id in to_delete:
-        sfdc.dev_addon.delete(user_ids_to_records[delete_user_id])
-        amo_check_user_for_deletion(delete_user_id)
-
-    to_add = new_user_ids - existing_user_ids
-    if not to_add:
-        # no new users to add
-        return
-
-    for user in users:
-        if user["id"] not in to_add:
-            # record exists
-            continue
-
-        try:
-            sfdc.dev_addon.upsert(
-                f'ConcatenateAMOID__c/{user["amo_id"]}-{data["id"]}',
-                {
-                    "AMO_AddOn_ID__c": addon_record["Id"],
-                    "AMO_Contact_ID__c": user["id"],
-                },
-            )
-        except sfapi.SalesforceMalformedRequest as e:
-            if e.content[0]["errorCode"] == "DUPLICATE_VALUE":
-                # dupe error, so we don't need to do this again
-                pass
-            else:
-                raise e
+    pass
 
 
 @et_task
@@ -1464,7 +1167,6 @@ def get_fxa_user_data(fxa_id, email):
         user_data = user_data_fxa
         # If email doesn't match, update FxA primary email field with the new email.
         if user_data_fxa["email"] != email:
-            sfdc.update(user_data_fxa, {"fxa_primary_email": email})
             ctms.update(user_data_fxa, {"fxa_primary_email": email})
 
     # if we still don't have user data try again with email this time

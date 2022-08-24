@@ -11,7 +11,6 @@ from basket.news.utils import SET, SUBSCRIBE, UNSUBSCRIBE, generate_token
 @override_settings(SEND_CONFIRM_MESSAGES=True)
 @patch("basket.news.tasks.send_confirm_message")
 @patch("basket.news.tasks.ctms")
-@patch("basket.news.tasks.sfdc")
 @patch("basket.news.tasks.get_user_data")
 class UpsertUserTests(TestCase):
     def setUp(self):
@@ -31,7 +30,6 @@ class UpsertUserTests(TestCase):
     def test_update_first_last_names(
         self,
         get_user_data,
-        sfdc_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -62,12 +60,10 @@ class UpsertUserTests(TestCase):
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
-        sfdc_mock.add.assert_called_with(update_data)
 
     def test_update_user_set_works_if_no_newsletters(
         self,
         get_user_data,
-        sfdc_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -101,13 +97,11 @@ class UpsertUserTests(TestCase):
         get_user_data.assert_called()
         # We'll specifically unsubscribe each newsletter the user is
         # subscribed to.
-        sfdc_mock.update.assert_called_with(self.get_user_data, update_data)
         ctms_mock.update.assert_called_with(self.get_user_data, update_data)
 
     def test_resubscribe_doesnt_update_newsletter(
         self,
         get_user_data,
-        sfdc_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -140,13 +134,11 @@ class UpsertUserTests(TestCase):
         # We should have looked up the user's data
         get_user_data.assert_called()
         # We should not have mentioned this newsletter in our call to ET
-        sfdc_mock.update.assert_called_with(self.get_user_data, update_data)
         ctms_mock.update.assert_called_with(self.get_user_data, update_data)
 
     def test_set_doesnt_update_newsletter(
         self,
         get_user_data,
-        sfdc_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -181,10 +173,9 @@ class UpsertUserTests(TestCase):
         # We should have looked up the user's data
         self.assertTrue(get_user_data.called)
         # We should not have mentioned this newsletter in our call to SF/CTMS
-        sfdc_mock.update.assert_called_with(self.get_user_data, update_data)
         ctms_mock.update.assert_called_with(self.get_user_data, update_data)
 
-    def test_unsub_is_careful(self, get_user_data, sfdc_mock, ctms_mock, confirm_mock):
+    def test_unsub_is_careful(self, get_user_data, ctms_mock, confirm_mock):
         """
         When unsubscribing, we only unsubscribe things the user is
         currently subscribed to.
@@ -219,13 +210,11 @@ class UpsertUserTests(TestCase):
         upsert_user(UNSUBSCRIBE, data)
         # We should have looked up the user's data
         self.assertTrue(get_user_data.called)
-        sfdc_mock.update.assert_called_with(self.get_user_data, update_data)
         ctms_mock.update.assert_called_with(self.get_user_data, update_data)
 
     def test_update_user_without_format_doesnt_send_format(
         self,
         get_user_mock,
-        sfdc_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -264,13 +253,11 @@ class UpsertUserTests(TestCase):
         # We should only mention slug, not slug2
         update_data["newsletters"] = {"slug": True}
         upsert_user(SUBSCRIBE, data)
-        sfdc_mock.update.assert_called_with(get_user_mock.return_value, update_data)
         ctms_mock.update.assert_called_with(get_user_mock.return_value, update_data)
 
     def test_update_user_with_email_id(
         self,
         get_user_mock,
-        sfdc_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -304,10 +291,9 @@ class UpsertUserTests(TestCase):
             "slug": True,
         }  # Only the set newsletter is mentioned
         upsert_user(SUBSCRIBE, data)
-        sfdc_mock.update.assert_called_with(get_user_mock.return_value, update_data)
         ctms_mock.update.assert_called_with(get_user_mock.return_value, update_data)
 
-    def test_send_confirm(self, get_user_data, sfdc_mock, ctms_mock, confirm_mock):
+    def test_send_confirm(self, get_user_data, ctms_mock, confirm_mock):
         """Subscribing to a newsletter should send a confirm email"""
         get_user_data.return_value = None  # Does not exist yet
         email_id = str(uuid4())
@@ -333,10 +319,9 @@ class UpsertUserTests(TestCase):
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
-        sfdc_mock.add.assert_called_with(update_data)
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
-    def test_send_fx_confirm(self, get_user_data, sfdc_mock, ctms_mock, confirm_mock):
+    def test_send_fx_confirm(self, get_user_data, ctms_mock, confirm_mock):
         """Subscribing to a Fx newsletter should send a Fx confirm email"""
         get_user_data.return_value = None  # Does not exist yet
         email_id = str(uuid4())
@@ -363,10 +348,9 @@ class UpsertUserTests(TestCase):
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
-        sfdc_mock.add.assert_called_with(update_data)
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "fx")
 
-    def test_send_moz_confirm(self, get_user_data, sfdc_mock, ctms_mock, confirm_mock):
+    def test_send_moz_confirm(self, get_user_data, ctms_mock, confirm_mock):
         """Subscribing to a Fx and moz newsletters should send a moz confirm email"""
         get_user_data.return_value = None  # Does not exist yet
         email_id = str(uuid4())
@@ -402,13 +386,11 @@ class UpsertUserTests(TestCase):
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
-        sfdc_mock.add.assert_called_with(update_data)
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
     def test_no_send_confirm_newsletter(
         self,
         get_user_data,
-        sfdc_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -441,13 +423,11 @@ class UpsertUserTests(TestCase):
         update_data["optin"] = True
         ctms_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
-        sfdc_mock.add.assert_called_with(update_data)
         confirm_mock.delay.assert_not_called()
 
     def test_no_send_confirm_user(
         self,
         get_user_data,
-        sfdc_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -477,14 +457,12 @@ class UpsertUserTests(TestCase):
         upsert_user(SUBSCRIBE, data)
         update_data = data.copy()
         update_data["newsletters"] = {"slug": True}
-        sfdc_mock.update.assert_called_with(user_data, update_data)
         ctms_mock.update.assert_called_with(user_data, update_data)
         confirm_mock.delay.assert_not_called()
 
     def test_new_subscription_with_ctms_conflict(
         self,
         get_user_data,
-        sfdc_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -511,13 +489,11 @@ class UpsertUserTests(TestCase):
         update_data["newsletters"] = {"slug": True}
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
-        sfdc_mock.add.assert_called_with(update_data)
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
     def test_new_user_subscribes_to_mofo_newsletter(
         self,
         get_user_data,
-        sfdc_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -549,13 +525,11 @@ class UpsertUserTests(TestCase):
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
-        sfdc_mock.add.assert_called_with(update_data)
         confirm_mock.delay.assert_not_called()
 
     def test_existing_user_subscribes_to_mofo_newsletter(
         self,
         get_user_data,
-        sfdc_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -583,14 +557,12 @@ class UpsertUserTests(TestCase):
         update_data["newsletters"] = {"mozilla-foundation": True}
         update_data["mofo_relevant"] = True
         update_data["optin"] = True
-        sfdc_mock.update.assert_called_with(user_data, update_data)
         ctms_mock.update.assert_called_with(user_data, update_data)
         confirm_mock.delay.assert_not_called()
 
     def test_existing_mofo_user_subscribes_to_mofo_newsletter(
         self,
         get_user_data,
-        sfdc_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -618,6 +590,5 @@ class UpsertUserTests(TestCase):
         update_data = data.copy()
         update_data["newsletters"] = {"mozilla-foundation": True}
         update_data["optin"] = True
-        sfdc_mock.update.assert_called_with(user_data, update_data)
         ctms_mock.update.assert_called_with(user_data, update_data)
         confirm_mock.delay.assert_not_called()

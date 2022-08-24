@@ -636,8 +636,6 @@ def user_meta(request, token):
     if form.is_valid():
         # don't send empty values
         data = {k: v for k, v in form.cleaned_data.items() if v}
-        # don't change subscriber status
-        data["_set_subscriber"] = False
         update_user_meta.delay(token, data)
         return HttpResponseJSON({"status": "ok"})
 

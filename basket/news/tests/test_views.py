@@ -36,7 +36,7 @@ class UpdateUserMetaTests(TestCase):
         assert resp.status_code == 200
         uum_mock.delay.assert_called_with(
             "the-dudes-token-man",
-            {"country": "gb", "_set_subscriber": False},
+            {"country": "gb"},
         )
 
     def test_only_send_given_values(self, uum_mock):
@@ -45,7 +45,7 @@ class UpdateUserMetaTests(TestCase):
         assert resp.status_code == 200
         uum_mock.delay.assert_called_with(
             "the-dudes-token-man",
-            {"first_name": "The", "last_name": "Dude", "_set_subscriber": False},
+            {"first_name": "The", "last_name": "Dude"},
         )
 
 

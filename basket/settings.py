@@ -78,10 +78,6 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         "TIMEOUT": 60 * 60,  # 1 hour
     },
-    "sfdc_sessions": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "TIMEOUT": 60 * 60,  # 1 hour
-    },
     "product_details": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
 }
 
@@ -222,23 +218,6 @@ WATCHMAN_CHECKS = (
     "watchman.checks.databases",
 )
 
-# Salesforce.com
-# legacy names
-EXACTTARGET_USE_SANDBOX = config("EXACTTARGET_USE_SANDBOX", False, cast=bool)
-USE_SANDBOX_BACKEND = config("USE_SANDBOX_BACKEND", EXACTTARGET_USE_SANDBOX, cast=bool)
-SFDC_USE_SANDBOX = config("SFDC_USE_SANDBOX", USE_SANDBOX_BACKEND, cast=bool)
-SFDC_SETTINGS = {
-    "username": config("SFDC_USERNAME", None),
-    "password": config("SFDC_PASSWORD", None),
-    "security_token": config("SFDC_SEC_TOKEN", None),
-    "domain": "test" if SFDC_USE_SANDBOX else "login",
-}
-default_sfdc_enabled = bool(SFDC_SETTINGS["username"])
-SFDC_ENABLED = config("SFDC_ENABLED", default_sfdc_enabled, cast=bool)
-# default SFDC sessions timeout after 2 hours of inactivity. so they never timeout on
-# prod. Let's make it every 4 hours by default.
-SFDC_SESSION_TIMEOUT = config("SFDC_SESSION_TIMEOUT", 60 * 60 * 4, cast=int)
-SFDC_REQUEST_TIMEOUT = config("SFDC_REQUEST_TIMEOUT", 30, cast=int)
 
 ACOUSTIC_CLIENT_ID = config("ACOUSTIC_CLIENT_ID", None)
 ACOUSTIC_CLIENT_SECRET = config("ACOUSTIC_CLIENT_SECRET", None)
@@ -431,7 +410,7 @@ PROD_DETAILS_CACHE_NAME = "product_details"
 PROD_DETAILS_CACHE_TIMEOUT = None
 
 RECOVER_MSG_LANGS = config("RECOVER_MSG_LANGS", "en", cast=Csv())
-# language codes that we support and send through to SFDC
+# language codes that we support and send through to backend
 # regardless of their existence in the DB
 EXTRA_SUPPORTED_LANGS = config("EXTRA_SUPPORTED_LANGS", "", cast=Csv())
 
@@ -447,6 +426,8 @@ QUEUE_BATCH_SIZE = config("QUEUE_BATCH_SIZE", 500, cast=int)
 # can we read user data in maintenance mode
 MAINTENANCE_READ_ONLY = config("MAINTENANCE_READ_ONLY", False, cast=bool)
 
+USE_SANDBOX_BACKEND = config("USE_SANDBOX_BACKEND", False, cast=bool)
+
 TASK_LOCK_TIMEOUT = config("TASK_LOCK_TIMEOUT", 60, cast=int)
 TASK_LOCKING_ENABLE = config("TASK_LOCKING_ENABLE", False, cast=bool)
 
@@ -456,7 +437,7 @@ DONATE_QUEUE_REGION = config("DONATE_QUEUE_REGION", default="")
 DONATE_QUEUE_URL = config("DONATE_QUEUE_URL", default="")
 DONATE_QUEUE_WAIT_TIME = config("DONATE_QUEUE_WAIT_TIME", cast=int, default=10)
 # turn this on to consume the queue but ignore the messages
-# needed so that donate.m.o can run continuous tests w/o filling the SFDC sandbox
+# needed so that donate.m.o can run continuous tests w/o filling the backend sandbox
 DONATE_QUEUE_IGNORE_MODE = config("DONATE_QUEUE_IGNORE_MODE", cast=bool, default=False)
 DONATE_SEND_RECEIPTS = config("DONATE_SEND_RECEIPTS", cast=bool, default=False)
 DONATE_RECEIPTS_BCC = config("DONATE_RECEIPTS_BCC", "", cast=Csv())
@@ -478,11 +459,6 @@ FXA_EVENTS_QUEUE_REGION = config("FXA_EVENTS_QUEUE_REGION", default="")
 FXA_EVENTS_QUEUE_URL = config("FXA_EVENTS_QUEUE_URL", default="")
 FXA_EVENTS_QUEUE_WAIT_TIME = config("FXA_EVENTS_QUEUE_WAIT_TIME", cast=int, default=10)
 FXA_EVENTS_SNITCH_ID = config("FXA_EVENTS_SNITCH_ID", default="")
-FXA_EVENTS_VERIFIED_SFDC_ENABLE = config(
-    "FXA_EVENTS_VERIFIED_SFDC_ENABLE",
-    cast=bool,
-    default=False,
-)
 
 # stable, stage, or production
 # https://github.com/mozilla/PyFxA/blob/master/fxa/constants.py
@@ -547,6 +523,4 @@ if (
 ):
     # stuff that's absolutely required for a test run
     CELERY_TASK_ALWAYS_EAGER = True
-    SFDC_SETTINGS.pop("username", None)
-    SFDC_SETTINGS.pop("password", None)
     TESTING_EMAIL_DOMAINS = []
