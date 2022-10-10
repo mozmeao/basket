@@ -1,5 +1,5 @@
 -r prod.in
-black==22.8.0
+black==22.10.0
 flake8==5.0.4
 pep8==1.7.1
 pytest-cov==4.0.0
