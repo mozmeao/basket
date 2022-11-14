@@ -316,7 +316,6 @@ def get_user_data(
     token=None,
     email=None,
     payee_id=None,
-    amo_id=None,
     fxa_id=None,
     extra_fields=None,
     get_fxa=False,
@@ -362,47 +361,44 @@ def get_user_data(
     """
     user = {}
 
-    if not user.get("email_id"):
-        ctms_user = None
-        try:
-            ctms_user = ctms.get(
-                token=token,
-                email=email,
-                sfdc_id=user.get("id"),
-                amo_id=amo_id,
-                fxa_id=fxa_id,
-            )
-        except CTMSNotFoundByAltIDError:
-            return None
-        except requests.exceptions.HTTPError as error:
-            if error.response.status_code == 401:
-                raise NewsletterException(
-                    "Email service provider auth failure",
-                    error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
-                    status_code=500,
-                )
-            else:
-                raise NewsletterException(
-                    str(error),
-                    error_code=errors.BASKET_NETWORK_FAILURE,
-                    status_code=400,
-                )
-        except CTMSNotConfigured:
+    ctms_user = None
+    try:
+        ctms_user = ctms.get(
+            token=token,
+            email=email,
+            fxa_id=fxa_id,
+        )
+    except CTMSNotFoundByAltIDError:
+        return None
+    except requests.exceptions.HTTPError as error:
+        if error.response.status_code == 401:
             raise NewsletterException(
                 "Email service provider auth failure",
                 error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
                 status_code=500,
             )
-        except CTMSError as e:
+        else:
             raise NewsletterException(
-                str(e),
+                str(error),
                 error_code=errors.BASKET_NETWORK_FAILURE,
                 status_code=400,
             )
-        if ctms_user:
-            user = ctms_user
-        else:
-            return None
+    except CTMSNotConfigured:
+        raise NewsletterException(
+            "Email service provider auth failure",
+            error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
+            status_code=500,
+        )
+    except CTMSError as e:
+        raise NewsletterException(
+            str(e),
+            error_code=errors.BASKET_NETWORK_FAILURE,
+            status_code=400,
+        )
+    if ctms_user:
+        user = ctms_user
+    else:
+        return None
 
     # don't send some of the returned data
     for fn in IGNORE_USER_FIELDS:

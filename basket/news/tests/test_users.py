@@ -83,10 +83,8 @@ class TestLookupUser(TestCase):
         assert rsp.status_code == 200
         assert rsp.json() == {"status": "ok", "token": "dummy"}
         ctms_mock.get.assert_called_once_with(
-            amo_id=None,
             email=None,
             fxa_id=None,
-            sfdc_id=None,
             token="dummy",
         )
 
