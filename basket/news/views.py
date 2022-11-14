@@ -1,4 +1,3 @@
-import json
 import os
 import re
 from time import time
@@ -40,8 +39,6 @@ from basket.news.newsletters import (
     newsletter_languages,
 )
 from basket.news.tasks import (
-    amo_sync_addon,
-    amo_sync_user,
     confirm_user,
     record_common_voice_update,
     send_recovery_message_acoustic,
@@ -83,10 +80,6 @@ IP_RATE_LIMIT_INTERNAL = getattr(settings, "IP_RATE_LIMIT_INTERNAL", "400/m")
 PHONE_NUMBER_RATE_LIMIT = getattr(settings, "PHONE_NUMBER_RATE_LIMIT", "4/5m")
 # four submissions for a set of newsletters per email address per 5 minutes
 EMAIL_SUBSCRIBE_RATE_LIMIT = getattr(settings, "EMAIL_SUBSCRIBE_RATE_LIMIT", "4/5m")
-AMO_SYNC_TYPES = {
-    "addon": amo_sync_addon,
-    "userprofile": amo_sync_user,
-}
 
 
 def is_token(word):
@@ -636,8 +629,6 @@ def user_meta(request, token):
     if form.is_valid():
         # don't send empty values
         data = {k: v for k, v in form.cleaned_data.items() if v}
-        # don't change subscriber status
-        data["_set_subscriber"] = False
         update_user_meta.delay(token, data)
         return HttpResponseJSON({"status": "ok"})
 
@@ -1003,47 +994,3 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
     else:
         upsert_user.delay(api_call_type, data, start_time=time())
         return HttpResponseJSON({"status": "ok"})
-
-
-@require_POST
-@csrf_exempt
-def amo_sync(request, post_type):
-    if post_type not in AMO_SYNC_TYPES:
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "API URL not found",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            404,
-        )
-
-    if not has_valid_api_key(request):
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "requires a valid API-key",
-                "code": errors.BASKET_AUTH_ERROR,
-            },
-            401,
-        )
-
-    try:
-        data = json.loads(request.body)
-    except ValueError:
-        statsd.incr(f"amo_sync.{post_type}.message.json_error")
-        with sentry_sdk.push_scope() as scope:
-            scope.set_extra("request.body", request.body)
-            sentry_sdk.capture_exception()
-
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "JSON error",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            400,
-        )
-
-    AMO_SYNC_TYPES[post_type].delay(data)
-    return HttpResponseJSON({"status": "ok"})

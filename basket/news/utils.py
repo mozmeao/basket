@@ -17,7 +17,6 @@ import fxa.profile
 import phonenumbers
 import requests
 import sentry_sdk
-import simple_salesforce as sfapi
 
 # Get error codes from basket-client so users see the same definitions
 from basket import errors
@@ -31,7 +30,6 @@ from basket.news.backends.ctms import (
     CTMSNotConfigured,
     CTMSNotFoundByAltIDError,
 )
-from basket.news.backends.sfdc import sfdc, SFDCDisabled
 from basket.news.models import APIUser, BlockedEmail
 from basket.news.newsletters import (
     newsletter_group_newsletter_slugs,
@@ -318,7 +316,6 @@ def get_user_data(
     token=None,
     email=None,
     payee_id=None,
-    amo_id=None,
     fxa_id=None,
     extra_fields=None,
     get_fxa=False,
@@ -326,12 +323,8 @@ def get_user_data(
     """
     Return a dictionary of the user's data.
 
-    If SFDC_ENABLED, use Salesforce.com (SFDC) as the primary source. Lookups
-    are by the first given of token, email, payee ID (e.g. Stripe), AMO ID, or
-    FxA ID. CTMS is queried to add a CTMS email_id if unknown by SFDC.
-
-    If not SFDC_ENABLED, use CTMS (Mozilla's Contact Management System) as the
-    primary source. Lookups are by token, email, SFDC ID, AMO ID, and FxA ID.
+    Use CTMS (Mozilla's Contact Management System) as the primary source.
+    Lookups are by token, email, AMO ID, and FxA ID.
 
     If the user was not found, return None instead of a dictionary.
 
@@ -345,7 +338,7 @@ def get_user_data(
 
     Review of results:
 
-    None = user completely unknown, no errors talking to SFDC / CTMS.
+    None = user completely unknown, no errors talking to CTMS.
 
     otherwise, return value is::
 
@@ -366,84 +359,46 @@ def get_user_data(
         'master': True if we found them in the master subscribers table
     }
     """
-    sfdc_enabled = True
+    user = {}
+
+    ctms_user = None
     try:
-        user = sfdc.get(
+        ctms_user = ctms.get(
             token=token,
             email=email,
-            payee_id=payee_id,
-            amo_id=amo_id,
             fxa_id=fxa_id,
         )
-    except sfapi.SalesforceResourceNotFound:
+    except CTMSNotFoundByAltIDError:
         return None
-    except requests.exceptions.RequestException as e:
-        raise NewsletterException(
-            str(e),
-            error_code=errors.BASKET_NETWORK_FAILURE,
-            status_code=400,
-        )
-    except sfapi.SalesforceAuthenticationFailed:
-        raise NewsletterException(
-            "Email service provider auth failure",
-            error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
-            status_code=500,
-        )
-    except SFDCDisabled:
-        sfdc_enabled = False
-        user = {}
-
-    if not user.get("email_id"):
-        # Ask CTMS, if SFDC is disabled or SFDC doesn't have email_id
-        ctms_user = None
-        try:
-            ctms_user = ctms.get(
-                token=token,
-                email=email,
-                sfdc_id=user.get("id"),
-                amo_id=amo_id,
-                fxa_id=fxa_id,
-            )
-        except CTMSNotFoundByAltIDError:
-            return None
-        except requests.exceptions.HTTPError as error:
-            if sfdc_enabled:
-                sentry_sdk.capture_exception()
-            elif error.response.status_code == 401:
-                raise NewsletterException(
-                    "Email service provider auth failure",
-                    error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
-                    status_code=500,
-                )
-            else:
-                raise NewsletterException(
-                    str(error),
-                    error_code=errors.BASKET_NETWORK_FAILURE,
-                    status_code=400,
-                )
-        except CTMSNotConfigured:
+    except requests.exceptions.HTTPError as error:
+        if error.response.status_code == 401:
             raise NewsletterException(
                 "Email service provider auth failure",
                 error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
                 status_code=500,
             )
-        except CTMSError as e:
-            if sfdc_enabled:
-                sentry_sdk.capture_exception()
-            else:
-                raise NewsletterException(
-                    str(e),
-                    error_code=errors.BASKET_NETWORK_FAILURE,
-                    status_code=400,
-                )
-        if sfdc_enabled:
-            if ctms_user and "email_id" in ctms_user:
-                user["email_id"] = ctms_user["email_id"]
         else:
-            if ctms_user:
-                user = ctms_user
-            else:
-                return None
+            raise NewsletterException(
+                str(error),
+                error_code=errors.BASKET_NETWORK_FAILURE,
+                status_code=400,
+            )
+    except CTMSNotConfigured:
+        raise NewsletterException(
+            "Email service provider auth failure",
+            error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
+            status_code=500,
+        )
+    except CTMSError as e:
+        raise NewsletterException(
+            str(e),
+            error_code=errors.BASKET_NETWORK_FAILURE,
+            status_code=400,
+        )
+    if ctms_user:
+        user = ctms_user
+    else:
+        return None
 
     # don't send some of the returned data
     for fn in IGNORE_USER_FIELDS:

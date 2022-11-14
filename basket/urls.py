@@ -6,7 +6,6 @@ from django.views.generic import RedirectView, TemplateView
 from watchman import views as watchman_views
 
 from basket.news.views import (
-    amo_sync,
     fxa_callback,
     fxa_start,
     subscribe_main,
@@ -29,7 +28,6 @@ if not settings.ADMIN_ONLY_MODE:
             path("subscribe.json", subscribe_json),
             path("fxa/", fxa_start),
             path("fxa/callback/", fxa_callback),
-            path("amo-sync/<post_type>/", amo_sync),
         ],
     )
 

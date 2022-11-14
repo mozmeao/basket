@@ -188,11 +188,11 @@ def truncate_string(max_length, raw_string):
 TO_VENDOR_PROCESSORS = {
     "country": process_country,
     "lang": process_lang,
-    "first_name": partial(truncate_string, 255),  # SFDC was 40
-    "last_name": partial(truncate_string, 255),  # SFDC was 80
+    "first_name": partial(truncate_string, 255),
+    "last_name": partial(truncate_string, 255),
     "reason": partial(truncate_string, 1000),  # CTMS unlimited, but 1k is reasonable
-    "fpn_country": partial(truncate_string, 100),  # SFDC was 120
-    "fpn_platform": partial(truncate_string, 100),  # SFDC was 120
+    "fpn_country": partial(truncate_string, 100),
+    "fpn_platform": partial(truncate_string, 100),
 }
 
 
@@ -873,4 +873,4 @@ def ctms_interface():
         return None
 
 
-ctms = CTMS(ctms_interface(), not settings.SFDC_ENABLED)
+ctms = CTMS(ctms_interface(), is_primary=True)

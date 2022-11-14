@@ -36,7 +36,7 @@ class UpdateUserMetaTests(TestCase):
         assert resp.status_code == 200
         uum_mock.delay.assert_called_with(
             "the-dudes-token-man",
-            {"country": "gb", "_set_subscriber": False},
+            {"country": "gb"},
         )
 
     def test_only_send_given_values(self, uum_mock):
@@ -45,7 +45,7 @@ class UpdateUserMetaTests(TestCase):
         assert resp.status_code == 200
         uum_mock.delay.assert_called_with(
             "the-dudes-token-man",
-            {"first_name": "The", "last_name": "Dude", "_set_subscriber": False},
+            {"first_name": "The", "last_name": "Dude"},
         )
 
 
@@ -1489,59 +1489,3 @@ class FxAPrefCenterOauthStartTests(ViewsPatcherMixin, TestCase):
         )
         assert resp.status_code == 302
         assert resp["location"] == good_redirect
-
-
-class AMOSyncTests(ViewsPatcherMixin, TestCase):
-    def setUp(self):
-        self.client = Client()
-        self._patch_views("amo_sync_addon")
-        self._patch_views("amo_sync_user")
-        self._patch_views("has_valid_api_key")
-        # the above patch doesn't replace in the dict
-        views.AMO_SYNC_TYPES.update(
-            userprofile=self.amo_sync_user,
-            addon=self.amo_sync_addon,
-        )
-
-    def test_require_valid_api_key(self):
-        self.has_valid_api_key.return_value = False
-        resp = self.client.post(
-            "/amo-sync/userprofile/",
-            data=json.dumps({"name": "The Dude"}),
-            content_type="application/json",
-        )
-        assert resp.status_code == 401
-        self.amo_sync_user.delay.assert_not_called()
-        self.amo_sync_addon.delay.assert_not_called()
-
-    def test_call_user_task(self):
-        self.has_valid_api_key.return_value = True
-        data = {"name": "The Dude"}
-        resp = self.client.post(
-            "/amo-sync/userprofile/",
-            data=json.dumps(data),
-            content_type="application/json",
-        )
-        assert resp.status_code == 200
-        self.amo_sync_user.delay.assert_called_with(data)
-        self.amo_sync_addon.delay.assert_not_called()
-
-    def test_call_addon_task(self):
-        self.has_valid_api_key.return_value = True
-        data = {"name": "The Dude"}
-        resp = self.client.post(
-            "/amo-sync/addon/",
-            data=json.dumps({"name": "The Dude"}),
-            content_type="application/json",
-        )
-        assert resp.status_code == 200
-        self.amo_sync_user.delay.assert_not_called()
-        self.amo_sync_addon.delay.assert_called_with(data)
-
-    def test_invalid_amo_url(self):
-        resp = self.client.post(
-            "/amo-sync/dude/",
-            data=json.dumps({"name": "The Dude"}),
-            content_type="application/json",
-        )
-        assert resp.status_code == 404
