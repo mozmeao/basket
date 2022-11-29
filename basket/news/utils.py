@@ -35,6 +35,7 @@ from basket.news.newsletters import (
     newsletter_group_newsletter_slugs,
     newsletter_inactive_slugs,
     newsletter_languages,
+    newsletter_private_slugs,
 )
 
 
@@ -593,6 +594,7 @@ def parse_newsletters(api_call_type, newsletters, cur_newsletters):
     """
     newsletter_map = {}
     newsletters = set(newsletters)
+    private_newsletters = set(newsletter_private_slugs())
     if cur_newsletters is None:
         cur_newsletters = set()
     else:
@@ -611,6 +613,10 @@ def parse_newsletters(api_call_type, newsletters, cur_newsletters):
                 grouped_newsletters.add(nl)
 
         newsletters = grouped_newsletters
+
+    # If SET and newsletters contain private newsletters, drop them, this shouldn't happen.
+    if api_call_type == SET and newsletters & private_newsletters:
+        newsletters = newsletters - private_newsletters
 
     if api_call_type == SUBSCRIBE or api_call_type == SET:
         # Subscribe the user to these newsletters if not already

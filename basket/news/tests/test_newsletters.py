@@ -54,7 +54,7 @@ class TestNewsletterUtils(TestCase):
         ]
         self.groupies[0].newsletters.add(self.newsies[1], self.newsies[2])
 
-    def test_newseltter_private_slugs(self):
+    def test_newsletter_private_slugs(self):
         self.assertEqual(newsletters.newsletter_private_slugs(), ["papers"])
 
     def test_newsletter_slugs(self):
@@ -100,3 +100,8 @@ class TestNewsletterUtils(TestCase):
             ["bowling", "surfing", "extorting"],
         )
         self.assertDictEqual(subs, {"bowling": False})
+
+    def test_parse_newsletters_private_with_set(self):
+        """If newsletter is private for SET mode, that newsletter should be removed."""
+        subs = utils.parse_newsletters(utils.SET, ["bowling", "papers"], list())
+        self.assertDictEqual(subs, {"bowling": True})

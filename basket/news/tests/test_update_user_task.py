@@ -190,8 +190,10 @@ class UpdateUserTaskTests(TestCase):
 
     @patch("basket.news.views.newsletter_slugs")
     @patch("basket.news.views.newsletter_private_slugs")
+    @patch("basket.news.views.is_authorized")
     def test_success_with_unsubscribe_private_newsletter(
         self,
+        mock_api_key,
         mock_private,
         mock_slugs,
     ):
@@ -206,6 +208,7 @@ class UpdateUserTaskTests(TestCase):
 
         self.assert_response_ok(response)
         self.upsert_user.delay.assert_called_with(UNSUBSCRIBE, data, start_time=ANY)
+        mock_api_key.assert_not_called()
 
     @patch("basket.news.views.newsletter_and_group_slugs")
     @patch("basket.news.views.newsletter_private_slugs")
@@ -217,7 +220,7 @@ class UpdateUserTaskTests(TestCase):
         mock_slugs,
     ):
         """
-        If subscribing to a private newsletter and the request has an invalid API key,
+        If calling SUBSCRIBE with a private newsletter and the request has an invalid API key,
         return a 401.
         """
         mock_private.return_value = ["private"]
@@ -240,18 +243,17 @@ class UpdateUserTaskTests(TestCase):
         mock_slugs,
     ):
         """
-        If subscribing to a private newsletter and the request has an invalid API key,
-        return a 401.
+        If calling SET with a private newsletter, return a 200 since the user
+        will only be shown a private newsletter if they are already subscribed.
         """
         mock_private.return_value = ["private"]
         mock_slugs.return_value = ["private", "other"]
         data = {"newsletters": "private", "email": "dude@example.com"}
         request = self.factory.post("/", data)
-        mock_api_key.return_value = False
 
         response = views.update_user_task(request, SET, data)
-        self.assert_response_error(response, 401, errors.BASKET_AUTH_ERROR)
-        mock_api_key.assert_called_with(request, data["email"])
+        self.assert_response_ok(response)
+        mock_api_key.assert_not_called()
 
     @patch("basket.news.views.newsletter_slugs")
     @patch("basket.news.views.newsletter_and_group_slugs")
@@ -265,8 +267,8 @@ class UpdateUserTaskTests(TestCase):
         mock_slugs,
     ):
         """
-        If subscribing to a private newsletter and the request has an invalid API key,
-        return a 401.
+        If calling SUBSCRIBE or SET with a private newsletter and the request has a valid API key,
+        return success.
         """
         mock_private.return_value = ["private"]
         mock_slugs.return_value = ["private", "other"]
