@@ -891,7 +891,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
                     400,
                 )
 
-            if api_call_type != UNSUBSCRIBE and nl in private_newsletters:
+            if api_call_type == SUBSCRIBE and nl in private_newsletters:
                 if not is_authorized(request, data.get("email")):
                     return HttpResponseJSON(
                         {
