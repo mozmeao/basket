@@ -21,6 +21,10 @@ async-timeout==4.0.2 \
     --hash=sha256:2163e1640ddb52b7a8c80d0a67a08587e5d245cc9c553a74a847056bc2976b15 \
     --hash=sha256:8ca1e4fcf50d07413d66d1a5e416e42cfdf5851c981d679a09851a6853383b3c
     # via redis
+attrs==22.1.0 \
+    --hash=sha256:29adc2665447e5191d0e7c568fde78b21f9672d344281d0c6e1ab085429b22b6 \
+    --hash=sha256:86efa402f67bf2df34f51a335487cf46b1ec130d02b8d39fd248abfd30da551c
+    # via zeep
 authlib==1.1.0 \
     --hash=sha256:0a270c91409fc2b7b0fbee6996e09f2ee3187358762111a9a4225c874b94e891 \
     --hash=sha256:be4b6a1dea51122336c210a6945b27a105b9ac572baffd15b07bcff4376c1523
@@ -42,10 +46,7 @@ backports-zoneinfo==0.2.1 \
     --hash=sha256:e8236383a20872c0cdf5a62b554b27538db7fa1bbec52429d8d106effbaeca08 \
     --hash=sha256:f04e857b59d9d1ccc39ce2da1021d196e47234873820cbeaad210724b1ee28ac \
     --hash=sha256:fadbfe37f74051d024037f223b8e001611eac868b5c5b06144ef4d8b799862f2
-    # via
-    #   -r requirements/prod.in
-    #   pytz-deprecation-shim
-    #   tzlocal
+    # via -r requirements/prod.in
 billiard==3.6.4.0 \
     --hash=sha256:299de5a8da28a783d51b197d496bef4f1595dd023a93a4f59dde1886ae905547 \
     --hash=sha256:87103ea78fa6ab4d5c751c4909bcff74617d985de7fa8b672cf8618afd5a875b
@@ -333,6 +334,10 @@ ipaddress==1.0.23 \
     --hash=sha256:6e0f4a39e66cb5bb9a137b00276a2eff74f93b71dcbdad6f10ff7df9d3557fcc \
     --hash=sha256:b7f8e0369580bb4a24d5ba1d7cc29660a4a6987763faf1d8a8046830e020e7e2
     # via -r requirements/prod.in
+isodate==0.6.1 \
+    --hash=sha256:0751eece944162659049d35f4f549ed815792b38793f07cf73381c1c87cbed96 \
+    --hash=sha256:48c5881de7e8b0a0d648cb024c8062dc84e7b840ed81e864c7614fd3c127bde9
+    # via zeep
 jmespath==1.0.1 \
     --hash=sha256:02e2e4cc71b5bcab88332eebf907519190dd9e6e82107fa7f83b1003a6252980 \
     --hash=sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe
@@ -418,7 +423,9 @@ lxml==4.9.1 \
     --hash=sha256:f9ced82717c7ec65a67667bb05865ffe38af0e835cdd78728f1209c8fffe0cad \
     --hash=sha256:fe17d10b97fdf58155f858606bddb4e037b805a60ae023c009f760d8361a4eb8 \
     --hash=sha256:fe749b052bb7233fe5d072fcb549221a8cb1a16725c47c37e42b0b9cb3ff2c3f
-    # via -r requirements/prod.in
+    # via
+    #   -r requirements/prod.in
+    #   zeep
 meinheld==1.0.2 \
     --hash=sha256:008c76937ac2117cc69e032dc69cea9f85fc605de9bac1417f447c41c16a56d6
     # via -r requirements/prod.in
@@ -469,6 +476,10 @@ phonenumbers==8.12.56 \
     --hash=sha256:80a7422cf0999a6f9b7a2e6cfbdbbfcc56ab5b75414dc3b805bbec91276b64a3 \
     --hash=sha256:82a4f226c930d02dcdf6d4b29e4cfd8678991fe65c2efd5fdd143557186f0868
     # via -r requirements/prod.in
+platformdirs==2.5.4 \
+    --hash=sha256:1006647646d80f16130f052404c6b901e80ee4ed6bef6792e1f238a8969106f7 \
+    --hash=sha256:af0276409f9a02373d540bf8480021a048711d572745aef4b7842dad245eba10
+    # via zeep
 pybrowserid==0.14.0 \
     --hash=sha256:6c227669e87cc25796ae76f6a0ef65025528c8ad82d352679fa9a3e5663a71e3 \
     --hash=sha256:8e237d6a2bc9ead849a4472a84d3e6a9309bec99cf8e10d36213710dda8df8ca
@@ -510,6 +521,7 @@ pytz==2022.6 \
     #   apscheduler
     #   celery
     #   django
+    #   zeep
 pytz-deprecation-shim==0.1.0.post0 \
     --hash=sha256:8314c9692a636c8eb3bda879b9f119e350e93223ae83e70e80c31675a0fdc1a6 \
     --hash=sha256:af097bae1b616dde5c5744441e2ddc69e74dfdcb0c263129610d85b87445a59d
@@ -569,12 +581,23 @@ requests==2.28.1 \
     #   pybrowserid
     #   pyfxa
     #   pysilverpop
+    #   requests-file
     #   requests-oauthlib
+    #   requests-toolbelt
     #   simple-salesforce
+    #   zeep
+requests-file==1.5.1 \
+    --hash=sha256:07d74208d3389d01c38ab89ef403af0cfec63957d53a0081d8eca738d0247d8e \
+    --hash=sha256:dfe5dae75c12481f68ba353183c53a65e6044c923e64c24b2209f6c7570ca953
+    # via zeep
 requests-oauthlib==1.3.1 \
     --hash=sha256:2577c501a2fb8d05a304c09d090d6e47c306fef15809d102b327cf8364bddab5 \
     --hash=sha256:75beac4a47881eeb94d5ea5d6ad31ef88856affe2332b9aafb52c6452ccf0d7a
     # via pysilverpop
+requests-toolbelt==0.10.1 \
+    --hash=sha256:18565aa58116d9951ac39baa288d3adb5b3ff975c4f25eee78555d89e8f247f7 \
+    --hash=sha256:62e09f7ff5ccbda92772a29f394a49c3ad6cb181d568b1337626b2abb628a63d
+    # via zeep
 s3transfer==0.6.0 \
     --hash=sha256:06176b74f3a15f61f1b4f25a1fc29a4429040b7647133a463da8fa5bd28d5ecd \
     --hash=sha256:2ed07d3866f523cc561bf4a00fc5535827981b117dd7876f036b0c1aca42c947
@@ -586,9 +609,9 @@ sentry-sdk==1.6.0 \
     --hash=sha256:b82ad57306d5546713f15d5d70daea0408cf7f998c7566db16e0e6257e51e561 \
     --hash=sha256:ddbd191b6f4e696b7845b4d87389898ae1207981faf114f968a57363aa6be03c
     # via -r requirements/prod.in
-simple-salesforce==1.10.1 \
-    --hash=sha256:20fd66cf40da732b9cdcb2f7160dde7bb298ef0c31702d1fdd767d1fc68cfe1b \
-    --hash=sha256:ecbf4f612bb6a4a1897306537c9065d98098ada56e2de6be9ed52b39b3d056e5
+simple-salesforce==1.12.2 \
+    --hash=sha256:518d701088c3d4425a15cd352d84e8379f8fe25a101a4c7905090aa727e3f916 \
+    --hash=sha256:aec79a90440aafdf8a76d642650a561b39801549f3fe05400ea96d50d2ff19d0
     # via -r requirements/prod.in
 six==1.16.0 \
     --hash=sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926 \
@@ -596,9 +619,11 @@ six==1.16.0 \
     # via
     #   apscheduler
     #   django-jsonfield
+    #   isodate
     #   pyfxa
     #   pysilverpop
     #   python-dateutil
+    #   requests-file
 sqlparse==0.4.3 \
     --hash=sha256:0323c0ec29cd52bceabc1b4d9d579e311f3e4961b98d174201d5622a23b85e34 \
     --hash=sha256:69ca804846bb114d2ec380e4360a8a340db83f0ccf3afceeb1404df028f57268
@@ -644,6 +669,10 @@ whitenoise==6.2.0 \
     --hash=sha256:8e9c600a5c18bd17655ef668ad55b5edf6c24ce9bdca5bf607649ca4b1e8e2c2 \
     --hash=sha256:8fa943c6d4cd9e27673b70c21a07b0aa120873901e099cd46cab40f7cc96d567
     # via -r requirements/prod.in
+zeep==4.2.1 \
+    --hash=sha256:6754feb4c34a4b6d65fbc359252bf6654dcce3937bf1d95aae4402a60a8f5939 \
+    --hash=sha256:72093acfdb1d8360ed400869b73fbf1882b95c4287f798084c42ee0c1ff0e425
+    # via simple-salesforce
 
 # WARNING: The following packages were not pinned, but pip requires them to be
 # pinned when the requirements file includes hashes. Consider using the --allow-unsafe flag.
