@@ -8,7 +8,6 @@ from django.test import RequestFactory, TestCase, override_settings
 
 from basket.news.models import BlockedEmail
 from basket.news.utils import (
-    cents_to_dollars,
     email_block_list_cache,
     email_is_blocked,
     get_accept_languages,
@@ -20,9 +19,7 @@ from basket.news.utils import (
     is_authorized,
     language_code_is_valid,
     parse_newsletters_csv,
-    parse_phone_number,
     process_email,
-    split_name,
 )
 
 
@@ -152,25 +149,6 @@ class IsAuthorizedTests(TestCase):
         assert not is_authorized(request, "dude@example.com")
         hvak_mock.assert_called_with(request)
         hvfo_mock.assert_called_with(request, "dude@example.com")
-
-
-class ParsePhoneNumberTests(TestCase):
-    def test_valid_numbers(self):
-        assert parse_phone_number("7068675309", "us") == "+17068675309"
-        assert parse_phone_number("7068675309", "de") == "+497068675309"
-        assert parse_phone_number("7068675309", "gb") == "+447068675309"
-
-    def test_valid_numbers_with_country_code(self):
-        assert parse_phone_number("17068675309", "us") == "+17068675309"
-        assert parse_phone_number("49337068675309", "de") == "+49337068675309"
-        assert parse_phone_number("447068675309", "de") == "+49447068675309"
-        assert parse_phone_number("447068675309", "gb") == "+447068675309"
-
-    def test_invalid_numbers(self):
-        # too short
-        assert parse_phone_number("1234") is None
-        # no area code
-        assert parse_phone_number("8675309") is None
 
 
 class ParseNewslettersCSVTests(TestCase):
@@ -405,37 +383,3 @@ class TestProcessEmail(TestCase):
         self.assertIsNone(process_email("dude@home@example.com"))
         self.assertIsNone(process_email(""))
         self.assertIsNone(process_email(None))
-
-
-class TestSplitName(TestCase):
-    def test_empty_string(self):
-        self.assertEqual(split_name(""), ("", ""))
-
-    def test_only_spaces(self):
-        self.assertEqual(split_name(" "), ("", ""))
-        self.assertEqual(split_name("     "), ("", ""))
-
-    def test_standard_cases(self):
-        self.assertEqual(split_name("Dude"), ("", "Dude"))
-        self.assertEqual(split_name("Walter Sobchak"), ("Walter", "Sobchak"))
-        self.assertEqual(
-            split_name("Theodore Donald Kerabatsos"),
-            ("Theodore Donald", "Kerabatsos"),
-        )
-
-    def test_removes_suffixes(self):
-        self.assertEqual(split_name("Jeffrey Lebowski Jr"), ("Jeffrey", "Lebowski"))
-        self.assertEqual(split_name("Jeffrey Lebowski jr."), ("Jeffrey", "Lebowski"))
-        self.assertEqual(split_name("Uli Kunkel Sr."), ("Uli", "Kunkel"))
-        self.assertEqual(split_name("Uli Kunkel sr"), ("Uli", "Kunkel"))
-
-
-class TestCentsToDollars(TestCase):
-    def test_valid_int_data(self):
-        self.assertEqual(cents_to_dollars(5005), 50.05)
-
-    def test_valid_string_data(self):
-        self.assertEqual(cents_to_dollars("5005"), 50.05)
-
-    def test_invalid_data(self):
-        self.assertEqual(cents_to_dollars("briefcase"), 0)

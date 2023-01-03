@@ -13,7 +13,6 @@ from django.utils.timezone import now
 
 import requests
 import sentry_sdk
-import simple_salesforce as sfapi
 import user_agents
 from celery.signals import task_failure, task_retry, task_success
 from celery.utils.time import get_exponential_backoff_interval
@@ -219,12 +218,6 @@ def et_task(func):
             NewsletterException,
             requests.RequestException,
             RetryTask,
-            sfapi.SalesforceExpiredSession,
-            sfapi.SalesforceGeneralError,
-            sfapi.SalesforceRefusedRequest,
-            sfapi.SalesforceResourceNotFound,
-            sfapi.SalesforceAuthenticationFailed,
-            sfapi.SalesforceMalformedRequest,
             SilverpopResponseException,
         ) as e:
             # These could all be connection issues, so try again later.

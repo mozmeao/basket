@@ -37,7 +37,7 @@ MANAGERS = ADMINS
 # avoids a warning from django
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
-# DB read-only, API can still read-write to Salesforce
+# DB read-only, API can still read-write to backend
 READ_ONLY_MODE = config("READ_ONLY_MODE", False, cast=bool)
 # Disables the API and changes redirects
 ADMIN_ONLY_MODE = config("ADMIN_ONLY_MODE", False, cast=bool)

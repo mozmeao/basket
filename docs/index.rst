@@ -8,8 +8,8 @@ About Basket
 --------------------
 
 A Python web service, basket, provides an API for all of our subscribing needs.
-Basket interfaces into whatever email provider we are using, currently Salesforce Marketing Cloud
-(formerly ExactTarget).
+Basket interfaces into whatever email provider we are using, currently ConTact
+Management System (CTMS) (formerly Salesforce Marketing Cloud, formerly ExactTarget).
 
 Contents
 --------
