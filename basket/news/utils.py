@@ -14,7 +14,6 @@ import fxa.constants
 import fxa.errors
 import fxa.oauth
 import fxa.profile
-import phonenumbers
 import requests
 import sentry_sdk
 
@@ -79,20 +78,6 @@ class HttpResponseJSON(HttpResponse):
             content_type="application/json",
             status=status,
         )
-
-
-def parse_phone_number(pnum, country="us"):
-    """Parse and validate phone number input and return an E164 formatted number or None if invalid."""
-    region_code = country.upper()
-    try:
-        pn = phonenumbers.parse(pnum, region_code)
-    except phonenumbers.NumberParseException:
-        return None
-
-    if phonenumbers.is_valid_number_for_region(pn, region_code):
-        return phonenumbers.format_number(pn, phonenumbers.PhoneNumberFormat.E164)
-
-    return None
 
 
 def get_email_block_list():
@@ -194,64 +179,6 @@ def has_valid_fxa_oauth(request, email):
         return False
 
     return email == fxa_email
-
-
-def get_or_create_user_data(token=None, email=None):
-    """
-    Find or create Subscriber object for given token and/or email.
-
-    If we don't already have a Basket Subscriber record, we check
-    in ET to see if we know about this user there.  If they exist in
-    ET, we create a new Basket Subscriber record with the information
-    from ET. If they don't exist in ET, and we were given an email,
-    we create a new Subscriber record with the given email and make
-    up a new token for them.
-
-    # FIXME: when we create a new token for a new email, maybe we
-    should put that in ET right away. Though we couldn't put that in
-    any of our three existing tables, so we either need a
-    fourth one for users who are neither confirmed nor pending, or
-    to come up with another solution.
-
-    If we are only given a token, and cannot find any user with that
-    token in Basket or ET, then the returned user_data is None.
-
-    Returns (user_data, created).
-    """
-    kwargs = {}
-    if token:
-        kwargs["token"] = token
-    elif email:
-        kwargs["email"] = email
-    else:
-        raise Exception(MSG_EMAIL_OR_TOKEN_REQUIRED)
-
-    # Note: If both token and email were passed in we use the token as it is the most explicit.
-
-    # NewsletterException uncaught here on purpose
-    user_data = get_user_data(**kwargs)
-    if user_data and user_data["status"] == "ok":
-        # Found them in ET and updated subscriber db locally
-        created = False
-
-    # Not in ET. If we have an email, generate a token.
-    elif email:
-        user_data = {
-            "email": email,
-            "token": generate_token(),
-            "master": False,
-            "pending": False,
-            "confirmed": False,
-            "lang": "",
-            "status": "ok",
-        }
-        created = True
-    else:
-        # No email?  Just token? Token not known in basket or ET?
-        # That's an error.
-        user_data = created = None
-
-    return user_data, created
 
 
 def newsletter_exception_response(exc):
@@ -647,44 +574,3 @@ def parse_newsletters(api_call_type, newsletters, cur_newsletters):
             newsletter_map[nl] = False
 
     return newsletter_map
-
-
-def split_name(name):
-    """
-    Takes a full name as a string and attempts to make it conform to the narrow
-    "first/last" system Salesforce requires.
-
-    Drops any "jr" or "sr" suffix.
-    """
-
-    # remove leading/trailing whitespace and periods
-    # also accounts for a string of spaces being provided
-    name = name.strip(" .")
-
-    # if the name is an empty string, we're done
-    if not name:
-        return "", ""
-
-    # try to make the final bit after the last space the last name
-    names = name.rsplit(None, 1)
-
-    if len(names) == 2:
-        first, last = names
-
-        # if last name is 'jr' or 'sr' and first name has a space in it, do
-        # more splitting
-        if " " in first and last.lower() in ["jr", "sr"]:
-            first, last = first.rsplit(None, 1)
-    else:
-        first, last = "", names[0]
-
-    return first, last
-
-
-def cents_to_dollars(cents):
-    try:
-        dollars = int(cents) / float(100)
-    except ValueError:
-        dollars = 0
-
-    return dollars

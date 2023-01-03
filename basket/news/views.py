@@ -18,7 +18,6 @@ from basket import errors
 from django_statsd.clients import statsd
 from ratelimit.exceptions import Ratelimited
 from ratelimit.core import is_ratelimited
-from simple_salesforce import SalesforceError
 
 from basket.news.forms import (
     CommonVoiceForm,
@@ -193,7 +192,7 @@ def fxa_callback(request):
     email = user_profile["email"]
     try:
         user_data = get_user_data(email=email)
-    except SalesforceError:
+    except Exception:
         statsd.incr("news.views.fxa_callback.error.get_user_data")
         sentry_sdk.capture_exception()
         return HttpResponseRedirect(error_url)
@@ -219,7 +218,7 @@ def fxa_callback(request):
 
         try:
             token = upsert_contact(SUBSCRIBE, new_user_data, None)[0]
-        except SalesforceError:
+        except Exception:
             statsd.incr("news.views.fxa_callback.error.upsert_contact")
             sentry_sdk.capture_exception()
             return HttpResponseRedirect(error_url)

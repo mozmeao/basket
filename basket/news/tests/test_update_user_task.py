@@ -125,8 +125,8 @@ class UpdateUserTaskTests(TestCase):
 
     def test_success_no_sync(self):
         """
-        If sync is False, do not generate a token via get_or_create_user_data
-        and return an OK response without a token.
+        If sync is False, do not generate a token and return an OK response
+        without a token.
         """
         request = self.factory.post("/")
         data = {"email": "a@example.com", "first_name": "The", "last_name": "Dude"}
@@ -175,8 +175,8 @@ class UpdateUserTaskTests(TestCase):
     @patch("basket.news.views.get_user_data")
     def test_success_with_sync(self, gud_mock):
         """
-        If sync is True look up the user with get_or_create_user_data and
-        return an OK response with the token and created from the fetched subscriber.
+        If sync is True look up the user and return an OK response with the
+        token and created from the fetched subscriber.
         """
         request = self.factory.post("/")
         data = {"email": "a@example.com"}
