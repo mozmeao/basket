@@ -87,6 +87,11 @@ class Newsletter(models.Model):
         help_text="True if subscribing to this newsletter should mark someone"
         " as relevant to the Mozilla Foundation",
     )
+    is_waitlist = models.BooleanField(
+        default=False,
+        help_text="True if the newsletter is a waiting list. "
+        "A waitlist can have additional arbitrary fields.",
+    )
     order = models.IntegerField(
         default=0,
         help_text="Order to display the newsletters on the web site. "
