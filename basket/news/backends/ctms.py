@@ -253,6 +253,8 @@ def to_vendor(data, existing_data=None):
         elif name == "newsletters":
             # Process newsletters after gathering all newsletter keys
             newsletters = value
+            if not isinstance(newsletters, dict):
+                newsletters = {slug: True for slug in newsletters}
         elif name == "amo_deleted":
             amo_deleted = bool(value)
         elif name not in DISCARD_BASKET_NAMES:
@@ -261,36 +263,30 @@ def to_vendor(data, existing_data=None):
     # Process the newsletters, which may include extra data from the email group
     if newsletters:
         valid_slugs = newsletter_slugs()
-        output = []
-        if isinstance(newsletters, dict):
-            # Detect unsubscribe all
-            optout = data.get("optout", False) or False
-            if (
-                optout
-                and (not any(newsletters.values()))
-                and (set(valid_slugs) == set(newsletters.keys()))
-            ):
-                # When unsubscribe all is requested, let CTMS unsubscribe from all
-                output = "UNSUBSCRIBE"
-            else:
-                # Dictionary of slugs to sub/unsub flags
-                for slug, subscribed in newsletters.items():
-                    if slug in valid_slugs:
-                        if subscribed:
-                            nl_sub = newsletter_subscription_default.copy()
-                            nl_sub.update({"name": slug, "subscribed": True})
-                        else:
-                            nl_sub = {"name": slug, "subscribed": False}
-                        output.append(nl_sub)
+        output_newsletters = []
+        # Detect unsubscribe all
+        optout = data.get("optout", False) or False
+        if (
+            optout
+            and (not any(newsletters.values()))
+            and (set(valid_slugs) == set(newsletters.keys()))
+        ):
+            # When unsubscribe all is requested, let CTMS unsubscribe from all
+            output_newsletters = "UNSUBSCRIBE"
         else:
-            # List of slugs for subscriptions, which may include a source
-            for slug in newsletters:
-                if slug in valid_slugs:
+            # Dictionary of slugs to sub/unsub flags
+            for slug, subscribed in newsletters.items():
+                if slug not in valid_slugs:
+                    continue
+                if subscribed:
                     nl_sub = newsletter_subscription_default.copy()
                     nl_sub.update({"name": slug, "subscribed": True})
-                    output.append(nl_sub)
-        if output:
-            ctms_data["newsletters"] = output
+                else:
+                    nl_sub = {"name": slug, "subscribed": False}
+                output_newsletters.append(nl_sub)
+
+        if output_newsletters:
+            ctms_data["newsletters"] = output_newsletters
 
     # When an AMO account is deleted, reset data to defaults
     if amo_deleted:
