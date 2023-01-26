@@ -2,7 +2,7 @@
 API Client Library for Mozilla's Contact Management System (CTMS)
 https://github.com/mozilla-it/ctms-api/
 """
-
+import re
 from functools import cached_property, partial, partialmethod
 from urllib.parse import urlparse, urlunparse, urljoin
 
@@ -18,6 +18,7 @@ from basket.news.backends.common import get_timer_decorator
 from basket.news.country_codes import SFDC_COUNTRIES_LIST, convert_country_3_to_2
 from basket.news.newsletters import (
     newsletter_slugs,
+    newsletter_waitlist_slugs,
     is_supported_newsletter_language,
 )
 
@@ -82,9 +83,9 @@ CTMS_TO_BASKET_NAMES = {
         "mofo_contact_id": None,
         "mofo_relevant": "mofo_relevant",
     },
-    "vpn_waitlist": {"geo": "fpn_country", "platform": "fpn_platform"},
-    "relay_waitlist": {"geo": "relay_country"},
 }
+
+VPN_NEWSLETTER_SLUG = "guardian-vpn-waitlist"
 
 
 def from_vendor(contact):
@@ -103,11 +104,24 @@ def from_vendor(contact):
         elif group_name == "newsletters":
             # Import newsletter names
             # Unimported per-newsletter data: format, language, source, unsub_reason
-            newsletters = []
             for newsletter in group:
                 if newsletter["subscribed"]:
-                    newsletters.append(newsletter["name"])
-            data["newsletters"] = newsletters
+                    data.setdefault("newsletters", []).append(newsletter["name"])
+        elif group_name == "waitlists":
+            # Unimported per-waitlist data: source, extra fields...
+            for waitlist in group:
+                wl_name = waitlist["name"]
+                # Legacy waitlist format. For backward compatibility.
+                # See `to_vendor()`` and `waitlist_fields_for_slug()` for the inverse.
+                if wl_name == "vpn":
+                    wl_name = VPN_NEWSLETTER_SLUG
+                    data["fpn_country"] = waitlist["fields"]["geo"]
+                    data["fpn_platform"] = waitlist["fields"]["platform"]
+                else:
+                    wl_name += "-waitlist"
+                if wl_name == "relay-waitlist":
+                    data["relay_country"] = waitlist["fields"]["geo"]
+                data.setdefault("newsletters", []).append(wl_name)
         else:
             pass
     return data
@@ -196,6 +210,48 @@ TO_VENDOR_PROCESSORS = {
 }
 
 
+def waitlist_fields_for_slug(data, slug):
+    """
+    Gather arbitrary fields using the slug as prefix.
+    For example, with `slug="super-product"`, the following data::
+
+        super_product_currency=eur
+        super_product_country=fr
+        other_field=42
+
+    is turned into::
+
+        {
+          "country": "fr",
+          "currency": "eur",
+        }
+    """
+    prefix = re.sub("[^0-9a-zA-Z]+", "_", slug) + "_"
+    consumed_keys = []
+
+    # Specific cases for legacy waitlists:
+    new_fields = {
+        "relay_country": "relay_geo",
+        "fpn_country": "vpn_geo",
+        "fpn_platform": "vpn_platform",
+    }
+
+    # Turn flat fields into a dict.
+    fields = {}
+    for name, raw_value in data.items():
+        if name in new_fields:
+            consumed_key = name
+            name = new_fields[name]
+        else:
+            consumed_key = name
+        if not name.startswith(prefix):
+            continue
+        field_name = name.replace(prefix, "")
+        fields[field_name] = raw_value
+        consumed_keys.append(consumed_key)
+    return fields, consumed_keys
+
+
 def to_vendor(data, existing_data=None):
     """
     Transform basket key-value data and convert to CTMS nested data
@@ -222,6 +278,7 @@ def to_vendor(data, existing_data=None):
     if "format" in existing_data:
         newsletter_subscription_default["format"] = existing_data["format"]
 
+    cleaned_data = {}
     for name, raw_value in data.items():
         # Pre-process raw_value, which may remove it.
         processor = TO_VENDOR_PROCESSORS.get(name)
@@ -242,6 +299,10 @@ def to_vendor(data, existing_data=None):
         if (value is None or value == "") and not existing_data.get(name):
             continue
 
+        cleaned_data[name] = value
+
+    for name in cleaned_data.keys():
+        value = cleaned_data[name]
         # Place in CTMS contact structure
         if name in BASKET_TO_CTMS_NAMES:
             group_name, key = BASKET_TO_CTMS_NAMES[name]
@@ -258,12 +319,16 @@ def to_vendor(data, existing_data=None):
         elif name == "amo_deleted":
             amo_deleted = bool(value)
         elif name not in DISCARD_BASKET_NAMES:
-            unknown_data[name] = raw_value
+            unknown_data[name] = data[name]  # raw value
 
-    # Process the newsletters, which may include extra data from the email group
+    # Process the newsletters and waitlists.
+    # Waitlist are newsletters with the `is_waitlist` flag, and can carry
+    # arbitrary data in `fields`, that will be validated by CTMS.
     if newsletters:
         valid_slugs = newsletter_slugs()
+        waitlist_slugs = newsletter_waitlist_slugs()
         output_newsletters = []
+        output_waitlists = []
         # Detect unsubscribe all
         optout = data.get("optout", False) or False
         if (
@@ -271,22 +336,53 @@ def to_vendor(data, existing_data=None):
             and (not any(newsletters.values()))
             and (set(valid_slugs) == set(newsletters.keys()))
         ):
-            # When unsubscribe all is requested, let CTMS unsubscribe from all
+            # When unsubscribe all is requested, let CTMS unsubscribe from all.
+            # Note that since `valid_slugs` is a superset of `waitlist_slugs`, we
+            # also unsubscribe from all waitlists.
             output_newsletters = "UNSUBSCRIBE"
+            output_waitlists = "UNSUBSCRIBE"
         else:
             # Dictionary of slugs to sub/unsub flags
             for slug, subscribed in newsletters.items():
                 if slug not in valid_slugs:
                     continue
-                if subscribed:
-                    nl_sub = newsletter_subscription_default.copy()
-                    nl_sub.update({"name": slug, "subscribed": True})
+                if slug in waitlist_slugs:
+                    # Rename legacy VPN waitlist. See `from_vendor()`` for the inverse.
+                    if slug == VPN_NEWSLETTER_SLUG:
+                        slug = "vpn"
+                    # The newsletter is a waitlist. Ignore its conventional suffix.
+                    slug = slug.replace("-waitlist", "")
+                    if subscribed:
+                        fields_mapping, consumed_fields = waitlist_fields_for_slug(
+                            cleaned_data, slug
+                        )
+                        # Remove all consumed waitlist fields from unknown data
+                        for field_name in consumed_fields:
+                            del unknown_data[field_name]
+                        # Submit the waitlist details, with potential source URL.
+                        wl_sub = {
+                            "name": slug,
+                            "subscribed": True,
+                            "source": newsletter_subscription_default.get("source"),
+                            "fields": fields_mapping,
+                        }
+                    else:
+                        wl_sub = {"name": slug, "subscribed": False}
+                    output_waitlists.append(wl_sub)
                 else:
-                    nl_sub = {"name": slug, "subscribed": False}
-                output_newsletters.append(nl_sub)
+                    # Regular newsletter, which may include extra data from the email group
+                    # like `format`, `source`, and `lang` for example.
+                    if subscribed:
+                        nl_sub = newsletter_subscription_default.copy()
+                        nl_sub.update({"name": slug, "subscribed": True})
+                    else:
+                        nl_sub = {"name": slug, "subscribed": False}
+                    output_newsletters.append(nl_sub)
 
         if output_newsletters:
             ctms_data["newsletters"] = output_newsletters
+        if output_waitlists:
+            ctms_data["waitlists"] = output_waitlists
 
     # When an AMO account is deleted, reset data to defaults
     if amo_deleted:
