@@ -6,7 +6,6 @@ import basket.news.fields
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("news", "0012_auto_20170713_1021"),
     ]

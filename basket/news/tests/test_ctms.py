@@ -575,7 +575,6 @@ class ToVendorTests(TestCase):
 
 
 class CTMSSessionTests(TestCase):
-
     EXAMPLE_TOKEN = {
         "access_token": "a.long.base64.string",
         "token_type": "bearer",
@@ -963,7 +962,6 @@ class CTMSExceptionTests(TestCase):
 
 
 class CTMSTests(TestCase):
-
     TEST_CTMS_CONTACT = {
         "amo": {"user_id": "amo-id"},
         "email": {

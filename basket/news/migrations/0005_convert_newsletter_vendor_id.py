@@ -42,7 +42,6 @@ def convert_vendor_id(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("news", "0003_auto_20151202_0808"),
     ]

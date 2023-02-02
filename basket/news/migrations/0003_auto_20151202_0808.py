@@ -6,7 +6,6 @@ import basket.news.fields
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("news", "0002_delete_subscriber"),
     ]
