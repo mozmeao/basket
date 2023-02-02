@@ -18,7 +18,6 @@ def convert_transactionals(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("news", "0009_transactionalemailmessage"),
     ]

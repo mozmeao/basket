@@ -18,7 +18,6 @@ def move_sms_messages(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("news", "0013_auto_20170907_1216"),
     ]
