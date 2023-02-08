@@ -18,6 +18,7 @@ from basket.news.utils import (
     has_valid_fxa_oauth,
     is_authorized,
     language_code_is_valid,
+    mask_email,
     parse_newsletters_csv,
     process_email,
 )
@@ -383,3 +384,10 @@ class TestProcessEmail(TestCase):
         self.assertIsNone(process_email("dude@home@example.com"))
         self.assertIsNone(process_email(""))
         self.assertIsNone(process_email(None))
+
+
+class TestMaskEmail(TestCase):
+    def test_mask(self):
+        self.assertEqual(mask_email("dude@example.com"), "d**e@e*****e.com")
+        self.assertEqual(mask_email("the.dude@example.com"), "t******e@e*****e.com")
+        self.assertEqual(mask_email("dude@sub.example.com"), "d**e@s*********e.com")
