@@ -1,15 +1,14 @@
 import json
+import uuid
 from unittest.mock import patch
 
 from django.http import HttpResponse
 from django.test import TestCase
-from django.test.client import RequestFactory
 from django.urls import reverse
 from requests import Response
 from requests.exceptions import HTTPError
 
 from basket import errors
-from basket.news import views
 from basket.news.backends.ctms import CTMSMultipleContactsError, CTMSNotConfigured
 from basket.news.models import APIUser
 from basket.news.utils import SET
@@ -17,21 +16,48 @@ from basket.news.utils import SET
 
 class UserTest(TestCase):
     def setUp(self):
-        self.factory = RequestFactory()
+        self.token = str(uuid.uuid4())
+        self.url = reverse("user", kwargs={"token": self.token})
 
-    def test_user_set(self):
+    @patch("basket.news.views.update_user_task")
+    def test_user_set(self, update_user_task):
         """If the user view is sent a POST request, it should attempt to update
         the user's info.
         """
-        request = self.factory.post("/news/user/asdf/", {"fake": "data"})
-        with patch.object(views, "update_user_task") as update_user_task:
-            update_user_task.return_value = HttpResponse()
-            views.user(request, "asdf")
-            update_user_task.assert_called_with(
-                request,
-                SET,
-                {"fake": "data", "token": "asdf"},
-            )
+        update_user_task.return_value = HttpResponse()
+        resp = self.client.post(self.url, data={"fake": "data"})
+        update_user_task.assert_called_with(
+            resp.wsgi_request,
+            SET,
+            {"fake": "data", "token": self.token},
+        )
+
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_user(self, ctms_mock):
+        ctms_mock.get.return_value = {
+            "email": "hisdudeness@example.com",
+        }
+        resp = self.client.get(self.url)
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "email": "h*********s@e*****e.com",
+            "status": "ok",
+        }
+
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_user_with_fxa(self, ctms_mock):
+        ctms_mock.get.return_value = {
+            "email": "hisdudeness@example.com",
+            "fxa_id": "the-dude-abides",
+        }
+        resp = self.client.get(self.url, data={"fxa": "1"})
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "email": "h*********s@e*****e.com",
+            "fxa_id": "the-dude-abides",
+            "has_fxa": True,
+            "status": "ok",
+        }
 
 
 class TestLookupUser(TestCase):
@@ -98,7 +124,7 @@ class TestLookupUser(TestCase):
         rsp = self.get(params={"token": "dummy", "fxa": "1"})
         assert rsp.status_code == 200
         assert rsp.json() == {
-            "email": "hisdudeness@example.com",
+            "email": "h*********s@e*****e.com",
             "fxa_id": "the-dude-abides",
             "has_fxa": True,
             "status": "ok",
@@ -111,10 +137,34 @@ class TestLookupUser(TestCase):
         rsp = self.get(params={"token": "dummy", "fxa": "1"})
         assert rsp.status_code == 200
         assert rsp.json() == {
-            "email": "hisdudeness@example.com",
+            "email": "h*********s@e*****e.com",
             "has_fxa": False,
             "status": "ok",
         }
+
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_get_fxa_status_with_api_key(self, ctms_mock):
+        """Passing email and valid api key param gets user's data"""
+        ctms_mock.get.return_value = {
+            "email": "hisdudeness@example.com",
+            "fxa_id": "the-dude-abides",
+        }
+        params = {
+            "email": "hisdudeness@example.com",
+            "api-key": self.auth.api_key,
+            "fxa": "1",
+        }
+        rsp = self.get(params)
+        self.assertEqual(200, rsp.status_code, rsp.content)
+        self.assertEqual(
+            rsp.json(),
+            {
+                "email": "hisdudeness@example.com",
+                "fxa_id": "the-dude-abides",
+                "has_fxa": True,
+                "status": "ok",
+            },
+        )
 
     @patch("basket.news.utils.ctms", spec_set=["get"])
     def test_ctms_user_found(self, ctms_mock):

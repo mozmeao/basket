@@ -754,9 +754,9 @@ def newsletters(request):
 
 @never_cache
 def lookup_user(request):
-    """Lookup a user in Exact Target given email or token (not both).
+    """Lookup a user in CTMS given email or token (not both).
 
-    To look up by email, a valid API key are required.
+    To look up by email, a valid API key is required.
 
     If email and token are both provided, an error is returned rather
     than trying to define all the possible behaviors.
@@ -781,15 +781,14 @@ def lookup_user(request):
     or a request header ``X-api-key``. If it's provided as a query parameter,
     any request header is ignored.
 
-    For other errors, similarly
-    response status is 4xx and the json 'desc' says what's wrong.
+    For other errors, similarly response status is 4xx and the json 'desc'
+    says what's wrong.
 
     Otherwise, status is 200 and json is the return value from
     `get_user_data`. See that method for details.
 
-    Note that because this method always calls Exact Target one or
-    more times, it can be slower than some other Basket APIs, and will
-    fail if ET is down.
+    Note that because this method always calls CTMS one or more times, it can be
+    slower than some other Basket APIs, and will fail if CTMS is down.
     """
     if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
         # can't return user data during maintenance
@@ -833,7 +832,9 @@ def lookup_user(request):
             return invalid_email_response()
 
     try:
-        user_data = get_user_data(token=token, email=email, get_fxa=get_fxa)
+        user_data = get_user_data(
+            token=token, email=email, get_fxa=get_fxa, masked=not email
+        )
     except NewsletterException as e:
         return newsletter_exception_response(e)
 

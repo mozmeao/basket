@@ -247,6 +247,7 @@ def get_user_data(
     fxa_id=None,
     extra_fields=None,
     get_fxa=False,
+    masked=False,
 ):
     """
     Return a dictionary of the user's data.
@@ -336,6 +337,9 @@ def get_user_data(
     if get_fxa:
         user["has_fxa"] = bool(user.get("fxa_id"))
 
+    if masked and user.get("email"):
+        user["email"] = mask_email(user["email"])
+
     user["status"] = "ok"
     return user
 
@@ -353,7 +357,7 @@ def get_user(token=None, email=None, get_fxa=False):
         )
 
     try:
-        user_data = get_user_data(token, email, get_fxa=get_fxa)
+        user_data = get_user_data(token, email, get_fxa=get_fxa, masked=not email)
         status_code = 200
     except NewsletterException as e:
         return newsletter_exception_response(e)
@@ -484,6 +488,22 @@ def process_email(email):
         return None
 
     return info.ascii_email
+
+
+def masker(s):
+    """
+    Masks a string by replacing middle characters with '*'.
+    """
+    return f"{s[0]}{'*' * (len(s) - 2)}{s[-1]}"
+
+
+def mask_email(email):
+    """
+    Returns an email masking the user and domain.
+    """
+    user, domain = email.split("@")
+    domain, tld = domain.rsplit(".", 1)
+    return f"{masker(user)}@{masker(domain)}.{tld}"
 
 
 def parse_newsletters_csv(newsletters):

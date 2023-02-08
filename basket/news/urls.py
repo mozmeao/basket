@@ -22,7 +22,7 @@ urlpatterns = (
     path("common-voice-goals/", common_voice_goals),
     path("subscribe/", subscribe),
     path("unsubscribe/<uuid:token>/", unsubscribe),
-    path("user/<uuid:token>/", user),
+    path("user/<uuid:token>/", user, name="user"),
     path("user-meta/<uuid:token>/", user_meta),
     path("confirm/<uuid:token>/", confirm),
     path("debug-user/", debug_user),
