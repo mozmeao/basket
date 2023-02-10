@@ -247,7 +247,7 @@ def get_user_data(
     fxa_id=None,
     extra_fields=None,
     get_fxa=False,
-    masked=False,
+    masked=True,
 ):
     """
     Return a dictionary of the user's data.
@@ -264,6 +264,9 @@ def get_user_data(
 
     If `get_fxa` is True then a boolean field will be including indicating whether they are
     an account holder or not.
+
+    When `masked` is True, we return masked emails. We should only set
+    `masked=False` when a valid API key is being used.
 
     Review of results:
 
@@ -344,7 +347,7 @@ def get_user_data(
     return user
 
 
-def get_user(token=None, email=None, get_fxa=False):
+def get_user(token=None, email=None, get_fxa=False, masked=True):
     if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
         # can't return user data during maintenance
         return HttpResponseJSON(
@@ -357,7 +360,7 @@ def get_user(token=None, email=None, get_fxa=False):
         )
 
     try:
-        user_data = get_user_data(token, email, get_fxa=get_fxa, masked=not email)
+        user_data = get_user_data(token, email, get_fxa=get_fxa, masked=masked)
         status_code = 200
     except NewsletterException as e:
         return newsletter_exception_response(e)

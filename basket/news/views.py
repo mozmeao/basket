@@ -657,7 +657,8 @@ def user(request, token):
         return update_user_task(request, SET, data)
 
     get_fxa = "fxa" in request.GET
-    return get_user(token, get_fxa=get_fxa)
+    masked = not has_valid_api_key(request)
+    return get_user(token, get_fxa=get_fxa, masked=masked)
 
 
 @require_POST
@@ -815,7 +816,8 @@ def lookup_user(request):
             400,
         )
 
-    if email and not is_authorized(request, email):
+    authorized = is_authorized(request, email)
+    if email and not authorized:
         return HttpResponseJSON(
             {
                 "status": "error",
@@ -833,7 +835,7 @@ def lookup_user(request):
 
     try:
         user_data = get_user_data(
-            token=token, email=email, get_fxa=get_fxa, masked=not email
+            token=token, email=email, get_fxa=get_fxa, masked=not authorized
         )
     except NewsletterException as e:
         return newsletter_exception_response(e)
