@@ -16,14 +16,13 @@ from basket.news.utils import SET
 
 class UserTest(TestCase):
     def setUp(self):
+        self.auth = APIUser.objects.create(name="test")
         self.token = str(uuid.uuid4())
         self.url = reverse("user", kwargs={"token": self.token})
 
     @patch("basket.news.views.update_user_task")
     def test_user_set(self, update_user_task):
-        """If the user view is sent a POST request, it should attempt to update
-        the user's info.
-        """
+        """If request is POST, it should attempt to update the user's info."""
         update_user_task.return_value = HttpResponse()
         resp = self.client.post(self.url, data={"fake": "data"})
         update_user_task.assert_called_with(
@@ -41,6 +40,18 @@ class UserTest(TestCase):
         assert resp.status_code == 200
         assert resp.json() == {
             "email": "h*********s@e*****e.com",
+            "status": "ok",
+        }
+
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_user_with_api_key(self, ctms_mock):
+        ctms_mock.get.return_value = {
+            "email": "hisdudeness@example.com",
+        }
+        resp = self.client.get(self.url, data={"api-key": self.auth.api_key})
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "email": "hisdudeness@example.com",
             "status": "ok",
         }
 
@@ -104,10 +115,37 @@ class TestLookupUser(TestCase):
     @patch("basket.news.utils.ctms", spec_set=["get"])
     def test_with_token(self, ctms_mock):
         """Passing a token gets back that user's data"""
-        ctms_mock.get.return_value = {"token": "dummy"}
+        ctms_mock.get.return_value = {
+            "token": "dummy",
+            "email": "hisdudeness@example.com",
+        }
         rsp = self.get(params={"token": "dummy"})
         assert rsp.status_code == 200
-        assert rsp.json() == {"status": "ok", "token": "dummy"}
+        assert rsp.json() == {
+            "email": "h*********s@e*****e.com",
+            "status": "ok",
+            "token": "dummy",
+        }
+        ctms_mock.get.assert_called_once_with(
+            email=None,
+            fxa_id=None,
+            token="dummy",
+        )
+
+    @patch("basket.news.utils.ctms", spec_set=["get"])
+    def test_with_token_authorized(self, ctms_mock):
+        """Passing a token gets back that user's data"""
+        ctms_mock.get.return_value = {
+            "token": "dummy",
+            "email": "hisdudeness@example.com",
+        }
+        rsp = self.get(params={"token": "dummy", "api-key": self.auth.api_key})
+        assert rsp.status_code == 200
+        assert rsp.json() == {
+            "email": "hisdudeness@example.com",
+            "status": "ok",
+            "token": "dummy",
+        }
         ctms_mock.get.assert_called_once_with(
             email=None,
             fxa_id=None,
