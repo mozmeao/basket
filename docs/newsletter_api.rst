@@ -129,6 +129,8 @@ The following URLs are available (assuming "/news" is app url):
         } on error
         token-required
 
+    The email will be masked unless the request was made with a valid API key.
+
     If POSTed, this method updates the user's data with the supplied
     fields. Note that the user is only subscribed to "newsletters" after
     this, meaning the user will be unsubscribed to all other
@@ -201,8 +203,8 @@ The following URLs are available (assuming "/news" is app url):
     On success, response is a bunch of data about the user::
 
         {
-            'status':  'ok',      # no errors talking to ET
-            'status':  'error',   # errors talking to ET, see next field
+            'status':  'ok',      # no errors talking to CTMS
+            'status':  'error',   # errors talking to CTMS, see next field
             'desc':  'error message'   # details if status is error
             'email': 'email@address',
             'format': 'T'|'H',
@@ -216,8 +218,11 @@ The following URLs are available (assuming "/news" is app url):
             'master': True if we found them in the master subscribers table
         }
 
-    Note: Because this method always calls Exact Target one or more times, it
-    can be slower than some other Basket APIs, and will fail if ET is down.
+    The email will be masked unless the request was made with a valid API key.
+
+    Note: Because this method always calls the backing contact management system
+    one or more times, it can be slower than some other Basket APIs, and will
+    fail if it is down.
 
 /news/recover/
 --------------
@@ -235,7 +240,7 @@ The following URLs are available (assuming "/news" is app url):
     sent to the email, containing a link to the existing subscriptions page
     with their token in it, so they can use it to manage their subscriptions.
 
-    If the user is known in ET, the message will be sent in their preferred
+    If the user is known in CTMS, the message will be sent in their preferred
     language and format.
 
     If the email provided is not known, a 404 status is returned.
