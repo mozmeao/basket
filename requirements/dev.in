@@ -1,4 +1,5 @@
--r prod.in
+-r prod.txt
+
 black==23.1.0
 flake8==6.0.0
 pep8==1.7.1
