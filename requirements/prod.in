@@ -1,12 +1,12 @@
 APScheduler==3.9.1.post1
-boto3==1.26.62
+boto3==1.26.70
 backports.zoneinfo==0.2.1
 celery==4.4.7
 configparser==5.3.0
 contextlib2==21.6.0
 cryptography==39.0.1  # Temporary for security release. 2023-02-13
 dj-database-url==1.2.0
-django==3.2.17
+django==3.2.18
 django-allow-cidr==0.6.0
 django-cache-url==3.4.4
 django-cors-headers==3.13.0
