@@ -1,4 +1,4 @@
-APScheduler==3.9.1.post1
+APScheduler==3.10.0
 boto3==1.26.70
 backports.zoneinfo==0.2.1
 celery==4.4.7
