@@ -15,6 +15,7 @@ from basket.news.utils import (
     get_best_supported_lang,
     get_email_block_list,
     get_fxa_clients,
+    get_user_data,
     has_valid_fxa_oauth,
     is_authorized,
     language_code_is_valid,
@@ -391,3 +392,30 @@ class TestMaskEmail(TestCase):
         self.assertEqual(mask_email("dude@example.com"), "d**e@e*****e.com")
         self.assertEqual(mask_email("the.dude@example.com"), "t******e@e*****e.com")
         self.assertEqual(mask_email("dude@sub.example.com"), "d**e@s*********e.com")
+
+
+@patch("basket.news.utils.ctms", spec_set=["get"])
+class TestGetUserData(TestCase):
+    # TODO: Add more testing for `get_user_data` here.
+
+    def setUp(self):
+        self.email = "hisdudeness@example.com"
+
+    def test_no_kwarg_get_user_data(self, ctms_mock):
+        """
+        Test that the default kwarg for `masked` is `False.
+
+        When the default is true it can cause problems with requests to acoustic
+        since this method is used internally as well.
+        """
+        ctms_mock.get.return_value = {"email": self.email}
+        data = get_user_data(email=self.email)
+        self.assertEqual(data["email"], self.email)
+
+        data = get_user_data(email=self.email, masked=False)
+        self.assertEqual(data["email"], self.email)
+
+    def test_get_user_data_masked(self, ctms_mock):
+        ctms_mock.get.return_value = {"email": self.email}
+        data = get_user_data(email=self.email, masked=True)
+        self.assertEqual(data["email"], "h*********s@e*****e.com")

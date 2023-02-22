@@ -612,7 +612,7 @@ def upsert_contact(api_call_type, data, user_data):
 
     if send_confirm and settings.SEND_CONFIRM_MESSAGES:
         send_confirm_message.delay(
-            user_data["email"],
+            data["email"],
             token,
             update_data.get("lang", user_data.get("lang", "en-US")),
             send_confirm,
