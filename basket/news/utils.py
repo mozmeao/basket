@@ -247,7 +247,7 @@ def get_user_data(
     fxa_id=None,
     extra_fields=None,
     get_fxa=False,
-    masked=True,
+    masked=False,
 ):
     """
     Return a dictionary of the user's data.
@@ -266,7 +266,8 @@ def get_user_data(
     an account holder or not.
 
     When `masked` is True, we return masked emails. We should only set
-    `masked=False` when a valid API key is being used.
+    `masked=False` when a valid API key is being used. This defaults to False to
+    avoid problems with requests to acoustic.
 
     Review of results:
 
