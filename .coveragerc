@@ -1,5 +1,8 @@
 [run]
-source = news
+source = basket
 omit =
-  news/tests/*
-  news/migrations/*
+  manage.py
+  basket/wsgi.py
+  basket/news/migrations/*
+  basket/news/tests/*
+
