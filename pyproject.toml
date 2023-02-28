@@ -16,3 +16,12 @@ exclude = '''
   | dist
 )/
 '''
+
+[tool.isort]
+combine_as_imports = true
+default_section = 'THIRDPARTY'
+include_trailing_comma = true
+known_django = 'django'
+known_first_party = 'basket'
+profile = 'black'
+sections = 'FUTURE,STDLIB,DJANGO,THIRDPARTY,FIRSTPARTY,LOCALFOLDER'
