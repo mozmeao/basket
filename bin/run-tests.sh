@@ -2,8 +2,9 @@
 
 set -exo pipefail
 
-flake8 basket
-black --check basket
+flake8 basket/
+black --check basket/
+isort --check basket/
 urlwait
 python manage.py makemigrations | grep "No changes detected"
 bin/post-deploy.sh
