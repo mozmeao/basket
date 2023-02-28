@@ -8,6 +8,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.test.client import Client, RequestFactory
 from django.urls import reverse
+
 from email_validator import EmailSyntaxError
 
 from basket import errors

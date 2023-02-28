@@ -9,6 +9,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils.timezone import now
+
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from basket.news.backends.ctms import CTMSNotFoundByAltIDError

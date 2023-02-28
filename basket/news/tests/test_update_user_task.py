@@ -3,6 +3,7 @@ from unittest.mock import ANY, patch
 
 from django.core.cache import cache
 from django.test import RequestFactory, TestCase
+
 from ratelimit.exceptions import Ratelimited
 
 from basket import errors

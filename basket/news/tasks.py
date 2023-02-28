@@ -21,27 +21,26 @@ from django_statsd.clients import statsd
 from silverpop.api import SilverpopResponseException
 
 from basket.base.utils import email_is_testing
-from basket.news.backends.acoustic import acoustic_tx, acoustic
+from basket.news.backends.acoustic import acoustic, acoustic_tx
 from basket.news.backends.common import NewsletterException
 from basket.news.backends.ctms import (
-    ctms,
     CTMSNotFoundByAltIDError,
     CTMSUniqueIDConflictError,
+    ctms,
 )
 from basket.news.celery import app as celery_app
 from basket.news.models import (
-    FailedTask,
-    Newsletter,
-    Interest,
-    QueuedTask,
-    CommonVoiceUpdate,
     AcousticTxEmailMessage,
+    CommonVoiceUpdate,
+    FailedTask,
+    Interest,
+    Newsletter,
+    QueuedTask,
 )
-from basket.news.newsletters import (
-    get_transactional_message_ids,
-    newsletter_languages,
-)
+from basket.news.newsletters import get_transactional_message_ids, newsletter_languages
 from basket.news.utils import (
+    SUBSCRIBE,
+    UNSUBSCRIBE,
     generate_token,
     get_accept_languages,
     get_best_language,
@@ -49,8 +48,6 @@ from basket.news.utils import (
     iso_format_unix_timestamp,
     parse_newsletters,
     parse_newsletters_csv,
-    SUBSCRIBE,
-    UNSUBSCRIBE,
 )
 
 log = logging.getLogger(__name__)

@@ -3,7 +3,6 @@
 
 from django.db import migrations
 
-
 FIELD_MAP = {
     "ABOUT_MOBILE": "Interest_Android__c",
     "ABOUT_MOZILLA": "Sub_About_Mozilla__c",

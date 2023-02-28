@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
 
-from django.db import models, migrations
-import jsonfield.fields
-import basket.news.models
-import basket.news.fields
 import django.utils.timezone
+from django.db import migrations, models
+
+import jsonfield.fields
+
+import basket.news.fields
+import basket.news.models
 
 
 class Migration(migrations.Migration):

@@ -7,8 +7,7 @@ from django.core.validators import RegexValidator
 
 from basket.news.country_codes import SFDC_COUNTRIES
 from basket.news.newsletters import newsletter_field_choices
-from basket.news.utils import parse_newsletters_csv, process_email, LANG_RE
-
+from basket.news.utils import LANG_RE, parse_newsletters_csv, process_email
 
 FORMATS = (("H", "HTML"), ("T", "Text"))
 SOURCE_URL_RE = re.compile(r"^https?://")

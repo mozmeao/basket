@@ -2,6 +2,7 @@
 
 
 from django.db import migrations, models
+
 import basket.news.fields
 
 

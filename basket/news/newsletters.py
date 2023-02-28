@@ -4,16 +4,10 @@ backend-specific data for working with them in the email provider.
 It's used to lookup the backend-specific newsletter name from a
 generic one passed by the user. This decouples the API from any
 specific email provider."""
-from django.db.models.signals import post_save
-from django.db.models.signals import post_delete
 from django.core.cache import cache
+from django.db.models.signals import post_delete, post_save
 
-from basket.news.models import (
-    AcousticTxEmailMessage,
-    Newsletter,
-    NewsletterGroup,
-)
-
+from basket.news.models import AcousticTxEmailMessage, Newsletter, NewsletterGroup
 
 __all__ = (
     "clear_newsletter_cache",

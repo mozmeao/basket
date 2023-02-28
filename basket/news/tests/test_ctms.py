@@ -4,6 +4,7 @@ from uuid import uuid4
 
 from django.test import TestCase
 from django.test.utils import override_settings
+
 from requests import Request, Response
 from requests.exceptions import HTTPError
 

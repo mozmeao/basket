@@ -16,18 +16,17 @@ import fxa.oauth
 import fxa.profile
 import requests
 import sentry_sdk
+from django_statsd.clients import statsd
+from email_validator import EmailNotValidError, validate_email
 
 # Get error codes from basket-client so users see the same definitions
 from basket import errors
-from django_statsd.clients import statsd
-from email_validator import validate_email, EmailNotValidError
-
 from basket.news.backends.common import NewsletterException
 from basket.news.backends.ctms import (
-    ctms,
     CTMSError,
     CTMSNotConfigured,
     CTMSNotFoundByAltIDError,
+    ctms,
 )
 from basket.news.models import APIUser, BlockedEmail
 from basket.news.newsletters import (
@@ -36,7 +35,6 @@ from basket.news.newsletters import (
     newsletter_languages,
     newsletter_private_slugs,
 )
-
 
 # Error messages
 MSG_TOKEN_REQUIRED = "Must have valid token for this request"

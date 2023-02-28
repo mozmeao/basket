@@ -6,15 +6,12 @@ from django.template.loader import render_to_string
 from django.utils.timezone import now
 
 import sentry_sdk
-from product_details import product_details
-from .celery import app as celery_app
 from jsonfield import JSONField
+from product_details import product_details
 
-from basket.news.fields import (
-    CommaSeparatedEmailField,
-    LocaleField,
-    parse_emails,
-)
+from basket.news.fields import CommaSeparatedEmailField, LocaleField, parse_emails
+
+from .celery import app as celery_app
 
 
 def get_uuid():

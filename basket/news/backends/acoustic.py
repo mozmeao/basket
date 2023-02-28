@@ -7,7 +7,6 @@ from lxml import etree
 from requests import ConnectionError
 from silverpop.api import Silverpop, SilverpopResponseException
 
-
 logger = logging.getLogger(__name__)
 XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
 

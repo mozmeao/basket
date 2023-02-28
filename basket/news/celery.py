@@ -9,11 +9,10 @@ from django.conf import settings
 from django.utils.encoding import force_bytes
 
 from celery import Celery
-from cryptography.fernet import Fernet, MultiFernet, InvalidToken
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from django_statsd.clients import statsd
 from kombu import serialization
 from kombu.utils import json
-
 
 FERNET = None
 

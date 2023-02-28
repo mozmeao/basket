@@ -9,7 +9,6 @@ from django_statsd.clients import statsd
 from django_statsd.middleware import GraphiteRequestTimingMiddleware
 from mozilla_django_oidc.middleware import SessionRefresh
 
-
 IP_RE = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
 
 
