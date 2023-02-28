@@ -19,7 +19,6 @@ from basket.news.tasks import (
     fxa_verified,
 )
 
-
 FXA_EVENT_TYPES = {
     "delete": fxa_delete,
     "login": fxa_login,

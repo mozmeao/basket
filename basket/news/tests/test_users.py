@@ -5,6 +5,7 @@ from unittest.mock import patch
 from django.http import HttpResponse
 from django.test import TestCase
 from django.urls import reverse
+
 from requests import Response
 from requests.exceptions import HTTPError
 

@@ -16,7 +16,6 @@ from .views import (
     user_meta,
 )
 
-
 urlpatterns = (
     path("get-involved/", get_involved),
     path("common-voice-goals/", common_voice_goals),

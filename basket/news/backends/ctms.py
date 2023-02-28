@@ -5,22 +5,22 @@ https://github.com/mozilla-it/ctms-api/
 import logging
 import re
 from functools import cached_property, partial, partialmethod
-from urllib.parse import urlparse, urlunparse, urljoin
+from urllib.parse import urljoin, urlparse, urlunparse
 
 from django.conf import settings
 from django.core.cache import cache
-from django_statsd.clients import statsd
 
 import sentry_sdk
-from requests_oauthlib import OAuth2Session
+from django_statsd.clients import statsd
 from oauthlib.oauth2 import BackendApplicationClient
+from requests_oauthlib import OAuth2Session
 
 from basket.news.backends.common import get_timer_decorator
 from basket.news.country_codes import SFDC_COUNTRIES_LIST, convert_country_3_to_2
 from basket.news.newsletters import (
+    is_supported_newsletter_language,
     newsletter_slugs,
     newsletter_waitlist_slugs,
-    is_supported_newsletter_language,
 )
 
 logger = logging.getLogger(__name__)

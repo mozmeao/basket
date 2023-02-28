@@ -6,7 +6,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "basket.settings")
 from django.core.handlers.wsgi import WSGIRequest
 from django.core.wsgi import get_wsgi_application
 
-
 IS_HTTPS = os.environ.get("HTTPS", "").strip() == "on"
 
 

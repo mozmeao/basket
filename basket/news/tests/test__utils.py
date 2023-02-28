@@ -2,9 +2,10 @@
 
 from unittest.mock import Mock, patch
 
+from django.test import RequestFactory, TestCase, override_settings
+
 import fxa.constants
 import fxa.errors
-from django.test import RequestFactory, TestCase, override_settings
 
 from basket.news.models import BlockedEmail
 from basket.news.utils import (

@@ -14,28 +14,24 @@ from django.views.decorators.http import require_POST, require_safe
 import fxa.constants
 import requests
 import sentry_sdk
-from basket import errors
 from django_statsd.clients import statsd
-from ratelimit.exceptions import Ratelimited
 from ratelimit.core import is_ratelimited
+from ratelimit.exceptions import Ratelimited
 
+from basket import errors
 from basket.news.forms import (
+    SOURCE_URL_RE,
     CommonVoiceForm,
     SubscribeForm,
     UpdateUserMeta,
-    SOURCE_URL_RE,
 )
-from basket.news.models import (
-    CommonVoiceUpdate,
-    Interest,
-    Newsletter,
-)
+from basket.news.models import CommonVoiceUpdate, Interest, Newsletter
 from basket.news.newsletters import (
-    newsletter_slugs,
-    newsletter_and_group_slugs,
-    newsletter_private_slugs,
     get_transactional_message_ids,
+    newsletter_and_group_slugs,
     newsletter_languages,
+    newsletter_private_slugs,
+    newsletter_slugs,
 )
 from basket.news.tasks import (
     confirm_user,
@@ -48,29 +44,28 @@ from basket.news.tasks import (
     upsert_user,
 )
 from basket.news.utils import (
+    MSG_EMAIL_OR_TOKEN_REQUIRED,
+    MSG_USER_NOT_FOUND,
     SET,
     SUBSCRIBE,
     UNSUBSCRIBE,
-    MSG_EMAIL_OR_TOKEN_REQUIRED,
-    MSG_USER_NOT_FOUND,
+    HttpResponseJSON,
+    NewsletterException,
     email_is_blocked,
     get_accept_languages,
     get_best_language,
+    get_best_request_lang,
     get_best_supported_lang,
     get_fxa_clients,
-    get_user_data,
     get_user,
+    get_user_data,
     has_valid_api_key,
-    HttpResponseJSON,
     is_authorized,
     language_code_is_valid,
-    NewsletterException,
-    process_email,
     newsletter_exception_response,
     parse_newsletters_csv,
-    get_best_request_lang,
+    process_email,
 )
-
 
 TOKEN_RE = re.compile(r"^[0-9a-f-]{36}$", flags=re.IGNORECASE)
 IP_RATE_LIMIT_EXTERNAL = getattr(settings, "IP_RATE_LIMIT_EXTERNAL", "40/m")

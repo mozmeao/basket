@@ -1,17 +1,11 @@
 from django.conf import settings
-from django.urls import include, path
 from django.contrib import admin
+from django.urls import include, path
 from django.views.generic import RedirectView, TemplateView
 
 from watchman import views as watchman_views
 
-from basket.news.views import (
-    fxa_callback,
-    fxa_start,
-    subscribe_main,
-    subscribe_json,
-)
-
+from basket.news.views import fxa_callback, fxa_start, subscribe_json, subscribe_main
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="home.html")),

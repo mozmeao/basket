@@ -2,7 +2,9 @@
 
 
 from django.db import migrations
+
 import jsonfield.fields
+
 import basket.news.fields
 
 
