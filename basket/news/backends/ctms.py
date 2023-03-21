@@ -2,6 +2,7 @@
 API Client Library for Mozilla's Contact Management System (CTMS)
 https://github.com/mozilla-it/ctms-api/
 """
+import logging
 import re
 from functools import cached_property, partial, partialmethod
 from urllib.parse import urlparse, urlunparse, urljoin
@@ -21,6 +22,8 @@ from basket.news.newsletters import (
     newsletter_waitlist_slugs,
     is_supported_newsletter_language,
 )
+
+logger = logging.getLogger(__name__)
 
 time_request = get_timer_decorator("news.backends.ctms")
 
@@ -953,6 +956,7 @@ def ctms_session():
             client_secret=settings.CTMS_CLIENT_SECRET,
         )
     else:
+        logger.warning("CTMS not enabled.")
         return None
 
 
