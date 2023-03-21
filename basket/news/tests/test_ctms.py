@@ -601,7 +601,7 @@ class ToVendorTests(TestCase):
         prepared = to_vendor(data)
         assert prepared == {}
 
-    @patch("basket.news.backends.ctms.sentry_sdk.capture_message")
+    @patch("basket.news.backends.ctms.sentry_sdk")
     def test_unknown_field_is_reported(self, mock_sentry):
         """Unknown basket fields are reported to Sentry."""
         data = {
@@ -616,9 +616,12 @@ class ToVendorTests(TestCase):
                 "primary_email": "contact@example.com",
             },
         }
-        mock_sentry.assert_called_once_with(
+        mock_sentry.capture_message.assert_called_once_with(
             "ctms.to_vendor() could not convert unknown data",
-            unknown_data={"foo": "bar"},
+        )
+        mock_sentry.push_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
+            "unknown_data",
+            {"foo": "bar"},
         )
 
     @patch(
@@ -661,7 +664,7 @@ class ToVendorTests(TestCase):
         "basket.news.backends.ctms.newsletter_waitlist_slugs",
         return_value=["guardian-vpn-waitlist"],
     )
-    @patch("basket.news.backends.ctms.sentry_sdk.capture_message")
+    @patch("basket.news.backends.ctms.sentry_sdk")
     def test_arbitrary_data_is_reported_if_newsletter_not_specified(
         self, mock_sentry, mock_wl_slugs, mock_nl_slugs
     ):
@@ -671,9 +674,12 @@ class ToVendorTests(TestCase):
             "fpn_platform": "ios,mac",
         }
         prepared = to_vendor(data)
-        mock_sentry.assert_called_once_with(
+        mock_sentry.capture_message.assert_called_once_with(
             "ctms.to_vendor() could not convert unknown data",
-            unknown_data={"fpn_country": "fr", "fpn_platform": "ios,mac"},
+        )
+        mock_sentry.push_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
+            "unknown_data",
+            {"fpn_country": "fr", "fpn_platform": "ios,mac"},
         )
         assert prepared == {}
 
@@ -685,7 +691,7 @@ class ToVendorTests(TestCase):
         "basket.news.backends.ctms.newsletter_waitlist_slugs",
         return_value=["slug1"],
     )
-    @patch("basket.news.backends.ctms.sentry_sdk.capture_message")
+    @patch("basket.news.backends.ctms.sentry_sdk")
     def test_arbitrary_data_is_reported_if_newsletter_is_unknown(
         self, mock_sentry, mock_wl_slugs, mock_nl_slugs
     ):
@@ -696,9 +702,12 @@ class ToVendorTests(TestCase):
             "vpn_bundle_pack": "gold",
         }
         prepared = to_vendor(data)
-        mock_sentry.assert_called_once_with(
+        mock_sentry.capture_message.assert_called_once_with(
             "ctms.to_vendor() could not convert unknown data",
-            unknown_data={"vpn_bundle_currency": "eur", "vpn_bundle_pack": "gold"},
+        )
+        mock_sentry.push_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
+            "unknown_data",
+            {"vpn_bundle_currency": "eur", "vpn_bundle_pack": "gold"},
         )
         assert prepared == {}
 
@@ -710,7 +719,7 @@ class ToVendorTests(TestCase):
         "basket.news.backends.ctms.newsletter_waitlist_slugs",
         return_value=[],
     )
-    @patch("basket.news.backends.ctms.sentry_sdk.capture_message")
+    @patch("basket.news.backends.ctms.sentry_sdk")
     def test_arbitrary_data_is_reported_if_newsletter_is_not_waitlist(
         self, mock_sentry, mock_wl_slugs, mock_nl_slugs
     ):
@@ -721,9 +730,12 @@ class ToVendorTests(TestCase):
             "fpn_platform": "ios,mac",
         }
         prepared = to_vendor(data)
-        mock_sentry.assert_called_once_with(
+        mock_sentry.capture_message.assert_called_once_with(
             "ctms.to_vendor() could not convert unknown data",
-            unknown_data={"fpn_country": "fr", "fpn_platform": "ios,mac"},
+        )
+        mock_sentry.push_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
+            "unknown_data",
+            {"fpn_country": "fr", "fpn_platform": "ios,mac"},
         )
         assert prepared == {
             "newsletters": [{"name": "guardian-vpn-waitlist", "subscribed": True}]

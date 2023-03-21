@@ -392,10 +392,15 @@ def to_vendor(data, existing_data=None):
         ctms_data["amo"] = "DELETE"
 
     if unknown_data:
-        sentry_sdk.capture_message(
+        logger.warning(
             "ctms.to_vendor() could not convert unknown data",
-            unknown_data=unknown_data,
+            extra={"unknown_data": unknown_data},
         )
+        with sentry_sdk.push_scope() as scope:
+            scope.set_extra("unknown_data", unknown_data)
+            sentry_sdk.capture_message(
+                "ctms.to_vendor() could not convert unknown data"
+            )
 
     return ctms_data
 
