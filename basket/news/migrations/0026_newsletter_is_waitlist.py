@@ -10,11 +10,7 @@ def set_waitlist_field(apps, schema_editor):
     """
     Newsletter = apps.get_model("news", "Newsletter")
     for newsletter in Newsletter.objects.all():
-        is_waitlist = newsletter.slug.endswith("-waitlist") or newsletter.slug in {
-            "relay",
-            "fpn",
-        }
-        if is_waitlist:
+        if newsletter.slug.endswith("-waitlist"):
             newsletter.is_waitlist = True
             newsletter.save()
 
