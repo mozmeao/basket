@@ -20,7 +20,6 @@ def set_waitlist_field(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("news", "0025_auto_20220308_1803"),
     ]
