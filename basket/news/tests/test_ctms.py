@@ -79,13 +79,28 @@ SAMPLE_CTMS_RESPONSE = json.loads(
       "unsub_reason": "string"
     }
   ],
-  "vpn_waitlist": {
-    "geo": "fr",
-    "platform": "ios,mac"
-  },
-  "relay_waitlist": {
-    "geo": "fr"
-  },
+  "waitlists": [
+    {
+      "name": "vpn",
+      "fields": {
+        "geo": "fr",
+        "platform": "ios,mac"
+      }
+    },
+    {
+      "name": "relay",
+      "fields": {
+        "geo": "fr"
+      }
+    },
+    {
+      "name": "super-product",
+      "source": "some website",
+      "fields": {
+        "currency": "eur"
+      }
+    }
+  ],
   "status": "ok"
 }
 """,
@@ -118,7 +133,12 @@ SAMPLE_BASKET_FORMAT = {
     "last_modified_date": "2021-01-28T21:26:57.511Z",
     "last_name": "Doe",
     "mofo_relevant": False,
-    "newsletters": ["mozilla-welcome"],
+    "newsletters": [
+        "mozilla-welcome",
+        "guardian-vpn-waitlist",
+        "relay-waitlist",
+        "super-product-waitlist",
+    ],
     "optin": True,
     "optout": False,
     "reason": "string",
@@ -148,10 +168,14 @@ class FromVendorTests(TestCase):
 class ToVendorTests(TestCase):
     @patch(
         "basket.news.backends.ctms.newsletter_slugs",
-        return_value=["mozilla-welcome"],
+        return_value=["mozilla-welcome", "guardian-vpn-waitlist", "relay-waitlist"],
     )
-    def test_sample_format(self, mock_nl_slugs):
-        """The output of from_vendor is a valid input to to_vendor"""
+    @patch(
+        "basket.news.backends.ctms.newsletter_waitlist_slugs",
+        return_value=["guardian-vpn-waitlist", "relay-waitlist"],
+    )
+    def test_sample_format(self, mock_nl_slugs, mock_wl_slugs):
+        """The output of `to_vendor()` is a valid input to to_vendor"""
         data = to_vendor(SAMPLE_BASKET_FORMAT)
         assert data == {
             "amo": {
@@ -195,13 +219,25 @@ class ToVendorTests(TestCase):
                     "lang": "en",
                 },
             ],
-            "vpn_waitlist": {
-                "geo": "fr",
-                "platform": "ios,mac",
-            },
-            "relay_waitlist": {
-                "geo": "fr",
-            },
+            "waitlists": [
+                {
+                    "name": "vpn",
+                    "subscribed": True,
+                    "source": None,
+                    "fields": {
+                        "geo": "fr",
+                        "platform": "ios,mac",
+                    },
+                },
+                {
+                    "name": "relay",
+                    "subscribed": True,
+                    "source": None,
+                    "fields": {
+                        "geo": "fr",
+                    },
+                },
+            ],
         }
 
     def test_country(self):
@@ -249,21 +285,32 @@ class ToVendorTests(TestCase):
             else:
                 assert data == {}
 
-    def test_truncate(self):
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["guardian-vpn-waitlist"],
+    )
+    @patch(
+        "basket.news.backends.ctms.newsletter_waitlist_slugs",
+        return_value=["guardian-vpn-waitlist"],
+    )
+    def test_truncate(self, mock_nl, mock_wl):
         """Strings are stripped and truncated."""
-        tests = (
-            ("first_name", 255, "email", "first_name", f" first {'x' * 500}"),
-            ("last_name", 255, "email", "last_name", f" Last {'x' * 500} "),
-            ("reason", 1000, "email", "unsubscribe_reason", f"Cause:{'.' * 1500}"),
-            ("fpn_country", 100, "vpn_waitlist", "geo", f" Iran {'a' * 100} "),
-            ("fpn_platform", 100, "vpn_waitlist", "platform", f" Linux {'x' * 120} "),
+        truncated = to_vendor(
+            {
+                "first_name": f" first {'x' * 500}",
+                "last_name": f" last {'x' * 500}",
+                "reason": f"Cause:{'.' * 1500}",
+                "fpn_country": f" Iran {'a' * 100} ",
+                "fpn_platform": f" Linux {'x' * 120} ",
+                "newsletters": ["guardian-vpn-waitlist"],
+            }
         )
 
-        for field, max_length, group, key, value in tests:
-            assert len(value) > max_length
-            data = to_vendor({field: value})
-            new_value = data[group][key]
-            assert len(new_value) == max_length
+        assert len(truncated["email"]["first_name"]) == 255
+        assert len(truncated["email"]["last_name"]) == 255
+        assert len(truncated["email"]["unsubscribe_reason"]) == 1000
+        assert len(truncated["waitlists"][0]["fields"]["geo"]) == 100
+        assert len(truncated["waitlists"][0]["fields"]["platform"]) == 100
 
     def test_truncate_empty_to_none(self):
         """Empty or space-only strings are omitted."""
@@ -485,6 +532,7 @@ class ToVendorTests(TestCase):
         assert prepared == {
             "email": {"has_opted_out_of_email": True},
             "newsletters": "UNSUBSCRIBE",
+            "waitlists": "UNSUBSCRIBE",
         }
 
     @patch(
@@ -553,7 +601,7 @@ class ToVendorTests(TestCase):
         prepared = to_vendor(data)
         assert prepared == {}
 
-    @patch("basket.news.backends.ctms.sentry_sdk.capture_message")
+    @patch("basket.news.backends.ctms.sentry_sdk")
     def test_unknown_field_is_reported(self, mock_sentry):
         """Unknown basket fields are reported to Sentry."""
         data = {
@@ -568,10 +616,130 @@ class ToVendorTests(TestCase):
                 "primary_email": "contact@example.com",
             },
         }
-        mock_sentry.assert_called_once_with(
+        mock_sentry.capture_message.assert_called_once_with(
             "ctms.to_vendor() could not convert unknown data",
-            unknown_data={"foo": "bar"},
         )
+        mock_sentry.push_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
+            "unknown_data",
+            {"foo": "bar"},
+        )
+
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["vpn-bundle-waitlist", "phone-masking-waitlist", "firefox-fans"],
+    )
+    @patch(
+        "basket.news.backends.ctms.newsletter_waitlist_slugs",
+        return_value=["vpn-bundle-waitlist", "phone-masking-waitlist"],
+    )
+    def test_arbitrary_data_is_turned_into_waitlist(self, mock_wl_slugs, mock_nl_slugs):
+        """Subscribe with arbitrary fields and unsubscribe from another one."""
+        data = {
+            "newsletters": {
+                "vpn-bundle-waitlist": True,
+                "phone-masking-waitlist": False,
+            },
+            "vpn_bundle_currency": "eur",
+            "vpn_bundle_pack": "gold",
+            "source_url": "http://mozilla.org",
+        }
+        prepared = to_vendor(data)
+        assert prepared == {
+            "waitlists": [
+                {
+                    "name": "vpn-bundle",
+                    "subscribed": True,
+                    "source": "http://mozilla.org",
+                    "fields": {"currency": "eur", "pack": "gold"},
+                },
+                {"name": "phone-masking", "subscribed": False},
+            ],
+        }
+
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["guardian-vpn-waitlist"],
+    )
+    @patch(
+        "basket.news.backends.ctms.newsletter_waitlist_slugs",
+        return_value=["guardian-vpn-waitlist"],
+    )
+    @patch("basket.news.backends.ctms.sentry_sdk")
+    def test_arbitrary_data_is_reported_if_newsletter_not_specified(
+        self, mock_sentry, mock_wl_slugs, mock_nl_slugs
+    ):
+        """Fails to subscribe to gather waitlist fields if not specified in `newsletters`"""
+        data = {
+            "fpn_country": "fr",
+            "fpn_platform": "ios,mac",
+        }
+        prepared = to_vendor(data)
+        mock_sentry.capture_message.assert_called_once_with(
+            "ctms.to_vendor() could not convert unknown data",
+        )
+        mock_sentry.push_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
+            "unknown_data",
+            {"fpn_country": "fr", "fpn_platform": "ios,mac"},
+        )
+        assert prepared == {}
+
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["slug1"],
+    )
+    @patch(
+        "basket.news.backends.ctms.newsletter_waitlist_slugs",
+        return_value=["slug1"],
+    )
+    @patch("basket.news.backends.ctms.sentry_sdk")
+    def test_arbitrary_data_is_reported_if_newsletter_is_unknown(
+        self, mock_sentry, mock_wl_slugs, mock_nl_slugs
+    ):
+        """Fails to subscribe to a waitlist that is not in database"""
+        data = {
+            "newsletters": ["vpn-bundle-waitlist"],  # not in database
+            "vpn_bundle_currency": "eur",
+            "vpn_bundle_pack": "gold",
+        }
+        prepared = to_vendor(data)
+        mock_sentry.capture_message.assert_called_once_with(
+            "ctms.to_vendor() could not convert unknown data",
+        )
+        mock_sentry.push_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
+            "unknown_data",
+            {"vpn_bundle_currency": "eur", "vpn_bundle_pack": "gold"},
+        )
+        assert prepared == {}
+
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["guardian-vpn-waitlist"],
+    )
+    @patch(
+        "basket.news.backends.ctms.newsletter_waitlist_slugs",
+        return_value=[],
+    )
+    @patch("basket.news.backends.ctms.sentry_sdk")
+    def test_arbitrary_data_is_reported_if_newsletter_is_not_waitlist(
+        self, mock_sentry, mock_wl_slugs, mock_nl_slugs
+    ):
+        """Fails to subscribe to gather waitlist fields if newsletter does not have waitlist flag."""
+        data = {
+            "newsletters": ["guardian-vpn-waitlist"],
+            "fpn_country": "fr",
+            "fpn_platform": "ios,mac",
+        }
+        prepared = to_vendor(data)
+        mock_sentry.capture_message.assert_called_once_with(
+            "ctms.to_vendor() could not convert unknown data",
+        )
+        mock_sentry.push_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
+            "unknown_data",
+            {"fpn_country": "fr", "fpn_platform": "ios,mac"},
+        )
+        assert prepared == {
+            "newsletters": [{"name": "guardian-vpn-waitlist", "subscribed": True}]
+        }
 
 
 class CTMSSessionTests(TestCase):

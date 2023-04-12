@@ -131,6 +131,14 @@ def newsletter_slugs():
     return list(_newsletters()["by_name"].keys())
 
 
+def newsletter_waitlist_slugs():
+    """
+    Get a list of all waitlist newsletters.
+    Returns a list of their slugs.
+    """
+    return [nl.slug for nl in _newsletters()["by_name"].values() if nl.is_waitlist]
+
+
 def newsletter_group_slugs():
     """
     Get a list of all the available newsletter groups.
