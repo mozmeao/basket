@@ -83,6 +83,7 @@ class NewsletterAdmin(admin.ModelAdmin):
         "firefox_confirm",
         "private",
         "is_mofo",
+        "is_waitlist",
     )
     list_display = (
         "order",
@@ -97,6 +98,7 @@ class NewsletterAdmin(admin.ModelAdmin):
         "firefox_confirm",
         "private",
         "is_mofo",
+        "is_waitlist",
     )
     list_display_links = ("title", "slug")
     list_editable = (
@@ -116,6 +118,7 @@ class NewsletterAdmin(admin.ModelAdmin):
         "firefox_confirm",
         "private",
         "is_mofo",
+        "is_waitlist",
     )
     prepopulated_fields = {"slug": ("title",)}
     search_fields = ("title", "slug", "description", "vendor_id")
