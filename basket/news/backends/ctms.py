@@ -118,12 +118,13 @@ def from_vendor(contact):
                 # See `to_vendor()`` and `waitlist_fields_for_slug()` for the inverse.
                 if wl_name == "vpn":
                     wl_name = VPN_NEWSLETTER_SLUG
-                    data["fpn_country"] = waitlist["fields"]["geo"]
-                    data["fpn_platform"] = waitlist["fields"]["platform"]
+                    data["fpn_country"] = waitlist["fields"].get("geo")
+                    if platform := waitlist["fields"].get("platform"):
+                        data["fpn_platform"] = platform
                 else:
                     wl_name += "-waitlist"
                 if wl_name == "relay-waitlist":
-                    data["relay_country"] = waitlist["fields"]["geo"]
+                    data["relay_country"] = waitlist["fields"].get("geo")
                 data.setdefault("newsletters", []).append(wl_name)
         else:
             pass

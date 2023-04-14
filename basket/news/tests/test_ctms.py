@@ -165,6 +165,13 @@ class FromVendorTests(TestCase):
         data = from_vendor(ctms_contact)
         assert data == {"email": "test@example.com", "token": "basket-token"}
 
+    def test_waitlist_optional_platform(self):
+        ctms_data = {
+            "waitlists": [{"name": "vpn", "fields": {"geo": "fr"}}],
+        }
+        data = from_vendor(ctms_data)
+        assert data == {"newsletters": ["guardian-vpn-waitlist"], "fpn_country": "fr"}
+
 
 class ToVendorTests(TestCase):
     @patch(
