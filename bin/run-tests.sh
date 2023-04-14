@@ -12,4 +12,5 @@ py.test basket \
   --cov-config=.coveragerc \
   --cov-report=html \
   --cov-report=term-missing \
+  --cov-report=xml:python_coverage/coverage.xml \
   --cov=.
