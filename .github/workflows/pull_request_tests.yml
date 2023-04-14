@@ -16,3 +16,10 @@ jobs:
       - name: "Run Python tests (on Docker)"
         run: |
             make clean test-ci
+            CONTAINER_ID=$(docker ps -alq)
+            docker cp $CONTAINER_ID:/app/python_coverage .
+      - name: "Upload coverage to Codecov"
+        uses: codecov/codecov-action@v3
+        with:
+          files: python_coverage/coverage.xml
+          verbose: true  # optional (default = false)
