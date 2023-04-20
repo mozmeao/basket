@@ -95,6 +95,12 @@ SAMPLE_CTMS_RESPONSE = json.loads(
       }
     },
     {
+      "name": "relay-vpn-bundle",
+      "fields": {
+        "geo": "fr"
+      }
+    },
+    {
       "name": "super-product",
       "source": "some website",
       "fields": {
@@ -138,6 +144,7 @@ SAMPLE_BASKET_FORMAT = {
         "mozilla-welcome",
         "guardian-vpn-waitlist",
         "relay-waitlist",
+        "relay-vpn-bundle-waitlist",
         "super-product-waitlist",
     ],
     "optin": True,

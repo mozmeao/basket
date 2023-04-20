@@ -123,7 +123,7 @@ def from_vendor(contact):
                         data["fpn_platform"] = platform
                 else:
                     wl_name += "-waitlist"
-                if wl_name == "relay-waitlist":
+                if wl_name.startswith("relay") and wl_name.endswith("-waitlist"):
                     data["relay_country"] = waitlist["fields"].get("geo")
                 data.setdefault("newsletters", []).append(wl_name)
         else:
