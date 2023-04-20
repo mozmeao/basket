@@ -200,7 +200,9 @@ def fxa_callback(request):
             "optin": True,
             "format": "H",
             "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
-            "source_url": f"{settings.FXA_REGISTER_SOURCE_URL}?utm_source=basket-fxa-oauth",
+            "source_url": (
+                f"{settings.FXA_REGISTER_SOURCE_URL}?utm_source=basket-fxa-oauth"
+            ),
         }
         locale = user_profile.get("locale")
         if locale:
@@ -573,8 +575,10 @@ def subscribe(request):
             return HttpResponseJSON(
                 {
                     "status": "error",
-                    "desc": "Using subscribe with sync=Y, you need to pass a "
-                    "valid `api-key` or FxA OAuth Authorization.",
+                    "desc": (
+                        "Using subscribe with sync=Y, you need to pass a "
+                        "valid `api-key` or FxA OAuth Authorization."
+                    ),
                     "code": errors.BASKET_AUTH_ERROR,
                 },
                 401,
@@ -721,8 +725,10 @@ def custom_unsub_reason(request):
         return HttpResponseJSON(
             {
                 "status": "error",
-                "desc": "custom_unsub_reason requires the `token` "
-                "and `reason` POST parameters",
+                "desc": (
+                    "custom_unsub_reason requires the `token` "
+                    "and `reason` POST parameters"
+                ),
                 "code": errors.BASKET_USAGE_ERROR,
             },
             400,
@@ -816,8 +822,10 @@ def lookup_user(request):
         return HttpResponseJSON(
             {
                 "status": "error",
-                "desc": "Using lookup_user with `email`, you need to pass a "
-                "valid `api-key` or FxA OAuth Autorization header.",
+                "desc": (
+                    "Using lookup_user with `email`, you need to pass a "
+                    "valid `api-key` or FxA OAuth Autorization header."
+                ),
                 "code": errors.BASKET_AUTH_ERROR,
             },
             401,
@@ -893,7 +901,10 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
                     return HttpResponseJSON(
                         {
                             "status": "error",
-                            "desc": "private newsletter subscription requires a valid API key or OAuth",
+                            "desc": (
+                                "private newsletter subscription requires a valid API"
+                                " key or OAuth"
+                            ),
                             "code": errors.BASKET_AUTH_ERROR,
                         },
                         401,

@@ -16,7 +16,9 @@ class Migration(migrations.Migration):
                 (
                     "message_id",
                     models.SlugField(
-                        help_text=b"The ID for the message that will be used by clients",
+                        help_text=(
+                            b"The ID for the message that will be used by clients"
+                        ),
                         serialize=False,
                         primary_key=True,
                     ),
@@ -39,7 +41,10 @@ class Migration(migrations.Migration):
                 (
                     "languages",
                     models.CharField(
-                        help_text=b"Comma-separated list of the language codes that this newsletter supports",
+                        help_text=(
+                            b"Comma-separated list of the language codes that this"
+                            b" newsletter supports"
+                        ),
                         max_length=200,
                     ),
                 ),

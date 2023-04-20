@@ -84,8 +84,8 @@ class UpdateUserTaskTests(TestCase):
     @patch("basket.news.utils.newsletter_languages")
     def test_lang_overrides_accept_lang(self, nl_mock, get_best_language_mock):
         """
-        If lang is provided it was from the user, and accept_lang isn't as reliable, so we should
-        prefer lang.
+        If lang is provided it was from the user, and accept_lang isn't as
+        reliable, so we should prefer lang.
         """
         get_best_language_mock.return_value = "pt-BR"
         nl_mock.return_value = ["pt", "en", "de"]
@@ -101,8 +101,8 @@ class UpdateUserTaskTests(TestCase):
     @patch("basket.news.utils.newsletter_languages")
     def test_lang_default_if_not_in_list(self, nl_mock, get_best_language_mock):
         """
-        If lang is provided it was from the user, and accept_lang isn't as reliable, so we should
-        prefer lang.
+        If lang is provided it was from the user, and accept_lang isn't as
+        reliable, so we should prefer lang.
         """
         get_best_language_mock.return_value = "pt-BR"
         nl_mock.return_value = ["pt", "en", "de"]
@@ -221,8 +221,8 @@ class UpdateUserTaskTests(TestCase):
         mock_slugs,
     ):
         """
-        If calling SUBSCRIBE with a private newsletter and the request has an invalid API key,
-        return a 401.
+        If calling SUBSCRIBE with a private newsletter and the request has an
+        invalid API key, return a 401.
         """
         mock_private.return_value = ["private"]
         mock_slugs.return_value = ["private", "other"]
@@ -268,8 +268,8 @@ class UpdateUserTaskTests(TestCase):
         mock_slugs,
     ):
         """
-        If calling SUBSCRIBE or SET with a private newsletter and the request has a valid API key,
-        return success.
+        If calling SUBSCRIBE or SET with a private newsletter and the request
+        has a valid API key, return success.
         """
         mock_private.return_value = ["private"]
         mock_slugs.return_value = ["private", "other"]
@@ -287,7 +287,8 @@ class UpdateUserTaskTests(TestCase):
         mock_api_key.assert_called_with(request, data["email"])
 
     def test_rate_limit(self):
-        """Should raise Ratelimited if email attempts to sign up for same newsletter quickly"""
+        """Should raise Ratelimited if email attempts to sign up for same
+        newsletter quickly"""
         views.EMAIL_SUBSCRIBE_RATE_LIMIT = "2/1m"
         request = self.factory.post("/")
         data = {"email": "a@example.com", "newsletters": "foo,bar"}
@@ -300,7 +301,8 @@ class UpdateUserTaskTests(TestCase):
                 views.update_user_task(request, SUBSCRIBE, data, sync=False)
 
     def test_rate_limit_user_update(self):
-        """Should raise Ratelimited if token attempts to update same newsletters quickly"""
+        """Should raise Ratelimited if token attempts to update same newsletters
+        quickly"""
         views.EMAIL_SUBSCRIBE_RATE_LIMIT = "2/1m"
         request = self.factory.post("/")
         data = {"token": "a@example.com", "newsletters": "foo,bar"}

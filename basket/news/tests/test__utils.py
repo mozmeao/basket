@@ -253,7 +253,8 @@ class GetBestLanguageTests(TestCase):
         self._test(["pt-PT", "zh-TW", "pt-BR", "en"], "pt-BR")
 
     def test_returns_first_good_lang_2_letter(self):
-        """Should return first 2 letter prefix language in the list that a newsletter supports."""
+        """Should return first 2 letter prefix language in the list that a
+        newsletter supports."""
         self._test(["pt-PT", "zh-TW", "es-AR", "ar"], "es")
 
     def test_returns_first_lang_no_good(self):

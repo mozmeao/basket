@@ -190,7 +190,10 @@ class AddFxaActivityTests(TestCase):
         self.assertEqual(record["DEVICE_TYPE"], "D")
 
     def test_mac(self):
-        ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6; rv:10.0) Gecko/20100101 Firefox/30.2"
+        ua = (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6; rv:10.0) Gecko/20100101"
+            " Firefox/30.2"
+        )
         record = self._base_test(ua)
         self.assertEqual(record["OS_NAME"], "Mac OS X")
         self.assertEqual(record["OS_VERSION"], "10.6")
@@ -199,7 +202,10 @@ class AddFxaActivityTests(TestCase):
         self.assertEqual(record["DEVICE_TYPE"], "D")
 
     def test_linux(self):
-        ua = "Mozilla/5.0 (X11; Linux i686 on x86_64; rv:10.0) Gecko/20100101 Firefox/42.0"
+        ua = (
+            "Mozilla/5.0 (X11; Linux i686 on x86_64; rv:10.0) Gecko/20100101"
+            " Firefox/42.0"
+        )
         record = self._base_test(ua)
         self.assertEqual(record["OS_NAME"], "Linux")
         self.assertEqual(record["OS_VERSION"], "")
@@ -242,7 +248,10 @@ class AddFxaActivityTests(TestCase):
         self.assertEqual(record["DEVICE_NAME"], "Generic Tablet")
 
     def test_firefox_ios_iphone(self):
-        ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 8_3 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) FxiOS/1.0 Mobile/12F69 Safari/600.1.4"
+        ua = (
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 8_3 like Mac OS X) AppleWebKit/600.1.4"
+            " (KHTML, like Gecko) FxiOS/1.0 Mobile/12F69 Safari/600.1.4"
+        )
         record = self._base_test(ua)
         self.assertEqual(record["OS_NAME"], "iOS")
         self.assertEqual(record["OS_VERSION"], "8.3")
@@ -251,7 +260,10 @@ class AddFxaActivityTests(TestCase):
         self.assertEqual(record["DEVICE_TYPE"], "M")
 
     def test_firefox_ios_tablet(self):
-        ua = "Mozilla/5.0 (iPad; CPU iPhone OS 8_3 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) FxiOS/1.0 Mobile/12F69 Safari/600.1.4"
+        ua = (
+            "Mozilla/5.0 (iPad; CPU iPhone OS 8_3 like Mac OS X) AppleWebKit/600.1.4"
+            " (KHTML, like Gecko) FxiOS/1.0 Mobile/12F69 Safari/600.1.4"
+        )
         record = self._base_test(ua)
         self.assertEqual(record["OS_NAME"], "iOS")
         self.assertEqual(record["OS_VERSION"], "8.3")
@@ -340,8 +352,9 @@ class FxAVerifiedTests(TestCase):
             {
                 "email": data["email"],
                 "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
-                "source_url": settings.FXA_REGISTER_SOURCE_URL
-                + "?utm_campaign=bowling",
+                "source_url": (
+                    settings.FXA_REGISTER_SOURCE_URL + "?utm_campaign=bowling"
+                ),
                 "country": "DE",
                 "lang": "en-US",
                 "fxa_lang": data["locale"],
@@ -406,7 +419,9 @@ class FxALoginTests(TestCase):
         "service": "sync",
         "ts": 1508897239.207,
         "uid": "the-fxa-id-for-el-dudarino",
-        "userAgent": "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:56.0) Gecko/20100101 Firefox/56.0",
+        "userAgent": (
+            "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:56.0) Gecko/20100101 Firefox/56.0"
+        ),
         "countryCode": "US",
     }
 

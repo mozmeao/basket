@@ -260,8 +260,8 @@ def get_user_data(
     call this function with said field name in a list passed in
     the `extra_fields` argument.
 
-    If `get_fxa` is True then a boolean field will be including indicating whether they are
-    an account holder or not.
+    If `get_fxa` is True then a boolean field will be including indicating
+    whether they are an account holder or not.
 
     When `masked` is True, we return masked emails. We should only set
     `masked=False` when a valid API key is being used. This defaults to False to
@@ -367,9 +367,9 @@ def get_user(token=None, email=None, get_fxa=False, masked=True):
     if user_data is None:
         user_data = {
             "status": "error",
-            "code": errors.BASKET_UNKNOWN_EMAIL
-            if email
-            else errors.BASKET_UNKNOWN_TOKEN,
+            "code": (
+                errors.BASKET_UNKNOWN_EMAIL if email else errors.BASKET_UNKNOWN_TOKEN
+            ),
             "desc": MSG_USER_NOT_FOUND,
         }
         status_code = 404
@@ -415,7 +415,8 @@ def get_accept_languages(header_value):
 
 def get_best_language(languages):
     """
-    Return the best language for use with our newsletters. If none match, return first in list.
+    Return the best language for use with our newsletters. If none match, return
+    first in list.
 
     @param languages: list of language codes.
     @return: a single language code
@@ -538,8 +539,8 @@ def parse_newsletters(api_call_type, newsletters, cur_newsletters):
         subscribed, unsubscribed, or set.
     :param list cur_newsletters: List of the slugs of the newsletters that
         the user is currently subscribed to. None if there was an error.
-    :returns: dict of slugs of the newsletters with boolean values: True for subscriptions,
-        and False for unsubscription.
+    :returns: dict of slugs of the newsletters with boolean values: True for
+        subscriptions, and False for unsubscription.
     """
     newsletter_map = {}
     newsletters = set(newsletters)
@@ -563,7 +564,8 @@ def parse_newsletters(api_call_type, newsletters, cur_newsletters):
 
         newsletters = grouped_newsletters
 
-    # If SET and newsletters contain private newsletters, drop them, this shouldn't happen.
+    # If SET and newsletters contain private newsletters, drop them, this
+    # shouldn't happen.
     if api_call_type == SET and newsletters & private_newsletters:
         newsletters = newsletters - private_newsletters
 
