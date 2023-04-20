@@ -2,7 +2,7 @@
 
 set -exo pipefail
 
-flake8 basket/
+ruff check basket/
 black --check basket/
 isort --check basket/
 urlwait
