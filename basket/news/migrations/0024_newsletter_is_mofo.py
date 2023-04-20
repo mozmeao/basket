@@ -14,7 +14,10 @@ class Migration(migrations.Migration):
             name="is_mofo",
             field=models.BooleanField(
                 default=False,
-                help_text="True if subscribing to this newsletter should mark someone as relevant to the Mozilla Foundation",
+                help_text=(
+                    "True if subscribing to this newsletter should mark someone as"
+                    " relevant to the Mozilla Foundation"
+                ),
             ),
         ),
     ]

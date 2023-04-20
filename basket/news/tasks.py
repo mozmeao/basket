@@ -156,7 +156,8 @@ def on_task_failure(sender, task_id, exception, einfo, args, kwargs, **skwargs):
                 args=args,
                 kwargs=kwargs,
                 exc=repr(exception),
-                # str() gives more info than repr() on celery.datastructures.ExceptionInfo
+                # str() gives more info than repr() on
+                # celery.datastructures.ExceptionInfo
                 einfo=str(einfo),
             )
 
@@ -766,7 +767,8 @@ def process_common_voice_batch():
     ]
     per_user = {}
     for update in updates:
-        # last_active_date is when the update was sent basically, so we can use it for ordering
+        # last_active_date is when the update was sent basically, so we can use
+        # it for ordering
         data = update.data
         last_active = isoparse(data["last_active_date"])
         if (
@@ -813,11 +815,15 @@ def snitch(start_time=None):
 
 
 def get_fxa_user_data(fxa_id, email):
-    """Return a user data dict, just like `get_user_data` below, but ensure we have a good FxA contact
+    """
+    Return a user data dict, just like `get_user_data` below, but ensure we have
+    a good FxA contact
 
-    First look for a user by FxA ID. If we get a user, and the email matches what was passed in, return it.
-    If the email doesn't match, set the first user's FxA_ID to "DUPE:<fxa_id>" so that we don't run into dupe
-    issues, and set "fxa_deleted" to True. Then look up a user with the email address and return that or None.
+    First look for a user by FxA ID. If we get a user, and the email matches
+    what was passed in, return it. If the email doesn't match, set the first
+    user's FxA_ID to "DUPE:<fxa_id>" so that we don't run into dupe issues, and
+    set "fxa_deleted" to True. Then look up a user with the email address and
+    return that or None.
     """
     user_data = None
     # try getting user data with the fxa_id first

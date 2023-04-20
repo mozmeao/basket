@@ -380,8 +380,8 @@ def to_vendor(data, existing_data=None):
                         wl_sub = {"name": slug, "subscribed": False}
                     output_waitlists.append(wl_sub)
                 else:
-                    # Regular newsletter, which may include extra data from the email group
-                    # like `format`, `source`, and `lang` for example.
+                    # Regular newsletter, which may include extra data from the
+                    # email group like `format`, `source`, and `lang`, e.g.
                     if subscribed:
                         nl_sub = newsletter_subscription_default.copy()
                         nl_sub.update({"name": slug, "subscribed": True})
@@ -808,7 +808,7 @@ class CTMSNotConfigured(CTMSError):
     """CTMS is not configured."""
 
     def __str__(self):
-        return "CTMS is not configured" ""
+        return "CTMS is not configured"
 
 
 class CTMS:

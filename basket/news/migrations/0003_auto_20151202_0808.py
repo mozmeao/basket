@@ -17,7 +17,10 @@ class Migration(migrations.Migration):
             name="private",
             field=models.BooleanField(
                 default=False,
-                help_text=b"Whether this newsletter is private. Private newsletters require the subscribe requests to use an API key.",
+                help_text=(
+                    b"Whether this newsletter is private. Private newsletters require"
+                    b" the subscribe requests to use an API key."
+                ),
             ),
             preserve_default=True,
         ),

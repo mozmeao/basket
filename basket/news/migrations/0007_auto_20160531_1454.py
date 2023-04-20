@@ -15,7 +15,10 @@ class Migration(migrations.Migration):
             name="transactional",
             field=models.BooleanField(
                 default=False,
-                help_text=b"Whether this newsletter is purely for transactional messaging (e.g. Firefox Mobile download link emails).",
+                help_text=(
+                    b"Whether this newsletter is purely for transactional messaging"
+                    b" (e.g. Firefox Mobile download link emails)."
+                ),
             ),
         ),
         migrations.AlterField(

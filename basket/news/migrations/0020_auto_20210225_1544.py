@@ -21,7 +21,10 @@ class Migration(migrations.Migration):
             name="private",
             field=models.BooleanField(
                 default=False,
-                help_text="Whether this email is private. Private emails are not allowed to be sent via the normal API.",
+                help_text=(
+                    "Whether this email is private. Private emails are not allowed to"
+                    " be sent via the normal API."
+                ),
             ),
         ),
     ]

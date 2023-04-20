@@ -27,7 +27,9 @@ class Migration(migrations.Migration):
                 (
                     "message_id",
                     models.SlugField(
-                        help_text=b"The ID for the message that will be used by clients",
+                        help_text=(
+                            b"The ID for the message that will be used by clients"
+                        ),
                     ),
                 ),
                 (

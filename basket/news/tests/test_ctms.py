@@ -762,7 +762,8 @@ class ToVendorTests(TestCase):
     def test_arbitrary_data_is_reported_if_newsletter_not_specified(
         self, mock_sentry, mock_wl_slugs, mock_nl_slugs
     ):
-        """Fails to subscribe to gather waitlist fields if not specified in `newsletters`"""
+        """Fails to subscribe to gather waitlist fields if not specified in
+        `newsletters`"""
         data = {
             "fpn_country": "fr",
             "fpn_platform": "ios,mac",
@@ -817,7 +818,8 @@ class ToVendorTests(TestCase):
     def test_arbitrary_data_is_reported_if_newsletter_is_not_waitlist(
         self, mock_sentry, mock_wl_slugs, mock_nl_slugs
     ):
-        """Fails to subscribe to gather waitlist fields if newsletter does not have waitlist flag."""
+        """Fails to subscribe to gather waitlist fields if newsletter does not
+        have waitlist flag."""
         data = {
             "newsletters": ["guardian-vpn-waitlist"],
             "fpn_country": "fr",
@@ -1147,13 +1149,13 @@ class CTMSExceptionTests(TestCase):
         contacts = [contact1, contact2]
 
         exc = CTMSMultipleContactsError("amo_id", "id1", contacts)
-        assert repr(exc) == (
-            "CTMSMultipleContactsError('amo_id', 'id1',"
+        assert (
+            repr(exc) == "CTMSMultipleContactsError('amo_id', 'id1',"
             " [{'email': {'email_id': 'email-id-1'}},"
             " {'email': {'email_id': 'email-id-2'}}])"
         )
-        assert str(exc) == (
-            "2 contacts returned for amo_id='id1' with email_ids"
+        assert (
+            str(exc) == "2 contacts returned for amo_id='id1' with email_ids"
             " ['email-id-1', 'email-id-2']"
         )
 
@@ -1163,13 +1165,13 @@ class CTMSExceptionTests(TestCase):
         contacts = [contact1, contact2]
 
         exc = CTMSMultipleContactsError("amo_id", "id1", contacts)
-        assert repr(exc) == (
-            "CTMSMultipleContactsError('amo_id', 'id1',"
+        assert (
+            repr(exc) == "CTMSMultipleContactsError('amo_id', 'id1',"
             " [{'email': {'email_id': 'email-id-1'}},"
             " 'huh a string'])"
         )
-        assert str(exc) == (
-            "2 contacts returned for amo_id='id1' with email_ids"
+        assert (
+            str(exc) == "2 contacts returned for amo_id='id1' with email_ids"
             " (unable to extract email_ids)"
         )
 
@@ -1189,12 +1191,13 @@ class CTMSExceptionTests(TestCase):
             " already exists"
         )
         exc = CTMSUniqueIDConflictError(detail)
-        assert repr(exc) == (
-            "CTMSUniqueIDConflictError('Contact with primary_email, basket_token,"
+        assert (
+            repr(exc)
+            == "CTMSUniqueIDConflictError('Contact with primary_email, basket_token,"
             " mofo_email_id, or fxa_id already exists')"
         )
-        assert str(exc) == (
-            "Unique ID conflict: 'Contact with primary_email, basket_token,"
+        assert (
+            str(exc) == "Unique ID conflict: 'Contact with primary_email, basket_token,"
             " mofo_email_id, or fxa_id already exists'"
         )
 
@@ -1213,10 +1216,10 @@ class CTMSExceptionTests(TestCase):
             },
         ]
         detail_repr = (
-            "[{'loc': ['body', 'newsletters', 0, 'source'],"
-            " 'msg': 'invalid or missing URL scheme', 'type': 'value_error.url.scheme'},"
-            " {'loc': ['body', 'newsletters'],"
-            " 'msg': \"unhashable type: 'list'\", 'type': 'type_error'}]"
+            "[{'loc': ['body', 'newsletters', 0, 'source'], 'msg': 'invalid or missing"
+            " URL scheme', 'type': 'value_error.url.scheme'}, {'loc': ['body',"
+            " 'newsletters'], 'msg': \"unhashable type: 'list'\", 'type':"
+            " 'type_error'}]"
         )
         exc = CTMSValidationError(detail)
         assert repr(exc) == f"CTMSValidationError({detail_repr})"
@@ -1322,7 +1325,8 @@ class CTMSTests(TestCase):
         )
 
     def test_get_by_mofo_email_id(self):
-        """If mofo_email_id is passed, GET /ctms?mofo_email_id={mofo_email_id} is called."""
+        """If mofo_email_id is passed, GET /ctms?mofo_email_id={mofo_email_id}
+        is called."""
         mofo_email_id = self.TEST_CTMS_CONTACT["mofo"]["mofo_email_id"]
         interface = mock_interface("GET", 200, [self.TEST_CTMS_CONTACT])
         ctms = CTMS(interface)

@@ -82,18 +82,21 @@ class TestNewsletterUtils(TestCase):
         )
 
     def test_parse_newsletters_for_groups(self):
-        """If newsletter slug is a group for SUBSCRIBE, expand to group's newsletters."""
+        """If newsletter slug is a group for SUBSCRIBE, expand to group's
+        newsletters."""
         subs = utils.parse_newsletters(utils.SUBSCRIBE, ["bowling"], list())
         self.assertTrue(subs["surfing"])
         self.assertTrue(subs["extorting"])
 
     def test_parse_newsletters_not_groups_set(self):
-        """If newsletter slug is a group for SET mode, don't expand to group's newsletters."""
+        """If newsletter slug is a group for SET mode, don't expand to group's
+        newsletters."""
         subs = utils.parse_newsletters(utils.SET, ["bowling"], list())
         self.assertDictEqual(subs, {"bowling": True})
 
     def test_parse_newsletters_not_groups_unsubscribe(self):
-        """If newsletter slug is a group for SET mode, don't expand to group's newsletters."""
+        """If newsletter slug is a group for SET mode, don't expand to group's
+        newsletters."""
         subs = utils.parse_newsletters(
             utils.UNSUBSCRIBE,
             ["bowling"],

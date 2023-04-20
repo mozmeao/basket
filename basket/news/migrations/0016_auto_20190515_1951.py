@@ -19,7 +19,10 @@ class Migration(migrations.Migration):
             name="indent",
             field=models.BooleanField(
                 default=False,
-                help_text=b"Whether this newsletter is indented in the email preference center.",
+                help_text=(
+                    b"Whether this newsletter is indented in the email preference"
+                    b" center."
+                ),
             ),
         ),
         migrations.AlterField(

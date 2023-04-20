@@ -100,8 +100,10 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 
 ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS",
-    default=".allizom.org, .moz.works, basket.mozmar.org, "
-    "basket.mozilla.com, basket.mozilla.org",
+    default=(
+        ".allizom.org, .moz.works, basket.mozmar.org, "
+        "basket.mozilla.com, basket.mozilla.org"
+    ),
     cast=Csv(),
 )
 ALLOWED_CIDR_NETS = config("ALLOWED_CIDR_NETS", default="", cast=Csv())
@@ -137,8 +139,10 @@ try:
     SECRET_KEY = config("SECRET_KEY")
 except UndefinedValueError:
     raise UndefinedValueError(
-        "The SECRET_KEY environment variable is required. "
-        "Move env-dist to .env if you want the defaults.",
+        (
+            "The SECRET_KEY environment variable is required. "
+            "Move env-dist to .env if you want the defaults."
+        ),
     )
 
 TEMPLATES = [

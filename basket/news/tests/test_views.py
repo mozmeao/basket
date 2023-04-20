@@ -258,7 +258,8 @@ class SubscribeEmailValidationTest(TestCase):
 
     @patch("basket.news.views.update_user_task")
     def test_non_ascii_email_fxos_malformed_post(self, update_user_mock):
-        """Should be able to parse data from the raw request body including non-ascii chars."""
+        """Should be able to parse data from the raw request body including
+        non-ascii chars."""
         req = self.rf.generic(
             "POST",
             "/news/subscribe/",
@@ -429,13 +430,17 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
         assert json.loads(response.content) == {
             "status": "error",
             "errors": [
-                "newsletters: Select a valid choice. walter is not "
-                "one of the available choices.",
+                (
+                    "newsletters: Select a valid choice. walter is not "
+                    "one of the available choices."
+                ),
             ],
             "errors_by_field": {
                 "newsletters": [
-                    "Select a valid choice. walter is not one of "
-                    "the available choices.",
+                    (
+                        "Select a valid choice. walter is not one of "
+                        "the available choices."
+                    ),
                 ],
             },
         }
@@ -749,10 +754,12 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         req = self.factory.generic(
             "POST",
             "/news/subscribe/",
-            data=b"newsletters=mozilla-foundation&"
-            b"source_url=https%3A%2F%2Fadvocacy.mozilla.org%2Fencrypt"
-            b"&lang=en&email=dude@example.com"
-            b"&country=DE&first_name=Dude&Walter",
+            data=(
+                b"newsletters=mozilla-foundation&"
+                b"source_url=https%3A%2F%2Fadvocacy.mozilla.org%2Fencrypt"
+                b"&lang=en&email=dude@example.com"
+                b"&country=DE&first_name=Dude&Walter"
+            ),
             content_type="text/plain; charset=UTF-8",
         )
         views.subscribe(req)
@@ -1404,8 +1411,9 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
                 "optin": True,
                 "format": "H",
                 "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
-                "source_url": settings.FXA_REGISTER_SOURCE_URL
-                + "?utm_source=basket-fxa-oauth",
+                "source_url": (
+                    settings.FXA_REGISTER_SOURCE_URL + "?utm_source=basket-fxa-oauth"
+                ),
                 "lang": "other",
                 "fxa_lang": "en,en-US",
             },
@@ -1449,8 +1457,9 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
                 "optin": True,
                 "format": "H",
                 "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
-                "source_url": settings.FXA_REGISTER_SOURCE_URL
-                + "?utm_source=basket-fxa-oauth",
+                "source_url": (
+                    settings.FXA_REGISTER_SOURCE_URL + "?utm_source=basket-fxa-oauth"
+                ),
             },
             None,
         )

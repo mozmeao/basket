@@ -466,7 +466,8 @@ class UpsertUserTests(TestCase):
         ctms_mock,
         confirm_mock,
     ):
-        """When CTMS returns an error for a new contact, the email_id is not sent to SF"""
+        """When CTMS returns an error for a new contact, the email_id is not
+        sent to SF"""
         get_user_data.return_value = None  # Does not exist yet
         ctms_mock.add.return_value = None  # Conflict on create
         models.Newsletter.objects.create(
@@ -497,7 +498,8 @@ class UpsertUserTests(TestCase):
         ctms_mock,
         confirm_mock,
     ):
-        """Subscribing to a MoFo-relevant newsletter makes the new user mofo-relevant."""
+        """Subscribing to a MoFo-relevant newsletter makes the new user
+        mofo-relevant."""
         get_user_data.return_value = None  # Does not exist yet
         email_id = str(uuid4())
         ctms_mock.add.return_value = {"email": {"email_id": email_id}}

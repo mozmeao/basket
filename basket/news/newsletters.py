@@ -183,7 +183,8 @@ def newsletter_languages():
 
 def newsletter_field_choices():
     """
-    Return a list of 2 tuples of newsletter slugs suitable for use in a Django form field.
+    Return a list of 2 tuples of newsletter slugs suitable for use in a Django
+    form field.
     """
     all_newsletters = newsletter_and_group_slugs() + get_transactional_message_ids()
     return [(slug, slug) for slug in all_newsletters]

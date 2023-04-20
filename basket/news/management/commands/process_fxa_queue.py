@@ -96,8 +96,9 @@ class Command(BaseCommand):
                             "fxa.events.message.received.{}.IGNORED".format(event_type),
                         )
                         log.debug("IGNORED: %s" % event)
-                        # we can safely remove from the queue message types we don't need
-                        # this keeps the queue from filling up with old messages
+                        # we can safely remove from the queue message types we
+                        # don't need this keeps the queue from filling up with
+                        # old messages
                         msg.delete()
                         continue
 

@@ -14,7 +14,10 @@ class Migration(migrations.Migration):
             name="firefox_confirm",
             field=models.BooleanField(
                 default=False,
-                help_text="Whether to send the Firefox or Mozilla branded confirmation message for this newsletter",
+                help_text=(
+                    "Whether to send the Firefox or Mozilla branded confirmation"
+                    " message for this newsletter"
+                ),
             ),
         ),
     ]

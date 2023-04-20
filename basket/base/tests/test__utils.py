@@ -63,12 +63,19 @@ example_unsanitised_data = {
     "api_key": "this is in sentry_processor's default set of keys to scrub",
     "apikey": "this is in sentry_processor's default set of keys to scrub",
     "dsn": "this is in sentry_processor's default set of keys to scrub",
-    "token": "this is in sentry_processor's default set of keys to scrub AND out blocklist of keys",
+    "token": (
+        "this is in sentry_processor's default set of keys to scrub AND out blocklist"
+        " of keys"
+    ),
     # Custom blocklist
     "ip_address": "These items are on our blocklist and should be removed entirely",
     "remote_addr": "These items are on our blocklist and should be removed entirely",
-    "remoteaddresschain": "These items are on our blocklist and should be removed entirely",
-    "x-forwarded-for": "These items are on our blocklist and should be removed entirely",
+    "remoteaddresschain": (
+        "These items are on our blocklist and should be removed entirely"
+    ),
+    "x-forwarded-for": (
+        "These items are on our blocklist and should be removed entirely"
+    ),
     "email": "These items are on our blocklist and should be removed entirely",
     "custom_id": "These items are on our blocklist and should be removed entirely",
     "payee_id": "These items are on our blocklist and should be removed entirely",
