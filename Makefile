@@ -50,9 +50,6 @@ clean:
 #	state files
 	-rm -f .make.*
 
-lint: .make.docker.pull
-	${DC} run test flake8
-
 test: .make.docker.pull
 	${DC} run --rm test
 
@@ -101,11 +98,11 @@ help:
 	@echo "  shell                - open a bash shell in the running app"
 	@echo "  djshell              - start the Django Python shell in the running app"
 	@echo "  clean                - remove all build, test, coverage and Python artifacts"
-	@echo "  lint                 - check style with flake8, jshint, and stylelint"
 	@echo "  test                 - run tests against local files"
 	@echo "  test-image           - run tests against files in docker image"
 	@echo "  docs                 - generate Sphinx HTML documentation"
 	@echo "  build-ci             - build docker images for use in our CI pipeline"
 	@echo "  test-ci              - run tests against files in docker image built by CI"
+	@echo "  install-local-python-deps  - install Python dependencies for local development"
 
-.PHONY: all clean build pull docs lint run run-shell shell test test-image build-ci test-ci push-ci djshell stop kill compile-requirements check-requirements install-local-python-deps
+.PHONY: all clean build pull docs run run-shell shell test test-image build-ci test-ci djshell compile-requirements check-requirements install-local-python-deps
