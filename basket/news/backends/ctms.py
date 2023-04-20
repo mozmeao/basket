@@ -230,15 +230,17 @@ def waitlist_fields_for_slug(data, slug):
           "currency": "eur",
         }
     """
-    prefix = re.sub("[^0-9a-zA-Z]+", "_", slug) + "_"
-    consumed_keys = []
-
     # Specific cases for legacy waitlists:
+    if slug in ("relay-vpn-bundle", "relay-phone-masking"):
+        slug = "relay"
     new_fields = {
         "relay_country": "relay_geo",
         "fpn_country": "vpn_geo",
         "fpn_platform": "vpn_platform",
     }
+
+    prefix = re.sub("[^0-9a-zA-Z]+", "_", slug) + "_"
+    consumed_keys = []
 
     # Turn flat fields into a dict.
     fields = {}
@@ -362,7 +364,11 @@ def to_vendor(data, existing_data=None):
                         )
                         # Remove all consumed waitlist fields from unknown data
                         for field_name in consumed_fields:
-                            del unknown_data[field_name]
+                            try:
+                                del unknown_data[field_name]
+                            except KeyError:
+                                # The same field was consumed by several waitlists.
+                                pass
                         # Submit the waitlist details, with potential source URL.
                         wl_sub = {
                             "name": slug,

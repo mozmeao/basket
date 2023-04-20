@@ -666,6 +666,85 @@ class ToVendorTests(TestCase):
 
     @patch(
         "basket.news.backends.ctms.newsletter_slugs",
+        return_value=[
+            "guardian-vpn-waitlist",
+        ],
+    )
+    @patch(
+        "basket.news.backends.ctms.newsletter_waitlist_slugs",
+        return_value=[
+            "guardian-vpn-waitlist",
+        ],
+    )
+    def test_guardian_vpn_picks_appropriate_prefixed_fields(
+        self, mock_wl_slugs, mock_nl_slugs
+    ):
+        """Subscribe with arbitrary fields and unsubscribe from another one."""
+        data = {
+            "newsletters": {
+                "guardian-vpn-waitlist": True,
+            },
+            "fpn_country": "br",
+            "source_url": "https://www.mozilla.org/en-US/products/vpn/invite/",
+        }
+        prepared = to_vendor(data)
+        assert prepared == {
+            "waitlists": [
+                {
+                    "name": "vpn",
+                    "subscribed": True,
+                    "source": "https://www.mozilla.org/en-US/products/vpn/invite/",
+                    "fields": {"geo": "br"},
+                },
+            ],
+        }
+
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=[
+            "relay-phone-masking-waitlist",
+            "relay-vpn-bundle-waitlist",
+        ],
+    )
+    @patch(
+        "basket.news.backends.ctms.newsletter_waitlist_slugs",
+        return_value=[
+            "relay-phone-masking-waitlist",
+            "relay-vpn-bundle-waitlist",
+        ],
+    )
+    def test_relay_waitlists_pick_appropriate_prefixed_fields(
+        self, mock_wl_slugs, mock_nl_slugs
+    ):
+        """Subscribe with arbitrary fields and unsubscribe from another one."""
+        data = {
+            "newsletters": {
+                "relay-phone-masking-waitlist": True,
+                "relay-vpn-bundle-waitlist": True,
+            },
+            "relay_country": "it",
+            "source_url": "https://relay.firefox.com/phone/waitlist/",
+        }
+        prepared = to_vendor(data)
+        assert prepared == {
+            "waitlists": [
+                {
+                    "name": "relay-phone-masking",
+                    "subscribed": True,
+                    "source": "https://relay.firefox.com/phone/waitlist/",
+                    "fields": {"geo": "it"},
+                },
+                {
+                    "name": "relay-vpn-bundle",
+                    "subscribed": True,
+                    "source": "https://relay.firefox.com/phone/waitlist/",
+                    "fields": {"geo": "it"},
+                },
+            ],
+        }
+
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
         return_value=["guardian-vpn-waitlist"],
     )
     @patch(
