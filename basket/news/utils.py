@@ -301,31 +301,31 @@ def get_user_data(
         )
     except CTMSNotFoundByAltIDError:
         return None
-    except requests.exceptions.HTTPError as error:
-        if error.response.status_code == 401:
+    except requests.exceptions.HTTPError as exc:
+        if exc.response.status_code == 401:
             raise NewsletterException(
                 "Email service provider auth failure",
                 error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
                 status_code=500,
-            )
+            ) from exc
         else:
             raise NewsletterException(
-                str(error),
+                str(exc),
                 error_code=errors.BASKET_NETWORK_FAILURE,
                 status_code=400,
-            )
-    except CTMSNotConfigured:
+            ) from exc
+    except CTMSNotConfigured as exc:
         raise NewsletterException(
             "Email service provider auth failure",
             error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
             status_code=500,
-        )
-    except CTMSError as e:
+        ) from exc
+    except CTMSError as exc:
         raise NewsletterException(
-            str(e),
+            str(exc),
             error_code=errors.BASKET_NETWORK_FAILURE,
             status_code=400,
-        )
+        ) from exc
     if ctms_user:
         user = ctms_user
     else:

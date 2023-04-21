@@ -137,13 +137,13 @@ if not DEBUG:
 try:
     # Make this unique, and don't share it with anybody.
     SECRET_KEY = config("SECRET_KEY")
-except UndefinedValueError:
+except UndefinedValueError as exc:
     raise UndefinedValueError(
         (
             "The SECRET_KEY environment variable is required. "
             "Move env-dist to .env if you want the defaults."
         ),
-    )
+    ) from exc
 
 TEMPLATES = [
     {

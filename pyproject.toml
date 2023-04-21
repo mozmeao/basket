@@ -21,10 +21,8 @@ exclude = '''
 # Set what ruff should check for.
 # See https://beta.ruff.rs/docs/rules/ for a list of rules.
 select = [
-    # TODO: Enable flake8-builtin and fix errors to fix variable name shadowing errors.
-    # "A", # flake8-builtin errors.
-    # TODO: Enable bugbear and fix errors.
-    # "B", # bugbear errors
+    "A", # flake8-builtin errors.
+    "B", # bugbear errors
     # "DJ", # flake8-django errors.
     "E", # pycodestyle errors
     "F", # pyflakes errors
