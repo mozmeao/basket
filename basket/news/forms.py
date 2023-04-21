@@ -80,8 +80,8 @@ def country_choices():
 def validate_datetime_str(value):
     try:
         strptime(value, UTC_DATETIME_FORMAT)
-    except Exception as e:
-        raise ValidationError(str(e))
+    except Exception as exc:
+        raise ValidationError(str(exc)) from exc
 
 
 class CommonVoiceForm(forms.Form):
