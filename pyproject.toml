@@ -48,3 +48,7 @@ known_django = 'django'
 known_first_party = 'basket'
 profile = 'black'
 sections = 'FUTURE,STDLIB,DJANGO,THIRDPARTY,FIRSTPARTY,LOCALFOLDER'
+
+[tool.pytest.ini_options]
+addopts = "-ra --ignore=vendor"
+DJANGO_SETTINGS_MODULE = "basket.settings"
