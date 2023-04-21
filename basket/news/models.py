@@ -26,6 +26,9 @@ def make_slug(*args):
 class BlockedEmail(models.Model):
     email_domain = models.CharField(max_length=50)
 
+    def __str__(self):  # pragma: no cover
+        return self.email_domain
+
 
 class Newsletter(models.Model):
     slug = models.SlugField(
@@ -113,11 +116,11 @@ class Newsletter(models.Model):
         ),
     )
 
-    def __str__(self):
-        return self.title
-
     class Meta(object):
         ordering = ["order"]
+
+    def __str__(self):  # pragma: no cover
+        return self.title
 
     def save(self, *args, **kwargs):
         # Strip whitespace from langs before save
@@ -160,6 +163,9 @@ class NewsletterGroup(models.Model):
     )
     newsletters = models.ManyToManyField(Newsletter, related_name="newsletter_groups")
 
+    def __str__(self):  # pragma: no cover
+        return f"{self.title} ({self.slug})"
+
     def newsletter_slugs(self):
         return [nl.slug for nl in self.newsletters.all()]
 
@@ -174,6 +180,9 @@ class APIUser(models.Model):
 
     class Meta:
         verbose_name = "API User"
+
+    def __str__(self):  # pragma: no cover
+        return f"{self.name} ({self.api_key})"
 
     @classmethod
     def is_valid(cls, api_key):
@@ -197,6 +206,9 @@ class QueuedTask(models.Model):
     class Meta:
         ordering = ["pk"]
 
+    def __str__(self):  # pragma: no cover
+        return f"{self.name} {self.args} {self.kwargs}"
+
     def retry(self):
         celery_app.send_task(self.name, args=self.args, kwargs=self.kwargs)
         # Forget the old task
@@ -209,10 +221,10 @@ class FailedTask(models.Model):
     name = models.CharField(max_length=255)
     args = JSONField(null=False, default=list)
     kwargs = JSONField(null=False, default=dict)
-    exc = models.TextField(null=True, default=None, help_text="repr(exception)")
-    einfo = models.TextField(null=True, default=None, help_text="repr(einfo)")
+    exc = models.TextField(null=True, default=None, help_text="repr(exception)")  # noqa
+    einfo = models.TextField(null=True, default=None, help_text="repr(einfo)")  # noqa
 
-    def __str__(self):
+    def __str__(self):  # pragma: no cover
         return self.task_id
 
     def formatted_call(self):
@@ -283,6 +295,9 @@ class Interest(models.Model):
         verbose_name="Default / en-US Steward Emails",
     )
 
+    def __str__(self):  # pragma: no cover
+        return self.title
+
     @property
     def default_steward_emails_list(self):
         return parse_emails(self.default_steward_emails)
@@ -321,9 +336,6 @@ class Interest(models.Model):
             emails,
         )
 
-    def __str__(self):
-        return self.title
-
 
 class LocaleStewards(models.Model):
     """
@@ -341,20 +353,20 @@ class LocaleStewards(models.Model):
         help_text="Comma-separated list of the stewards' email addresses.",
     )
 
-    @property
-    def emails_list(self):
-        return parse_emails(self.emails)
-
     class Meta:
         unique_together = ("interest", "locale")
         verbose_name = "Locale Steward"
         verbose_name_plural = "Locale Stewards"
 
-    def __str__(self):
+    def __str__(self):  # pragma: no cover
         return "Stewards for {lang_code} ({lang_name})".format(
             lang_code=self.locale,
             lang_name=product_details.languages[self.locale]["English"],
         )
+
+    @property
+    def emails_list(self):
+        return parse_emails(self.emails)
 
 
 class AcousticTxEmailMessageManager(models.Manager):
@@ -420,7 +432,7 @@ class AcousticTxEmailMessage(models.Model):
         verbose_name = "Acoustic Transact message"
         ordering = ["message_id"]
 
-    def __str__(self):
+    def __str__(self):  # pragma: no cover
         return f"{self.message_id}: {self.language}"
 
     @property
@@ -435,3 +447,6 @@ class CommonVoiceUpdate(models.Model):
 
     class Meta:
         ordering = ["pk"]
+
+    def __str__(self):  # pragma: no cover
+        return f"Common Voice update {self.date}"
