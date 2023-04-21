@@ -23,7 +23,7 @@ exclude = '''
 select = [
     "A", # flake8-builtin errors.
     "B", # bugbear errors
-    # "DJ", # flake8-django errors.
+    "DJ", # flake8-django errors.
     "E", # pycodestyle errors
     "F", # pyflakes errors
     # TODO: Currently ruff doesn't have the ability to sort Django imports together.
