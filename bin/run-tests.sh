@@ -4,7 +4,6 @@ set -exo pipefail
 
 ruff check basket/
 black --check basket/
-isort --check basket/
 urlwait
 python manage.py makemigrations | grep "No changes detected"
 bin/post-deploy.sh
