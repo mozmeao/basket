@@ -97,7 +97,9 @@ def from_vendor(contact):
     @params contact: CTMS data
     @return: dict in basket format
     """
-    data = {}
+    data = {
+        "newsletters": [],
+    }
     for group_name, group in contact.items():
         basket_group = CTMS_TO_BASKET_NAMES.get(group_name)
         if basket_group:

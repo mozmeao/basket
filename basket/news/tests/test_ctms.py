@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from unittest.mock import ANY, DEFAULT, Mock, call, patch
 from uuid import uuid4
 
@@ -160,6 +161,19 @@ class FromVendorTests(TestCase):
         data = from_vendor(SAMPLE_CTMS_RESPONSE)
         assert data == SAMPLE_BASKET_FORMAT
 
+    def test_empty_newsletters_response(self):
+        """The sample CTMS user can be converted to basket format"""
+        sample_ctms = deepcopy(SAMPLE_CTMS_RESPONSE)
+        sample_basket = deepcopy(SAMPLE_BASKET_FORMAT)
+        sample_basket["newsletters"] = []
+        del sample_ctms["newsletters"]
+        del sample_ctms["waitlists"]
+        del sample_basket["fpn_country"]
+        del sample_basket["fpn_platform"]
+        del sample_basket["relay_country"]
+        data = from_vendor(sample_ctms)
+        assert data == sample_basket
+
     def test_unknown_groups(self):
         """Unknown CTMS data groups are ignored."""
         ctms_contact = {
@@ -170,7 +184,11 @@ class FromVendorTests(TestCase):
             "favorites": {"color": "blue", "album": "green", "mattress": "purple"},
         }
         data = from_vendor(ctms_contact)
-        assert data == {"email": "test@example.com", "token": "basket-token"}
+        assert data == {
+            "email": "test@example.com",
+            "token": "basket-token",
+            "newsletters": [],
+        }
 
     def test_waitlist_optional_platform(self):
         ctms_data = {
@@ -1248,6 +1266,7 @@ class CTMSTests(TestCase):
         "fxa_id": "fxa-id",
         "id": "sfdc-id",
         "token": "token",
+        "newsletters": [],
     }
 
     def test_get_no_interface(self):
