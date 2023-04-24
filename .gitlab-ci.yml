@@ -13,7 +13,7 @@ stages:
 build-images:
   stage: build
   only:
-    - master
+    - main
     - stage
     - prod
     - admin
@@ -40,7 +40,7 @@ dev:
   extends: .deploy
   stage: deploy-dev
   only:
-    - master
+    - main
   variables:
     NAMESPACE: basket-dev
     CLUSTERS: mozmeao-or
@@ -48,7 +48,7 @@ dev:
 stage:
   extends: .deploy
   only:
-    - master
+    - main
     - stage
   variables:
     NAMESPACE: basket-stage
@@ -58,7 +58,7 @@ stage-admin:
   extends: .deploy
   stage: deploy-admin
   only:
-    - master
+    - main
     - stage
   variables:
     NAMESPACE: basket-admin-stage

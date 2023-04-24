@@ -4,7 +4,7 @@
 BIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 pushd $(mktemp -d)
-git clone --depth=1 -b ${CONFIG_BRANCH:=master} ${CONFIG_REPO:=github-mozmar-robot:mozmeao/basket-config} basket-config
+git clone --depth=1 -b ${CONFIG_BRANCH:=main} ${CONFIG_REPO:=github-mozmar-robot:mozmeao/basket-config} basket-config
 cd basket-config
 
 set -u
