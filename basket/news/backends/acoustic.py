@@ -90,6 +90,7 @@ class Acoustic(Silverpop):
                 self.api_endpoint,
                 data=force_bytes(xml),
                 timeout=10,
+                headers={"Content-Type": "text/xml"},
             )
         except ConnectionError:
             # try one more time
@@ -97,6 +98,7 @@ class Acoustic(Silverpop):
                 self.api_endpoint,
                 data=force_bytes(xml),
                 timeout=10,
+                headers={"Content-Type": "text/xml"},
             )
 
         return process_response(response)
@@ -115,6 +117,7 @@ class AcousticTransact(Silverpop):
             self.api_xt_endpoint,
             data=force_bytes(xml),
             timeout=10,
+            headers={"Content-Type": "text/xml"},
         )
         return process_tx_response(response)
 
