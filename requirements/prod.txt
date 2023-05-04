@@ -674,9 +674,9 @@ pyyaml==6.0 \
     --hash=sha256:e61ceaab6f49fb8bdfaa0f92c4b57bcfbea54c09277b1b4f7ac376bfb7a7c174 \
     --hash=sha256:f84fbc98b019fef2ee9a1cb3ce93e3187a6df0b2538a651bfb890254ba9f90b5
     # via -r requirements/prod.in
-redis==4.4.4 \
-    --hash=sha256:68226f7ede928db8302f29ab088a157f41061fa946b7ae865452b6d7838bbffb \
-    --hash=sha256:da92a39fec86438d3f1e2a1db33c312985806954fe860120b582a8430e231d8f
+redis==4.5.4 \
+    --hash=sha256:2c19e6767c474f2e85167909061d525ed65bea9301c0770bb151e041b7ac89a2 \
+    --hash=sha256:73ec35da4da267d6847e47f68730fdd5f62e2ca69e3ef5885c6a78a9374c3893
     # via
     #   -r requirements/prod.in
     #   django-redis
