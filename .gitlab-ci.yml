@@ -7,14 +7,11 @@ variables:
 stages:
   - build
   - deploy-admin
-  - deploy-dev
   - deploy
 
 build-images:
   stage: build
   only:
-    - main
-    - stage
     - prod
     - admin
   tags:
@@ -35,34 +32,6 @@ build-images:
   script:
     - bin/update-config.sh
   retry: 2
-
-dev:
-  extends: .deploy
-  stage: deploy-dev
-  only:
-    - main
-  variables:
-    NAMESPACE: basket-dev
-    CLUSTERS: mozmeao-or
-
-stage:
-  extends: .deploy
-  only:
-    - main
-    - stage
-  variables:
-    NAMESPACE: basket-stage
-    CLUSTERS: mozmeao-fr mozmeao-or
-
-stage-admin:
-  extends: .deploy
-  stage: deploy-admin
-  only:
-    - main
-    - stage
-  variables:
-    NAMESPACE: basket-admin-stage
-    CLUSTERS: mozmeao-or
 
 admin:
   extends: .deploy
