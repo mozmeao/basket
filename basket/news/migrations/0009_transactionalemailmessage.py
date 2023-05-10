@@ -16,9 +16,7 @@ class Migration(migrations.Migration):
                 (
                     "message_id",
                     models.SlugField(
-                        help_text=(
-                            b"The ID for the message that will be used by clients"
-                        ),
+                        help_text="The ID for the message that will be used by clients",
                         serialize=False,
                         primary_key=True,
                     ),
@@ -26,14 +24,14 @@ class Migration(migrations.Migration):
                 (
                     "vendor_id",
                     models.CharField(
-                        help_text=b"The backend vendor's identifier for this message",
+                        help_text="The backend vendor's identifier for this message",
                         max_length=50,
                     ),
                 ),
                 (
                     "description",
                     models.CharField(
-                        help_text=b"Optional short description of this message",
+                        help_text="Optional short description of this message",
                         max_length=200,
                         blank=True,
                     ),
@@ -41,10 +39,7 @@ class Migration(migrations.Migration):
                 (
                     "languages",
                     models.CharField(
-                        help_text=(
-                            b"Comma-separated list of the language codes that this"
-                            b" newsletter supports"
-                        ),
+                        help_text="Comma-separated list of the language codes that this newsletter supports",
                         max_length=200,
                     ),
                 ),

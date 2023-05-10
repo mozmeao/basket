@@ -701,9 +701,7 @@ class ToVendorTests(TestCase):
             "guardian-vpn-waitlist",
         ],
     )
-    def test_guardian_vpn_picks_appropriate_prefixed_fields(
-        self, mock_wl_slugs, mock_nl_slugs
-    ):
+    def test_guardian_vpn_picks_appropriate_prefixed_fields(self, mock_wl_slugs, mock_nl_slugs):
         """Subscribe with arbitrary fields and unsubscribe from another one."""
         data = {
             "newsletters": {
@@ -738,9 +736,7 @@ class ToVendorTests(TestCase):
             "relay-vpn-bundle-waitlist",
         ],
     )
-    def test_relay_waitlists_pick_appropriate_prefixed_fields(
-        self, mock_wl_slugs, mock_nl_slugs
-    ):
+    def test_relay_waitlists_pick_appropriate_prefixed_fields(self, mock_wl_slugs, mock_nl_slugs):
         """Subscribe with arbitrary fields and unsubscribe from another one."""
         data = {
             "newsletters": {
@@ -777,9 +773,7 @@ class ToVendorTests(TestCase):
         return_value=["guardian-vpn-waitlist"],
     )
     @patch("basket.news.backends.ctms.sentry_sdk")
-    def test_arbitrary_data_is_reported_if_newsletter_not_specified(
-        self, mock_sentry, mock_wl_slugs, mock_nl_slugs
-    ):
+    def test_arbitrary_data_is_reported_if_newsletter_not_specified(self, mock_sentry, mock_wl_slugs, mock_nl_slugs):
         """Fails to subscribe to gather waitlist fields if not specified in
         `newsletters`"""
         data = {
@@ -805,9 +799,7 @@ class ToVendorTests(TestCase):
         return_value=["slug1"],
     )
     @patch("basket.news.backends.ctms.sentry_sdk")
-    def test_arbitrary_data_is_reported_if_newsletter_is_unknown(
-        self, mock_sentry, mock_wl_slugs, mock_nl_slugs
-    ):
+    def test_arbitrary_data_is_reported_if_newsletter_is_unknown(self, mock_sentry, mock_wl_slugs, mock_nl_slugs):
         """Fails to subscribe to a waitlist that is not in database"""
         data = {
             "newsletters": ["vpn-bundle-waitlist"],  # not in database
@@ -833,9 +825,7 @@ class ToVendorTests(TestCase):
         return_value=[],
     )
     @patch("basket.news.backends.ctms.sentry_sdk")
-    def test_arbitrary_data_is_reported_if_newsletter_is_not_waitlist(
-        self, mock_sentry, mock_wl_slugs, mock_nl_slugs
-    ):
+    def test_arbitrary_data_is_reported_if_newsletter_is_not_waitlist(self, mock_sentry, mock_wl_slugs, mock_nl_slugs):
         """Fails to subscribe to gather waitlist fields if newsletter does not
         have waitlist flag."""
         data = {
@@ -851,9 +841,7 @@ class ToVendorTests(TestCase):
             "unknown_data",
             {"fpn_country": "fr", "fpn_platform": "ios,mac"},
         )
-        assert prepared == {
-            "newsletters": [{"name": "guardian-vpn-waitlist", "subscribed": True}]
-        }
+        assert prepared == {"newsletters": [{"name": "guardian-vpn-waitlist", "subscribed": True}]}
 
 
 class CTMSSessionTests(TestCase):
@@ -1172,10 +1160,7 @@ class CTMSExceptionTests(TestCase):
             " [{'email': {'email_id': 'email-id-1'}},"
             " {'email': {'email_id': 'email-id-2'}}])"
         )
-        assert (
-            str(exc) == "2 contacts returned for amo_id='id1' with email_ids"
-            " ['email-id-1', 'email-id-2']"
-        )
+        assert str(exc) == "2 contacts returned for amo_id='id1' with email_ids ['email-id-1', 'email-id-2']"
 
     def test_ctms_multiple_contacts_bad_contact(self):
         contact1 = {"email": {"email_id": "email-id-1"}}
@@ -1183,15 +1168,8 @@ class CTMSExceptionTests(TestCase):
         contacts = [contact1, contact2]
 
         exc = CTMSMultipleContactsError("amo_id", "id1", contacts)
-        assert (
-            repr(exc) == "CTMSMultipleContactsError('amo_id', 'id1',"
-            " [{'email': {'email_id': 'email-id-1'}},"
-            " 'huh a string'])"
-        )
-        assert (
-            str(exc) == "2 contacts returned for amo_id='id1' with email_ids"
-            " (unable to extract email_ids)"
-        )
+        assert repr(exc) == "CTMSMultipleContactsError('amo_id', 'id1', [{'email': {'email_id': 'email-id-1'}}, 'huh a string'])"
+        assert str(exc) == "2 contacts returned for amo_id='id1' with email_ids (unable to extract email_ids)"
 
     def test_ctms_not_found_by_alt_id(self):
         exc = CTMSNotFoundByAltIDError("token", "foo")
@@ -1204,20 +1182,10 @@ class CTMSExceptionTests(TestCase):
         assert str(exc) == "Contact not found with email ID '4a6dd742-...'"
 
     def test_ctms_unique_id_conflict(self):
-        detail = (
-            "Contact with primary_email, basket_token, mofo_email_id, or fxa_id"
-            " already exists"
-        )
+        detail = "Contact with primary_email, basket_token, mofo_email_id, or fxa_id already exists"
         exc = CTMSUniqueIDConflictError(detail)
-        assert (
-            repr(exc)
-            == "CTMSUniqueIDConflictError('Contact with primary_email, basket_token,"
-            " mofo_email_id, or fxa_id already exists')"
-        )
-        assert (
-            str(exc) == "Unique ID conflict: 'Contact with primary_email, basket_token,"
-            " mofo_email_id, or fxa_id already exists'"
-        )
+        assert repr(exc) == "CTMSUniqueIDConflictError('Contact with primary_email, basket_token, mofo_email_id, or fxa_id already exists')"
+        assert str(exc) == "Unique ID conflict: 'Contact with primary_email, basket_token, mofo_email_id, or fxa_id already exists'"
 
     def test_ctms_validation_error(self):
         # Error when newsletter source is not a URL

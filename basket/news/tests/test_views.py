@@ -430,17 +430,11 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
         assert json.loads(response.content) == {
             "status": "error",
             "errors": [
-                (
-                    "newsletters: Select a valid choice. walter is not "
-                    "one of the available choices."
-                ),
+                "newsletters: Select a valid choice. walter is not one of the available choices.",
             ],
             "errors_by_field": {
                 "newsletters": [
-                    (
-                        "Select a valid choice. walter is not one of "
-                        "the available choices."
-                    ),
+                    "Select a valid choice. walter is not one of the available choices.",
                 ],
             },
         }
@@ -755,10 +749,10 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             "POST",
             "/news/subscribe/",
             data=(
-                b"newsletters=mozilla-foundation&"
-                b"source_url=https%3A%2F%2Fadvocacy.mozilla.org%2Fencrypt"
-                b"&lang=en&email=dude@example.com"
-                b"&country=DE&first_name=Dude&Walter"
+                "newsletters=mozilla-foundation&"
+                "source_url=https%3A%2F%2Fadvocacy.mozilla.org%2Fencrypt"
+                "&lang=en&email=dude@example.com"
+                "&country=DE&first_name=Dude&Walter"
             ),
             content_type="text/plain; charset=UTF-8",
         )
@@ -1367,10 +1361,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         self.statsd.incr.assert_not_called()
-        assert (
-            resp["location"]
-            == "https://www.mozilla.org/newsletter/existing/the-token/?fxa=1"
-        )
+        assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-token/?fxa=1"
         self.get_user_data.assert_called_with(email="dude@example.com")
 
     def test_new_user_with_locale(self):
@@ -1399,10 +1390,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         self.statsd.incr.assert_not_called()
-        assert (
-            resp["location"]
-            == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
-        )
+        assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
         self.get_user_data.assert_called_with(email="dude@example.com")
         self.upsert_contact.assert_called_with(
             SUBSCRIBE,
@@ -1411,9 +1399,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
                 "optin": True,
                 "format": "H",
                 "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
-                "source_url": (
-                    settings.FXA_REGISTER_SOURCE_URL + "?utm_source=basket-fxa-oauth"
-                ),
+                "source_url": settings.FXA_REGISTER_SOURCE_URL + "?utm_source=basket-fxa-oauth",
                 "lang": "other",
                 "fxa_lang": "en,en-US",
             },
@@ -1445,10 +1431,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         self.statsd.incr.assert_not_called()
-        assert (
-            resp["location"]
-            == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
-        )
+        assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
         self.get_user_data.assert_called_with(email="dude@example.com")
         self.upsert_contact.assert_called_with(
             SUBSCRIBE,
@@ -1457,9 +1440,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
                 "optin": True,
                 "format": "H",
                 "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
-                "source_url": (
-                    settings.FXA_REGISTER_SOURCE_URL + "?utm_source=basket-fxa-oauth"
-                ),
+                "source_url": settings.FXA_REGISTER_SOURCE_URL + "?utm_source=basket-fxa-oauth",
             },
             None,
         )
@@ -1473,9 +1454,7 @@ class FxAPrefCenterOauthStartTests(ViewsPatcherMixin, TestCase):
         self._patch_views("generate_fxa_state")
 
     def test_get_redirect_url(self):
-        self.get_fxa_authorization_url.return_value = (
-            good_redirect
-        ) = "https://example.com/oauth"
+        self.get_fxa_authorization_url.return_value = good_redirect = "https://example.com/oauth"
         self.generate_fxa_state.return_value = "the-dude-abides"
         resp = self.client.get("/fxa/")
         self.get_fxa_authorization_url.assert_called_with(
@@ -1487,9 +1466,7 @@ class FxAPrefCenterOauthStartTests(ViewsPatcherMixin, TestCase):
         assert resp["location"] == good_redirect
 
     def test_get_redirect_url_with_email(self):
-        self.get_fxa_authorization_url.return_value = (
-            good_redirect
-        ) = "https://example.com/oauth"
+        self.get_fxa_authorization_url.return_value = good_redirect = "https://example.com/oauth"
         self.generate_fxa_state.return_value = "the-dude-abides"
         resp = self.client.get("/fxa/?email=dude%40example.com")
         self.get_fxa_authorization_url.assert_called_with(

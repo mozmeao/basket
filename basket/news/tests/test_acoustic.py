@@ -16,9 +16,7 @@ class TestAcousticBackend(TestCase):
 
         acoustic.send_mailing("mailing-ID", "contact@example.com")
 
-        assert mock_session_post.call_args.kwargs["headers"] == {
-            "Content-Type": "text/xml"
-        }
+        assert mock_session_post.call_args.kwargs["headers"] == {"Content-Type": "text/xml"}
 
 
 class TestAcousticTxBackend(TestCase):
@@ -32,6 +30,4 @@ class TestAcousticTxBackend(TestCase):
 
         acoustic_tx.send_mail("contact@example.com", "AAAA")
 
-        assert mock_session_post.call_args.kwargs["headers"] == {
-            "Content-Type": "text/xml"
-        }
+        assert mock_session_post.call_args.kwargs["headers"] == {"Content-Type": "text/xml"}

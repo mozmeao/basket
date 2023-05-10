@@ -46,10 +46,7 @@ class Newsletter(models.Model):
     )
     show = models.BooleanField(
         default=False,
-        help_text=(
-            "Whether to show this newsletter in lists of newsletters, "
-            "even to non-subscribers"
-        ),
+        help_text="Whether to show this newsletter in lists of newsletters, even to non-subscribers",
     )
     active = models.BooleanField(
         default=True,
@@ -61,10 +58,7 @@ class Newsletter(models.Model):
     )
     private = models.BooleanField(
         default=False,
-        help_text=(
-            "Whether this newsletter is private. Private newsletters "
-            "require the subscribe requests to use an API key."
-        ),
+        help_text="Whether this newsletter is private. Private newsletters require the subscribe requests to use an API key.",
     )
     indent = models.BooleanField(
         default=False,
@@ -76,44 +70,27 @@ class Newsletter(models.Model):
     )
     languages = models.CharField(
         max_length=200,
-        help_text=(
-            "Comma-separated list of the language codes that this newsletter supports"
-        ),
+        help_text="Comma-separated list of the language codes that this newsletter supports",
     )
     requires_double_optin = models.BooleanField(
         default=False,
-        help_text=(
-            "True if subscribing to this newsletter requires someone"
-            "to respond to a confirming email."
-        ),
+        help_text="True if subscribing to this newsletter requires someone to respond to a confirming email.",
     )
     firefox_confirm = models.BooleanField(
         default=False,
-        help_text=(
-            "Whether to send the Firefox or Mozilla branded confirmation message for"
-            " this newsletter"
-        ),
+        help_text="Whether to send the Firefox or Mozilla branded confirmation message for this newsletter",
     )
     is_mofo = models.BooleanField(
         default=False,
-        help_text=(
-            "True if subscribing to this newsletter should mark someone"
-            " as relevant to the Mozilla Foundation"
-        ),
+        help_text="True if subscribing to this newsletter should mark someone as relevant to the Mozilla Foundation",
     )
     is_waitlist = models.BooleanField(
         default=False,
-        help_text=(
-            "True if the newsletter is a waiting list. "
-            "A waitlist can have additional arbitrary fields."
-        ),
+        help_text="True if the newsletter is a waiting list. A waitlist can have additional arbitrary fields.",
     )
     order = models.IntegerField(
         default=0,
-        help_text=(
-            "Order to display the newsletters on the web site. "
-            "Newsletters with lower order numbers will display first."
-        ),
+        help_text="Order to display the newsletters on the web site. Newsletters with lower order numbers will display first.",
     )
 
     class Meta(object):
@@ -149,17 +126,11 @@ class NewsletterGroup(models.Model):
     )
     show = models.BooleanField(
         default=False,
-        help_text=(
-            "Whether to show this group in lists of newsletters and groups, "
-            "even to non-subscribers"
-        ),
+        help_text="Whether to show this group in lists of newsletters and groups, even to non-subscribers",
     )
     active = models.BooleanField(
         default=False,
-        help_text=(
-            "Whether this group should be considered when subscription "
-            "requests are received."
-        ),
+        help_text="Whether this group should be considered when subscription requests are received.",
     )
     newsletters = models.ManyToManyField(Newsletter, related_name="newsletter_groups")
 
@@ -289,9 +260,7 @@ class Interest(models.Model):
     )
     default_steward_emails = CommaSeparatedEmailField(
         blank=True,
-        help_text=(
-            "Comma-separated list of the default / en-US stewards' email addresses."
-        ),
+        help_text="Comma-separated list of the default / en-US stewards' email addresses.",
         verbose_name="Default / en-US Steward Emails",
     )
 
@@ -419,10 +388,7 @@ class AcousticTxEmailMessage(models.Model):
     language = LocaleField(default="en-US")
     private = models.BooleanField(
         default=False,
-        help_text=(
-            "Whether this email is private. Private emails "
-            "are not allowed to be sent via the normal API."
-        ),
+        help_text="Whether this email is private. Private emails are not allowed to be sent via the normal API.",
     )
 
     objects = AcousticTxEmailMessageManager()

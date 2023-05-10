@@ -267,9 +267,7 @@ class TestLookupUser(TestCase):
         assert rsp.json() == {
             "status": "error",
             "code": errors.BASKET_NETWORK_FAILURE,
-            "desc": (
-                "2 contacts returned for token='dummy' with email_ids ['id_1', 'id_2']"
-            ),
+            "desc": "2 contacts returned for token='dummy' with email_ids ['id_1', 'id_2']",
         }
 
     @patch("basket.news.utils.ctms", spec_set=["get"])

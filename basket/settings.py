@@ -85,11 +85,7 @@ if CACHES["default"]["BACKEND"].startswith("django_redis"):
     options = CACHES["default"].setdefault("OPTIONS", {})
     options["PARSER_CLASS"] = "redis.connection.HiredisParser"
 
-default_email_backend = (
-    "django.core.mail.backends.console.EmailBackend"
-    if DEBUG
-    else "django.core.mail.backends.smtp.EmailBackend"
-)
+default_email_backend = "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_BACKEND = config("EMAIL_BACKEND", default=default_email_backend)
 EMAIL_HOST = config("EMAIL_HOST", default="localhost")
 EMAIL_PORT = config("EMAIL_PORT", default=25, cast=int)
@@ -100,10 +96,7 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 
 ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS",
-    default=(
-        ".allizom.org, .moz.works, basket.mozmar.org, "
-        "basket.mozilla.com, basket.mozilla.org"
-    ),
+    default=".allizom.org, .moz.works, basket.mozmar.org, basket.mozilla.com, basket.mozilla.org",
     cast=Csv(),
 )
 ALLOWED_CIDR_NETS = config("ALLOWED_CIDR_NETS", default="", cast=Csv())
@@ -139,10 +132,7 @@ try:
     SECRET_KEY = config("SECRET_KEY")
 except UndefinedValueError as exc:
     raise UndefinedValueError(
-        (
-            "The SECRET_KEY environment variable is required. "
-            "Move env-dist to .env if you want the defaults."
-        ),
+        "The SECRET_KEY environment variable is required. Move env-dist to .env if you want the defaults.",
     ) from exc
 
 TEMPLATES = [
@@ -520,11 +510,7 @@ if OIDC_ENABLE:
     MIDDLEWARE += ("basket.news.middleware.OIDCSessionRefreshMiddleware",)
     LOGIN_REDIRECT_URL = "/admin/"
 
-if (
-    sys.argv[0].endswith("py.test")
-    or sys.argv[0].endswith("pytest")
-    or (len(sys.argv) > 1 and sys.argv[1] == "test")
-):
+if sys.argv[0].endswith("py.test") or sys.argv[0].endswith("pytest") or (len(sys.argv) > 1 and sys.argv[1] == "test"):
     # stuff that's absolutely required for a test run
     CELERY_TASK_ALWAYS_EAGER = True
     TESTING_EMAIL_DOMAINS = []

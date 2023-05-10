@@ -339,11 +339,7 @@ def to_vendor(data, existing_data=None):
         output_waitlists = []
         # Detect unsubscribe all
         optout = data.get("optout", False) or False
-        if (
-            optout
-            and (not any(newsletters.values()))
-            and (set(valid_slugs) == set(newsletters.keys()))
-        ):
+        if optout and (not any(newsletters.values())) and (set(valid_slugs) == set(newsletters.keys())):
             # When unsubscribe all is requested, let CTMS unsubscribe from all.
             # Note that since `valid_slugs` is a superset of `waitlist_slugs`, we
             # also unsubscribe from all waitlists.
@@ -361,9 +357,7 @@ def to_vendor(data, existing_data=None):
                     # The newsletter is a waitlist. Ignore its conventional suffix.
                     slug = slug.replace("-waitlist", "")
                     if subscribed:
-                        fields_mapping, consumed_fields = waitlist_fields_for_slug(
-                            cleaned_data, slug
-                        )
+                        fields_mapping, consumed_fields = waitlist_fields_for_slug(cleaned_data, slug)
                         # Remove all consumed waitlist fields from unknown data
                         for field_name in consumed_fields:
                             try:
@@ -407,9 +401,7 @@ def to_vendor(data, existing_data=None):
         )
         with sentry_sdk.push_scope() as scope:
             scope.set_extra("unknown_data", unknown_data)
-            sentry_sdk.capture_message(
-                "ctms.to_vendor() could not convert unknown data"
-            )
+            sentry_sdk.capture_message("ctms.to_vendor() could not convert unknown data")
 
     return ctms_data
 
@@ -550,10 +542,7 @@ class CTMSNoIdsError(CTMSError):
         return f"{self.__class__.__name__}({self.required_ids})"
 
     def __str__(self):
-        return (
-            "None of the required identifiers are set:"
-            f" {', '.join(name for name in self.required_ids)}"
-        )
+        return f"None of the required identifiers are set: {', '.join(name for name in self.required_ids)}"
 
 
 class CTMSNotFoundByEmailIDError(CTMSError):
@@ -774,10 +763,7 @@ class CTMSMultipleContactsError(CTMSError):
         self.contacts = contacts
 
     def __repr__(self):
-        return (
-            f"{self.__class__.__name__}({self.id_name!r}, {self.id_value!r},"
-            f" {self.contacts!r})"
-        )
+        return f"{self.__class__.__name__}({self.id_name!r}, {self.id_value!r}, {self.contacts!r})"
 
     def __str__(self):
         try:
@@ -786,10 +772,7 @@ class CTMSMultipleContactsError(CTMSError):
             )
         except Exception:
             email_ids = "(unable to extract email_ids)"
-        return (
-            f"{len(self.contacts)} contacts returned for"
-            f" {self.id_name}={self.id_value!r} with email_ids {email_ids}"
-        )
+        return f"{len(self.contacts)} contacts returned for {self.id_name}={self.id_value!r} with email_ids {email_ids}"
 
 
 class CTMSNotFoundByAltIDError(CTMSError):

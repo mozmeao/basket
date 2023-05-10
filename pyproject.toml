@@ -1,5 +1,5 @@
 [tool.black]
-line-length = 88
+line-length = 150
 target-version = ['py39']
 include = '\.pyi?$'
 exclude = '''
@@ -30,7 +30,7 @@ select = [
     "Q", # flake8-quotes errors
     "W", # pycodestyle warnings
 ]
-line-length = 88  # To match black.
+line-length = 150  # To match black.
 target-version = 'py39'
 extend-exclude = ["__pycache__", "docker", "docs"]
 
