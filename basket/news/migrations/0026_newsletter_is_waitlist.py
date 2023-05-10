@@ -26,10 +26,7 @@ class Migration(migrations.Migration):
             name="is_waitlist",
             field=models.BooleanField(
                 default=False,
-                help_text=(
-                    "True if the newsletter is a waiting list. A waitlist can have"
-                    " additional arbitrary fields."
-                ),
+                help_text="True if the newsletter is a waiting list. A waitlist can have additional arbitrary fields.",
             ),
         ),
         migrations.RunPython(set_waitlist_field),

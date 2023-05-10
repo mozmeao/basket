@@ -545,9 +545,7 @@ def upsert_contact(api_call_type, data, user_data):
 
     if api_call_type != UNSUBSCRIBE:
         # Check for newsletter-specific user updates
-        to_subscribe_slugs = [
-            nl for nl, sub in update_data["newsletters"].items() if sub
-        ]
+        to_subscribe_slugs = [nl for nl, sub in update_data["newsletters"].items() if sub]
         check_optin = not (forced_optin or (user_data and user_data.get("optin")))
         check_mofo = not (user_data and user_data.get("mofo_relevant"))
         if to_subscribe_slugs and (check_optin or check_mofo):
@@ -762,19 +760,14 @@ def process_common_voice_batch():
     if not settings.COMMON_VOICE_BATCH_PROCESSING:
         return
 
-    updates = CommonVoiceUpdate.objects.filter(ack=False)[
-        : settings.COMMON_VOICE_BATCH_CHUNK_SIZE
-    ]
+    updates = CommonVoiceUpdate.objects.filter(ack=False)[: settings.COMMON_VOICE_BATCH_CHUNK_SIZE]
     per_user = {}
     for update in updates:
         # last_active_date is when the update was sent basically, so we can use
         # it for ordering
         data = update.data
         last_active = isoparse(data["last_active_date"])
-        if (
-            data["email"] in per_user
-            and per_user[data["email"]]["last_active"] > last_active
-        ):
+        if data["email"] in per_user and per_user[data["email"]]["last_active"] > last_active:
             continue
 
         per_user[data["email"]] = {

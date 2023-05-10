@@ -27,22 +27,20 @@ class Migration(migrations.Migration):
                 (
                     "message_id",
                     models.SlugField(
-                        help_text=(
-                            b"The ID for the message that will be used by clients"
-                        ),
+                        help_text="The ID for the message that will be used by clients",
                     ),
                 ),
                 (
                     "vendor_id",
                     models.CharField(
-                        help_text=b"The backend vendor's identifier for this message",
+                        help_text="The backend vendor's identifier for this message",
                         max_length=50,
                     ),
                 ),
                 (
                     "description",
                     models.CharField(
-                        help_text=b"Optional short description of this message",
+                        help_text="Optional short description of this message",
                         max_length=200,
                         blank=True,
                     ),
@@ -50,7 +48,7 @@ class Migration(migrations.Migration):
                 (
                     "language",
                     basket.news.fields.LocaleField(
-                        default=b"en-US",
+                        default="en-US",
                         max_length=32,
                         choices=[
                             ("ach", "ach (Acholi)"),
@@ -213,7 +211,7 @@ class Migration(migrations.Migration):
                 (
                     "country",
                     basket.news.fields.CountryField(
-                        default=b"us",
+                        default="us",
                         max_length=3,
                         choices=[
                             ("ad", "ad (Andorra)"),

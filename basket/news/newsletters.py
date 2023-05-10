@@ -27,9 +27,7 @@ def get_transactional_message_ids():
     """
     data = cache.get(TRANSACTIONAL_CACHE_KEY)
     if data is None:
-        data = [
-            tx.message_id for tx in AcousticTxEmailMessage.objects.filter(private=False)
-        ]
+        data = [tx.message_id for tx in AcousticTxEmailMessage.objects.filter(private=False)]
         cache.set(TRANSACTIONAL_CACHE_KEY, data)
 
     return data

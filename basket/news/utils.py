@@ -367,9 +367,7 @@ def get_user(token=None, email=None, get_fxa=False, masked=True):
     if user_data is None:
         user_data = {
             "status": "error",
-            "code": (
-                errors.BASKET_UNKNOWN_EMAIL if email else errors.BASKET_UNKNOWN_TOKEN
-            ),
+            "code": errors.BASKET_UNKNOWN_EMAIL if email else errors.BASKET_UNKNOWN_TOKEN,
             "desc": MSG_USER_NOT_FOUND,
         }
         status_code = 404

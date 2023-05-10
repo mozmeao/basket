@@ -34,10 +34,7 @@ class CommaSeparatedEmailField(models.TextField):
 
 
 ENGLISH_LANGUAGE_CHOICES = sorted(
-    [
-        (key, "{0} ({1})".format(key, value["English"]))
-        for key, value in product_details.languages.items()
-    ],
+    [(key, "{0} ({1})".format(key, value["English"])) for key, value in product_details.languages.items()],
 )
 COUNTRY_CHOICES = sorted(
     [(key, "{0} ({1})".format(key, value)) for key, value in SFDC_COUNTRIES.items()],

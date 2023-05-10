@@ -39,10 +39,7 @@ class Migration(migrations.Migration):
             name="default_steward_emails",
             field=basket.news.fields.CommaSeparatedEmailField(
                 blank=True,
-                help_text=(
-                    "Comma-separated list of the default / en-US stewards' email"
-                    " addresses."
-                ),
+                help_text="Comma-separated list of the default / en-US stewards' email addresses.",
                 verbose_name="Default / en-US Steward Emails",
             ),
         ),
@@ -718,20 +715,14 @@ class Migration(migrations.Migration):
             name="indent",
             field=models.BooleanField(
                 default=False,
-                help_text=(
-                    "Whether this newsletter is indented in the email preference"
-                    " center."
-                ),
+                help_text="Whether this newsletter is indented in the email preference center.",
             ),
         ),
         migrations.AlterField(
             model_name="newsletter",
             name="languages",
             field=models.CharField(
-                help_text=(
-                    "Comma-separated list of the language codes that this newsletter"
-                    " supports"
-                ),
+                help_text="Comma-separated list of the language codes that this newsletter supports",
                 max_length=200,
             ),
         ),
@@ -740,10 +731,7 @@ class Migration(migrations.Migration):
             name="order",
             field=models.IntegerField(
                 default=0,
-                help_text=(
-                    "Order to display the newsletters on the web site. Newsletters with"
-                    " lower order numbers will display first."
-                ),
+                help_text="Order to display the newsletters on the web site. Newsletters with lower order numbers will display first.",
             ),
         ),
         migrations.AlterField(
@@ -751,10 +739,7 @@ class Migration(migrations.Migration):
             name="private",
             field=models.BooleanField(
                 default=False,
-                help_text=(
-                    "Whether this newsletter is private. Private newsletters require"
-                    " the subscribe requests to use an API key."
-                ),
+                help_text="Whether this newsletter is private. Private newsletters require the subscribe requests to use an API key.",
             ),
         ),
         migrations.AlterField(
@@ -762,10 +747,7 @@ class Migration(migrations.Migration):
             name="requires_double_optin",
             field=models.BooleanField(
                 default=False,
-                help_text=(
-                    "True if subscribing to this newsletter requires someoneto respond"
-                    " to a confirming email."
-                ),
+                help_text="True if subscribing to this newsletter requires someoneto respond to a confirming email.",
             ),
         ),
         migrations.AlterField(
@@ -773,10 +755,7 @@ class Migration(migrations.Migration):
             name="show",
             field=models.BooleanField(
                 default=False,
-                help_text=(
-                    "Whether to show this newsletter in lists of newsletters, even to"
-                    " non-subscribers"
-                ),
+                help_text="Whether to show this newsletter in lists of newsletters, even to non-subscribers",
             ),
         ),
         migrations.AlterField(
@@ -808,10 +787,7 @@ class Migration(migrations.Migration):
             name="active",
             field=models.BooleanField(
                 default=False,
-                help_text=(
-                    "Whether this group should be considered when subscription requests"
-                    " are received."
-                ),
+                help_text="Whether this group should be considered when subscription requests are received.",
             ),
         ),
         migrations.AlterField(
@@ -828,10 +804,7 @@ class Migration(migrations.Migration):
             name="show",
             field=models.BooleanField(
                 default=False,
-                help_text=(
-                    "Whether to show this group in lists of newsletters and groups,"
-                    " even to non-subscribers"
-                ),
+                help_text="Whether to show this group in lists of newsletters and groups, even to non-subscribers",
             ),
         ),
         migrations.AlterField(
@@ -863,10 +836,7 @@ class Migration(migrations.Migration):
             model_name="transactionalemailmessage",
             name="languages",
             field=models.CharField(
-                help_text=(
-                    "Comma-separated list of the language codes that this newsletter"
-                    " supports"
-                ),
+                help_text="Comma-separated list of the language codes that this newsletter supports",
                 max_length=200,
             ),
         ),

@@ -29,7 +29,7 @@ class Migration(migrations.Migration):
                 (
                     "name",
                     models.CharField(
-                        help_text=b"Descriptive name of this user",
+                        help_text="Descriptive name of this user",
                         max_length=256,
                     ),
                 ),
@@ -117,16 +117,14 @@ class Migration(migrations.Migration):
                 (
                     "title",
                     models.CharField(
-                        help_text=b"Public name of interest in English",
+                        help_text="Public name of interest in English",
                         max_length=128,
                     ),
                 ),
                 (
                     "interest_id",
                     models.SlugField(
-                        help_text=(
-                            b"The ID for the interest that will be used by clients"
-                        ),
+                        help_text="The ID for the interest that will be used by clients",
                         unique=True,
                     ),
                 ),
@@ -134,25 +132,22 @@ class Migration(migrations.Migration):
                     "_welcome_id",
                     models.CharField(
                         help_text=(
-                            b"The ID of the welcome message sent for this interest."
-                            b" This is the HTML version of the message; append _T to"
-                            b" this ID to get the ID of the text-only version.  If"
-                            b" blank, welcome message ID will be assumed to be the same"
-                            b" as the interest_id"
+                            "The ID of the welcome message sent for this interest."
+                            " This is the HTML version of the message; append _T to"
+                            " this ID to get the ID of the text-only version.  If"
+                            " blank, welcome message ID will be assumed to be the same"
+                            " as the interest_id"
                         ),
                         max_length=64,
-                        verbose_name=b"Welcome ID",
+                        verbose_name="Welcome ID",
                         blank=True,
                     ),
                 ),
                 (
                     "default_steward_emails",
                     basket.news.fields.CommaSeparatedEmailField(
-                        help_text=(
-                            b"Comma-separated list of the default / en-US stewards'"
-                            b" email addresses."
-                        ),
-                        verbose_name=b"Default / en-US Steward Emails",
+                        help_text="Comma-separated list of the default / en-US stewards' email addresses.",
+                        verbose_name="Default / en-US Steward Emails",
                         blank=True,
                     ),
                 ),
@@ -322,9 +317,7 @@ class Migration(migrations.Migration):
                 (
                     "emails",
                     basket.news.fields.CommaSeparatedEmailField(
-                        help_text=(
-                            b"Comma-separated list of the stewards' email addresses."
-                        ),
+                        help_text="Comma-separated list of the stewards' email addresses.",
                     ),
                 ),
                 (
@@ -353,23 +346,21 @@ class Migration(migrations.Migration):
                 (
                     "slug",
                     models.SlugField(
-                        help_text=(
-                            b"The ID for the newsletter that will be used by clients"
-                        ),
+                        help_text="The ID for the newsletter that will be used by clients",
                         unique=True,
                     ),
                 ),
                 (
                     "title",
                     models.CharField(
-                        help_text=b"Public name of newsletter in English",
+                        help_text="Public name of newsletter in English",
                         max_length=128,
                     ),
                 ),
                 (
                     "description",
                     models.CharField(
-                        help_text=b"One-line description of newsletter in English",
+                        help_text="One-line description of newsletter in English",
                         max_length=256,
                         blank=True,
                     ),
@@ -378,10 +369,7 @@ class Migration(migrations.Migration):
                     "show",
                     models.BooleanField(
                         default=False,
-                        help_text=(
-                            b"Whether to show this newsletter in lists of newsletters,"
-                            b" even to non-subscribers"
-                        ),
+                        help_text="Whether to show this newsletter in lists of newsletters, even to non-subscribers",
                     ),
                 ),
                 (
@@ -389,9 +377,9 @@ class Migration(migrations.Migration):
                     models.BooleanField(
                         default=True,
                         help_text=(
-                            b"Whether this newsletter is active. Inactive newsletters"
-                            b" are only shown to those who are already subscribed, and"
-                            b" might have other differences in behavior."
+                            "Whether this newsletter is active. Inactive newsletters"
+                            " are only shown to those who are already subscribed, and"
+                            " might have other differences in behavior."
                         ),
                     ),
                 ),
@@ -399,10 +387,10 @@ class Migration(migrations.Migration):
                     "welcome",
                     models.CharField(
                         help_text=(
-                            b"The ID of the welcome message sent for this newsletter."
-                            b" This is the HTML version of the message; append _T to"
-                            b" this ID to get the ID of the text-only version.  If"
-                            b" blank, no welcome is sent"
+                            "The ID of the welcome message sent for this newsletter."
+                            " This is the HTML version of the message; append _T to"
+                            " this ID to get the ID of the text-only version.  If"
+                            " blank, no welcome is sent"
                         ),
                         max_length=64,
                         blank=True,
@@ -411,19 +399,14 @@ class Migration(migrations.Migration):
                 (
                     "vendor_id",
                     models.CharField(
-                        help_text=(
-                            b"The backend vendor's identifier for this newsletter"
-                        ),
+                        help_text="The backend vendor's identifier for this newsletter",
                         max_length=128,
                     ),
                 ),
                 (
                     "languages",
                     models.CharField(
-                        help_text=(
-                            b"Comma-separated list of the language codes that this"
-                            b" newsletter supports"
-                        ),
+                        help_text="Comma-separated list of the language codes that this newsletter supports",
                         max_length=200,
                     ),
                 ),
@@ -431,30 +414,24 @@ class Migration(migrations.Migration):
                     "requires_double_optin",
                     models.BooleanField(
                         default=False,
-                        help_text=(
-                            b"True if subscribing to this newsletter requires someoneto"
-                            b" respond to a confirming email."
-                        ),
+                        help_text="True if subscribing to this newsletter requires someoneto respond to a confirming email.",
                     ),
                 ),
                 (
                     "order",
                     models.IntegerField(
                         default=0,
-                        help_text=(
-                            b"Order to display the newsletters on the web site."
-                            b" Newsletters with lower order numbers will display first."
-                        ),
+                        help_text="Order to display the newsletters on the web site. Newsletters with lower order numbers will display first.",
                     ),
                 ),
                 (
                     "confirm_message",
                     models.CharField(
                         help_text=(
-                            b"The ID of the confirm message sent for this"
-                            b" newsletter.That's the one that says 'please click here"
-                            b" to confirm'.If blank, a default message based on the"
-                            b" user's language is sent."
+                            "The ID of the confirm message sent for this"
+                            " newsletter.That's the one that says 'please click here"
+                            " to confirm'. If blank, a default message based on the"
+                            " user's language is sent."
                         ),
                         max_length=64,
                         blank=True,
@@ -479,21 +456,21 @@ class Migration(migrations.Migration):
                 (
                     "slug",
                     models.SlugField(
-                        help_text=b"The ID for the group that will be used by clients",
+                        help_text="The ID for the group that will be used by clients",
                         unique=True,
                     ),
                 ),
                 (
                     "title",
                     models.CharField(
-                        help_text=b"Public name of group in English",
+                        help_text="Public name of group in English",
                         max_length=128,
                     ),
                 ),
                 (
                     "description",
                     models.CharField(
-                        help_text=b"One-line description of group in English",
+                        help_text="One-line description of group in English",
                         max_length=256,
                         blank=True,
                     ),
@@ -502,20 +479,14 @@ class Migration(migrations.Migration):
                     "show",
                     models.BooleanField(
                         default=False,
-                        help_text=(
-                            b"Whether to show this group in lists of newsletters and"
-                            b" groups, even to non-subscribers"
-                        ),
+                        help_text="Whether to show this group in lists of newsletters and groups, even to non-subscribers",
                     ),
                 ),
                 (
                     "active",
                     models.BooleanField(
                         default=False,
-                        help_text=(
-                            b"Whether this group should be considered when subscription"
-                            b" requests are received."
-                        ),
+                        help_text="Whether this group should be considered when subscription requests are received.",
                     ),
                 ),
                 (
@@ -535,9 +506,7 @@ class Migration(migrations.Migration):
                 (
                     "message_id",
                     models.SlugField(
-                        help_text=(
-                            b"The ID for the message that will be used by clients"
-                        ),
+                        help_text="The ID for the message that will be used by clients",
                         serialize=False,
                         primary_key=True,
                     ),
@@ -545,14 +514,14 @@ class Migration(migrations.Migration):
                 (
                     "vendor_id",
                     models.CharField(
-                        help_text=b"The backend vendor's identifier for this message",
+                        help_text="The backend vendor's identifier for this message",
                         max_length=50,
                     ),
                 ),
                 (
                     "description",
                     models.CharField(
-                        help_text=b"Optional short description of this message",
+                        help_text="Optional short description of this message",
                         max_length=200,
                         blank=True,
                     ),
