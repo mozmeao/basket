@@ -49,9 +49,10 @@ BASKET_RW_URL = config(
 REDIS_URL = config("REDIS_URL", None)
 if REDIS_URL:
     REDIS_URL = REDIS_URL.rstrip("/0")
+    HIREDIS_URL = REDIS_URL.replace("redis://", "hiredis://")
     # use redis for celery and cache
     os.environ["CELERY_BROKER_URL"] = REDIS_URL + "/" + config("REDIS_CELERY_DB", "0")
-    os.environ["CACHE_URL"] = REDIS_URL + "/" + config("REDIS_CACHE_DB", "1")
+    os.environ["CACHE_URL"] = HIREDIS_URL + "/" + config("REDIS_CACHE_DB", "1")
 
 # Production uses MySQL, but Sqlite should be sufficient for local development.
 # Our CI server tests against MySQL.
@@ -80,10 +81,6 @@ CACHES = {
     },
     "product_details": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
 }
-
-if CACHES["default"]["BACKEND"].startswith("django_redis"):
-    options = CACHES["default"].setdefault("OPTIONS", {})
-    options["PARSER_CLASS"] = "redis.connection.HiredisParser"
 
 default_email_backend = "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_BACKEND = config("EMAIL_BACKEND", default=default_email_backend)
