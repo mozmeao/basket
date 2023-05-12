@@ -14,6 +14,7 @@ from sentry_processor import DesensitizationProcessor
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import ignore_logger
+from sentry_sdk.integrations.redis import RedisIntegration
 
 # Application version.
 VERSION = (0, 1)
@@ -354,7 +355,7 @@ sentry_sdk.init(
     dsn=config("SENTRY_DSN", None),
     release=config("GIT_SHA", None),
     server_name=".".join(x for x in [K8S_NAMESPACE, CLUSTER_NAME, HOSTNAME] if x),
-    integrations=[CeleryIntegration(), DjangoIntegration()],
+    integrations=[CeleryIntegration(), DjangoIntegration(), RedisIntegration()],
     before_send=before_send,
 )
 
