@@ -3,7 +3,6 @@ import re
 from datetime import date, datetime, timedelta
 from email.utils import formatdate
 from functools import wraps
-from hashlib import sha256
 from time import mktime, time
 from urllib.parse import urlencode
 
@@ -107,26 +106,6 @@ def ignore_error(exc, to_ignore=None, to_ignore_re=None):
 
 def ignore_error_post_retry(exc):
     return ignore_error(exc, IGNORE_ERROR_MSGS_POST_RETRY)
-
-
-def get_lock(key, prefix="task"):
-    """Get a lock for a specific key (usually email address)
-
-    Needs to be done with a timeout because SFDC needs some time to populate its
-    indexes before the duplicate protection works and queries will return results.
-    Releasing the lock right after the task was run still allowed dupes.
-
-    Does nothing if you get the lock, and raises RetryTask if not.
-    """
-    if not settings.TASK_LOCKING_ENABLE:
-        return
-
-    lock_key = "basket-{}-{}".format(prefix, key)
-    lock_key = sha256(lock_key.encode()).hexdigest()
-    got_lock = cache.add(lock_key, True, settings.TASK_LOCK_TIMEOUT)
-    if not got_lock:
-        statsd.incr("news.tasks.get_lock.no_lock_retry")
-        raise RetryTask("Could not acquire lock")
 
 
 class BasketError(Exception):
@@ -483,8 +462,6 @@ def upsert_user(api_call_type, data):
     @param dict data: POST data from the form submission
     @return:
     """
-    key = data.get("email") or data.get("token")
-    get_lock(key)
     upsert_contact(
         api_call_type,
         data,
@@ -689,7 +666,6 @@ def confirm_user(token):
     :raises: BasketError for fatal errors, NewsletterException for retryable
         errors.
     """
-    get_lock(token)
     user_data = get_user_data(token=token)
 
     if user_data is None:
@@ -709,7 +685,6 @@ def confirm_user(token):
 @et_task
 def update_custom_unsub(token, reason):
     """Record a user's custom unsubscribe reason."""
-    get_lock(token)
     try:
         ctms.update_by_alt_id("token", token, {"reason": reason})
     except CTMSNotFoundByAltIDError:

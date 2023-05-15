@@ -5,7 +5,6 @@ from urllib.error import URLError
 from uuid import uuid4
 
 from django.conf import settings
-from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.utils.timezone import now
@@ -17,7 +16,6 @@ from basket.news.celery import app as celery_app
 from basket.news.models import CommonVoiceUpdate, FailedTask
 from basket.news.tasks import (
     SUBSCRIBE,
-    RetryTask,
     _add_fxa_activity,
     et_task,
     fxa_delete,
@@ -25,7 +23,6 @@ from basket.news.tasks import (
     fxa_login,
     fxa_verified,
     get_fxa_user_data,
-    get_lock,
     gmttime,
     process_common_voice_batch,
     record_common_voice_update,
@@ -34,34 +31,6 @@ from basket.news.tasks import (
     update_user_meta,
 )
 from basket.news.utils import iso_format_unix_timestamp
-
-
-@override_settings(TASK_LOCKING_ENABLE=True)
-class TaskDuplicationLockingTests(TestCase):
-    def setUp(self):
-        cache.clear()
-
-    def test_locks_work(self):
-        """Calling get_lock more than once quickly with the same key should be locked"""
-        get_lock("dude@example.com")
-        with self.assertRaises(RetryTask):
-            get_lock("dude@example.com")
-
-    def test_lock_prefix_works(self):
-        """Should allow same key to not lock other prefixes"""
-        get_lock("dude@example.com", prefix="malibu")
-        get_lock("dude@example.com", prefix="in-n-out")
-        with self.assertRaises(RetryTask):
-            get_lock("dude@example.com", prefix="malibu")
-
-    @patch("basket.news.tasks.cache")
-    def test_locks_do_not_leak_info(self, cache_mock):
-        """Should not use plaintext key in lock name"""
-        email = "donny@example.com"
-        cache_mock.add.return_value = True
-        get_lock(email)
-        key = cache_mock.add.call_args[0][0]
-        self.assertNotIn(email, key)
 
 
 class FailedTaskTest(TestCase):
