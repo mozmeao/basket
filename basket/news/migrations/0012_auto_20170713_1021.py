@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
-
-
-from django.db import migrations
-
-import jsonfield.fields
+from django.db import migrations, models
 
 import basket.news.fields
 
@@ -17,12 +12,12 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="failedtask",
             name="args",
-            field=jsonfield.fields.JSONField(default=list),
+            field=models.JSONField(default=list),
         ),
         migrations.AlterField(
             model_name="failedtask",
             name="kwargs",
-            field=jsonfield.fields.JSONField(default=dict),
+            field=models.JSONField(default=dict),
         ),
         migrations.AlterField(
             model_name="localestewards",
@@ -190,11 +185,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="queuedtask",
             name="args",
-            field=jsonfield.fields.JSONField(default=list),
+            field=models.JSONField(default=list),
         ),
         migrations.AlterField(
             model_name="queuedtask",
             name="kwargs",
-            field=jsonfield.fields.JSONField(default=dict),
+            field=models.JSONField(default=dict),
         ),
     ]

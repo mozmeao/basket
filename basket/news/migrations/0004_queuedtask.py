@@ -1,10 +1,5 @@
-# -*- coding: utf-8 -*-
-
-
 import django.utils.timezone
 from django.db import migrations, models
-
-import jsonfield.fields
 
 
 class Migration(migrations.Migration):
@@ -33,8 +28,8 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("name", models.CharField(max_length=255)),
-                ("args", jsonfield.fields.JSONField(default=[])),
-                ("kwargs", jsonfield.fields.JSONField(default={})),
+                ("args", models.JSONField(default=[])),
+                ("kwargs", models.JSONField(default={})),
             ],
             options={"ordering": ["pk"]},
         ),

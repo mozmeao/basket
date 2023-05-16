@@ -1,10 +1,5 @@
-# -*- coding: utf-8 -*-
-
-
 import django.utils.timezone
 from django.db import migrations, models
-
-import jsonfield.fields
 
 import basket.news.fields
 import basket.news.models
@@ -84,8 +79,8 @@ class Migration(migrations.Migration):
                 ),
                 ("task_id", models.CharField(unique=True, max_length=255)),
                 ("name", models.CharField(max_length=255)),
-                ("args", jsonfield.fields.JSONField(default=[])),
-                ("kwargs", jsonfield.fields.JSONField(default={})),
+                ("args", models.JSONField(default=[])),
+                ("kwargs", models.JSONField(default={})),
                 (
                     "exc",
                     models.TextField(
