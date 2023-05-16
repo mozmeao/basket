@@ -10,7 +10,6 @@ django-allow-cidr==0.6.0
 django-cache-url==3.4.4
 django-cors-headers==3.14.0
 django-extensions==3.2.1
-django-jsonfield==1.4.1
 django-mozilla-product-details==1.0.3
 django-picklefield==3.1
 django-ratelimit==3.0.1

@@ -6,7 +6,6 @@ from django.template.loader import render_to_string
 from django.utils.timezone import now
 
 import sentry_sdk
-from jsonfield import JSONField
 from product_details import product_details
 
 from basket.news.fields import CommaSeparatedEmailField, LocaleField, parse_emails
@@ -171,8 +170,8 @@ def _is_query_dict(arg):
 class QueuedTask(models.Model):
     when = models.DateTimeField(editable=False, default=now)
     name = models.CharField(max_length=255)
-    args = JSONField(null=False, default=list)
-    kwargs = JSONField(null=False, default=dict)
+    args = models.JSONField(null=False, default=list)
+    kwargs = models.JSONField(null=False, default=dict)
 
     class Meta:
         ordering = ["pk"]
@@ -190,8 +189,8 @@ class FailedTask(models.Model):
     when = models.DateTimeField(editable=False, default=now)
     task_id = models.CharField(max_length=255)
     name = models.CharField(max_length=255)
-    args = JSONField(null=False, default=list)
-    kwargs = JSONField(null=False, default=dict)
+    args = models.JSONField(null=False, default=list)
+    kwargs = models.JSONField(null=False, default=dict)
     exc = models.TextField(null=True, default=None, help_text="repr(exception)")  # noqa
     einfo = models.TextField(null=True, default=None, help_text="repr(einfo)")  # noqa
 
@@ -408,7 +407,7 @@ class AcousticTxEmailMessage(models.Model):
 
 class CommonVoiceUpdate(models.Model):
     when = models.DateTimeField(editable=False, default=now)
-    data = JSONField()
+    data = models.JSONField()
     ack = models.BooleanField(default=False)
 
     class Meta:

@@ -265,7 +265,6 @@ django==3.2.19 \
     #   django-allow-cidr
     #   django-cors-headers
     #   django-extensions
-    #   django-jsonfield
     #   django-mozilla-product-details
     #   django-picklefield
     #   django-redis
@@ -286,10 +285,6 @@ django-cors-headers==3.14.0 \
 django-extensions==3.2.1 \
     --hash=sha256:2a4f4d757be2563cd1ff7cfdf2e57468f5f931cc88b23cf82ca75717aae504a4 \
     --hash=sha256:421464be390289513f86cb5e18eb43e5dc1de8b4c27ba9faa3b91261b0d67e09
-    # via -r requirements/prod.in
-django-jsonfield==1.4.1 \
-    --hash=sha256:ccb2fe623e1bf7799e49c593b0a89a85084ef8d3debbf26d92a54e27b5305d72 \
-    --hash=sha256:f789a0ea1f80b48aff7d6c36dd356ce125dbf1b7cd97a82d315607ac758f50ff
     # via -r requirements/prod.in
 django-mozilla-product-details==1.0.3 \
     --hash=sha256:1d139ba01f4484f3bb43b72864ce33f249835405449e0dc940217cfa42ce5b46 \
@@ -710,7 +705,6 @@ six==1.16.0 \
     --hash=sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254
     # via
     #   apscheduler
-    #   django-jsonfield
     #   pyfxa
     #   pysilverpop
     #   python-dateutil

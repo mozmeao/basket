@@ -3,8 +3,6 @@
 import django.utils.timezone
 from django.db import migrations, models
 
-import jsonfield.fields
-
 
 class Migration(migrations.Migration):
     dependencies = [
@@ -31,7 +29,7 @@ class Migration(migrations.Migration):
                         editable=False,
                     ),
                 ),
-                ("data", jsonfield.fields.JSONField(default=dict)),
+                ("data", models.JSONField(default=dict)),
                 ("ack", models.BooleanField(default=False)),
             ],
             options={"ordering": ["pk"]},
