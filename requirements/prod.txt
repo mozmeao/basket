@@ -42,13 +42,13 @@ billiard==3.6.4.0 \
     --hash=sha256:299de5a8da28a783d51b197d496bef4f1595dd023a93a4f59dde1886ae905547 \
     --hash=sha256:87103ea78fa6ab4d5c751c4909bcff74617d985de7fa8b672cf8618afd5a875b
     # via celery
-boto3==1.26.126 \
-    --hash=sha256:a0a049d16dabf559bd86d4622a985549154c6918f779f373fb7588bd3cf1272d \
-    --hash=sha256:ea7dc518399106ee300b867596c92d2b7b498ee7721db935915cdd53339a9f92
+boto3==1.26.137 \
+    --hash=sha256:b6d729beec0462ac1ae4a83a0fb04a62061a9f1f406d3151b45345daa9d1a5bc \
+    --hash=sha256:cac699fc46b43c10ca12aa6ea087c0b979613c5e3570aea11d86891652cb581e
     # via -r requirements/prod.in
-botocore==1.29.126 \
-    --hash=sha256:a2c5cedb26b364386d02f9ed0a3492da6a322a82e539e54600fbc7190a49660d \
-    --hash=sha256:e7549da5d69b37e8e1f63fcc18fbb9b23f05db8dcb4118019497eee4dad57ff7
+botocore==1.29.137 \
+    --hash=sha256:1909fe368c08b4879d52ac1e3963f8bfcbebe3a84366c3f2000a45bd4510b027 \
+    --hash=sha256:5921a15c0a2a438f5ba9de4189d846f31d3770c690b0ffb237da5069444f2ba5
     # via
     #   boto3
     #   s3transfer
@@ -278,9 +278,9 @@ django-cache-url==3.4.4 \
     --hash=sha256:5ca4760b4580b80e41279bc60d1e5c16a822e4e462265faab0a330701bb0ef9a \
     --hash=sha256:ef2cfacea361ee22e9b67d6ca941db22e0a9eaf892b67ca71cad52c62a17fd36
     # via -r requirements/prod.in
-django-cors-headers==3.14.0 \
-    --hash=sha256:5fbd58a6fb4119d975754b2bc090f35ec160a8373f276612c675b00e8a138739 \
-    --hash=sha256:684180013cc7277bdd8702b80a3c5a4b3fcae4abb2bf134dceb9f5dfe300228e
+django-cors-headers==4.0.0 \
+    --hash=sha256:a971cd4c75b29974068cc36b5c595698822f1e0edd5f1b32ea42ea37326ad4aa \
+    --hash=sha256:e3cbd247a1a835da4cf71a70d4214378813ea7e08337778b82cb2c1bc19d28d6
     # via -r requirements/prod.in
 django-extensions==3.2.1 \
     --hash=sha256:2a4f4d757be2563cd1ff7cfdf2e57468f5f931cc88b23cf82ca75717aae504a4 \
