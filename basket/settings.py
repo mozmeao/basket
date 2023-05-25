@@ -287,12 +287,6 @@ if SNITCH_ID:
         "schedule": timedelta(minutes=5),
     }
 
-if not READ_ONLY_MODE:
-    CELERY_BEAT_SCHEDULE["common-voice"] = {
-        "task": "basket.news.tasks.process_common_voice_batch",
-        "schedule": timedelta(hours=1),
-    }
-
 
 # via http://stackoverflow.com/a/6556951/107114
 def get_default_gateway_linux():
@@ -401,12 +395,10 @@ ignore_logger("django.security.DisallowedHost")
 PROD_DETAILS_CACHE_NAME = "product_details"
 PROD_DETAILS_CACHE_TIMEOUT = None
 
-RECOVER_MSG_LANGS = config("RECOVER_MSG_LANGS", "en", cast=Csv())
 # language codes that we support and send through to backend
 # regardless of their existence in the DB
 EXTRA_SUPPORTED_LANGS = config("EXTRA_SUPPORTED_LANGS", "", cast=Csv())
 
-SYNC_KEY = config("SYNC_KEY", None)
 TESTING_EMAIL_DOMAINS = config(
     "TESTING_EMAIL_DOMAINS",
     "restmail.net,restmail.lcip.org,example.com",
@@ -419,25 +411,6 @@ QUEUE_BATCH_SIZE = config("QUEUE_BATCH_SIZE", 500, cast=int)
 MAINTENANCE_READ_ONLY = config("MAINTENANCE_READ_ONLY", False, cast=bool)
 
 USE_SANDBOX_BACKEND = config("USE_SANDBOX_BACKEND", False, cast=bool)
-
-TASK_LOCK_TIMEOUT = config("TASK_LOCK_TIMEOUT", 60, cast=int)
-TASK_LOCKING_ENABLE = config("TASK_LOCKING_ENABLE", False, cast=bool)
-
-DONATE_ACCESS_KEY_ID = config("DONATE_ACCESS_KEY_ID", default="")
-DONATE_SECRET_ACCESS_KEY = config("DONATE_SECRET_ACCESS_KEY", default="")
-DONATE_QUEUE_REGION = config("DONATE_QUEUE_REGION", default="")
-DONATE_QUEUE_URL = config("DONATE_QUEUE_URL", default="")
-DONATE_QUEUE_WAIT_TIME = config("DONATE_QUEUE_WAIT_TIME", cast=int, default=10)
-# turn this on to consume the queue but ignore the messages
-# needed so that donate.m.o can run continuous tests w/o filling the backend sandbox
-DONATE_QUEUE_IGNORE_MODE = config("DONATE_QUEUE_IGNORE_MODE", cast=bool, default=False)
-DONATE_SEND_RECEIPTS = config("DONATE_SEND_RECEIPTS", cast=bool, default=False)
-DONATE_RECEIPTS_BCC = config("DONATE_RECEIPTS_BCC", "", cast=Csv())
-DONATE_OPP_RECORD_TYPE = config("DONATE_OPP_RECORD_TYPE", default="")
-DONATE_CONTACT_RECORD_TYPE = config("DONATE_CONTACT_RECORD_TYPE", default="")
-DONATE_SNITCH_ID = config("DONATE_SNITCH_ID", default="")
-DONATE_NOTIFY_EMAIL = config("DONATE_NOTIFY_EMAIL", default="")
-DONATE_UPDATE_FAIL_DE = config("DONATE_UPDATE_FAIL_DE", default="Donation_Diff")
 
 FXA_EVENTS_QUEUE_ENABLE = config("FXA_EVENTS_QUEUE_ENABLE", cast=bool, default=False)
 FXA_EVENTS_QUEUE_IGNORE_MODE = config(
@@ -479,21 +452,6 @@ FXA_LOGIN_CAMPAIGNS = {
 }
 
 COMMON_VOICE_NEWSLETTER = config("COMMON_VOICE_NEWSLETTER", default="common-voice")
-COMMON_VOICE_BATCH_UPDATES = config(
-    "COMMON_VOICE_BATCH_UPDATES",
-    default=False,
-    cast=bool,
-)
-COMMON_VOICE_BATCH_PROCESSING = config(
-    "COMMON_VOICE_BATCH_PROCESSING",
-    default=False,
-    cast=bool,
-)
-COMMON_VOICE_BATCH_CHUNK_SIZE = config(
-    "COMMON_VOICE_BATCH_CHUNK_SIZE",
-    default=1000,
-    cast=int,
-)
 
 OIDC_ENABLE = config("OIDC_ENABLE", default=False, cast=bool)
 if OIDC_ENABLE:

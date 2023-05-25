@@ -1,5 +1,4 @@
 from copy import deepcopy
-from datetime import datetime, timedelta
 from unittest.mock import ANY, Mock, call, patch
 from urllib.error import URLError
 from uuid import uuid4
@@ -7,13 +6,12 @@ from uuid import uuid4
 from django.conf import settings
 from django.test import TestCase
 from django.test.utils import override_settings
-from django.utils.timezone import now
 
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from basket.news.backends.ctms import CTMSNotFoundByAltIDError
 from basket.news.celery import app as celery_app
-from basket.news.models import CommonVoiceUpdate, FailedTask
+from basket.news.models import FailedTask
 from basket.news.tasks import (
     SUBSCRIBE,
     _add_fxa_activity,
@@ -23,8 +21,6 @@ from basket.news.tasks import (
     fxa_login,
     fxa_verified,
     get_fxa_user_data,
-    gmttime,
-    process_common_voice_batch,
     record_common_voice_update,
     send_acoustic_tx_message,
     update_custom_unsub,
@@ -560,21 +556,6 @@ class FxAEmailChangedTests(TestCase):
         )
 
 
-class GmttimeTests(TestCase):
-    @patch("basket.news.tasks.datetime")
-    def test_no_basetime_provided(self, datetime_mock):
-        # original time is 'Fri, 09 Sep 2016 13:33:55 GMT'
-        datetime_mock.now.return_value = datetime.fromtimestamp(1473428035.498)
-        formatted_time = gmttime()
-        self.assertEqual(formatted_time, "Fri, 09 Sep 2016 13:43:55 GMT")
-
-    def test_basetime_provided(self):
-        # original time is 'Fri, 09 Sep 2016 13:33:55 GMT', updates to 13:43:55
-        basetime = datetime.fromtimestamp(1473428035.498)
-        formatted_time = gmttime(basetime)
-        self.assertEqual(formatted_time, "Fri, 09 Sep 2016 13:43:55 GMT")
-
-
 @patch("basket.news.tasks.ctms")
 @patch("basket.news.tasks.get_user_data")
 class CommonVoiceGoalsTests(TestCase):
@@ -627,114 +608,6 @@ class CommonVoiceGoalsTests(TestCase):
         ctms_mock.update.assert_called_with(gud_mock(), update_data)
 
 
-@override_settings(COMMON_VOICE_BATCH_PROCESSING=True, COMMON_VOICE_BATCH_CHUNK_SIZE=5)
-@patch("basket.news.tasks.record_common_voice_update")
-class TestCommonVoiceBatch(TestCase):
-    def setUp(self):
-        CommonVoiceUpdate.objects.create(
-            data={
-                "email": "dude@example.com",
-                "last_active_date": "2020-02-18T14:52:30Z",
-            },
-        )
-        CommonVoiceUpdate.objects.create(
-            data={
-                "email": "dude@example.com",
-                "last_active_date": "2020-02-17T14:52:30Z",
-            },
-        )
-        CommonVoiceUpdate.objects.create(
-            data={
-                "email": "dude@example.com",
-                "last_active_date": "2020-02-16T14:52:30Z",
-            },
-        )
-        CommonVoiceUpdate.objects.create(
-            data={
-                "email": "donny@example.com",
-                "last_active_date": "2020-02-15T14:52:30Z",
-            },
-        )
-        CommonVoiceUpdate.objects.create(
-            data={
-                "email": "donny@example.com",
-                "last_active_date": "2020-02-14T14:52:30Z",
-            },
-        )
-
-    def test_batch(self, mock_rcvg):
-        assert CommonVoiceUpdate.objects.filter(ack=False).count() == 5
-        assert CommonVoiceUpdate.objects.filter(ack=True).count() == 0
-        process_common_voice_batch()
-        assert CommonVoiceUpdate.objects.filter(ack=False).count() == 0
-        assert CommonVoiceUpdate.objects.filter(ack=True).count() == 5
-        assert mock_rcvg.delay.call_count == 2
-        assert mock_rcvg.delay.has_calls(
-            [
-                call(
-                    {
-                        "email": "dude@example.com",
-                        "last_active_date": "2020-02-18T14:52:30Z",
-                    },
-                ),
-                call(
-                    {
-                        "email": "donny@example.com",
-                        "last_active_date": "2020-02-15T14:52:30Z",
-                    },
-                ),
-            ],
-        )
-
-    def test_batch_cleanup(self, mock_rcvg):
-        CommonVoiceUpdate.objects.update(ack=True, when=now() - timedelta(hours=25))
-        assert CommonVoiceUpdate.objects.count() == 5
-        process_common_voice_batch()
-        assert CommonVoiceUpdate.objects.count() == 0
-
-    def test_batch_chunking(self, mock_rcvg):
-        obj = CommonVoiceUpdate.objects.create(
-            data={
-                "email": "dude@example.com",
-                "last_active_date": "2020-02-19T14:52:30Z",
-            },
-        )
-        CommonVoiceUpdate.objects.create(
-            data={
-                "email": "dude@example.com",
-                "last_active_date": "2020-02-19T14:53:30Z",
-            },
-        )
-        CommonVoiceUpdate.objects.create(
-            data={
-                "email": "dude@example.com",
-                "last_active_date": "2020-02-19T14:54:30Z",
-            },
-        )
-        CommonVoiceUpdate.objects.create(
-            data={
-                "email": "donny@example.com",
-                "last_active_date": "2020-02-19T14:55:30Z",
-            },
-        )
-        CommonVoiceUpdate.objects.create(
-            data={
-                "email": "donny@example.com",
-                "last_active_date": "2020-02-19T14:56:30Z",
-            },
-        )
-        assert CommonVoiceUpdate.objects.filter(ack=False).count() == 10
-        assert CommonVoiceUpdate.objects.filter(ack=True).count() == 0
-        process_common_voice_batch()
-        assert obj in CommonVoiceUpdate.objects.filter(ack=False)
-        assert CommonVoiceUpdate.objects.filter(ack=False).count() == 5
-        assert CommonVoiceUpdate.objects.filter(ack=True).count() == 5
-        process_common_voice_batch()
-        assert CommonVoiceUpdate.objects.filter(ack=False).count() == 0
-        assert CommonVoiceUpdate.objects.filter(ack=True).count() == 10
-
-
-@override_settings(TASK_LOCKING_ENABLE=False)
 @patch("basket.news.tasks.ctms")
 class TestUpdateCustomUnsub(TestCase):
     token = "the-token"
@@ -768,7 +641,6 @@ class TestUpdateCustomUnsub(TestCase):
         mock_ctms.get.assert_not_called()
 
 
-@override_settings(TASK_LOCKING_ENABLE=False)
 @patch("basket.news.tasks.ctms")
 class TestUpdateUserMeta(TestCase):
     token = "the-token"
