@@ -12,7 +12,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_safe
 
 import fxa.constants
-import requests
 import sentry_sdk
 from django_statsd.clients import statsd
 from ratelimit.core import is_ratelimited
@@ -25,7 +24,7 @@ from basket.news.forms import (
     SubscribeForm,
     UpdateUserMeta,
 )
-from basket.news.models import CommonVoiceUpdate, Interest, Newsletter
+from basket.news.models import Interest, Newsletter
 from basket.news.newsletters import (
     get_transactional_message_ids,
     newsletter_and_group_slugs,
@@ -394,19 +393,7 @@ def common_voice_goals(request):
     if form.is_valid():
         # don't send empty values and use ISO formatted date strings
         data = {k: v for k, v in form.cleaned_data.items() if not (v == "" or v is None)}
-        if settings.COMMON_VOICE_BATCH_UPDATES:
-            if settings.READ_ONLY_MODE:
-                api_key = request.META["HTTP_X_API_KEY"]
-                # forward to basket with r/w DB
-                requests.post(
-                    f"{settings.BASKET_RW_URL}/news/common-voice-goals/",
-                    data=request.POST,
-                    headers={"x-api-key": api_key},
-                )
-            else:
-                CommonVoiceUpdate.objects.create(data=data)
-        else:
-            record_common_voice_update.delay(data)
+        record_common_voice_update.delay(data)
 
         return HttpResponseJSON({"status": "ok"})
     else:

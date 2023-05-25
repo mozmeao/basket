@@ -1,21 +1,18 @@
 import logging
 import re
-from datetime import date, datetime, timedelta
-from email.utils import formatdate
+from datetime import date
 from functools import wraps
-from time import mktime, time
+from time import time
 from urllib.parse import urlencode
 
 from django.conf import settings
 from django.core.cache import cache
-from django.utils.timezone import now
 
 import requests
 import sentry_sdk
 import user_agents
 from celery.signals import task_failure, task_retry, task_success
 from celery.utils.time import get_exponential_backoff_interval
-from dateutil.parser import isoparse
 from django_statsd.clients import statsd
 from silverpop.api import SilverpopResponseException
 
@@ -30,7 +27,6 @@ from basket.news.backends.ctms import (
 from basket.news.celery import app as celery_app
 from basket.news.models import (
     AcousticTxEmailMessage,
-    CommonVoiceUpdate,
     FailedTask,
     Interest,
     Newsletter,
@@ -225,14 +221,6 @@ def et_task(func):
                 sentry_sdk.capture_exception()
 
     return wrapped
-
-
-def gmttime(basetime=None):
-    if basetime is None:
-        basetime = datetime.now()
-    d = basetime + timedelta(minutes=10)
-    stamp = mktime(d.timetuple())
-    return formatdate(timeval=stamp, localtime=False, usegmt=True)
 
 
 def fxa_source_url(metrics):
@@ -704,13 +692,6 @@ def send_recovery_message_acoustic(email, token, lang, fmt):
 
 
 @et_task
-def record_common_voice_goals(data):
-    # send currently queued tasks to the DB for processing
-    # TODO delete once we're done
-    CommonVoiceUpdate.objects.create(data=data)
-
-
-@et_task
 def record_common_voice_update(data):
     # do not change the sent data in place. A retry will use the changed data.
     dcopy = data.copy()
@@ -728,46 +709,6 @@ def record_common_voice_update(data):
     else:
         new_data.update({"email": email, "token": generate_token()})
         ctms.add(new_data)
-
-
-@celery_app.task()
-def process_common_voice_batch():
-    if not settings.COMMON_VOICE_BATCH_PROCESSING:
-        return
-
-    updates = CommonVoiceUpdate.objects.filter(ack=False)[: settings.COMMON_VOICE_BATCH_CHUNK_SIZE]
-    per_user = {}
-    for update in updates:
-        # last_active_date is when the update was sent basically, so we can use
-        # it for ordering
-        data = update.data
-        last_active = isoparse(data["last_active_date"])
-        if data["email"] in per_user and per_user[data["email"]]["last_active"] > last_active:
-            continue
-
-        per_user[data["email"]] = {
-            "last_active": last_active,
-            "data": data,
-        }
-
-    for info in per_user.values():
-        record_common_voice_update.delay(info["data"])
-
-    for update in updates:
-        # do them one at a time to ensure that we don't ack new ones that have
-        # come in since we started
-        update.ack = True
-        update.save()
-
-    statsd.incr("news.tasks.process_common_voice_batch.all_updates", len(updates))
-    # delete ack'd updates more than 24 hours old
-    when = now() - timedelta(hours=24)
-    deleted, _ = CommonVoiceUpdate.objects.filter(ack=True, when__lte=when).delete()
-    statsd.incr("news.tasks.process_common_voice_batch.deleted", deleted)
-    statsd.gauge(
-        "news.tasks.process_common_voice_batch.queue_volume",
-        CommonVoiceUpdate.objects.filter(ack=False).count(),
-    )
 
 
 @celery_app.task()

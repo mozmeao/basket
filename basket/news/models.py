@@ -403,15 +403,3 @@ class AcousticTxEmailMessage(models.Model):
     @property
     def slug(self):
         return make_slug(self.message_id, self.language)
-
-
-class CommonVoiceUpdate(models.Model):
-    when = models.DateTimeField(editable=False, default=now)
-    data = models.JSONField()
-    ack = models.BooleanField(default=False)
-
-    class Meta:
-        ordering = ["pk"]
-
-    def __str__(self):  # pragma: no cover
-        return f"Common Voice update {self.date}"
