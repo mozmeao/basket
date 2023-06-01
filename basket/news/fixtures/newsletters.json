@@ -1,240 +1,122 @@
 [
   {
-    "pk": 1,
-    "model": "news.newsletter",
     "fields": {
-      "vendor_id": "MOZILLA_AND_YOU",
-      "description": "A monthly newsletter packed with tips to improve your browsing experience.",
+      "active": true,
+      "description": "Get how-tos, advice and news to make your Firefox experience work best for you.",
+      "firefox_confirm": true,
+      "indent": false,
+      "is_mofo": false,
+      "is_waitlist": false,
+      "languages": "de,en,es,fr,id,pt,ru,pl,zh-TW",
+      "order": 1,
+      "private": false,
+      "requires_double_optin": true,
       "show": true,
-      "welcome": "",
-      "languages": "de,en,es,fr,id,pt-BR,ru",
-      "active": true,
-      "title": "Firefox & You",
-      "slug": "mozilla-and-you"
-    }
+      "slug": "mozilla-and-you",
+      "title": "Firefox News",
+      "vendor_id": "MOZILLA_AND_YOU"
+    },
+    "model": "news.newsletter",
+    "pk": 1
   },
   {
-    "pk": 2,
-    "model": "news.newsletter",
     "fields": {
-      "vendor_id": "ABOUT_MOBILE",
-      "description": "Get the power of Firefox in the palm of your hand.",
+      "active": true,
+      "description": "Regular updates to keep you informed and active in our fight for a better internet.",
+      "firefox_confirm": false,
+      "indent": false,
+      "is_mofo": true,
+      "is_waitlist": false,
+      "languages": "de,en,es,fr,id,pt,ru,pl,zh-TW",
+      "order": 2,
+      "private": false,
+      "requires_double_optin": true,
       "show": true,
-      "welcome": "",
-      "languages": "de,en,es,fr,id,pt-BR,ru",
+      "slug": "mozilla-foundation",
+      "title": "Mozilla News",
+      "vendor_id": "MOZILLA_FOUNDATION"
+    },
+    "model": "news.newsletter",
+    "pk": 2
+  },
+  {
+    "fields": {
       "active": true,
-      "title": "Firefox for Android",
-      "slug": "mobile"
-    }
-  },
-  {
-    "pk": 3,
-    "model": "news.newsletter",
-    "fields": {
-      "vendor_id": "FIREFOX_TIPS",
-      "description": "Get a weekly tip on how to super-charge your Firefox experience.",
-      "show": false,
-      "welcome": "",
+      "description": "Special announcements about Mozilla's annual, hands-on festival dedicated to forging the future of the open Web.",
+      "firefox_confirm": false,
+      "indent": true,
+      "is_mofo": true,
+      "is_waitlist": false,
       "languages": "en",
-      "active": false,
-      "title": "Firefox Weekly Tips",
-      "slug": "firefox-tips"
-    }
-  },
-  {
-    "pk": 5,
-    "model": "news.newsletter",
-    "fields": {
-      "vendor_id": "AURORA",
-      "description": "Aurora",
-      "show": false,
-      "welcome": "",
-      "languages": "en",
-      "active": false,
-      "title": "Aurora",
-      "slug": "aurora"
-    }
-  },
-  {
-    "pk": 6,
-    "model": "news.newsletter",
-    "fields": {
-      "vendor_id": "ABOUT_MOZILLA",
-      "description": "News from the Mozilla Project",
-      "show": false,
-      "welcome": "",
-      "languages": "en",
-      "active": true,
-      "title": "About Mozilla",
-      "slug": "about-mozilla"
-    }
-  },
-  {
-    "pk": 19,
-    "model": "news.newsletter",
-    "fields": {
-      "vendor_id": "FLICKS",
-      "description": "",
+      "order": 3,
+      "private": false,
+      "requires_double_optin": true,
       "show": true,
-      "welcome": "Firefox_Flicks_Welcome",
-      "languages": "en",
+      "slug": "mozilla-festival",
+      "title": "Mozilla Festival",
+      "vendor_id": "MOZILLA_FESTIVAL"
+    },
+    "model": "news.newsletter",
+    "pk": 3
+  },
+  {
+    "fields": {
       "active": true,
-      "title": "Firefox Flicks",
-      "slug": "firefox-flicks"
-    }
+      "description": "Keep up with our annual compilation of research and stories on the issues of privacy & security, openness, digital inclusion, decentralization, and web literacy.",
+      "firefox_confirm": false,
+      "indent": true,
+      "is_mofo": true,
+      "is_waitlist": false,
+      "languages": "en,de,es,fr",
+      "order": 4,
+      "private": false,
+      "requires_double_optin": true,
+      "show": true,
+      "slug": "internet-health-report",
+      "title": "Internet Health Report",
+      "vendor_id": "INTERNET_HEALTH_REPORT"
+    },
+    "model": "news.newsletter",
+    "pk": 4
   },
   {
-    "pk": 18,
-    "model": "news.newsletter",
     "fields": {
-      "vendor_id": "AFFILIATES",
-      "description": "",
-      "show": false,
-      "welcome": "",
-      "languages": "en",
-      "active": false,
-      "title": "Firefox Affiliates",
-      "slug": "affiliates"
-    }
-  },
-  {
-    "pk": 17,
-    "model": "news.newsletter",
-    "fields": {
-      "vendor_id": "APP_DEV",
-      "description": "",
-      "show": false,
-      "welcome": "",
-      "languages": "en",
-      "active": false,
-      "title": "Firefox Apps & Hacks",
-      "slug": "app-dev"
-    }
-  },
-  {
-    "pk": 16,
-    "model": "news.newsletter",
-    "fields": {
-      "vendor_id": "MOZILLA_PHONE",
-      "description": "",
-      "show": false,
-      "welcome": "",
-      "languages": "en",
       "active": true,
-      "title": "Mozillians",
-      "slug": "mozilla-phone"
-    }
+      "description": "Stay informed about our open-source voice database to help make voice recognition open to everyone.",
+      "firefox_confirm": false,
+      "indent": true,
+      "is_mofo": true,
+      "is_waitlist": false,
+      "languages": "en",
+      "order": 5,
+      "private": false,
+      "requires_double_optin": true,
+      "show": true,
+      "slug": "common-voice",
+      "title": "Common Voice",
+      "vendor_id": "COMMON_VOICE"
+    },
+    "model": "news.newsletter",
+    "pk": 5
   },
   {
-    "pk": 15,
-    "model": "news.newsletter",
     "fields": {
-      "vendor_id": "JOIN_MOZILLA",
-      "description": "",
-      "show": false,
-      "welcome": "",
-      "languages": "en",
-      "active": false,
-      "title": "Join Mozilla",
-      "slug": "join-mozilla"
-    }
-  },
-  {
-    "pk": 14,
-    "model": "news.newsletter",
-    "fields": {
-      "vendor_id": "ADD_ONS",
-      "description": "",
-      "show": false,
-      "welcome": "",
-      "languages": "en",
-      "active": false,
-      "title": "Addon Development",
-      "slug": "addon-dev"
-    }
-  },
-  {
-    "pk": 7,
-    "model": "news.newsletter",
-    "fields": {
-      "vendor_id": "DRUMBEAT_NEWS_GROUP",
-      "description": "",
-      "show": false,
-      "welcome": "",
-      "languages": "en",
-      "active": false,
-      "title": "Drumbeat Newsgroup",
-      "slug": "drumbeat"
-    }
-  },
-  {
-    "pk": 8,
-    "model": "news.newsletter",
-    "fields": {
-      "vendor_id": "ABOUT_ADDONS",
-      "description": "",
-      "show": false,
-      "welcome": "",
-      "languages": "en",
-      "active": false,
-      "title": "About Addons",
-      "slug": "addons"
-    }
-  },
-  {
-    "pk": 9,
-    "model": "news.newsletter",
-    "fields": {
-      "vendor_id": "ABOUT_LABS",
-      "description": "",
-      "show": false,
-      "welcome": "",
-      "languages": "en",
-      "active": false,
-      "title": "About Labs",
-      "slug": "labs"
-    }
-  },
-  {
-    "pk": 12,
-    "model": "news.newsletter",
-    "fields": {
-      "vendor_id": "ABOUT_STANDARDS",
-      "description": "",
-      "show": false,
-      "welcome": "",
-      "languages": "en",
-      "active": false,
-      "title": "About Standards",
-      "slug": "about-standards"
-    }
-  },
-  {
-    "pk": 4,
-    "model": "news.newsletter",
-    "fields": {
-      "vendor_id": "FIREFOX_BETA_NEWS",
-      "description": "Read about the latest features for Firefox desktop and mobile before the final release.",
-      "show": false,
-      "welcome": "",
-      "languages": "en",
       "active": true,
-      "title": "Beta News",
-      "slug": "beta"
-    }
-  },
-  {
-    "pk": 20,
-    "model": "news.newsletter",
-    "fields": {
-      "vendor_id": "STUDENT_AMBASSADORS",
-      "description": "",
+      "description": "Mozilla VPN Waitlist",
+      "firefox_confirm": false,
+      "indent": false,
+      "is_mofo": false,
+      "is_waitlist": true,
+      "languages": "en,de,fr",
+      "order": 9,
+      "private": false,
+      "requires_double_optin": false,
       "show": false,
-      "welcome": "",
-      "languages": "en",
-      "active": true,
-      "title": "Student Ambassadors",
-      "slug": "student-ambassadors"
-    }
+      "slug": "guardian-vpn-waitlist",
+      "title": "Mozilla VPN Waitlist",
+      "vendor_id": "GUARDIAN_VPN_WAITLIST"
+    },
+    "model": "news.newsletter",
+    "pk": 9
   }
 ]
