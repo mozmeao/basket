@@ -749,6 +749,38 @@ class ToVendorTests(TestCase):
             "newsletters": [{"name": "guardian-vpn-waitlist", "subscribed": True}]
         }
 
+    @patch(
+        "basket.news.backends.ctms.newsletter_slugs",
+        return_value=["guardian-vpn-waitlist"],
+    )
+    @patch(
+        "basket.news.backends.ctms.newsletter_waitlist_slugs",
+        return_value=["guardian-vpn-waitlist"],
+    )
+    @patch("basket.news.backends.ctms.sentry_sdk")
+    def test_no_unknown_data_for_standard_waitlist_subscribe(
+        self, mock_sentry, mock_wl_slugs, mock_nl_slugs
+    ):
+        """Reproduce mozmeao/basket#1012"""
+        data = {
+            "fpn_country": "ua",
+            "lang": "en",
+            "newsletters": ["guardian-vpn-waitlist"],
+            "source_url": "https://www.mozilla.org/ru/products/vpn/invite/",
+        }
+        prepared = to_vendor(data)
+        mock_sentry.capture_message.assert_not_called()
+        assert prepared == {
+            "waitlists": [
+                {
+                    "fields": {"geo": "ua"},
+                    "name": "vpn",
+                    "source": "https://www.mozilla.org/ru/products/vpn/invite/",
+                    "subscribed": True,
+                }
+            ]
+        }
+
 
 class CTMSSessionTests(TestCase):
     EXAMPLE_TOKEN = {
