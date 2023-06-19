@@ -1,6 +1,6 @@
 APScheduler==3.10.1
 backports.zoneinfo==0.2.1
-boto3==1.26.152
+boto3==1.26.155
 celery==4.4.7
 configparser==5.3.0
 contextlib2==21.6.0
