@@ -1,7 +1,4 @@
 #!/bin/bash -ex
 
-exec newrelic-admin run-program celery -A basket.news worker \
-                                       -P "${CELERY_POOL:-prefork}" \
-                                       -l "${CELERY_LOG_LEVEL:-warning}" \
-                                       -c "${CELERY_NUM_WORKERS:-4}" \
-                                       -Q celery,snitch
+NEW_RELIC_CONFIG_FILE=newrelic.ini newrelic-admin run-program \
+python manage.py rqworker --with-scheduler

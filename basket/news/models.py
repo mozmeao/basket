@@ -8,9 +8,8 @@ from django.utils.timezone import now
 import sentry_sdk
 from product_details import product_details
 
+from basket.base.rq import enqueue_kwargs, get_queue
 from basket.news.fields import CommaSeparatedEmailField, LocaleField, parse_emails
-
-from .celery import app as celery_app
 
 
 def get_uuid():
@@ -180,8 +179,9 @@ class QueuedTask(models.Model):
         return f"{self.name} {self.args} {self.kwargs}"
 
     def retry(self):
-        celery_app.send_task(self.name, args=self.args, kwargs=self.kwargs)
-        # Forget the old task
+        kwargs = enqueue_kwargs(self.name)
+        get_queue().enqueue(self.name, args=self.args, kwargs=self.kwargs, **kwargs)
+        # Forget the old task.
         self.delete()
 
 
@@ -203,33 +203,9 @@ class FailedTask(models.Model):
         formatted_kwargs = ["%s=%r" % (key, val) for key, val in self.kwargs.items()]
         return "%s(%s)" % (self.name, ", ".join(formatted_args + formatted_kwargs))
 
-    @property
-    def filtered_args(self):
-        """
-        Convert args that came from QueryDict instances to regular dicts.
-
-        This is necessary because some tasks were bing called with QueryDict
-        instances, and whereas the Pickle for the task worked fine, storing
-        the args as JSON resulted in the dicts actually being a dict full
-        of length 1 lists instead of strings. This converts them back when
-        it finds them.
-
-        This only needs to exist while we have old failure instances around.
-
-        @return: list args: serialized QueryDicts converted to plain dicts.
-        """
-        # TODO remove after old failed tasks are deleted
-        args = self.args
-        for i, arg in enumerate(args):
-            if _is_query_dict(arg):
-                args[i] = dict((key, arg[key][0]) for key in arg)
-
-        return args
-
     def retry(self):
-        # Meet the new task,
-        # same as the old task.
-        celery_app.send_task(self.name, args=self.filtered_args, kwargs=self.kwargs)
+        kwargs = enqueue_kwargs(self.name)
+        get_queue().enqueue(self.name, args=self.args, kwargs=self.kwargs, **kwargs)
         # Forget the old task
         self.delete()
 

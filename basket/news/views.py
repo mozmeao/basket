@@ -1,6 +1,5 @@
 import os
 import re
-from time import time
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -229,7 +228,7 @@ def confirm(request, token):
         increment=True,
     ):
         raise Ratelimited()
-    confirm_user.delay(token, start_time=time())
+    confirm_user.delay(token)
     return HttpResponseJSON({"status": "ok"})
 
 
@@ -465,7 +464,7 @@ def subscribe_main(request):
             return respond_error(request, form, "Rate limit reached", 429)
 
         try:
-            upsert_user.delay(SUBSCRIBE, data, start_time=time())
+            upsert_user.delay(SUBSCRIBE, data)
         except Exception:
             return respond_error(request, form, "Unknown error", 500)
 
@@ -671,18 +670,6 @@ def send_recovery_message(request):
     fmt = user_data.get("format", "H") or "H"
     send_recovery_message_acoustic.delay(email, user_data["token"], lang, fmt)
     return HttpResponseJSON({"status": "ok"})
-
-
-@never_cache
-def debug_user(request):
-    return HttpResponseJSON(
-        {
-            "status": "error",
-            "desc": "method removed. use lookup-user and an API key.",
-            "code": errors.BASKET_USAGE_ERROR,
-        },
-        404,
-    )
 
 
 # Custom update methods
@@ -928,7 +915,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
         statsd.incr("news.views.subscribe.sync")
         if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
             # save what we can
-            upsert_user.delay(api_call_type, data, start_time=time())
+            upsert_user.delay(api_call_type, data)
             # have to error since we can't return a token
             return HttpResponseJSON(
                 {
@@ -959,5 +946,5 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
         token, created = upsert_contact(api_call_type, data, user_data)
         return HttpResponseJSON({"status": "ok", "token": token, "created": created})
     else:
-        upsert_user.delay(api_call_type, data, start_time=time())
+        upsert_user.delay(api_call_type, data)
         return HttpResponseJSON({"status": "ok"})

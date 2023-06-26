@@ -16,7 +16,6 @@
 /static
 Dockerfile.jenkins
 build.py
-celerybeat-schedule
 docs/_build
 docs/_gh-pages
 pip-log.txt

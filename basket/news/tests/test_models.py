@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from django.core import mail
 from django.test import TestCase
+from django.test.utils import override_settings
 
 from basket.news import models
 
@@ -46,71 +47,29 @@ class AcousticTxEmailTests(TestCase):
 
 
 class FailedTaskTest(TestCase):
-    good_task_args = [{"case_type": "ringer", "email": "dude@example.com"}, "walter"]
+    args = [{"case_type": "ringer", "email": "dude@example.com"}, "walter"]
+    kwargs = {"foo": "bar"}
 
-    def test_retry_with_dict(self):
-        """When given args with a simple dict, subtask should get matching arguments."""
+    @override_settings(RQ_MAX_RETRIES=2)
+    @patch("basket.base.rq.random")
+    @patch("basket.base.rq.Queue.enqueue")
+    def test_retry(self, mock_enqueue, mock_random):
+        """Test args and kwargs are passed to enqueue."""
+        mock_random.randrange.side_effect = [60, 90]
         task_name = "make_a_caucasian"
         task = models.FailedTask.objects.create(
             task_id="el-dudarino",
             name=task_name,
-            args=self.good_task_args,
+            args=self.args,
+            kwargs=self.kwargs,
         )
-        with patch.object(models.celery_app, "send_task") as sub_mock:
-            task.retry()
+        task.retry()
 
-        sub_mock.assert_called_with(task_name, args=self.good_task_args, kwargs={})
-
-    def test_retry_with_querydict(self):
-        """When given args with a QueryDict, subtask should get a dict."""
-        task_name = "make_a_caucasian"
-        task_args = [{"case_type": ["ringer"], "email": ["dude@example.com"]}, "walter"]
-        task = models.FailedTask.objects.create(
-            task_id="el-dudarino",
-            name=task_name,
-            args=task_args,
-        )
-        with patch.object(models.celery_app, "send_task") as sub_mock:
-            task.retry()
-
-        sub_mock.assert_called_with(task_name, args=self.good_task_args, kwargs={})
-
-    def test_retry_with_querydict_not_first(self):
-        """When given args with a QueryDict in any position, subtask should get
-        a dict."""
-        task_name = "make_a_caucasian"
-        task_args = [
-            "donny",
-            {"case_type": ["ringer"], "email": ["dude@example.com"]},
-            "walter",
-        ]
-        task = models.FailedTask.objects.create(
-            task_id="el-dudarino",
-            name=task_name,
-            args=task_args,
-        )
-        with patch.object(models.celery_app, "send_task") as sub_mock:
-            task.retry()
-
-        sub_mock.assert_called_with(
-            task_name,
-            args=["donny"] + self.good_task_args,
-            kwargs={},
-        )
-
-    def test_retry_with_almost_querydict(self):
-        """When given args with a dict with a list, subtask should get a same args."""
-        task_name = "make_a_caucasian"
-        task_args = [{"case_type": "ringer", "email": ["dude@example.com"]}, "walter"]
-        task = models.FailedTask.objects.create(
-            task_id="el-dudarino",
-            name=task_name,
-            args=task_args,
-        )
-        with patch.object(models.celery_app, "send_task") as sub_mock:
-            task.retry()
-
-        sub_mock.assert_called_with(task_name, args=task_args, kwargs={})
+        mock_enqueue.assert_called_once()
+        assert mock_enqueue.call_args.args[0] == task_name
+        assert mock_enqueue.call_args.kwargs["args"] == self.args
+        assert mock_enqueue.call_args.kwargs["kwargs"] == self.kwargs
+        assert mock_enqueue.call_args.kwargs["retry"].intervals == [60, 90]
 
 
 class InterestTests(TestCase):

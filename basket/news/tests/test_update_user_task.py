@@ -1,5 +1,5 @@
 import json
-from unittest.mock import ANY, patch
+from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import RequestFactory, TestCase
@@ -64,7 +64,7 @@ class UpdateUserTaskTests(TestCase):
 
         response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
-        self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data, start_time=ANY)
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data)
 
     @patch("basket.news.utils.get_best_language")
     @patch("basket.news.utils.newsletter_languages")
@@ -78,7 +78,7 @@ class UpdateUserTaskTests(TestCase):
 
         response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
-        self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data, start_time=ANY)
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data)
 
     @patch("basket.news.utils.get_best_language")
     @patch("basket.news.utils.newsletter_languages")
@@ -95,7 +95,7 @@ class UpdateUserTaskTests(TestCase):
         response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
         # basically asserts that the data['lang'] value wasn't changed.
-        self.upsert_user.delay.assert_called_with(SUBSCRIBE, data, start_time=ANY)
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, data)
 
     @patch("basket.news.utils.get_best_language")
     @patch("basket.news.utils.newsletter_languages")
@@ -113,7 +113,7 @@ class UpdateUserTaskTests(TestCase):
         response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
         # basically asserts that the data['lang'] value wasn't changed.
-        self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data, start_time=ANY)
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, after_data)
 
     def test_missing_email(self):
         """
@@ -134,7 +134,7 @@ class UpdateUserTaskTests(TestCase):
 
         response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
-        self.upsert_user.delay.assert_called_with(SUBSCRIBE, data, start_time=ANY)
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, data)
         self.assertFalse(self.upsert_contact.called)
 
     def test_success_with_valid_newsletters(self):
@@ -171,7 +171,7 @@ class UpdateUserTaskTests(TestCase):
         response = views.update_user_task(request, SUBSCRIBE, sync=False)
 
         self.assert_response_ok(response)
-        self.upsert_user.delay.assert_called_with(SUBSCRIBE, data, start_time=ANY)
+        self.upsert_user.delay.assert_called_with(SUBSCRIBE, data)
 
     @patch("basket.news.views.get_user_data")
     def test_success_with_sync(self, gud_mock):
@@ -208,7 +208,7 @@ class UpdateUserTaskTests(TestCase):
         response = views.update_user_task(request, UNSUBSCRIBE, data)
 
         self.assert_response_ok(response)
-        self.upsert_user.delay.assert_called_with(UNSUBSCRIBE, data, start_time=ANY)
+        self.upsert_user.delay.assert_called_with(UNSUBSCRIBE, data)
         mock_api_key.assert_not_called()
 
     @patch("basket.news.views.newsletter_and_group_slugs")

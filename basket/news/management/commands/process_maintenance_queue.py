@@ -7,11 +7,7 @@ from basket.news.models import QueuedTask
 class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
-            "-n",
-            "--num-tasks",
-            type=int,
-            default=settings.QUEUE_BATCH_SIZE,
-            help="Number of tasks to process ({})".format(settings.QUEUE_BATCH_SIZE),
+            "-n", "--num-tasks", type=int, default=settings.QUEUE_BATCH_SIZE, help=f"Number of tasks to process ({settings.QUEUE_BATCH_SIZE})"
         )
 
     def handle(self, *args, **options):
@@ -23,4 +19,4 @@ class Command(BaseCommand):
             task.retry()
             count += 1
 
-        print("{} processed. {} remaining.".format(count, QueuedTask.objects.count()))
+        print(f"{count} processed. {QueuedTask.objects.count()} remaining.")

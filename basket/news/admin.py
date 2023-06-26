@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib import admin, messages
+from django.template.defaultfilters import pluralize
 
 from product_details import product_details
 
@@ -159,10 +160,7 @@ class QueuedTaskAdmin(admin.ModelAdmin):
         for old_task in queryset:
             old_task.retry()
             count += 1
-        messages.info(
-            request,
-            "Queued %d task%s to process" % (count, "" if count == 1 else "s"),
-        )
+        messages.info(request, f"Queued {count} task{pluralize(count)} to process.")
 
     retry_task_action.short_description = "Process task(s)"
 
@@ -180,10 +178,7 @@ class FailedTaskAdmin(admin.ModelAdmin):
         for old_task in queryset:
             old_task.retry()
             count += 1
-        messages.info(
-            request,
-            "Queued %d task%s to try again" % (count, "" if count == 1 else "s"),
-        )
+        messages.info(request, f"Queued {count} task{pluralize(count)} to try again.")
 
     retry_task_action.short_description = "Retry task(s)"
 

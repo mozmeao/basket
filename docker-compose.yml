@@ -19,16 +19,9 @@ services:
     platform: linux/amd64
     volumes:
       - .:/app
-    environment:
-      - DATABASE_URL=mysql://root@db/basket
-      - DEBUG=True
-      - ALLOWED_HOSTS=localhost,127.0.0.1,
-      - REDIS_URL=redis://redis:6379
-      - CELERY_TASK_ALWAYS_EAGER=False
-      - CELERY_LOG_LEVEL=debug
-      - DJANGO_LOG_LEVEL=DEBUG
-      - URLWAIT_TIMEOUT=30
-    env_file: .env
+    env_file:
+      - docker/envfiles/local.env
+      - .env
     ports:
       - "8000:8000"
     depends_on:
@@ -42,16 +35,9 @@ services:
     platform: linux/amd64
     volumes:
       - .:/app
-    environment:
-      - DATABASE_URL=mysql://root@db/basket
-      - DEBUG=True
-      - ALLOWED_HOSTS=localhost,127.0.0.1,
-      - REDIS_URL=redis://redis:6379
-      - CELERY_TASK_ALWAYS_EAGER=False
-      - CELERY_LOG_LEVEL=debug
-      - DJANGO_LOG_LEVEL=DEBUG
-      - URLWAIT_TIMEOUT=30
-    env_file: .env
+    env_file:
+      - docker/envfiles/local.env
+      - .env
     depends_on:
       - db
       - redis
@@ -63,16 +49,9 @@ services:
     platform: linux/amd64
     volumes:
       - .:/app
-    environment:
-      - DATABASE_URL=mysql://root@db/basket
-      - DEBUG=True
-      - ALLOWED_HOSTS=localhost,127.0.0.1,
-      - CELERY_TASK_ALWAYS_EAGER=True
-      - CELERY_LOG_LEVEL=debug
-      - DJANGO_LOG_LEVEL=DEBUG
-      - URLWAIT_TIMEOUT=30
-      - REDIS_URL=redis://redis:6379
-    env_file: docker/envfiles/test.env
+    env_file:
+      - docker/envfiles/local.env
+      - docker/envfiles/test.env
     depends_on:
       - db
       - redis
@@ -82,16 +61,9 @@ services:
   test-image:
     image: mozmeao/basket:${GIT_COMMIT_SHORT:-latest}
     platform: linux/amd64
-    environment:
-      - DATABASE_URL=mysql://root@db/basket
-      - DEBUG=True
-      - ALLOWED_HOSTS=localhost,127.0.0.1,
-      - CELERY_TASK_ALWAYS_EAGER=True
-      - CELERY_LOG_LEVEL=debug
-      - DJANGO_LOG_LEVEL=DEBUG
-      - URLWAIT_TIMEOUT=30
-      - REDIS_URL=redis://redis:6379
-    env_file: docker/envfiles/test.env
+    env_file:
+      - docker/envfiles/local.env
+      - docker/envfiles/test.env
     depends_on:
       - db
       - redis

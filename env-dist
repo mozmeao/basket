@@ -1,9 +1,6 @@
-DEBUG=1
+DEBUG=True
 
 # change this to something secret when deployed
 SECRET_KEY=sssssssshhhhhhhhhh
-
-# uncomment this if you aren't using the full docker environment
-#CELERY_TASK_ALWAYS_EAGER=1
 
 ALLOWED_HOSTS='*'
