@@ -3,7 +3,6 @@ import platform
 import socket
 import struct
 import sys
-from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
@@ -11,10 +10,10 @@ import django_cache_url
 import sentry_sdk
 from decouple import Csv, UndefinedValueError, config
 from sentry_processor import DesensitizationProcessor
-from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import ignore_logger
 from sentry_sdk.integrations.redis import RedisIntegration
+from sentry_sdk.integrations.rq import RqIntegration
 
 # Application version.
 VERSION = (0, 1)
@@ -29,6 +28,11 @@ def path(*args):
 
 
 DEBUG = config("DEBUG", default=False, cast=bool)
+UNITTEST = config("UNITTEST", default=False, cast=bool)
+
+# If we forget to set a `UNITTEST` env var by are running `pytest`, set it.
+if sys.argv[0].endswith(("py.test", "pytest")):
+    UNITTEST = True
 
 ADMINS = (
     # ('Your Name', 'your_email@domain.com'),
@@ -47,14 +51,6 @@ BASKET_RW_URL = config(
     default="https://prod-oregon-b.basket.moz.works",
 )
 
-REDIS_URL = config("REDIS_URL", None)
-if REDIS_URL:
-    REDIS_URL = REDIS_URL.rstrip("/0")
-    HIREDIS_URL = REDIS_URL.replace("redis://", "hiredis://")
-    # use redis for celery and cache
-    os.environ["CELERY_BROKER_URL"] = REDIS_URL + "/" + config("REDIS_CELERY_DB", "0")
-    os.environ["CACHE_URL"] = HIREDIS_URL + "/" + config("REDIS_CACHE_DB", "1")
-
 # Production uses MySQL, but Sqlite should be sufficient for local development.
 # Our CI server tests against MySQL.
 DATABASES = {
@@ -69,6 +65,16 @@ if DATABASES["default"]["ENGINE"] == "django.db.backends.mysql":
         "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
     }
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
+# CACHE_URL and RQ_URL are derived from REDIS_URL.
+REDIS_URL = config("REDIS_URL", None)
+if REDIS_URL:
+    REDIS_URL = REDIS_URL.rstrip("/0")
+    HIREDIS_URL = REDIS_URL.replace("redis://", "hiredis://")
+    # Use Redis for cache and rq.
+    # Note: We save the URL in the environment so `config` can pull from it below.
+    os.environ["CACHE_URL"] = HIREDIS_URL + "/" + config("REDIS_CACHE_DB", "1")
+    RQ_URL = REDIS_URL + "/" + config("REDIS_RQ_DB", "2")
 
 CACHES = {
     "default": config("CACHE_URL", default="locmem://", cast=django_cache_url.parse),
@@ -244,48 +250,14 @@ CORS_URLS_REGEX = r"^/(news/|subscribe)"
 # view rate limiting
 RATELIMIT_VIEW = "basket.news.views.ratelimited"
 
-KOMBU_FERNET_KEY = config("KOMBU_FERNET_KEY", None)
-# for key rotation
-KOMBU_FERNET_KEY_PREVIOUS = config("KOMBU_FERNET_KEY_PREVIOUS", None)
-CELERY_TASK_ALWAYS_EAGER = config("CELERY_TASK_ALWAYS_EAGER", DEBUG, cast=bool)
-CELERY_TASK_SERIALIZER = "json"
-CELERY_TASK_ACKS_LATE = config("CELERY_TASK_ACKS_LATE", True, cast=bool)
-CELERY_TASK_REJECT_ON_WORKER_LOST = False
-CELERY_ACCEPT_CONTENT = ["json"]
-CELERY_MAX_RETRY_DELAY_MINUTES = 2048
-CELERY_BROKER_TRANSPORT_OPTIONS = {
-    "visibility_timeout": CELERY_MAX_RETRY_DELAY_MINUTES * 60,
-}
-CELERY_BROKER_URL = config("CELERY_BROKER_URL", None)
-CELERY_REDIS_MAX_CONNECTIONS = config("CELERY_REDIS_MAX_CONNECTIONS", 2, cast=int)
-CELERY_WORKER_DISABLE_RATE_LIMITS = True
-CELERY_TASK_IGNORE_RESULT = True
-CELERY_WORKER_PREFETCH_MULTIPLIER = config(
-    "CELERY_WORKER_PREFETCH_MULTIPLIER",
-    1,
-    cast=int,
-)
-CELERY_TASK_COMPRESSION = "gzip"
-CELERY_TASK_ROUTES = {
-    "basket.news.tasks.snitch": {"queue": "snitch"},
-}
-
-# size in kb
-CELERY_WORKER_MAX_MEMORY_PER_CHILD = config(
-    "CELERY_WORKER_MAX_MEMORY_PER_CHILD",
-    200000,
-    cast=int,
-)
+# RQ configuration.
+RQ_RESULT_TTL = config("RQ_RESULT_TTL", default=0, cast=int)  # Ignore results.
+RQ_MAX_RETRY_DELAY = config("RQ_MAX_RETRY_DELAY", default=34 * 60 * 60, cast=int)  # 34 hours in seconds.
+RQ_MAX_RETRIES = 0 if UNITTEST else config("RQ_MAX_RETRIES", default=12, cast=int)
+RQ_EXCEPTION_HANDLERS = ["basket.base.rq.store_task_exception_handler"]
+RQ_IS_ASYNC = False if UNITTEST else config("RQ_IS_ASYNC", default=True, cast=bool)
 
 SNITCH_ID = config("SNITCH_ID", None)
-
-CELERY_BEAT_SCHEDULE = {}
-
-if SNITCH_ID:
-    CELERY_BEAT_SCHEDULE["snitch"] = {
-        "task": "basket.news.tasks.snitch",
-        "schedule": timedelta(minutes=5),
-    }
 
 
 # via http://stackoverflow.com/a/6556951/107114
@@ -349,7 +321,7 @@ sentry_sdk.init(
     dsn=config("SENTRY_DSN", None),
     release=config("GIT_SHA", None),
     server_name=".".join(x for x in [K8S_NAMESPACE, CLUSTER_NAME, HOSTNAME] if x),
-    integrations=[CeleryIntegration(), DjangoIntegration(), RedisIntegration()],
+    integrations=[DjangoIntegration(signals_spans=False), RedisIntegration(), RqIntegration()],
     before_send=before_send,
 )
 
@@ -399,11 +371,14 @@ PROD_DETAILS_CACHE_TIMEOUT = None
 # regardless of their existence in the DB
 EXTRA_SUPPORTED_LANGS = config("EXTRA_SUPPORTED_LANGS", "", cast=Csv())
 
-TESTING_EMAIL_DOMAINS = config(
-    "TESTING_EMAIL_DOMAINS",
-    "restmail.net,restmail.lcip.org,example.com",
-    cast=Csv(),
-)
+if UNITTEST:
+    TESTING_EMAIL_DOMAINS = []
+else:
+    TESTING_EMAIL_DOMAINS = config(
+        "TESTING_EMAIL_DOMAINS",
+        "restmail.net,restmail.lcip.org,example.com",
+        cast=Csv(),
+    )
 
 MAINTENANCE_MODE = config("MAINTENANCE_MODE", False, cast=bool)
 QUEUE_BATCH_SIZE = config("QUEUE_BATCH_SIZE", 500, cast=int)
@@ -465,8 +440,3 @@ if OIDC_ENABLE:
     OIDC_CREATE_USER = config("OIDC_CREATE_USER", default=False, cast=bool)
     MIDDLEWARE += ("basket.news.middleware.OIDCSessionRefreshMiddleware",)
     LOGIN_REDIRECT_URL = "/admin/"
-
-if sys.argv[0].endswith("py.test") or sys.argv[0].endswith("pytest") or (len(sys.argv) > 1 and sys.argv[1] == "test"):
-    # stuff that's absolutely required for a test run
-    CELERY_TASK_ALWAYS_EAGER = True
-    TESTING_EMAIL_DOMAINS = []

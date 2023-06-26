@@ -1,36 +1,26 @@
 import logging
-import re
 from datetime import date
-from functools import wraps
-from time import time
 from urllib.parse import urlencode
 
 from django.conf import settings
 from django.core.cache import cache
 
-import requests
-import sentry_sdk
 import user_agents
-from celery.signals import task_failure, task_retry, task_success
-from celery.utils.time import get_exponential_backoff_interval
 from django_statsd.clients import statsd
-from silverpop.api import SilverpopResponseException
 
+from basket.base.decorators import rq_task
+from basket.base.exceptions import BasketError
 from basket.base.utils import email_is_testing
 from basket.news.backends.acoustic import acoustic, acoustic_tx
-from basket.news.backends.common import NewsletterException
 from basket.news.backends.ctms import (
     CTMSNotFoundByAltIDError,
     CTMSUniqueIDConflictError,
     ctms,
 )
-from basket.news.celery import app as celery_app
 from basket.news.models import (
     AcousticTxEmailMessage,
-    FailedTask,
     Interest,
     Newsletter,
-    QueuedTask,
 )
 from basket.news.newsletters import get_transactional_message_ids, newsletter_languages
 from basket.news.utils import (
@@ -47,181 +37,6 @@ from basket.news.utils import (
 
 log = logging.getLogger(__name__)
 
-# don't propagate and don't retry if these are the error messages
-IGNORE_ERROR_MSGS = [
-    "INVALID_EMAIL_ADDRESS",
-    "InvalidEmailAddress",
-    "An invalid phone number was provided",
-    "No valid subscribers were provided",
-    "There are no valid subscribers",
-    "email address is suppressed",
-    "invalid email address",
-]
-# don't propagate and don't retry if these regex match the error messages
-IGNORE_ERROR_MSGS_RE = [re.compile(r"campaignId \d+ not found")]
-# don't propagate after max retries if these are the error messages
-IGNORE_ERROR_MSGS_POST_RETRY = []
-# tasks exempt from maintenance mode queuing
-MAINTENANCE_EXEMPT = []
-
-
-def exponential_backoff(retries):
-    """
-    Return a number of seconds to delay the next task attempt using
-    an exponential back-off algorithm with jitter.
-
-    See https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/
-
-    :param retries: Number of retries so far
-    :return: number of seconds to delay the next try
-    """
-    backoff_minutes = get_exponential_backoff_interval(
-        factor=2,
-        retries=retries,
-        maximum=settings.CELERY_MAX_RETRY_DELAY_MINUTES,
-        full_jitter=True,
-    )
-    # wait for a minimum of 1 minute
-    return max(1, backoff_minutes) * 60
-
-
-def ignore_error(exc, to_ignore=None, to_ignore_re=None):
-    to_ignore = to_ignore or IGNORE_ERROR_MSGS
-    to_ignore_re = to_ignore_re or IGNORE_ERROR_MSGS_RE
-    msg = str(exc)
-    for ignore_msg in to_ignore:
-        if ignore_msg in msg:
-            return True
-
-    for ignore_re in to_ignore_re:
-        if ignore_re.search(msg):
-            return True
-
-    return False
-
-
-def ignore_error_post_retry(exc):
-    return ignore_error(exc, IGNORE_ERROR_MSGS_POST_RETRY)
-
-
-class BasketError(Exception):
-    """Tasks can raise this when an error happens that we should not retry.
-    E.g. if the error indicates we're passing bad parameters.
-    (As opposed to an error connecting to ExactTarget at the moment,
-    where we'd typically raise NewsletterException.)
-    """
-
-    def __init__(self, msg):
-        super(BasketError, self).__init__(msg)
-
-
-class RetryTask(Exception):
-    """an exception to raise within a task if you just want to retry"""
-
-
-@task_failure.connect
-def on_task_failure(sender, task_id, exception, einfo, args, kwargs, **skwargs):
-    statsd.incr(sender.name + ".failure")
-    if not sender.name.endswith("snitch"):
-        statsd.incr("news.tasks.failure_total")
-        if settings.STORE_TASK_FAILURES:
-            FailedTask.objects.create(
-                task_id=task_id,
-                name=sender.name,
-                args=args,
-                kwargs=kwargs,
-                exc=repr(exception),
-                # str() gives more info than repr() on
-                # celery.datastructures.ExceptionInfo
-                einfo=str(einfo),
-            )
-
-
-@task_retry.connect
-def on_task_retry(sender, **kwargs):
-    statsd.incr(sender.name + ".retry")
-    if not sender.name.endswith("snitch"):
-        statsd.incr("news.tasks.retry_total")
-
-
-@task_success.connect
-def on_task_success(sender, **kwargs):
-    statsd.incr(sender.name + ".success")
-    if not sender.name.endswith("snitch"):
-        statsd.incr("news.tasks.success_total")
-
-
-def et_task(func):
-    """Decorator to standardize ET Celery tasks."""
-    full_task_name = "news.tasks.%s" % func.__name__
-
-    # continue to use old names regardless of new layout
-    @celery_app.task(
-        name=full_task_name,
-        bind=True,
-        default_retry_delay=300,
-        max_retries=12,  # 5 min
-    )
-    @wraps(func)
-    def wrapped(self, *args, **kwargs):
-        start_time = kwargs.pop("start_time", None)
-        if start_time and not self.request.retries:
-            total_time = int((time() - start_time) * 1000)
-            statsd.timing(self.name + ".timing", total_time)
-        statsd.incr(self.name + ".total")
-        statsd.incr("news.tasks.all_total")
-        if settings.MAINTENANCE_MODE and self.name not in MAINTENANCE_EXEMPT:
-            if not settings.READ_ONLY_MODE:
-                # record task for later
-                QueuedTask.objects.create(
-                    name=self.name,
-                    args=args,
-                    kwargs=kwargs,
-                )
-                statsd.incr(self.name + ".queued")
-            else:
-                statsd.incr(self.name + ".not_queued")
-
-            return
-
-        try:
-            return func(*args, **kwargs)
-        except (
-            IOError,
-            NewsletterException,
-            requests.RequestException,
-            RetryTask,
-            SilverpopResponseException,
-        ) as e:
-            # These could all be connection issues, so try again later.
-            # IOError covers URLError, SSLError, and requests.HTTPError.
-            if ignore_error(e):
-                with sentry_sdk.push_scope() as scope:
-                    scope.set_tag("action", "ignored")
-                    sentry_sdk.capture_exception()
-                return
-
-            try:
-                if not (isinstance(e, RetryTask) or ignore_error_post_retry(e)):
-                    with sentry_sdk.push_scope() as scope:
-                        scope.set_tag("action", "retried")
-                        sentry_sdk.capture_exception()
-
-                # ~68 hr at 11 retries
-                statsd.incr(f"{self.name}.retries.{self.request.retries}")
-                statsd.incr(f"news.tasks.retries.{self.request.retries}")
-                raise self.retry(countdown=exponential_backoff(self.request.retries))
-            except self.MaxRetriesExceededError:
-                statsd.incr(self.name + ".retry_max")
-                statsd.incr("news.tasks.retry_max_total")
-                # don't bubble certain errors
-                if ignore_error_post_retry(e):
-                    return
-
-                sentry_sdk.capture_exception()
-
-    return wrapped
-
 
 def fxa_source_url(metrics):
     source_url = settings.FXA_REGISTER_SOURCE_URL
@@ -232,7 +47,7 @@ def fxa_source_url(metrics):
     return source_url
 
 
-@et_task
+@rq_task
 def fxa_email_changed(data):
     ts = data["ts"]
     fxa_id = data["uid"]
@@ -281,12 +96,12 @@ def fxa_direct_update_contact(fxa_id, data):
         pass
 
 
-@et_task
+@rq_task
 def fxa_delete(data):
     fxa_direct_update_contact(data["uid"], {"fxa_deleted": True})
 
 
-@et_task
+@rq_task
 def fxa_verified(data):
     """Add new FxA users"""
     # if we're not using the sandbox ignore testing domains
@@ -327,7 +142,7 @@ def fxa_verified(data):
     upsert_contact(SUBSCRIBE, new_data, user_data)
 
 
-@et_task
+@rq_task
 def fxa_newsletters_update(data):
     email = data["email"]
     fxa_id = data["uid"]
@@ -344,7 +159,7 @@ def fxa_newsletters_update(data):
     upsert_contact(SUBSCRIBE, new_data, get_fxa_user_data(fxa_id, email))
 
 
-@et_task
+@rq_task
 def fxa_login(data):
     email = data["email"]
     # if we're not using the sandbox ignore testing domains
@@ -401,7 +216,7 @@ def _add_fxa_activity(data):
     fxa_activity_acoustic.delay(login_data)
 
 
-@et_task
+@rq_task
 def fxa_activity_acoustic(data):
     acoustic.insert_update_relational_table(
         table_id=settings.ACOUSTIC_FXA_TABLE_ID,
@@ -409,7 +224,7 @@ def fxa_activity_acoustic(data):
     )
 
 
-@et_task
+@rq_task
 def update_get_involved(
     interest_id,
     lang,
@@ -431,7 +246,7 @@ def update_get_involved(
     interest.notify_stewards(name, email, lang, message)
 
 
-@et_task
+@rq_task
 def update_user_meta(token, data):
     """Update a user's metadata, not newsletters"""
     try:
@@ -440,7 +255,7 @@ def update_user_meta(token, data):
         raise
 
 
-@et_task
+@rq_task
 def upsert_user(api_call_type, data):
     """
     Update or insert (upsert) a contact record
@@ -538,7 +353,7 @@ def upsert_contact(api_call_type, data, user_data):
         # no user found. create new one.
         token = update_data["token"] = generate_token()
         if settings.MAINTENANCE_MODE:
-            sfdc_add_update.delay(update_data)
+            ctms_add_or_update.delay(update_data)
         else:
             ctms.add(update_data)
 
@@ -567,7 +382,7 @@ def upsert_contact(api_call_type, data, user_data):
         token = update_data["token"] = generate_token()
 
     if settings.MAINTENANCE_MODE:
-        sfdc_add_update.delay(update_data, user_data)
+        ctms_add_or_update.delay(update_data, user_data)
     else:
         ctms.update(user_data, update_data)
 
@@ -582,18 +397,10 @@ def upsert_contact(api_call_type, data, user_data):
     return token, False
 
 
-@et_task
-def sfdc_add_update(update_data, user_data=None):
+@rq_task
+def ctms_add_or_update(update_data, user_data=None):
     """
     Add or update contact data when maintainance mode is completed.
-
-    The first version was temporary, with:
-    TODO remove after maintenance is over and queue is processed
-
-    The next version allowed SFDC / CTMS dual-write mode.
-
-    This version only writes to CTMS, so it is now misnamed, but task
-    renames require coordination.
     """
     if user_data:
         ctms.update(user_data, update_data)
@@ -611,7 +418,7 @@ def sfdc_add_update(update_data, user_data=None):
         ctms.update(user_data, update_data)
 
 
-@et_task
+@rq_task
 def send_acoustic_tx_message(email, vendor_id, fields=None):
     acoustic_tx.send_mail(email, vendor_id, fields)
 
@@ -629,7 +436,7 @@ def send_acoustic_tx_messages(email, lang, message_ids):
     return sent
 
 
-@et_task
+@rq_task
 def send_confirm_message(email, token, lang, message_type):
     lang = lang.strip()
     lang = lang or "en-US"
@@ -639,7 +446,7 @@ def send_confirm_message(email, token, lang, message_type):
         acoustic_tx.send_mail(email, vid, {"basket_token": token}, save_to_db=True)
 
 
-@et_task
+@rq_task
 def confirm_user(token):
     """
     Confirm any pending subscriptions for the user with this token.
@@ -670,7 +477,7 @@ def confirm_user(token):
     ctms.update(user_data, {"optin": True})
 
 
-@et_task
+@rq_task
 def update_custom_unsub(token, reason):
     """Record a user's custom unsubscribe reason."""
     try:
@@ -680,7 +487,7 @@ def update_custom_unsub(token, reason):
         pass
 
 
-@et_task
+@rq_task
 def send_recovery_message_acoustic(email, token, lang, fmt):
     message_name = "account-recovery"
     if fmt != "H":
@@ -691,7 +498,7 @@ def send_recovery_message_acoustic(email, token, lang, fmt):
         acoustic_tx.send_mail(email, vid, {"basket_token": token})
 
 
-@et_task
+@rq_task
 def record_common_voice_update(data):
     # do not change the sent data in place. A retry will use the changed data.
     dcopy = data.copy()
@@ -709,18 +516,6 @@ def record_common_voice_update(data):
     else:
         new_data.update({"email": email, "token": generate_token()})
         ctms.add(new_data)
-
-
-@celery_app.task()
-def snitch(start_time=None):
-    if start_time is None:
-        snitch.delay(time())
-        return
-
-    snitch_id = settings.SNITCH_ID
-    totalms = int((time() - start_time) * 1000)
-    statsd.timing("news.tasks.snitch.timing", totalms)
-    requests.post("https://nosnch.in/{}".format(snitch_id), data={"m": totalms})
 
 
 def get_fxa_user_data(fxa_id, email):

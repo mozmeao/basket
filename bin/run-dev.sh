@@ -1,6 +1,4 @@
-#!/bin/bash
-
-set -ex
+#!/bin/bash -ex
 
 urlwait
 bin/post-deploy.sh

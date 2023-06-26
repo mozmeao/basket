@@ -42,42 +42,41 @@ code according to our style and check for errors for every commit.
 Use Docker
 ----------
 
+Basket requires a database (either MySQL or SQLite locally, depending on the ``DATABASE_URL`` setting) and Redis. We use Docker to run these services.
+
 The steps to get up and running are these:
 
 .. code-block:: bash
 
-    $ # this pulls our latest builds from the docker hub.
-    $ # it's optional but will speed up your builds considerably.
-    $ docker-compose pull
-    $ # this starts the server and dependencies
-    $ docker-compose up web
+    $ make build
+    $ make run  # runs both the web app and the worker.
 
 If you've made changes to the `Dockerfile` or `requirements/*.txt` you'll need to rebuild the image to run the app and tests:
 
 .. code-block:: bash
 
-    $ docker-compose build web
+    $ make build
 
-Then to run the app you run the `docker-compose up web` command again, or for running tests against your local changes you run:
+Then to run the app you run the `make run` command again, or for running tests against your local changes you run:
 
 .. code-block:: bash
 
-    $ docker-compose run --rm test
+    $ make test
 
 We use pytest for running tests. So if you'd like to craft your own pytest command to run individual test files or something
 you can do so by passing in a command to the above:
 
 .. code-block:: bash
 
-    $ docker-compose run --rm test py.test basket/news/tests/test_views.py
+    $ make run-shell
+    $ pytest basket/news/tests/test_views.py
 
 And if you need to debug a running container, you can open another terminal to your basket code and run the following:
 
 .. code-block:: bash
 
-    $ docker-compose exec web bash
-    $ # or
-    $ docker-compose exec web python manage.py shell
+    $ make shell
+    $ python manage.py shell
 
 
 Maintaining Python requirements

@@ -21,7 +21,7 @@ pull: .env
 	@touch .make.docker.pull
 
 run: .make.docker.pull
-	${DC} up web
+	${DC} up web worker
 
 run-shell:
 	${DC} run --rm web bash

@@ -1,7 +1,5 @@
-# -*- coding: utf8 -*-
-
 import json
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import Mock, patch
 
 from django.conf import settings
 from django.core.cache import cache
@@ -374,7 +372,6 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
                 "country": "",
                 "source_url": "",
             },
-            start_time=ANY,
         )
 
     def test_subscribe_success_non_ajax(self):
@@ -397,7 +394,6 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
                 "country": "",
                 "source_url": "",
             },
-            start_time=ANY,
         )
         assert b"Thank you for subscribing" in response.content
 
@@ -470,7 +466,6 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
                 "country": "",
                 "source_url": "",
             },
-            start_time=ANY,
         )
 
     def test_lang_instead_of_accept_language(self):
@@ -500,7 +495,6 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
                 "country": "",
                 "source_url": "",
             },
-            start_time=ANY,
         )
 
     def test_lang_default_if_unsupported(self):
@@ -529,7 +523,6 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
                 "country": "",
                 "source_url": "",
             },
-            start_time=ANY,
         )
 
     def test_source_url_from_referrer(self):
@@ -552,7 +545,6 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
                 "country": "",
                 "source_url": "https://example.com/bowling",
             },
-            start_time=ANY,
         )
 
     def test_source_url_from_invalid_referrer(self):
@@ -575,7 +567,6 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
                 "country": "",
                 "source_url": "",
             },
-            start_time=ANY,
         )
 
     def test_source_url_overrides_referrer(self):
@@ -603,7 +594,6 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
                 "country": "",
                 "source_url": "https://example.com/abiding",
             },
-            start_time=ANY,
         )
 
     def test_multiple_newsletters(self):
@@ -631,7 +621,6 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
                 "country": "",
                 "source_url": "",
             },
-            start_time=ANY,
         )
 
     def test_blocked_email(self):

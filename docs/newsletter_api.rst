@@ -8,45 +8,47 @@
  Newsletter API
 ============================
 
-This "news" app provides a service for managing Mozilla newsletters.
+The "news" app provides a service for managing Mozilla newsletters.
 
 `fixtures/newsletters.json` is a fixture that can be used to load some initial
 data, but is probably out of date by the time you read this.
 
-Currently available newsletters can be found in JSON format via the
+You can access the currently available newsletters in JSON format through the
 `/news/newsletters/ API endpoint <https://basket.mozilla.org/news/newsletters/>`_.
 
-If 'token-required' is specified, a token must be suffixed onto the API
-URL, such as::
+If 'token-required' is specified, you must append a token to the API URL. For
+example::
 
     /news/user/<token>/
 
-This is a user-specific token given away by the email backend or
-basket in some manner (i.e. emailed to the user from basket). This
-token allows clients to do more powerful things with the user.
+The user-specific token is provided by the email backend or basket via email.
+This token grants clients additional capabilities to perform actions on on user
+accounts.
 
-A client might also have an ``API key`` that it can use with some APIs to
-do privileged things, like looking up a user from their email.
+Clients may also possess an "API key" that enables privileged operations, such
+as email-based user lookup, when used with specific APIs.
 
-If 'SSL required', the call will fail if not called over a secure
-(SSL) connection.
+If 'SSL required' is specified, the API call must be made over a secure (SSL)
+connection. Otherwise, the call will fail.
 
-Whenever possible (even when the HTTP status is not 200), the response body
-will be a JSON-encoded dictionary with several guaranteed fields, along with
-any data being returned by the particular call:
+In most cases, the response body will be a JSON-encoded dictionary containing
+several predefined fields, even if the HTTP status code is not 200.
+Additionally, the response may include data specific to the requested operation.
+
+The following fields are guaranteed to be present in the response:
 
     'status': 'ok' if the call succeeded, 'error' if there was an error
 
-If there was an error, these fields will also be included:
+If an error occurs, the following fields will also be included:
 
-    'code': an integer error code taken from ``basket.errors``
+    'code': An integer error code taken from ``basket.errors``
     in `basket-client <https://github.com/mozilla/basket-client/>`_.
-    'desc': brief English description of the error.
+    'desc': A brief description in English explaining the encountered error.
 
 The following URLs are available (assuming "/news" is app url):
 
-/news/subscribe
----------------
+/news/subscribe/
+----------------
 
     This method subscribes the user to the newsletters defined in the
     "newsletters" field, which should be a comma-delimited list of
@@ -92,8 +94,8 @@ The following URLs are available (assuming "/news" is app url):
     If the email address is invalid (due to format, or unrecognized domain), the error
     code will be ``BASKET_INVALID_EMAIL`` from the basket client.
 
-/news/unsubscribe
------------------
+/news/unsubscribe/
+------------------
 
     This method unsubscribes the user from the newsletters defined in
     the "newsletters" field, which should be a comma-delimited list of
@@ -107,8 +109,8 @@ The following URLs are available (assuming "/news" is app url):
                  { status: error, desc: <desc> } on error
         token-required
 
-/news/user
-----------
+/news/user/
+-----------
 
     Returns information about the user including all the newsletters
     he/she is subscribed to::
@@ -142,8 +144,20 @@ The following URLs are available (assuming "/news" is app url):
                  { status: error, desc: <desc> } on error
         token-required
 
-/news/newsletters
------------------
+/news/user-meta/
+----------------
+
+    Used to update user metadata only, not newsletters.
+
+        method: POST
+        fields: first_name, last_name, country, lang, source_url
+        returns: { status: ok } on success
+                 { status: error, desc: <desc> } on error
+        token-required
+
+
+/news/newsletters/
+------------------
 
     Returns information about all of the available newsletters::
 
@@ -170,13 +184,8 @@ The following URLs are available (assuming "/news" is app url):
             }
         }
 
-/news/debug-user
-----------------
-
-    REMOVED. Will return a 404. Use the newer and better ``lookup-user`` method.
-
-/news/lookup-user
------------------
+/news/lookup-user/
+------------------
 
     This allows retrieving user information given either their token or
     their email (but not both). To retrieve by email, an API key is

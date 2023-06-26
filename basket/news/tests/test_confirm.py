@@ -2,25 +2,12 @@ from unittest.mock import Mock, patch
 
 from django.test import TestCase
 
-from celery.exceptions import Retry
-
-from basket.news.backends.common import NewsletterException
 from basket.news.tasks import confirm_user
 
 
 @patch("basket.news.tasks.ctms")
 @patch("basket.news.tasks.get_user_data")
 class TestConfirmTask(TestCase):
-    def test_error(self, get_user_data, ctms_mock):
-        """
-        If user_data shows an error talking to ET, the task raises
-        an exception so our task logic will retry
-        """
-        get_user_data.side_effect = NewsletterException("Stuffs broke yo.")
-        with self.assertRaises(Retry):
-            confirm_user("token")
-        self.assertFalse(ctms_mock.update.called)
-
     def test_normal(self, get_user_data, ctms_mock):
         """If user_data is okay, and not yet confirmed, the task calls
         the right stuff"""

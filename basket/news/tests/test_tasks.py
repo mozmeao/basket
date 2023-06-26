@@ -1,65 +1,45 @@
 from copy import deepcopy
 from unittest.mock import ANY, Mock, call, patch
-from urllib.error import URLError
 from uuid import uuid4
 
 from django.conf import settings
 from django.test import TestCase
 from django.test.utils import override_settings
 
-from requests.exceptions import ConnectionError as RequestsConnectionError
-
 from basket.news.backends.ctms import CTMSNotFoundByAltIDError
-from basket.news.celery import app as celery_app
 from basket.news.models import FailedTask
 from basket.news.tasks import (
     SUBSCRIBE,
     _add_fxa_activity,
-    et_task,
     fxa_delete,
     fxa_email_changed,
     fxa_login,
     fxa_verified,
     get_fxa_user_data,
     record_common_voice_update,
-    send_acoustic_tx_message,
     update_custom_unsub,
     update_user_meta,
 )
 from basket.news.utils import iso_format_unix_timestamp
 
 
-class FailedTaskTest(TestCase):
-    """Test that failed tasks are logged in our FailedTask table"""
-
-    @patch("basket.news.tasks.acoustic_tx")
-    def test_failed_task_logging(self, mock_acoustic):
-        """Failed task is logged in FailedTask table"""
-        mock_acoustic.send_mail.side_effect = Exception("Test exception")
-        self.assertEqual(0, FailedTask.objects.count())
-        args = ["you@example.com", "SFDCID"]
-        kwargs = {"fields": {"token": 3}}
-        result = send_acoustic_tx_message.apply(args=args, kwargs=kwargs)
-        fail = FailedTask.objects.get()
-        self.assertEqual("news.tasks.send_acoustic_tx_message", fail.name)
-        self.assertEqual(result.task_id, fail.task_id)
-        self.assertEqual(args, fail.args)
-        self.assertEqual(kwargs, fail.kwargs)
-        self.assertEqual("Exception('Test exception')", fail.exc)
-        self.assertIn("Exception: Test exception", fail.einfo)
-
-
 class RetryTaskTest(TestCase):
     """Test that we can retry a task"""
 
+    @override_settings(RQ_MAX_RETRIES=2)
     @patch("django.contrib.messages.info", autospec=True)
-    def test_retry_task(self, info):
+    @patch("basket.base.rq.random")
+    @patch("basket.base.rq.Queue.enqueue")
+    def test_retry_task(self, mock_enqueue, mock_random, info):
+        mock_random.randrange.side_effect = [60, 90]
         TASK_NAME = "news.tasks.update_phonebook"
+        args = [1, 2]
+        kwargs = {"token": 3}
         failed_task = FailedTask(
             name=TASK_NAME,
             task_id=4,
-            args=[1, 2],
-            kwargs={"token": 3},
+            args=args,
+            kwargs=kwargs,
             exc="",
             einfo="",
         )
@@ -67,45 +47,15 @@ class RetryTaskTest(TestCase):
         # that have been saved, so just mock that and check later that it was
         # called.
         failed_task.delete = Mock(spec=failed_task.delete)
-        with patch.object(celery_app, "send_task") as send_task_mock:
-            # Let's retry.
-            failed_task.retry()
+        failed_task.retry()
         # Task was submitted again
-        send_task_mock.assert_called_with(TASK_NAME, args=[1, 2], kwargs={"token": 3})
+        mock_enqueue.assert_called_once()
+        assert mock_enqueue.call_args.args[0] == TASK_NAME
+        assert mock_enqueue.call_args.kwargs["args"] == args
+        assert mock_enqueue.call_args.kwargs["kwargs"] == kwargs
+        assert mock_enqueue.call_args.kwargs["retry"].intervals == [60, 90]
         # Previous failed task was deleted
         self.assertTrue(failed_task.delete.called)
-
-
-class ETTaskTests(TestCase):
-    def _test_retry_increase(self, mock_backoff, error):
-        """
-        The delay for retrying a task should increase geometrically by a
-        power of 2. I really hope I said that correctly.
-        """
-
-        @et_task
-        def myfunc():
-            raise error
-
-        myfunc.push_request(retries=4)
-        myfunc.retry = Mock(side_effect=Exception)
-        # have to use run() to make sure our request above is used
-        with self.assertRaises(Exception):  # noqa: B017
-            myfunc.run()
-
-        mock_backoff.assert_called_with(4)
-        myfunc.retry.assert_called_with(countdown=mock_backoff())
-
-    @patch("basket.news.tasks.exponential_backoff")
-    def test_urlerror(self, mock_backoff):
-        self._test_retry_increase(mock_backoff, URLError(reason=Exception("foo bar!")))
-
-    @patch("basket.news.tasks.exponential_backoff")
-    def test_requests_connection_error(self, mock_backoff):
-        self._test_retry_increase(
-            mock_backoff,
-            RequestsConnectionError("Connection aborted."),
-        )
 
 
 class AddFxaActivityTests(TestCase):

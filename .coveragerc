@@ -2,7 +2,9 @@
 source = basket
 omit =
   manage.py
+  basket/settings.py
   basket/wsgi.py
+  basket/base/tests/*
   basket/news/migrations/*
   basket/news/tests/*
 
