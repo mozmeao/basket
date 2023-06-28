@@ -197,12 +197,16 @@ def store_task_exception_handler(job, *exc_info):
         if exc_info[1] not in EXCEPTIONS_ALLOW_RETRY:
             # Force retries to abort.
             # Since there's no way to abort retries at the moment in RQ, we can set the job `retries_left` to zero.
-            # This will retry this time but no further retries will be performed.
+            # This will retry one more time but no further retries will be performed.
             job.retries_left = 0
 
-        return
+        # Don't log to sentry if we explicitly raise `RetryTask`.
+        if not isinstance(exc_info[1], RetryTask):
+            with sentry_sdk.push_scope() as scope:
+                scope.set_tag("action", "retried")
+                sentry_sdk.capture_exception()
 
-    if job.is_failed:
+    elif job.is_failed:
         statsd.incr(f"{task_name}.retry_max")
         statsd.incr("news.tasks.retry_max_total")
 
@@ -227,7 +231,7 @@ def store_task_exception_handler(job, *exc_info):
             return
 
         # Don't log to sentry if we explicitly raise `RetryTask`.
-        if not (isinstance(exc_info[1], RetryTask)):
+        if not isinstance(exc_info[1], RetryTask):
             with sentry_sdk.push_scope() as scope:
-                scope.set_tag("action", "retried")
+                scope.set_tag("action", "failed")
                 sentry_sdk.capture_exception()
