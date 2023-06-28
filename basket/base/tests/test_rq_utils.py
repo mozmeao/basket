@@ -166,7 +166,7 @@ class TestRQUtils(TestCase):
         mock_statsd.incr.assert_any_call("news.tasks.retry_max_total")
 
         assert mock_sentry_sdk.capture_exception.call_count == 1
-        mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "retried")
+        mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "failed")
 
     @override_settings(STORE_TASK_FAILURES=False)
     @patch("basket.base.rq.sentry_sdk")
@@ -235,4 +235,5 @@ class TestRQUtils(TestCase):
         mock_statsd.incr.assert_any_call("job.rescheduled.retry")
         mock_statsd.incr.assert_any_call("job.rescheduled.retries_left.2")
         mock_statsd.incr.assert_any_call("news.tasks.retry_total")
-        mock_sentry_sdk.capture_exception.assert_not_called()
+        assert mock_sentry_sdk.capture_exception.call_count == 1
+        mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "retried")
