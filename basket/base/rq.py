@@ -138,6 +138,7 @@ def log_timing(job):
     if start_time := job.meta.get("start_time"):
         total_time = int(time() - start_time) * 1000
         statsd.timing(f"{job.meta['task_name']}.duration", total_time)
+        statsd.timing("news.tasks.duration_total", total_time)
 
 
 def rq_on_success(job, connection, result, *args, **kwargs):

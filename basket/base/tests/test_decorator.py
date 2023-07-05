@@ -1,3 +1,4 @@
+from unittest import mock
 from unittest.mock import patch
 
 from django.test import TestCase
@@ -91,5 +92,10 @@ class TestDecorator(TestCase):
         assert mock_statsd.incr.call_count == 2
         mock_statsd.incr.assert_any_call("basket.base.tests.tasks.empty_job.success")
         mock_statsd.incr.assert_any_call("news.tasks.success_total")
-        assert mock_statsd.timing.call_count == 1
-        assert "basket.base.tests.tasks.empty_job.duration" in mock_statsd.timing.call_args.args[0]
+        assert mock_statsd.timing.call_count == 2
+        mock_statsd.timing.assert_has_calls(
+            [
+                mock.call("basket.base.tests.tasks.empty_job.duration", mock.ANY),
+                mock.call("news.tasks.duration_total", mock.ANY),
+            ]
+        )
