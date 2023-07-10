@@ -52,6 +52,17 @@ class TestRQUtils(TestCase):
         connection = get_redis_connection(force=True)
         self.assertDictEqual(connection.connection_pool.connection_kwargs, {"host": "redis", "port": 6379, "db": 2})
 
+    @override_settings(REDIS_URL=None, RQ_URL=None)
+    def test_get_redis_connection_none(self):
+        """
+        Test that the get_redis_connection raises an exception when no URL is provided.
+        """
+        with pytest.raises(ValueError):
+            get_redis_connection(force=True)
+
+        # Set back to the "default" for tests that follow since the connection is cached in the module.
+        get_redis_connection("redis://redis:6379/2", force=True)
+
     def test_get_queue(self):
         """
         Test that the get_queue function returns a RQ queue with params we expect.
