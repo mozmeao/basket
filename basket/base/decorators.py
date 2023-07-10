@@ -3,9 +3,8 @@ import functools
 from django.conf import settings
 
 from django_statsd.clients import statsd
-from rq.decorators import job as rq_job
 
-from basket.base.rq import enqueue_kwargs, get_queue
+from basket.base.rq import get_enqueue_kwargs, get_queue
 
 
 def rq_task(func):
@@ -22,19 +21,10 @@ def rq_task(func):
     """
     task_name = f"{func.__module__}.{func.__qualname__}"
 
-    queue = get_queue()
-    connection = queue.connection
-
-    kwargs = enqueue_kwargs(func)
-
-    @rq_job(
-        queue,
-        connection=connection,
-        **kwargs,
-    )
     @functools.wraps(func)
-    def wrapped(*args, **kwargs):
-        # If in maintenance mode, queue the task for later.
+    def delay(*args, **kwargs):
+        # If in maintenance mode, `delay(...)` will not run the task, but will
+        # instead queue it for later.
         if settings.MAINTENANCE_MODE:
             if settings.READ_ONLY_MODE:
                 statsd.incr(f"{task_name}.not_queued")
@@ -47,9 +37,17 @@ def rq_task(func):
                     kwargs=kwargs,
                 )
                 statsd.incr(f"{task_name}.queued")
-            return
 
-        # NOTE: Exceptions are handled with the RQ_EXCEPTION_HANDLERS
-        return func(*args, **kwargs)
+        else:
+            queue = get_queue()
+            enqueue_kwargs = get_enqueue_kwargs(func)
 
-    return wrapped
+            return queue.enqueue_call(
+                func,
+                args=args,
+                kwargs=kwargs,
+                **enqueue_kwargs,
+            )
+
+    func.delay = delay
+    return func
