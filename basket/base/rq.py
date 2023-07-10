@@ -96,7 +96,7 @@ def get_worker(queues=None):
     )
 
 
-def enqueue_kwargs(func):
+def get_enqueue_kwargs(func):
     if isinstance(func, str):
         task_name = func
     else:

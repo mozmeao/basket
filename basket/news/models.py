@@ -8,7 +8,7 @@ from django.utils.timezone import now
 import sentry_sdk
 from product_details import product_details
 
-from basket.base.rq import enqueue_kwargs, get_queue
+from basket.base.rq import get_enqueue_kwargs, get_queue
 from basket.news.fields import CommaSeparatedEmailField, LocaleField, parse_emails
 
 
@@ -179,7 +179,7 @@ class QueuedTask(models.Model):
         return f"{self.name} {self.args} {self.kwargs}"
 
     def retry(self):
-        kwargs = enqueue_kwargs(self.name)
+        kwargs = get_enqueue_kwargs(self.name)
         get_queue().enqueue(self.name, args=self.args, kwargs=self.kwargs, **kwargs)
         # Forget the old task.
         self.delete()
@@ -204,7 +204,7 @@ class FailedTask(models.Model):
         return "%s(%s)" % (self.name, ", ".join(formatted_args + formatted_kwargs))
 
     def retry(self):
-        kwargs = enqueue_kwargs(self.name)
+        kwargs = get_enqueue_kwargs(self.name)
         get_queue().enqueue(self.name, args=self.args, kwargs=self.kwargs, **kwargs)
         # Forget the old task
         self.delete()

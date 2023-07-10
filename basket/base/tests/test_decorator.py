@@ -4,7 +4,6 @@ from unittest.mock import patch
 from django.test import TestCase
 from django.test.utils import override_settings
 
-from basket.base.decorators import rq_task
 from basket.base.rq import get_worker
 from basket.base.tests.tasks import empty_job
 from basket.news.models import QueuedTask
@@ -13,32 +12,31 @@ from basket.news.models import QueuedTask
 class TestDecorator(TestCase):
     @override_settings(RQ_RESULT_TTL=0)
     @override_settings(RQ_MAX_RETRIES=0)
-    @patch("basket.base.decorators.rq_job")
     @patch("basket.base.rq.Callback")
+    @patch("basket.base.rq.get_queue")
     @patch("basket.base.rq.Queue")
     @patch("basket.base.rq.time")
     def test_rq_task(
         self,
         mock_time,
+        mock_get_queue,
         mock_queue,
         mock_callback,
-        mock_rq_job,
     ):
         """
         Test that the decorator passes the correct arguments to the RQ job.
         """
         mock_time.return_value = 123456789
-        mock_queue.connection.return_value = "connection"
+        mock_get_queue.return_value = mock_queue
 
-        @rq_task
-        def test_func():
-            pass
+        empty_job.delay("arg1")
 
-        mock_rq_job.assert_called_once_with(
-            mock_queue(),
-            connection=mock_queue().connection,
+        mock_queue.enqueue_call.assert_called_once_with(
+            empty_job,
+            args=("arg1",),
+            kwargs={},
             meta={
-                "task_name": f"{self.__module__}.TestDecorator.test_rq_task.<locals>.test_func",
+                "task_name": f"{empty_job.__module__}.{empty_job.__qualname__}",
                 "start_time": 123456789,
             },
             retry=None,  # Retry logic is tested above, so no need to test it here.
@@ -57,7 +55,7 @@ class TestDecorator(TestCase):
 
         assert QueuedTask.objects.count() == 0
 
-        empty_job.delay()
+        empty_job.delay("arg1")
 
         mock_statsd.incr.assert_called_once_with("basket.base.tests.tasks.empty_job.queued")
         assert QueuedTask.objects.count() == 1
@@ -73,7 +71,7 @@ class TestDecorator(TestCase):
 
         assert QueuedTask.objects.count() == 0
 
-        empty_job.delay()
+        empty_job.delay("arg1")
 
         mock_statsd.incr.assert_called_once_with("basket.base.tests.tasks.empty_job.not_queued")
         assert QueuedTask.objects.count() == 0
