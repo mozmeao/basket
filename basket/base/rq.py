@@ -105,7 +105,6 @@ def enqueue_kwargs(func):
     # Start time is used to calculate the total time taken by the task, which includes queue time plus execution time of the task itself.
     meta = {
         "task_name": task_name,
-        "start_time": time(),
     }
 
     if settings.RQ_MAX_RETRIES == 0:

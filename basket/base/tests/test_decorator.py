@@ -16,10 +16,8 @@ class TestDecorator(TestCase):
     @patch("basket.base.decorators.rq_job")
     @patch("basket.base.rq.Callback")
     @patch("basket.base.rq.Queue")
-    @patch("basket.base.rq.time")
     def test_rq_task(
         self,
-        mock_time,
         mock_queue,
         mock_callback,
         mock_rq_job,
@@ -27,7 +25,6 @@ class TestDecorator(TestCase):
         """
         Test that the decorator passes the correct arguments to the RQ job.
         """
-        mock_time.return_value = 123456789
         mock_queue.connection.return_value = "connection"
 
         @rq_task
@@ -39,7 +36,6 @@ class TestDecorator(TestCase):
             connection=mock_queue().connection,
             meta={
                 "task_name": f"{self.__module__}.TestDecorator.test_rq_task.<locals>.test_func",
-                "start_time": 123456789,
             },
             retry=None,  # Retry logic is tested above, so no need to test it here.
             result_ttl=0,
