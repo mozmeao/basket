@@ -529,7 +529,6 @@ class CTMSSession:
     get = partialmethod(request, "GET")
     patch = partialmethod(request, "PATCH")
     post = partialmethod(request, "POST")
-    put = partialmethod(request, "PUT")
 
 
 class CTMSNoIdsError(CTMSError):
@@ -686,28 +685,6 @@ class CTMSInterface:
         resp = self.session.get(f"/ctms/{email_id}")
         self._check_response(resp, email_id)
         return resp.json()
-
-    @time_request
-    def put_by_email_id(self, email_id, data):
-        """
-        Call PUT /ctms/{email_id} to replace a CTMS contact by ID
-
-        @param email_id: The CTMS email_id of the contact
-        @param data: The new or updated contact data
-        @return: The created or replaced contact data
-        """
-        resp = self.session.put(f"/ctms/{email_id}", json=data)
-        self._check_response(resp, email_id)
-        return resp.json()
-
-    def put(self, data):
-        """
-        Call PUT /ctms/{email_id} to replace a CTMS contact, using email_id from data
-
-        @return: The created or replaced contact data
-        """
-        email_id = data["email"]["email_id"]
-        return self.put_by_email_id(email_id, data)
 
     @time_request
     def patch_by_email_id(self, email_id, data):
