@@ -84,7 +84,6 @@ class TestRQUtils(TestCase):
         assert worker._exc_handlers == [store_task_exception_handler]
         assert worker.serializer == JSONSerializer
 
-    @override_settings(STORE_TASK_FAILURES=True)
     @override_settings(RQ_EXCEPTION_HANDLERS=["basket.base.rq.store_task_exception_handler"])
     @patch("basket.base.rq.statsd")
     def test_on_failure(self, mock_statsd):
@@ -134,7 +133,6 @@ class TestRQUtils(TestCase):
         assert FailedTask.objects.count() == 0
         assert mock_statsd.incr.call_count == 0
 
-    @override_settings(STORE_TASK_FAILURES=True)
     @patch("basket.base.rq.sentry_sdk")
     @patch("basket.base.rq.statsd")
     def test_rq_exception_handler(self, mock_statsd, mock_sentry_sdk):
@@ -179,7 +177,6 @@ class TestRQUtils(TestCase):
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "failed")
 
-    @override_settings(STORE_TASK_FAILURES=False)
     @patch("basket.base.rq.sentry_sdk")
     @patch("basket.base.rq.statsd")
     def test_rq_exception_error_ignore(self, mock_statsd, mock_sentry_sdk):

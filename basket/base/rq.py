@@ -208,22 +208,21 @@ def store_task_exception_handler(job, *exc_info):
                 sentry_sdk.capture_exception()
 
     elif job.is_failed:
+        # Job failed but no retries left.
         statsd.incr(f"{task_name}.retry_max")
         statsd.incr("news.tasks.retry_max_total")
 
-        # Job failed but no retries left.
-        if settings.STORE_TASK_FAILURES:
-            # Here to avoid a circular import.
-            from basket.news.models import FailedTask
+        # Here to avoid a circular import.
+        from basket.news.models import FailedTask
 
-            FailedTask.objects.create(
-                task_id=job.id,
-                name=job.meta["task_name"],
-                args=job.args,
-                kwargs=job.kwargs,
-                exc=exc_info[1].__repr__(),
-                einfo="".join(traceback.format_exception(*exc_info)),
-            )
+        FailedTask.objects.create(
+            task_id=job.id,
+            name=job.meta["task_name"],
+            args=job.args,
+            kwargs=job.kwargs,
+            exc=exc_info[1].__repr__(),
+            einfo="".join(traceback.format_exception(*exc_info)),
+        )
 
         if ignore_error(exc_info[1]):
             with sentry_sdk.push_scope() as scope:

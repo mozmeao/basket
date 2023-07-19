@@ -1,5 +1,6 @@
 import os
 import platform
+import re
 import socket
 import struct
 import sys
@@ -41,15 +42,6 @@ ADMINS = (
 MANAGERS = ADMINS
 # avoids a warning from django
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
-
-# DB read-only, API can still read-write to backend
-READ_ONLY_MODE = config("READ_ONLY_MODE", False, cast=bool)
-# Disables the API and changes redirects
-ADMIN_ONLY_MODE = config("ADMIN_ONLY_MODE", False, cast=bool)
-BASKET_RW_URL = config(
-    "BASKET_RW_URL",
-    default="https://prod-oregon-b.basket.moz.works",
-)
 
 # Production uses MySQL, but Sqlite should be sufficient for local development.
 # Our CI server tests against MySQL.
@@ -104,7 +96,6 @@ ALLOWED_HOSTS = config(
     cast=Csv(),
 )
 ALLOWED_CIDR_NETS = config("ALLOWED_CIDR_NETS", default="", cast=Csv())
-ENFORCE_HOSTNAME = config("ENFORCE_HOSTNAME", default="", cast=Csv())
 USE_X_FORWARDED_HOST = True
 
 SESSION_COOKIE_SECURE = config("SESSION_COOKIE_SECURE", not DEBUG, cast=bool)
@@ -113,13 +104,6 @@ SESSION_ENGINE = config(
     default="django.contrib.sessions.backends.cache",
 )
 CSRF_COOKIE_SECURE = config("CSRF_COOKIE_SECURE", not DEBUG, cast=bool)
-DISABLE_ADMIN = config("DISABLE_ADMIN", READ_ONLY_MODE, cast=bool)
-STORE_TASK_FAILURES = config("STORE_TASK_FAILURES", not READ_ONLY_MODE, cast=bool)
-# if DISABLE_ADMIN is True redirect /admin/ to this URL
-ADMIN_REDIRECT_URL = config(
-    "ADMIN_REDIRECT_URL",
-    "https://admin.basket.moz.works/admin/",
-)
 
 TIME_ZONE = "UTC"
 USE_TZ = True
@@ -159,7 +143,6 @@ MIDDLEWARE = (
     "allow_cidr.middleware.AllowCIDRMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "basket.news.middleware.EnforceHostnameMiddleware",
     "basket.news.middleware.HostnameMiddleware",
     "django.middleware.common.CommonMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -438,5 +421,16 @@ if OIDC_ENABLE:
     OIDC_RP_CLIENT_ID = config("OIDC_RP_CLIENT_ID")
     OIDC_RP_CLIENT_SECRET = config("OIDC_RP_CLIENT_SECRET")
     OIDC_CREATE_USER = config("OIDC_CREATE_USER", default=False, cast=bool)
-    MIDDLEWARE += ("basket.news.middleware.OIDCSessionRefreshMiddleware",)
     LOGIN_REDIRECT_URL = "/admin/"
+    OIDC_EXEMPT_URLS = [
+        "/",
+        "/fxa/",
+        "/fxa/callback/",
+        re.compile(r"^/news/*"),
+        "/subscribe/",
+        "/subscribe.json",
+        # Health checks.
+        "/healthz/",
+        "/readiness/",
+        "/watchman/",
+    ]

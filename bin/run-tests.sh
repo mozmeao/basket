@@ -6,7 +6,7 @@ ruff check basket/
 black --check basket/
 urlwait
 python manage.py makemigrations | grep "No changes detected"
-bin/post-deploy.sh
+python manage.py migrate --noinput
 py.test basket \
   --cov-config=.coveragerc \
   --cov-report=html \
