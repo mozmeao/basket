@@ -46,7 +46,6 @@ class TestDecorator(TestCase):
         )
 
     @override_settings(MAINTENANCE_MODE=True)
-    @override_settings(READ_ONLY_MODE=False)
     @patch("basket.base.decorators.statsd")
     def test_maintenance_mode_no_readonly(self, mock_statsd):
         """
@@ -59,22 +58,6 @@ class TestDecorator(TestCase):
 
         mock_statsd.incr.assert_called_once_with("basket.base.tests.tasks.empty_job.queued")
         assert QueuedTask.objects.count() == 1
-
-    @override_settings(MAINTENANCE_MODE=True)
-    @override_settings(READ_ONLY_MODE=True)
-    @patch("basket.base.decorators.statsd")
-    def test_maintenance_mode_readonly(self, mock_statsd):
-        """
-        Test that the decorator doesn't run the task if maintenance mode is on
-        and the task isn't queued because we're in READ_ONLY_MODE.
-        """
-
-        assert QueuedTask.objects.count() == 0
-
-        empty_job.delay("arg1")
-
-        mock_statsd.incr.assert_called_once_with("basket.base.tests.tasks.empty_job.not_queued")
-        assert QueuedTask.objects.count() == 0
 
     @patch("basket.base.rq.statsd")
     def test_job_success(self, mock_statsd):

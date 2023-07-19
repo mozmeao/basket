@@ -26,17 +26,14 @@ def rq_task(func):
         # If in maintenance mode, `delay(...)` will not run the task, but will
         # instead queue it for later.
         if settings.MAINTENANCE_MODE:
-            if settings.READ_ONLY_MODE:
-                statsd.incr(f"{task_name}.not_queued")
-            else:
-                from basket.news.models import QueuedTask
+            from basket.news.models import QueuedTask
 
-                QueuedTask.objects.create(
-                    name=task_name,
-                    args=args,
-                    kwargs=kwargs,
-                )
-                statsd.incr(f"{task_name}.queued")
+            QueuedTask.objects.create(
+                name=task_name,
+                args=args,
+                kwargs=kwargs,
+            )
+            statsd.incr(f"{task_name}.queued")
 
         else:
             queue = get_queue()
