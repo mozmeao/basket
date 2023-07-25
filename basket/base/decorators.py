@@ -2,8 +2,7 @@ import functools
 
 from django.conf import settings
 
-from django_statsd.clients import statsd
-
+from basket import metrics
 from basket.base.rq import get_enqueue_kwargs, get_queue
 
 
@@ -33,7 +32,7 @@ def rq_task(func):
                 args=args,
                 kwargs=kwargs,
             )
-            statsd.incr(f"{task_name}.queued")
+            metrics.incr(f"{task_name}.queued")
 
         else:
             queue = get_queue()

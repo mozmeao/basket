@@ -8,6 +8,7 @@ from pathlib import Path
 
 import dj_database_url
 import django_cache_url
+import markus
 import sentry_sdk
 from decouple import Csv, UndefinedValueError, config
 from sentry_processor import DesensitizationProcessor
@@ -28,6 +29,7 @@ def path(*args):
     return str(ROOT_PATH.joinpath(*args))
 
 
+LOCAL_DEV = config("LOCAL_DEV", False, cast=bool)
 DEBUG = config("DEBUG", default=False, cast=bool)
 UNITTEST = config("UNITTEST", default=False, cast=bool)
 
@@ -143,16 +145,15 @@ MIDDLEWARE = (
     "allow_cidr.middleware.AllowCIDRMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "basket.news.middleware.HostnameMiddleware",
+    "basket.base.middleware.HostnameMiddleware",
     "django.middleware.common.CommonMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    "basket.news.middleware.GraphiteViewHitCountMiddleware",
-    "django_statsd.middleware.GraphiteRequestTimingMiddleware",
-    "django_statsd.middleware.GraphiteMiddleware",
+    "basket.base.middleware.MetricsStatusMiddleware",
+    "basket.base.middleware.MetricsRequestTimingMiddleware",
     "ratelimit.middleware.RatelimitMiddleware",
 )
 
@@ -311,7 +312,24 @@ sentry_sdk.init(
 STATSD_HOST = config("STATSD_HOST", get_default_gateway_linux())
 STATSD_PORT = config("STATSD_PORT", 8125, cast=int)
 STATSD_PREFIX = config("STATSD_PREFIX", K8S_NAMESPACE)
-STATSD_CLIENT = config("STATSD_CLIENT", "django_statsd.clients.null")
+
+if LOCAL_DEV:
+    MARKUS_BACKENDS = [
+        {"class": "markus.backends.logging.LoggingMetrics", "options": {"logger_name": "metrics"}},
+    ]
+else:
+    MARKUS_BACKENDS = [
+        {
+            "class": "markus.backends.statsd.StatsdMetrics",
+            "options": {
+                "statsd_host": STATSD_HOST,
+                "statsd_port": STATSD_PORT,
+                "statsd_prefix": STATSD_PREFIX,
+            },
+        },
+    ]
+
+markus.configure(backends=MARKUS_BACKENDS)
 
 LOGGING = {
     "version": 1,

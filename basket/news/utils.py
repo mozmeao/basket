@@ -16,11 +16,10 @@ import fxa.oauth
 import fxa.profile
 import requests
 import sentry_sdk
-from django_statsd.clients import statsd
 from email_validator import EmailNotValidError, validate_email
 
 # Get error codes from basket-client so users see the same definitions
-from basket import errors
+from basket import errors, metrics
 from basket.news.backends.common import NewsletterException
 from basket.news.backends.ctms import (
     CTMSError,
@@ -93,7 +92,7 @@ def email_is_blocked(email):
     """Check an email and return True if blocked."""
     for blocked in get_email_block_list():
         if email.endswith(blocked):
-            statsd.incr("basket.news.utils.email_blocked." + blocked)
+            metrics.incr("basket.news.utils.email_blocked." + blocked)
             return True
 
     return False

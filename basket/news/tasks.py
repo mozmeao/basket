@@ -6,8 +6,8 @@ from django.conf import settings
 from django.core.cache import cache
 
 import user_agents
-from django_statsd.clients import statsd
 
+from basket import metrics
 from basket.base.decorators import rq_task
 from basket.base.exceptions import BasketError
 from basket.base.utils import email_is_testing
@@ -79,7 +79,7 @@ def fxa_email_changed(data):
             contact = ctms.add(ctms_data)
             if contact:
                 data["email_id"] = contact["email"]["email_id"]
-            statsd.incr("news.tasks.fxa_email_changed.user_not_found")
+            metrics.incr("news.tasks.fxa_email_changed.user_not_found")
 
     cache.set(cache_key, ts, 7200)  # 2 hr
 
@@ -464,7 +464,7 @@ def confirm_user(token):
     user_data = get_user_data(token=token)
 
     if user_data is None:
-        statsd.incr("news.tasks.confirm_user.confirm_user_not_found")
+        metrics.incr("news.tasks.confirm_user.confirm_user_not_found")
         return
 
     if user_data["optin"]:

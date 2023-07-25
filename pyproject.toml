@@ -45,4 +45,5 @@ section-order = ["future", "standard-library", "django", "third-party", "first-p
 django = ["django"]
 
 [tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "basket.settings"
 addopts = "-ra --ignore=vendor"

@@ -1,15 +1,16 @@
-from unittest import mock
 from unittest.mock import patch
 
-from django.test import TestCase
 from django.test.utils import override_settings
+
+import pytest
 
 from basket.base.rq import get_worker
 from basket.base.tests.tasks import empty_job
 from basket.news.models import QueuedTask
 
 
-class TestDecorator(TestCase):
+@pytest.mark.django_db
+class TestDecorator:
     @override_settings(RQ_RESULT_TTL=0)
     @override_settings(RQ_MAX_RETRIES=0)
     @patch("basket.base.rq.Callback")
@@ -46,21 +47,18 @@ class TestDecorator(TestCase):
         )
 
     @override_settings(MAINTENANCE_MODE=True)
-    @patch("basket.base.decorators.statsd")
-    def test_maintenance_mode_no_readonly(self, mock_statsd):
+    def test_maintenance_mode_no_readonly(self, metrics_mock):
         """
         Test that the decorator doesn't run the task if maintenance mode is on.
         """
-
         assert QueuedTask.objects.count() == 0
 
         empty_job.delay("arg1")
 
-        mock_statsd.incr.assert_called_once_with("basket.base.tests.tasks.empty_job.queued")
+        metrics_mock.assert_incr_once("basket.base.tests.tasks.empty_job.queued")
         assert QueuedTask.objects.count() == 1
 
-    @patch("basket.base.rq.statsd")
-    def test_job_success(self, mock_statsd):
+    def test_job_success(self, metrics_mock):
         """
         Test that the decorator marks the job as successful if the task runs
         successfully.
@@ -70,13 +68,9 @@ class TestDecorator(TestCase):
         worker = get_worker()
         worker.work(burst=True)  # Burst = worker will quit after all jobs consumed.
 
-        assert mock_statsd.incr.call_count == 2
-        mock_statsd.incr.assert_any_call("basket.base.tests.tasks.empty_job.success")
-        mock_statsd.incr.assert_any_call("news.tasks.success_total")
-        assert mock_statsd.timing.call_count == 2
-        mock_statsd.timing.assert_has_calls(
-            [
-                mock.call("basket.base.tests.tasks.empty_job.duration", mock.ANY),
-                mock.call("news.tasks.duration_total", mock.ANY),
-            ]
-        )
+        assert len(metrics_mock.filter_records("incr")) == 2
+        metrics_mock.assert_incr_once("basket.base.tests.tasks.empty_job.success")
+        metrics_mock.assert_incr_once("news.tasks.success_total")
+        assert len(metrics_mock.filter_records("timing")) == 2
+        metrics_mock.assert_timing_once("basket.base.tests.tasks.empty_job.duration")
+        metrics_mock.assert_timing_once("news.tasks.duration_total")
