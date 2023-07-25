@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 from django.conf import settings
-from django.test import TestCase
 from django.test.utils import override_settings
 
 import pytest
@@ -20,7 +19,8 @@ from basket.base.tests.tasks import failing_job
 from basket.news.models import FailedTask
 
 
-class TestRQUtils(TestCase):
+@pytest.mark.django_db
+class TestRQUtils:
     @override_settings(RQ_MAX_RETRIES=10)
     def test_rq_exponential_backoff(self):
         """
@@ -29,14 +29,14 @@ class TestRQUtils(TestCase):
         """
         with patch("basket.base.rq.random") as mock_random:
             mock_random.randrange.side_effect = [120 * 2**n for n in range(settings.RQ_MAX_RETRIES)]
-            self.assertEqual(rq_exponential_backoff(), [120, 240, 480, 960, 1920, 3840, 7680, 15360, 30720, 61440])
+            assert rq_exponential_backoff() == [120, 240, 480, 960, 1920, 3840, 7680, 15360, 30720, 61440]
 
     @override_settings(RQ_MAX_RETRIES=10, DEBUG=True)
     def test_rq_exponential_backoff_with_debug(self):
         """
         Test that the exponential backoff function returns shorter retries during DEBUG mode.
         """
-        self.assertEqual(rq_exponential_backoff(), [5, 5, 5, 5, 5, 5, 5, 5, 5, 5])
+        assert rq_exponential_backoff() == [5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
 
     @override_settings(RQ_URL="redis://redis:6379/2")
     def test_get_redis_connection(self):
@@ -45,12 +45,12 @@ class TestRQUtils(TestCase):
         """
         # Test passing a URL explicitly.
         connection = get_redis_connection("redis://redis-host:6379/9", force=True)
-        self.assertDictEqual(connection.connection_pool.connection_kwargs, {"host": "redis-host", "port": 6379, "db": 9})
+        assert connection.connection_pool.connection_kwargs == {"host": "redis-host", "port": 6379, "db": 9}
 
         # Test with no URL argument, but with RQ_URL in the settings.
         # Note: The RQ_URL being used also sets this back to the "default" for tests that follow.
         connection = get_redis_connection(force=True)
-        self.assertDictEqual(connection.connection_pool.connection_kwargs, {"host": "redis", "port": 6379, "db": 2})
+        assert connection.connection_pool.connection_kwargs == {"host": "redis", "port": 6379, "db": 2}
 
     @override_settings(REDIS_URL=None, RQ_URL=None)
     def test_get_redis_connection_none(self):
@@ -85,13 +85,11 @@ class TestRQUtils(TestCase):
         assert worker.serializer == JSONSerializer
 
     @override_settings(RQ_EXCEPTION_HANDLERS=["basket.base.rq.store_task_exception_handler"])
-    @patch("basket.base.rq.statsd")
-    def test_on_failure(self, mock_statsd):
+    def test_on_failure(self, metrics_mock):
         """
         Test that the on_failure function creates a FailedTask object and sends
         statsd metrics.
         """
-
         assert FailedTask.objects.count() == 0
 
         args = ["arg1"]
@@ -113,13 +111,11 @@ class TestRQUtils(TestCase):
         # assert fail.exc == 'ValueError("An exception to trigger the failure handler.")'
         # assert "Traceback (most recent call last):" in fail.einfo
         # assert "ValueError: An exception to trigger the failure handler." in fail.einfo
-        # assert mock_statsd.incr.call_count == 2
-        # assert mock_statsd.incr.assert_any_call("news.tasks.failure_total")
-        # assert mock_statsd.incr.assert_any_call("news.tasks.failing_job.failure")
+        # metrics_mock.assert_incr_once("news.tasks.failure_total")
+        # metrics_mock.assert_incr_once("news.tasks.failing_job.failure")
 
     @override_settings(MAINTENANCE_MODE=True)
-    @patch("basket.base.rq.statsd")
-    def test_on_failure_maintenance(self, mock_statsd):
+    def test_on_failure_maintenance(self, metrics_mock):
         """
         Test that the on_failure callback does nothing if we're in maintenance mode.
         """
@@ -131,11 +127,12 @@ class TestRQUtils(TestCase):
         worker.work(burst=True)  # Burst = worker will quit after all jobs consumed.
 
         assert FailedTask.objects.count() == 0
-        assert mock_statsd.incr.call_count == 0
+        metrics_mock.assert_incr_once("basket.base.tests.tasks.failing_job.queued")
+        metrics_mock.assert_not_incr("basket.base.tests.tasks.failing_job.failure")
+        metrics_mock.assert_not_incr("news.tasks.failure_total")
 
     @patch("basket.base.rq.sentry_sdk")
-    @patch("basket.base.rq.statsd")
-    def test_rq_exception_handler(self, mock_statsd, mock_sentry_sdk):
+    def test_rq_exception_handler(self, mock_sentry_sdk, metrics_mock):
         """
         Test that the exception handler creates a FailedTask object.
         """
@@ -170,16 +167,14 @@ class TestRQUtils(TestCase):
         assert "Traceback (most recent call last):" in failed_job.einfo
         assert "ValueError: This is a fake exception" in failed_job.einfo
 
-        assert mock_statsd.incr.call_count == 2
-        mock_statsd.incr.assert_any_call("job.failed.retry_max")
-        mock_statsd.incr.assert_any_call("news.tasks.retry_max_total")
+        metrics_mock.assert_incr_once("job.failed.retry_max")
+        metrics_mock.assert_incr_once("news.tasks.retry_max_total")
 
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "failed")
 
     @patch("basket.base.rq.sentry_sdk")
-    @patch("basket.base.rq.statsd")
-    def test_rq_exception_error_ignore(self, mock_statsd, mock_sentry_sdk):
+    def test_rq_exception_error_ignore(self, mock_sentry_sdk, metrics_mock):
         queue = get_queue()
         job = Job.create(func=print, meta={"task_name": "job.ignore_error"}, connection=queue.connection)
         job.set_status(JobStatus.FAILED)
@@ -187,22 +182,20 @@ class TestRQUtils(TestCase):
         for error_str in IGNORE_ERROR_MSGS:
             store_task_exception_handler(job, Exception, Exception(error_str), None)
 
-            assert mock_statsd.incr.call_count == 2
-            mock_statsd.incr.assert_any_call("job.ignore_error.retry_max")
-            mock_statsd.incr.assert_any_call("news.tasks.retry_max_total")
+            metrics_mock.assert_incr_once("job.ignore_error.retry_max")
+            metrics_mock.assert_incr_once("news.tasks.retry_max_total")
 
             assert mock_sentry_sdk.capture_exception.call_count == 1
             mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
 
-            mock_statsd.reset_mock()
+            metrics_mock.clear_records()
             mock_sentry_sdk.reset_mock()
 
         # Also test IGNORE_ERROR_MSGS_RE.
         store_task_exception_handler(job, Exception, Exception("campaignId 123 not found"), None)
 
-        assert mock_statsd.incr.call_count == 2
-        mock_statsd.incr.assert_any_call("job.ignore_error.retry_max")
-        mock_statsd.incr.assert_any_call("news.tasks.retry_max_total")
+        metrics_mock.assert_incr_once("job.ignore_error.retry_max")
+        metrics_mock.assert_incr_once("news.tasks.retry_max_total")
 
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
@@ -221,8 +214,7 @@ class TestRQUtils(TestCase):
         assert FailedTask.objects.count() == 0
 
     @patch("basket.base.rq.sentry_sdk")
-    @patch("basket.base.rq.statsd")
-    def test_rq_exception_handler_retry(self, mock_statsd, mock_sentry_sdk):
+    def test_rq_exception_handler_retry(self, mock_sentry_sdk, metrics_mock):
         queue = get_queue()
         job = Job.create(func=print, meta={"task_name": "job.rescheduled"}, connection=queue.connection)
         job.retries_left = 1
@@ -239,9 +231,8 @@ class TestRQUtils(TestCase):
         store_task_exception_handler(job, e.type, e.value, e.tb)
 
         assert FailedTask.objects.count() == 0
-        assert mock_statsd.incr.call_count == 3
-        mock_statsd.incr.assert_any_call("job.rescheduled.retry")
-        mock_statsd.incr.assert_any_call("job.rescheduled.retries_left.2")
-        mock_statsd.incr.assert_any_call("news.tasks.retry_total")
+        metrics_mock.assert_incr_once("job.rescheduled.retry")
+        metrics_mock.assert_incr_once("job.rescheduled.retries_left.2")
+        metrics_mock.assert_incr_once("news.tasks.retry_total")
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "retried")

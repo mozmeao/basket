@@ -12,11 +12,10 @@ from django.views.decorators.http import require_POST, require_safe
 
 import fxa.constants
 import sentry_sdk
-from django_statsd.clients import statsd
 from ratelimit.core import is_ratelimited
 from ratelimit.exceptions import Ratelimited
 
-from basket import errors
+from basket import errors, metrics
 from basket.news.forms import (
     SOURCE_URL_RE,
     CommonVoiceForm,
@@ -108,7 +107,7 @@ def ratelimited(request, e):
     parts = [x.strip() for x in request.path.split("/") if x.strip()]
     # strip out tokens in the urls
     parts = [x for x in parts if not is_token(x)]
-    statsd.incr(".".join(parts + ["ratelimited"]))
+    metrics.incr(".".join(parts + ["ratelimited"]))
     return HttpResponseJSON(
         {
             "status": "error",
@@ -156,17 +155,17 @@ def fxa_callback(request):
     error_url = f"https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/fxa-error/"
     sess_state = request.session.pop("fxa_state", None)
     if sess_state is None:
-        statsd.incr("news.views.fxa_callback.error.no_state")
+        metrics.incr("news.views.fxa_callback.error.no_state")
         return HttpResponseRedirect(error_url)
 
     code = request.GET.get("code")
     state = request.GET.get("state")
     if not (code and state):
-        statsd.incr("news.views.fxa_callback.error.no_code_state")
+        metrics.incr("news.views.fxa_callback.error.no_code_state")
         return HttpResponseRedirect(error_url)
 
     if sess_state != state:
-        statsd.incr("news.views.fxa_callback.error.no_state_match")
+        metrics.incr("news.views.fxa_callback.error.no_state_match")
         return HttpResponseRedirect(error_url)
 
     fxa_oauth, fxa_profile = get_fxa_clients()
@@ -174,7 +173,7 @@ def fxa_callback(request):
         access_token = fxa_oauth.trade_code(code, ttl=settings.FXA_OAUTH_TOKEN_TTL)["access_token"]
         user_profile = fxa_profile.get_profile(access_token)
     except Exception:
-        statsd.incr("news.views.fxa_callback.error.fxa_comm")
+        metrics.incr("news.views.fxa_callback.error.fxa_comm")
         sentry_sdk.capture_exception()
         return HttpResponseRedirect(error_url)
 
@@ -182,7 +181,7 @@ def fxa_callback(request):
     try:
         user_data = get_user_data(email=email)
     except Exception:
-        statsd.incr("news.views.fxa_callback.error.get_user_data")
+        metrics.incr("news.views.fxa_callback.error.get_user_data")
         sentry_sdk.capture_exception()
         return HttpResponseRedirect(error_url)
 
@@ -208,10 +207,11 @@ def fxa_callback(request):
         try:
             token = upsert_contact(SUBSCRIBE, new_user_data, None)[0]
         except Exception:
-            statsd.incr("news.views.fxa_callback.error.upsert_contact")
+            metrics.incr("news.views.fxa_callback.error.upsert_contact")
             sentry_sdk.capture_exception()
             return HttpResponseRedirect(error_url)
 
+    metrics.incr("news.views.fxa_callback.success")
     redirect_to = f"https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/existing/{token}/?fxa=1"
     return HttpResponseRedirect(redirect_to)
 
@@ -423,7 +423,7 @@ def subscribe_main(request):
         data = form.cleaned_data
 
         if email_is_blocked(data["email"]):
-            statsd.incr("news.views.subscribe_main.email_blocked")
+            metrics.incr("news.views.subscribe_main.email_blocked")
             # don't let on there's a problem
             return respond_ok(request, data)
 
@@ -450,7 +450,7 @@ def subscribe_main(request):
         if not data["source_url"] and request.headers.get("Referer"):
             referrer = request.META["HTTP_REFERER"]
             if SOURCE_URL_RE.match(referrer):
-                statsd.incr("news.views.subscribe_main.use_referrer")
+                metrics.incr("news.views.subscribe_main.use_referrer")
                 data["source_url"] = referrer
 
         if is_ratelimited(
@@ -460,7 +460,7 @@ def subscribe_main(request):
             rate=EMAIL_SUBSCRIBE_RATE_LIMIT,
             increment=True,
         ):
-            statsd.incr("subscribe.ratelimited")
+            metrics.incr("subscribe.ratelimited")
             return respond_error(request, form, "Rate limit reached", 429)
 
         try:
@@ -499,7 +499,7 @@ def subscribe(request):
             # Can't use QueryDict since the string is not url-encoded.
             # It will convert '+' to ' ' for example.
             data = dict(pair.split("=") for pair in raw_request.split("&") if "=" in pair)
-            statsd.incr("news.views.subscribe.fxos-workaround")
+            metrics.incr("news.views.subscribe.fxos-workaround")
         else:
             return HttpResponseJSON(
                 {
@@ -527,7 +527,7 @@ def subscribe(request):
     data["email"] = email
 
     if email_is_blocked(data["email"]):
-        statsd.incr("news.views.subscribe.email_blocked")
+        metrics.incr("news.views.subscribe.email_blocked")
         # don't let on there's a problem
         return HttpResponseJSON({"status": "ok"})
 
@@ -559,7 +559,7 @@ def subscribe(request):
     # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
     if not data.get("source_url") and request.headers.get("Referer"):
         # try to get it from referrer
-        statsd.incr("news.views.subscribe.use_referrer")
+        metrics.incr("news.views.subscribe.use_referrer")
         data["source_url"] = request.META["HTTP_REFERER"]
 
     return update_user_task(request, SUBSCRIBE, data=data, optin=optin, sync=sync)
@@ -571,7 +571,7 @@ def invalid_email_response():
         "code": errors.BASKET_INVALID_EMAIL,
         "desc": "Invalid email address",
     }
-    statsd.incr("news.views.invalid_email_response")
+    metrics.incr("news.views.invalid_email_response")
     return HttpResponseJSON(resp_data, 400)
 
 
@@ -912,7 +912,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
             raise Ratelimited()
 
     if sync:
-        statsd.incr("news.views.subscribe.sync")
+        metrics.incr("news.views.subscribe.sync")
         if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
             # save what we can
             upsert_user.delay(api_call_type, data)

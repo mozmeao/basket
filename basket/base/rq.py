@@ -8,12 +8,12 @@ from django.conf import settings
 import redis
 import requests
 import sentry_sdk
-from django_statsd.clients import statsd
 from rq import Callback, Retry, SimpleWorker
 from rq.queue import Queue
 from rq.serializers import JSONSerializer
 from silverpop.api import SilverpopResponseException
 
+from basket import metrics
 from basket.base.exceptions import RetryTask
 from basket.news.backends.common import NewsletterException
 
@@ -137,8 +137,8 @@ def rq_exponential_backoff():
 def log_timing(job):
     if start_time := job.meta.get("start_time"):
         total_time = int((time() - start_time) * 1000)
-        statsd.timing(f"{job.meta['task_name']}.duration", total_time)
-        statsd.timing("news.tasks.duration_total", total_time)
+        metrics.timing(f"{job.meta['task_name']}.duration", total_time)
+        metrics.timing("news.tasks.duration_total", total_time)
 
 
 def rq_on_success(job, connection, result, *args, **kwargs):
@@ -146,9 +146,9 @@ def rq_on_success(job, connection, result, *args, **kwargs):
     if not settings.MAINTENANCE_MODE:
         log_timing(job)
         task_name = job.meta["task_name"]
-        statsd.incr(f"{task_name}.success")
+        metrics.incr(f"{task_name}.success")
         if not task_name.endswith("snitch"):
-            statsd.incr("news.tasks.success_total")
+            metrics.incr("news.tasks.success_total")
 
 
 def rq_on_failure(job, connection, *exc_info, **kwargs):
@@ -156,9 +156,9 @@ def rq_on_failure(job, connection, *exc_info, **kwargs):
     if not settings.MAINTENANCE_MODE:
         log_timing(job)
         task_name = job.meta["task_name"]
-        statsd.incr(f"{task_name}.failure")
+        metrics.incr(f"{task_name}.failure")
         if not task_name.endswith("snitch"):
-            statsd.incr("news.tasks.failure_total")
+            metrics.incr("news.tasks.failure_total")
 
 
 def ignore_error(exc, to_ignore=None, to_ignore_re=None):
@@ -191,9 +191,9 @@ def store_task_exception_handler(job, *exc_info):
 
     if job.is_scheduled:
         # Job failed but is scheduled for a retry.
-        statsd.incr(f"{task_name}.retry")
-        statsd.incr(f"{task_name}.retries_left.{job.retries_left + 1}")
-        statsd.incr("news.tasks.retry_total")
+        metrics.incr(f"{task_name}.retry")
+        metrics.incr(f"{task_name}.retries_left.{job.retries_left + 1}")
+        metrics.incr("news.tasks.retry_total")
 
         if exc_info[1] not in EXCEPTIONS_ALLOW_RETRY:
             # Force retries to abort.
@@ -209,8 +209,8 @@ def store_task_exception_handler(job, *exc_info):
 
     elif job.is_failed:
         # Job failed but no retries left.
-        statsd.incr(f"{task_name}.retry_max")
-        statsd.incr("news.tasks.retry_max_total")
+        metrics.incr(f"{task_name}.retry_max")
+        metrics.incr("news.tasks.retry_max_total")
 
         # Here to avoid a circular import.
         from basket.news.models import FailedTask

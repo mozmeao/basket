@@ -1,7 +1,7 @@
 from functools import wraps
 from time import time
 
-from django_statsd.clients import statsd
+from basket import metrics
 
 
 class UnauthorizedException(Exception):
@@ -40,10 +40,10 @@ def get_timer_decorator(prefix):
 
             def record_timing():
                 totaltime = int((time() - starttime) * 1000)
-                statsd.timing(prefix + ".timing", totaltime)
-                statsd.timing(prefix + ".{}.timing".format(f.__name__), totaltime)
-                statsd.incr(prefix + ".count")
-                statsd.incr(prefix + ".{}.count".format(f.__name__))
+                metrics.timing(f"{prefix}.timing", totaltime)
+                metrics.timing(f"{prefix}.{f.__name__}.timing", totaltime)
+                metrics.incr(f"{prefix}.count")
+                metrics.incr(f"{prefix}.{f.__name__}.count")
 
             try:
                 resp = f(*args, **kwargs)

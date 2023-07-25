@@ -9,8 +9,8 @@ from django.core.management import BaseCommand, CommandError
 import boto3
 import requests
 import sentry_sdk
-from django_statsd.clients import statsd
 
+from basket import metrics
 from basket.news.tasks import (
     fxa_delete,
     fxa_email_changed,
@@ -71,17 +71,17 @@ class Command(BaseCommand):
                         continue
 
                     if settings.FXA_EVENTS_QUEUE_IGNORE_MODE:
-                        statsd.incr("fxa.events.message.ignored")
+                        metrics.incr("fxa.events.message.ignored")
                         msg.delete()
                         continue
 
-                    statsd.incr("fxa.events.message.received")
+                    metrics.incr("fxa.events.message.received")
                     try:
                         data = json.loads(msg.body)
                         event = json.loads(data["Message"])
                     except ValueError:
                         # body was not JSON
-                        statsd.incr("fxa.events.message.json_error")
+                        metrics.incr("fxa.events.message.json_error")
                         with sentry_sdk.push_scope() as scope:
                             scope.set_extra("msg.body", msg.body)
                             sentry_sdk.capture_exception()
@@ -90,9 +90,9 @@ class Command(BaseCommand):
                         continue
 
                     event_type = event.get("event", "__NONE__").replace(":", "-")
-                    statsd.incr("fxa.events.message.received.{}".format(event_type))
+                    metrics.incr("fxa.events.message.received.{}".format(event_type))
                     if event_type not in FXA_EVENT_TYPES:
-                        statsd.incr(
+                        metrics.incr(
                             "fxa.events.message.received.{}.IGNORED".format(event_type),
                         )
                         log.debug("IGNORED: %s" % event)
@@ -106,14 +106,14 @@ class Command(BaseCommand):
                         FXA_EVENT_TYPES[event_type].delay(event)
                     except Exception:
                         # something's wrong with the queue. try again.
-                        statsd.incr("fxa.events.message.queue_error")
+                        metrics.incr("fxa.events.message.queue_error")
                         with sentry_sdk.push_scope() as scope:
                             scope.set_tag("action", "retried")
                             sentry_sdk.capture_exception()
 
                         continue
 
-                    statsd.incr("fxa.events.message.success")
+                    metrics.incr("fxa.events.message.success")
                     msg.delete()
         except KeyboardInterrupt:
             sys.exit("\nBuh bye")

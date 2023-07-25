@@ -1,3 +1,4 @@
+import functools
 import json
 from unittest.mock import Mock, patch
 
@@ -8,6 +9,7 @@ from django.test.client import Client, RequestFactory
 from django.urls import reverse
 
 from email_validator import EmailSyntaxError
+from markus.testing import MetricsMock
 
 from basket import errors
 from basket.news import models, utils, views
@@ -320,6 +322,15 @@ class ViewsPatcherMixin(object):
         patcher = patch("basket.news.views." + name)
         setattr(self, name, patcher.start())
         self.addCleanup(patcher.stop)
+
+
+def mock_metrics(f):
+    @functools.wraps(f)
+    def wrapper(self, *args, **kwargs):
+        with MetricsMock() as mm:
+            return f(self, mm, *args, **kwargs)
+
+    return wrapper
 
 
 @override_settings(DEBUG=True)
@@ -1262,18 +1273,19 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         self.client = Client()
         self._patch_views("get_user_data")
         self._patch_views("get_fxa_clients")
-        self._patch_views("statsd")
         self._patch_views("sentry_sdk")
         self._patch_views("upsert_contact")
 
-    def test_no_session_state(self):
+    @mock_metrics
+    def test_no_session_state(self, metrics_mock):
         """Should return a redirect to error page"""
         resp = self.client.get("/fxa/callback/")
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
-        self.statsd.incr.assert_called_with("news.views.fxa_callback.error.no_state")
+        metrics_mock.assert_incr_once("news.views.fxa_callback.error.no_state")
 
-    def test_no_returned_state(self):
+    @mock_metrics
+    def test_no_returned_state(self, metrics_mock):
         """Should return a redirect to error page"""
         session = self.client.session
         session["fxa_state"] = "thedude"
@@ -1281,11 +1293,10 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         resp = self.client.get("/fxa/callback/", {"code": "thecode"})
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
-        self.statsd.incr.assert_called_with(
-            "news.views.fxa_callback.error.no_code_state",
-        )
+        metrics_mock.assert_incr_once("news.views.fxa_callback.error.no_code_state")
 
-    def test_no_returned_code(self):
+    @mock_metrics
+    def test_no_returned_code(self, metrics_mock):
         """Should return a redirect to error page"""
         session = self.client.session
         session["fxa_state"] = "thedude"
@@ -1293,11 +1304,10 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         resp = self.client.get("/fxa/callback/", {"state": "thedude"})
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
-        self.statsd.incr.assert_called_with(
-            "news.views.fxa_callback.error.no_code_state",
-        )
+        metrics_mock.assert_incr_once("news.views.fxa_callback.error.no_code_state")
 
-    def test_session_and_request_state_no_match(self):
+    @mock_metrics
+    def test_session_and_request_state_no_match(self, metrics_mock):
         """Should return a redirect to error page"""
         session = self.client.session
         session["fxa_state"] = "thedude"
@@ -1306,11 +1316,10 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         resp = self.client.get("/fxa/callback/", {"code": "thecode", "state": "walter"})
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
-        self.statsd.incr.assert_called_with(
-            "news.views.fxa_callback.error.no_state_match",
-        )
+        metrics_mock.assert_incr_once("news.views.fxa_callback.error.no_state_match")
 
-    def test_fxa_communication_issue(self):
+    @mock_metrics
+    def test_fxa_communication_issue(self, metrics_mock):
         """Should return a redirect to error page"""
         fxa_oauth_mock = Mock()
         self.get_fxa_clients.return_value = fxa_oauth_mock, Mock()
@@ -1325,10 +1334,11 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         )
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
-        self.statsd.incr.assert_called_with("news.views.fxa_callback.error.fxa_comm")
+        metrics_mock.assert_incr_once("news.views.fxa_callback.error.fxa_comm")
         self.sentry_sdk.capture_exception.assert_called()
 
-    def test_existing_user(self):
+    @mock_metrics
+    def test_existing_user(self, metrics_mock):
         """Should return a redirect to email pref center"""
         fxa_oauth_mock, fxa_profile_mock = Mock(), Mock()
         fxa_oauth_mock.trade_code.return_value = {"access_token": "access-token"}
@@ -1349,11 +1359,12 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
             ttl=settings.FXA_OAUTH_TOKEN_TTL,
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
-        self.statsd.incr.assert_not_called()
+        metrics_mock.assert_incr_once("news.views.fxa_callback.success")
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-token/?fxa=1"
         self.get_user_data.assert_called_with(email="dude@example.com")
 
-    def test_new_user_with_locale(self):
+    @mock_metrics
+    def test_new_user_with_locale(self, metrics_mock):
         """Should return a redirect to email pref center"""
         fxa_oauth_mock, fxa_profile_mock = Mock(), Mock()
         fxa_oauth_mock.trade_code.return_value = {"access_token": "access-token"}
@@ -1378,7 +1389,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
             ttl=settings.FXA_OAUTH_TOKEN_TTL,
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
-        self.statsd.incr.assert_not_called()
+        metrics_mock.assert_incr_once("news.views.fxa_callback.success")
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
         self.get_user_data.assert_called_with(email="dude@example.com")
         self.upsert_contact.assert_called_with(
@@ -1395,7 +1406,8 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
             None,
         )
 
-    def test_new_user_without_locale(self):
+    @mock_metrics
+    def test_new_user_without_locale(self, metrics_mock):
         """Should return a redirect to email pref center"""
         fxa_oauth_mock, fxa_profile_mock = Mock(), Mock()
         fxa_oauth_mock.trade_code.return_value = {"access_token": "access-token"}
@@ -1419,7 +1431,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
             ttl=settings.FXA_OAUTH_TOKEN_TTL,
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
-        self.statsd.incr.assert_not_called()
+        metrics_mock.assert_incr_once("news.views.fxa_callback.success")
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
         self.get_user_data.assert_called_with(email="dude@example.com")
         self.upsert_contact.assert_called_with(

@@ -11,10 +11,10 @@ from django.conf import settings
 from django.core.cache import cache
 
 import sentry_sdk
-from django_statsd.clients import statsd
 from oauthlib.oauth2 import BackendApplicationClient
 from requests_oauthlib import OAuth2Session
 
+from basket import metrics
 from basket.news.backends.common import get_timer_decorator
 from basket.news.country_codes import SFDC_COUNTRIES_LIST, convert_country_3_to_2
 from basket.news.newsletters import (
@@ -200,7 +200,7 @@ def truncate_string(max_length, raw_string):
         raise ValueError("expected string, got None")
     string = raw_string.strip()
     if len(string) > max_length:
-        statsd.incr("news.backends.ctms.data_truncated")
+        metrics.incr("news.backends.ctms.data_truncated")
         return string[:max_length]
     return string
 
@@ -514,16 +514,16 @@ class CTMSSession:
         session = self._session
         url = urljoin(self.api_url, path)
         resp = session.request(method, url, *args, **kwargs)
-        statsd.incr("news.backends.ctms.request")
-        statsd.incr(f"news.backends.ctms.request.{method}")
-        statsd.incr(f"news.backends.ctms.response.{resp.status_code}")
+        metrics.incr("news.backends.ctms.request")
+        metrics.incr(f"news.backends.ctms.request.{method}")
+        metrics.incr(f"news.backends.ctms.response.{resp.status_code}")
         if resp.status_code == 401:
             self._session = self._authorize_session(session)
-            statsd.incr("news.backends.ctms.session_refresh")
+            metrics.incr("news.backends.ctms.session_refresh")
             resp = session.request(method, url, *args, **kwargs)
-            statsd.incr("news.backends.ctms.request")
-            statsd.incr(f"news.backends.ctms.request.{method}")
-            statsd.incr(f"news.backends.ctms.response.{resp.status_code}")
+            metrics.incr("news.backends.ctms.request")
+            metrics.incr(f"news.backends.ctms.request.{method}")
+            metrics.incr(f"news.backends.ctms.response.{resp.status_code}")
         return resp
 
     get = partialmethod(request, "GET")
