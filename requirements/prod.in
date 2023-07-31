@@ -1,6 +1,6 @@
 APScheduler==3.10.1
 backports.zoneinfo==0.2.1
-boto3==1.28.3
+boto3==1.28.15
 configparser==6.0.0
 contextlib2==21.6.0
 cryptography==41.0.2
