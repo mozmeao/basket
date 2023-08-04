@@ -43,10 +43,15 @@ class MetricsRequestTimingMiddleware(MiddlewareMixin):
 
     def _record_timing(self, request, status_code):
         if hasattr(request, "_start_time") and hasattr(request, "_view_module") and hasattr(request, "_view_name"):
+            # View times.
             view_time = int((time.time() - request._start_time) * 1000)
             metrics.timing(f"view.{request._view_module}.{request._view_name}.{request.method}", view_time, tags=[f"status_code:{status_code}"])
             metrics.timing(f"view.{request._view_module}.{request.method}", view_time, tags=[f"status_code:{status_code}"])
             metrics.timing(f"view.{request.method}", view_time, tags=[f"status_code:{status_code}"])
+            # View counts.
+            metrics.incr(f"view.count.{request._view_module}.{request._view_name}.{request.method}")
+            metrics.incr(f"view.count.{request._view_module}.{request.method}")
+            metrics.incr(f"view.count.{request.method}")
 
     def process_response(self, request, response):
         self._record_timing(request, response.status_code)
