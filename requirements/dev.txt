@@ -14,12 +14,6 @@ asgiref==3.6.0 \
     # via
     #   -r requirements/prod.txt
     #   django
-async-timeout==4.0.2 \
-    --hash=sha256:2163e1640ddb52b7a8c80d0a67a08587e5d245cc9c553a74a847056bc2976b15 \
-    --hash=sha256:8ca1e4fcf50d07413d66d1a5e416e42cfdf5851c981d679a09851a6853383b3c
-    # via
-    #   -r requirements/prod.txt
-    #   redis
 attrs==22.2.0 \
     --hash=sha256:29e95c7f6778868dbd49170f98f8818f78f3dc5e0e37c0b1f474e3561b240836 \
     --hash=sha256:c9227bfc2f01993c03f68db37d1d15c9690188323c067c641f1a35ca58185f99
@@ -411,10 +405,6 @@ email-validator==1.3.1 \
     --hash=sha256:49a72f5fa6ed26be1c964f0567d931d10bf3fdeeacdf97bc26ef1cd2a44e0bda \
     --hash=sha256:d178c5c6fa6c6824e9b04f199cf23e79ac15756786573c190d2ad13089411ad2
     # via -r requirements/prod.txt
-exceptiongroup==1.1.0 \
-    --hash=sha256:327cbda3da756e2de031a3107b81ab7b3770a602c4d16ca618298c526f4bec1e \
-    --hash=sha256:bcb67d800a4497e1b404c2dd44fca47d3b7a5e5433dbab67f96c1a685cdfdf23
-    # via pytest
 freezegun==1.2.2 \
     --hash=sha256:cd22d1ba06941384410cd967d8a99d5ae2442f57dfafeff2fda5de8dc5c05446 \
     --hash=sha256:ea1b963b993cb9ea195adbd893a48d573fda951b0da64f60883d7e988b606c9f
@@ -693,22 +683,22 @@ mysqlclient==2.1.1 \
     --hash=sha256:c812b67e90082a840efb82a8978369e6e69fc62ce1bda4ca8f3084a9d862308b \
     --hash=sha256:dea88c8d3f5a5d9293dfe7f087c16dd350ceb175f2f6631c9cf4caf3e19b7a96
     # via -r requirements/prod.txt
-newrelic==8.8.1 \
-    --hash=sha256:1996ed51f92366f5ba9ad4992687aaca4d0bb3541e239ef4a40e0ae5da6939fc \
-    --hash=sha256:3b66123c5f542d29c7f2e6ed9ab92327fb9b6f857f4a635d5a5c530eb5a0c3a7 \
-    --hash=sha256:418a29b20972413f8839aa5b77fa485d71bd897f1257ff05d86a1496d10b75de \
-    --hash=sha256:4e82a095d8136ac6df10a702ac0c293d97a2a7beddf899c8ecc55564d0f02c0a \
-    --hash=sha256:659d880fe7b44cc8974b40e796b612f1719f33d315093893e49ba9aec16ad8b1 \
-    --hash=sha256:880c38f65645f681ea66e18613178b8df96b8fa8873a0b4da4d4076cab738363 \
-    --hash=sha256:8979eb30019c4d0568842f0d8c17f3616fc8631a57b9ca67ebe1e61cee55c7bd \
-    --hash=sha256:8f801a8fa30453c421747420232e56533a4c88c066eb14f852f34a757d1595f4 \
-    --hash=sha256:9603b69eb75f9aecb6246d95c7eeb1f8d41d5c4f34feb5aa0400548eb03b9d3b \
-    --hash=sha256:a370283955065a1a55ac85ff97bd97e87144325732dd1ab87bf99a1617a3ecdc \
-    --hash=sha256:ba87bac65018c6015cb778ff3a6806949879b2ae42f79b405a32e13177e11b13 \
-    --hash=sha256:bcbdf28cdd07bf593942b9de076258ed0fe8b5bc85583bdece64ae136e53035f \
-    --hash=sha256:dba619d7b654b01ab5742e059096788b54d8b3dfac14a32c46f00151b848ee6c \
-    --hash=sha256:de28d2113ac7a499e54f710d6b7bbcc338c02513f70a166ddceb23b45d752a03 \
-    --hash=sha256:ff9f8977a1a0e9a03c50d43e6eb94135da77c2ab9c00723cd1bf689c5685e4b0
+newrelic==8.9.0 \
+    --hash=sha256:13662a5eec5b64a5ec5e220fa1a7ac99c5e7ff6eb868bb303273689e7c90d762 \
+    --hash=sha256:23450caafa8da15a8a6632642b64a6b1921335a4edd58caeb9f244d740e190b9 \
+    --hash=sha256:260d9536d4a2c910387aa13c91621e88f96567bb4acf7278608cd1905c25808b \
+    --hash=sha256:4f86037cd179a21efaef52784567c3fc951b400f72fe08567b19d47ab31a6a9d \
+    --hash=sha256:54c607fb502582484f3bb0e134b19a3634d9b07e79474082d1cde9ff31616844 \
+    --hash=sha256:57159c99ee6a37f1e487ac5ab68fd67afd1407da1689705b3560f7a903867453 \
+    --hash=sha256:732dd981bcda6030c9c377eb8765c60ba5f510ba2052b689cb92a964b16290c0 \
+    --hash=sha256:755d210314f208735a4e53a8ba124ada00fda1fd3ccbdc6d8f01a0d521711c1f \
+    --hash=sha256:7eb535500073363d25e14ff4a30379957972339530c600673a7bccb26f009aef \
+    --hash=sha256:a8e8cdfd5ac5f8e58aa11909921e65b4da8afb721de996cd4ecd5c372e339c3c \
+    --hash=sha256:d9b1ad14417e424b8db24c2da9f4f095b4ea3fac27cf6d5efdeebd140ad07086 \
+    --hash=sha256:ec36f973d6835eb6a0f27871c0dc8127e8bbc4118c3456dbf3f8ef4aae7d707a \
+    --hash=sha256:f2200b2d4e70b0544a5b99b5103c96eecdf204cc2bbbf499106ad93ebd8f6469 \
+    --hash=sha256:f249f06dbc8b1a160532ece3d6b1989be1ed63c2fe3f569a8913d7c2f0ee9a7e \
+    --hash=sha256:fa53d9610ba18a577a3bb62e3fc9e22c13e8b99a88ef8f8f6ebc5538f0390ff0
     # via -r requirements/prod.txt
 oauthlib==3.2.2 \
     --hash=sha256:8139f29aac13e25d502680e9e19963e83f16838d48a0d71c287fe40e7067fbca \
@@ -939,19 +929,11 @@ statsd==4.0.1 \
     # via
     #   -r requirements/prod.txt
     #   markus
-tomli==2.0.1 \
-    --hash=sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc \
-    --hash=sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f
-    # via
-    #   black
-    #   coverage
-    #   pytest
 typing-extensions==4.5.0 \
     --hash=sha256:5cb5f4a79139d699607b3ef622a1dedafa84e115ab0024e0d9c044a9479ca7cb \
     --hash=sha256:fb33085c39dd998ac16d1431ebc293a8b3eedd00fd4a32de0ff79002c19511b4
     # via
     #   -r requirements/prod.txt
-    #   black
     #   dj-database-url
 tzdata==2022.7 \
     --hash=sha256:2b88858b0e3120792a3c0635c23daf36a7d7eeeca657c323da299d2094402a0d \
@@ -999,5 +981,6 @@ whitenoise==6.5.0 \
     # via -r requirements/prod.txt
 
 # WARNING: The following packages were not pinned, but pip requires them to be
-# pinned when the requirements file includes hashes. Consider using the --allow-unsafe flag.
+# pinned when the requirements file includes hashes and the requirement is not
+# satisfied by a package already installed. Consider using the --allow-unsafe flag.
 # setuptools
