@@ -1,4 +1,3 @@
-import contextlib
 import inspect
 import time
 
@@ -9,15 +8,11 @@ from django.utils.deprecation import MiddlewareMixin
 from basket import metrics
 
 
-class HostnameMiddleware(object):
-    def __init__(self, get_response):
-        values = [getattr(settings, x) for x in ["CLUSTER_NAME", "K8S_NAMESPACE", "K8S_POD_NAME"]]
-        self.backend_server = "/".join(x for x in values if x)
-        self.get_response = get_response
+class HostnameMiddleware(MiddlewareMixin):
+    """Add header with k8s cluster / pod details for debugging."""
 
-    def __call__(self, request):
-        response = self.get_response(request)
-        response["X-Backend-Server"] = self.backend_server
+    def process_response(self, request, response):
+        response["X-Backend-Server"] = "/".join(filter(None, [getattr(settings, x) for x in ["CLUSTER_NAME", "K8S_NAMESPACE", "K8S_POD_NAME"]]))
         return response
 
 
@@ -40,23 +35,23 @@ class MetricsRequestTimingMiddleware(MiddlewareMixin):
         if inspect.isfunction(view_func):
             view = view_func
         else:
-            view = view.__class__
+            view = view_func.__class__
 
-        with contextlib.suppress(AttributeError):
-            request._start_time = time.time()
-            request._view_module = view.__module__
-            request._view_name = view.__name__
+        request._start_time = time.time()
+        request._view_module = getattr(view, "__module__", "none")
+        request._view_name = getattr(view, "__name__", "none")
 
-    def _record_timing(self, request):
-        if hasattr(request, "_start_time"):
+    def _record_timing(self, request, status_code):
+        if hasattr(request, "_start_time") and hasattr(request, "_view_module") and hasattr(request, "_view_name"):
             view_time = int((time.time() - request._start_time) * 1000)
-            metrics.timing(f"view.{request._view_module}.{request._view_name}.{request.method}", view_time)
-            metrics.timing(f"view.{request._view_module}.{request.method}", view_time)
-            metrics.timing(f"view.{request.method}", view_time)
+            metrics.timing(f"view.{request._view_module}.{request._view_name}.{request.method}", view_time, tags=[f"status_code:{status_code}"])
+            metrics.timing(f"view.{request._view_module}.{request.method}", view_time, tags=[f"status_code:{status_code}"])
+            metrics.timing(f"view.{request.method}", view_time, tags=[f"status_code:{status_code}"])
 
     def process_response(self, request, response):
-        self._record_timing(request)
+        self._record_timing(request, response.status_code)
         return response
 
     def process_exception(self, request, exception):
-        self._record_timing(request)
+        if not isinstance(exception, Http404):
+            self._record_timing(request, 500)

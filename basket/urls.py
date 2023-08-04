@@ -31,3 +31,13 @@ urlpatterns.extend(
         path("admin/", admin.site.urls),
     ],
 )
+
+if settings.UNITTEST:
+    # Added to help test the 500 statsd metrics in unit tests.
+    from django.views import defaults
+
+    urlpatterns.extend(
+        [
+            path("500/", defaults.server_error),
+        ]
+    )
