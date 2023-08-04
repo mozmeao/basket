@@ -92,7 +92,7 @@ def email_is_blocked(email):
     """Check an email and return True if blocked."""
     for blocked in get_email_block_list():
         if email.endswith(blocked):
-            metrics.incr("basket.news.utils.email_blocked." + blocked)
+            metrics.incr(f"basket.news.utils.email_blocked.{blocked}")
             return True
 
     return False
