@@ -320,7 +320,7 @@ if LOCAL_DEV:
 else:
     MARKUS_BACKENDS = [
         {
-            "class": "markus.backends.statsd.StatsdMetrics",
+            "class": "markus.backends.datadog.DatadogMetrics",
             "options": {
                 "statsd_host": STATSD_HOST,
                 "statsd_port": STATSD_PORT,
