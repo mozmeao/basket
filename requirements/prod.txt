@@ -251,6 +251,10 @@ cryptography==41.0.3 \
     #   mozilla-django-oidc
     #   pyfxa
     #   pyopenssl
+datadog==0.46.0 \
+    --hash=sha256:3d7bcda6177b43be4cdb52e16b4bdd4f9005716c0dd7cfea009e018c36bb7a3d \
+    --hash=sha256:e4fbc92a85e2b0919a226896ae45fc5e4b356c0c57f1c2659659dfbe0789c674
+    # via markus
 dj-database-url==2.0.0 \
     --hash=sha256:9c9e5f7224f62635a787e9cc3c6762c9be2b19541a21e3c08fa573bd01609b4b \
     --hash=sha256:a35a9f0f43775ca6f90d819dc456233ef7bcc76b47377d5d908b75c7eb320624
@@ -550,7 +554,7 @@ lxml==4.9.3 \
     --hash=sha256:fcdd00edfd0a3001e0181eab3e63bd5c74ad3e67152c84f93f13769a40e073a7 \
     --hash=sha256:fe4bda6bd4340caa6e5cf95e73f8fea5c4bfc55763dd42f1b50a94c1b4a2fbd4
     # via -r requirements/prod.in
-markus[statsd]==4.2.0 \
+markus[datadog]==4.2.0 \
     --hash=sha256:156398b7de56db4e8ef420a80fcce1c49b6d3d41405874a3e128cb209cf4bfd8 \
     --hash=sha256:9dd41ce53b25a3e806b0d065808fec00c4ec945e80cf5a72431bf9b61b44d7fb
     # via -r requirements/prod.in
@@ -696,6 +700,7 @@ requests==2.28.2 \
     --hash=sha256:64299f4909223da747622c030b781c0d7811e359c37124b4bd368fb8c6518baa \
     --hash=sha256:98b1b2782e3c6c4904938b84c0eb932721069dfdb9134313beff7c83c2df24bf
     # via
+    #   datadog
     #   django-mozilla-product-details
     #   mozilla-django-oidc
     #   pybrowserid
@@ -739,10 +744,6 @@ sqlparse==0.4.3 \
     --hash=sha256:0323c0ec29cd52bceabc1b4d9d579e311f3e4961b98d174201d5622a23b85e34 \
     --hash=sha256:69ca804846bb114d2ec380e4360a8a340db83f0ccf3afceeb1404df028f57268
     # via django
-statsd==4.0.1 \
-    --hash=sha256:99763da81bfea8daf6b3d22d11aaccb01a8d0f52ea521daab37e758a4ca7d128 \
-    --hash=sha256:c2676519927f7afade3723aca9ca8ea986ef5b059556a980a867721ca69df093
-    # via markus
 typing-extensions==4.5.0 \
     --hash=sha256:5cb5f4a79139d699607b3ef622a1dedafa84e115ab0024e0d9c044a9479ca7cb \
     --hash=sha256:fb33085c39dd998ac16d1431ebc293a8b3eedd00fd4a32de0ff79002c19511b4
