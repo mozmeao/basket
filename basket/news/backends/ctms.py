@@ -514,16 +514,12 @@ class CTMSSession:
         session = self._session
         url = urljoin(self.api_url, path)
         resp = session.request(method, url, *args, **kwargs)
-        metrics.incr("news.backends.ctms.request")
-        metrics.incr(f"news.backends.ctms.request.{method}")
-        metrics.incr(f"news.backends.ctms.response.{resp.status_code}")
+        metrics.incr("news.backends.ctms.request", tags=[f"method:{method}", f"status_code:{resp.status_code}"])
         if resp.status_code == 401:
             self._session = self._authorize_session(session)
             metrics.incr("news.backends.ctms.session_refresh")
             resp = session.request(method, url, *args, **kwargs)
-            metrics.incr("news.backends.ctms.request")
-            metrics.incr(f"news.backends.ctms.request.{method}")
-            metrics.incr(f"news.backends.ctms.response.{resp.status_code}")
+            metrics.incr("news.backends.ctms.request", tags=[f"method:{method}", f"status_code:{resp.status_code}"])
         return resp
 
     get = partialmethod(request, "GET")

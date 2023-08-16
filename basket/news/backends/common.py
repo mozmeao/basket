@@ -40,10 +40,7 @@ def get_timer_decorator(prefix):
 
             def record_timing():
                 totaltime = int((time() - starttime) * 1000)
-                metrics.timing(f"{prefix}.timing", totaltime)
-                metrics.timing(f"{prefix}.{f.__name__}.timing", totaltime)
-                metrics.incr(f"{prefix}.count")
-                metrics.incr(f"{prefix}.{f.__name__}.count")
+                metrics.timing(f"{prefix}.timing", totaltime, tags=[f"fn:{f.__name__}"])
 
             try:
                 resp = f(*args, **kwargs)

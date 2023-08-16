@@ -104,10 +104,9 @@ def source_ip_rate_limit_rate(group, request):
 
 
 def ratelimited(request, e):
-    parts = [x.strip() for x in request.path.split("/") if x.strip()]
-    # strip out tokens in the urls
-    parts = [x for x in parts if not is_token(x)]
-    metrics.incr(".".join(parts + ["ratelimited"]))
+    # strip out false-y and tokens in the url.
+    dotted_path = ".".join(filter(lambda x: x and not is_token(x), request.path.split("/")))
+    metrics.incr("news.views.ratelimited", tags=[f"path:{dotted_path}"])
     return HttpResponseJSON(
         {
             "status": "error",
@@ -155,17 +154,17 @@ def fxa_callback(request):
     error_url = f"https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/fxa-error/"
     sess_state = request.session.pop("fxa_state", None)
     if sess_state is None:
-        metrics.incr("news.views.fxa_callback.error.no_state")
+        metrics.incr("news.views.fxa_callback", tags=["status:error", "error:no_sess_state"])
         return HttpResponseRedirect(error_url)
 
     code = request.GET.get("code")
     state = request.GET.get("state")
     if not (code and state):
-        metrics.incr("news.views.fxa_callback.error.no_code_state")
+        metrics.incr("news.views.fxa_callback", tags=["status:error", "error:no_code_or_state"])
         return HttpResponseRedirect(error_url)
 
     if sess_state != state:
-        metrics.incr("news.views.fxa_callback.error.no_state_match")
+        metrics.incr("news.views.fxa_callback", tags=["status:error", "error:no_state_match"])
         return HttpResponseRedirect(error_url)
 
     fxa_oauth, fxa_profile = get_fxa_clients()
@@ -173,7 +172,7 @@ def fxa_callback(request):
         access_token = fxa_oauth.trade_code(code, ttl=settings.FXA_OAUTH_TOKEN_TTL)["access_token"]
         user_profile = fxa_profile.get_profile(access_token)
     except Exception:
-        metrics.incr("news.views.fxa_callback.error.fxa_comm")
+        metrics.incr("news.views.fxa_callback", tags=["status:error", "error:fxa_comm"])
         sentry_sdk.capture_exception()
         return HttpResponseRedirect(error_url)
 
@@ -181,7 +180,7 @@ def fxa_callback(request):
     try:
         user_data = get_user_data(email=email)
     except Exception:
-        metrics.incr("news.views.fxa_callback.error.get_user_data")
+        metrics.incr("news.views.fxa_callback", tags=["status:error", "error:user_data"])
         sentry_sdk.capture_exception()
         return HttpResponseRedirect(error_url)
 
@@ -207,11 +206,11 @@ def fxa_callback(request):
         try:
             token = upsert_contact(SUBSCRIBE, new_user_data, None)[0]
         except Exception:
-            metrics.incr("news.views.fxa_callback.error.upsert_contact")
+            metrics.incr("news.views.fxa_callback", tags=["status:error", "error:upsert_contact"])
             sentry_sdk.capture_exception()
             return HttpResponseRedirect(error_url)
 
-    metrics.incr("news.views.fxa_callback.success")
+    metrics.incr("news.views.fxa_callback", tags=["status:success"])
     redirect_to = f"https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/existing/{token}/?fxa=1"
     return HttpResponseRedirect(redirect_to)
 
@@ -423,7 +422,7 @@ def subscribe_main(request):
         data = form.cleaned_data
 
         if email_is_blocked(data["email"]):
-            metrics.incr("news.views.subscribe_main.email_blocked")
+            metrics.incr("news.views.subscribe_main", tags=["info:email_blocked"])
             # don't let on there's a problem
             return respond_ok(request, data)
 
@@ -450,7 +449,7 @@ def subscribe_main(request):
         if not data["source_url"] and request.headers.get("Referer"):
             referrer = request.META["HTTP_REFERER"]
             if SOURCE_URL_RE.match(referrer):
-                metrics.incr("news.views.subscribe_main.use_referrer")
+                metrics.incr("news.views.subscribe_main", tags=["info:use_referrer"])
                 data["source_url"] = referrer
 
         if is_ratelimited(
@@ -460,7 +459,7 @@ def subscribe_main(request):
             rate=EMAIL_SUBSCRIBE_RATE_LIMIT,
             increment=True,
         ):
-            metrics.incr("subscribe.ratelimited")
+            metrics.incr("news.views.subscribe_main", tags=["info:ratelimited"])
             return respond_error(request, form, "Rate limit reached", 429)
 
         try:
@@ -498,8 +497,9 @@ def subscribe(request):
             # malformed request from FxOS
             # Can't use QueryDict since the string is not url-encoded.
             # It will convert '+' to ' ' for example.
+            # TODO: Ensure this is still needed, if not remove it.
             data = dict(pair.split("=") for pair in raw_request.split("&") if "=" in pair)
-            metrics.incr("news.views.subscribe.fxos-workaround")
+            metrics.incr("news.views.subscribe", tags=["info:fxos_workaround"])
         else:
             return HttpResponseJSON(
                 {
@@ -527,7 +527,7 @@ def subscribe(request):
     data["email"] = email
 
     if email_is_blocked(data["email"]):
-        metrics.incr("news.views.subscribe.email_blocked")
+        metrics.incr("news.views.subscribe", tags=["info:email_blocked"])
         # don't let on there's a problem
         return HttpResponseJSON({"status": "ok"})
 
@@ -559,7 +559,7 @@ def subscribe(request):
     # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
     if not data.get("source_url") and request.headers.get("Referer"):
         # try to get it from referrer
-        metrics.incr("news.views.subscribe.use_referrer")
+        metrics.incr("news.views.subscribe", tags=["info:use_referrer"])
         data["source_url"] = request.META["HTTP_REFERER"]
 
     return update_user_task(request, SUBSCRIBE, data=data, optin=optin, sync=sync)
