@@ -152,8 +152,7 @@ MIDDLEWARE = (
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    "basket.base.middleware.MetricsStatusMiddleware",
-    "basket.base.middleware.MetricsRequestTimingMiddleware",
+    "basket.base.middleware.MetricsViewTimingMiddleware",
     "ratelimit.middleware.RatelimitMiddleware",
 )
 

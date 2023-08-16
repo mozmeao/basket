@@ -23,6 +23,7 @@ from basket.news.backends.ctms import (
     from_vendor,
     to_vendor,
 )
+from basket.news.tests import mock_metrics
 
 # Sample CTMS response from documentation, April 2021
 SAMPLE_CTMS_RESPONSE = json.loads(
@@ -326,7 +327,8 @@ class ToVendorTests(TestCase):
         "basket.news.backends.ctms.newsletter_waitlist_slugs",
         return_value=["guardian-vpn-waitlist"],
     )
-    def test_truncate(self, mock_nl, mock_wl):
+    @mock_metrics
+    def test_truncate(self, metric_mock, mock_nl, mock_wl):
         """Strings are stripped and truncated."""
         truncated = to_vendor(
             {
@@ -344,6 +346,7 @@ class ToVendorTests(TestCase):
         assert len(truncated["email"]["unsubscribe_reason"]) == 1000
         assert len(truncated["waitlists"][0]["fields"]["geo"]) == 100
         assert len(truncated["waitlists"][0]["fields"]["platform"]) == 100
+        metric_mock.assert_incr("news.backends.ctms.data_truncated")
 
     def test_truncate_empty_to_none(self):
         """Empty or space-only strings are omitted."""
@@ -854,7 +857,8 @@ class CTMSSessionTests(TestCase):
 
     @patch("basket.news.backends.ctms.cache", spec_set=("get", "set"))
     @patch("basket.news.backends.ctms.OAuth2Session")
-    def test_get_with_new_auth(self, mock_oauth2_session, mock_cache):
+    @mock_metrics
+    def test_get_with_new_auth(self, metrics_mock, mock_oauth2_session, mock_cache):
         """An OAuth2 token is fetched if needed."""
         mock_session = Mock(
             spec_set=(
@@ -901,6 +905,8 @@ class CTMSSessionTests(TestCase):
             params={"primary_email": "test@example.com"},
         )
 
+        metrics_mock.assert_incr_once("news.backends.ctms.request", tags=["method:GET", "status_code:200"])
+
     @patch("basket.news.backends.ctms.cache", spec_set=("get",))
     @patch("basket.news.backends.ctms.OAuth2Session")
     def test_get_with_existing_auth(self, mock_oauth2_session, mock_cache):
@@ -936,7 +942,8 @@ class CTMSSessionTests(TestCase):
 
     @patch("basket.news.backends.ctms.cache", spec_set=("get", "set"))
     @patch("basket.news.backends.ctms.OAuth2Session")
-    def test_get_with_re_auth(self, mock_oauth2_session, mock_cache):
+    @mock_metrics
+    def test_get_with_re_auth(self, metrics_mock, mock_oauth2_session, mock_cache):
         """A new OAuth2 token is fetched on an auth error."""
         mock_session = Mock(
             spec_set=(
@@ -981,6 +988,10 @@ class CTMSSessionTests(TestCase):
             params={"primary_email": "test@example.com"},
         )
         assert mock_session.request.call_count == 2
+
+        metrics_mock.assert_incr_once("news.backends.ctms.request", tags=["method:GET", "status_code:401"])
+        metrics_mock.assert_incr_once("news.backends.ctms.session_refresh")
+        metrics_mock.assert_incr_once("news.backends.ctms.request", tags=["method:GET", "status_code:200"])
 
     @patch("basket.news.backends.ctms.cache", spec_set=("get",))
     @patch("basket.news.backends.ctms.OAuth2Session")
@@ -1094,7 +1105,8 @@ def mock_interface(expected_call, status_code, response_data, reason=None):
 
 
 class MockInterfaceTests(TestCase):
-    def test_post_to_create_success(self):
+    @mock_metrics
+    def test_post_to_create_success(self, metrics_mock):
         expected = {
             "email": {
                 "primary_email": "test@example.com",
@@ -1108,6 +1120,7 @@ class MockInterfaceTests(TestCase):
             {"email": {"primary_email": "test@example.com"}},
         )
         assert resp == expected
+        metrics_mock.assert_timing_once("news.backends.ctms.timing", tags=["fn:post_to_create"])
 
     def test_post_to_create_data_failure(self):
         expected = {
@@ -1242,7 +1255,8 @@ class CTMSTests(TestCase):
         ctms = CTMS(None)
         assert ctms.get(token="token") is None
 
-    def test_get_by_email_id(self):
+    @mock_metrics
+    def test_get_by_email_id(self, metrics_mock):
         """If email_id is passed, GET /ctms/{email_id} is called."""
         email_id = self.TEST_CTMS_CONTACT["email"]["email_id"]
         interface = mock_interface("GET", 200, self.TEST_CTMS_CONTACT)
@@ -1250,6 +1264,7 @@ class CTMSTests(TestCase):
         user_data = ctms.get(email_id=email_id)
         assert user_data == self.TEST_BASKET_FORMAT
         interface.session.get.assert_called_once_with("/ctms/a-ctms-uuid")
+        metrics_mock.assert_timing_once("news.backends.ctms.timing", tags=["fn:get_by_email_id"])
 
     def test_get_by_email_id_not_found(self):
         """If a contact is not found by email_id, an exception is raised."""
@@ -1299,7 +1314,8 @@ class CTMSTests(TestCase):
             params={"sfdc_id": sfdc_id},
         )
 
-    def test_get_by_fxa_id(self):
+    @mock_metrics
+    def test_get_by_fxa_id(self, metrics_mock):
         """If fxa_id is passed, GET /ctms?fxa_id={fxa_id} is called."""
         fxa_id = self.TEST_CTMS_CONTACT["fxa"]["fxa_id"]
         interface = mock_interface("GET", 200, [self.TEST_CTMS_CONTACT])
@@ -1310,6 +1326,7 @@ class CTMSTests(TestCase):
             "/ctms",
             params={"fxa_id": fxa_id},
         )
+        metrics_mock.assert_timing_once("news.backends.ctms.timing", tags=["fn:get_by_alternate_id"])
 
     def test_get_by_mofo_email_id(self):
         """If mofo_email_id is passed, GET /ctms?mofo_email_id={mofo_email_id}
@@ -1459,7 +1476,8 @@ class CTMSTests(TestCase):
         update_data = {"first_name": "Jane"}
         assert ctms.update(user_data, update_data) is None
 
-    def test_update(self):
+    @mock_metrics
+    def test_update(self, metrics_mock):
         """CTMS.update calls PATCH /ctms/{email_id}."""
         updated = {
             "email": {
@@ -1478,6 +1496,7 @@ class CTMSTests(TestCase):
             "/ctms/an-existing-id",
             json={"email": {"first_name": "Jane"}},
         )
+        metrics_mock.assert_timing_once("news.backends.ctms.timing", tags=["fn:patch_by_email_id"])
 
     def test_update_email_id_not_in_existing_data(self):
         """

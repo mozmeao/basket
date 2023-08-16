@@ -167,8 +167,7 @@ class TestRQUtils:
         assert "Traceback (most recent call last):" in failed_job.einfo
         assert "ValueError: This is a fake exception" in failed_job.einfo
 
-        metrics_mock.assert_incr_once("job.failed.retry_max")
-        metrics_mock.assert_incr_once("news.tasks.retry_max_total")
+        metrics_mock.assert_incr_once("base.tasks.failed", tags=["task:job.failed"])
 
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "failed")
@@ -182,8 +181,7 @@ class TestRQUtils:
         for error_str in IGNORE_ERROR_MSGS:
             store_task_exception_handler(job, Exception, Exception(error_str), None)
 
-            metrics_mock.assert_incr_once("job.ignore_error.retry_max")
-            metrics_mock.assert_incr_once("news.tasks.retry_max_total")
+            metrics_mock.assert_incr_once("base.tasks.failed", tags=["task:job.ignore_error"])
 
             assert mock_sentry_sdk.capture_exception.call_count == 1
             mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
@@ -194,8 +192,7 @@ class TestRQUtils:
         # Also test IGNORE_ERROR_MSGS_RE.
         store_task_exception_handler(job, Exception, Exception("campaignId 123 not found"), None)
 
-        metrics_mock.assert_incr_once("job.ignore_error.retry_max")
-        metrics_mock.assert_incr_once("news.tasks.retry_max_total")
+        metrics_mock.assert_incr_once("base.tasks.failed", tags=["task:job.ignore_error"])
 
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
@@ -231,8 +228,6 @@ class TestRQUtils:
         store_task_exception_handler(job, e.type, e.value, e.tb)
 
         assert FailedTask.objects.count() == 0
-        metrics_mock.assert_incr_once("job.rescheduled.retry")
-        metrics_mock.assert_incr_once("job.rescheduled.retries_left.2")
-        metrics_mock.assert_incr_once("news.tasks.retry_total")
+        metrics_mock.assert_incr_once("base.tasks.retried", tags=["task:job.rescheduled"])
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "retried")

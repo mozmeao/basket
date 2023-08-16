@@ -134,31 +134,20 @@ def rq_exponential_backoff():
         return [max(60, random.randrange(min(settings.RQ_MAX_RETRY_DELAY, 120 * (2**n)))) for n in range(settings.RQ_MAX_RETRIES)]
 
 
-def log_timing(job):
-    if start_time := job.meta.get("start_time"):
+def record_metrics_timing(job, status):
+    task_name = job.meta["task_name"]
+    start_time = job.meta.get("start_time")
+    if start_time and not settings.MAINTENANCE_MODE and not task_name.endswith("snitch"):
         total_time = int((time() - start_time) * 1000)
-        metrics.timing(f"{job.meta['task_name']}.duration", total_time)
-        metrics.timing("news.tasks.duration_total", total_time)
+        metrics.timing("task.timings", total_time, tags=[f"task:{task_name}", f"status:{status}"])
 
 
 def rq_on_success(job, connection, result, *args, **kwargs):
-    # Don't fire statsd metrics in maintenance mode.
-    if not settings.MAINTENANCE_MODE:
-        log_timing(job)
-        task_name = job.meta["task_name"]
-        metrics.incr(f"{task_name}.success")
-        if not task_name.endswith("snitch"):
-            metrics.incr("news.tasks.success_total")
+    record_metrics_timing(job, "success")
 
 
 def rq_on_failure(job, connection, *exc_info, **kwargs):
-    # Don't fire statsd metrics in maintenance mode.
-    if not settings.MAINTENANCE_MODE:
-        log_timing(job)
-        task_name = job.meta["task_name"]
-        metrics.incr(f"{task_name}.failure")
-        if not task_name.endswith("snitch"):
-            metrics.incr("news.tasks.failure_total")
+    record_metrics_timing(job, "failure")
 
 
 def ignore_error(exc, to_ignore=None, to_ignore_re=None):
@@ -191,9 +180,7 @@ def store_task_exception_handler(job, *exc_info):
 
     if job.is_scheduled:
         # Job failed but is scheduled for a retry.
-        metrics.incr(f"{task_name}.retry")
-        metrics.incr(f"{task_name}.retries_left.{job.retries_left + 1}")
-        metrics.incr("news.tasks.retry_total")
+        metrics.incr("base.tasks.retried", tags=[f"task:{task_name}"])
 
         if exc_info[1] not in EXCEPTIONS_ALLOW_RETRY:
             # Force retries to abort.
@@ -209,8 +196,7 @@ def store_task_exception_handler(job, *exc_info):
 
     elif job.is_failed:
         # Job failed but no retries left.
-        metrics.incr(f"{task_name}.retry_max")
-        metrics.incr("news.tasks.retry_max_total")
+        metrics.incr("base.tasks.failed", tags=[f"task:{task_name}"])
 
         # Here to avoid a circular import.
         from basket.news.models import FailedTask

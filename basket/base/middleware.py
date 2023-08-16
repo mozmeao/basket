@@ -16,19 +16,7 @@ class HostnameMiddleware(MiddlewareMixin):
         return response
 
 
-class MetricsStatusMiddleware(MiddlewareMixin):
-    """Send status code counts to statsd"""
-
-    def process_response(self, request, response):
-        metrics.incr(f"response.{response.status_code}")
-        return response
-
-    def process_exception(self, request, exception):
-        if not isinstance(exception, Http404):
-            metrics.incr("response.500")
-
-
-class MetricsRequestTimingMiddleware(MiddlewareMixin):
+class MetricsViewTimingMiddleware(MiddlewareMixin):
     """Send request timing to statsd"""
 
     def process_view(self, request, view_func, view_args, view_kwargs):
@@ -45,13 +33,16 @@ class MetricsRequestTimingMiddleware(MiddlewareMixin):
         if hasattr(request, "_start_time") and hasattr(request, "_view_module") and hasattr(request, "_view_name"):
             # View times.
             view_time = int((time.time() - request._start_time) * 1000)
-            metrics.timing(f"view.{request._view_module}.{request._view_name}.{request.method}", view_time, tags=[f"status_code:{status_code}"])
-            metrics.timing(f"view.{request._view_module}.{request.method}", view_time, tags=[f"status_code:{status_code}"])
-            metrics.timing(f"view.{request.method}", view_time, tags=[f"status_code:{status_code}"])
-            # View counts.
-            metrics.incr(f"view.count.{request._view_module}.{request._view_name}.{request.method}")
-            metrics.incr(f"view.count.{request._view_module}.{request.method}")
-            metrics.incr(f"view.count.{request.method}")
+            metrics.timing(
+                "view.timings",
+                view_time,
+                tags=[
+                    f"view_path:{request._view_module}.{request._view_name}.{request.method}",
+                    f"module:{request._view_module}.{request.method}",
+                    f"method:{request.method}",
+                    f"status_code:{status_code}",
+                ],
+            )
 
     def process_response(self, request, response):
         self._record_timing(request, response.status_code)

@@ -1,5 +1,5 @@
-import functools
 import json
+import uuid
 from unittest.mock import Mock, patch
 
 from django.conf import settings
@@ -9,12 +9,13 @@ from django.test.client import Client, RequestFactory
 from django.urls import reverse
 
 from email_validator import EmailSyntaxError
-from markus.testing import MetricsMock
+from ratelimit.exceptions import Ratelimited
 
 from basket import errors
 from basket.news import models, utils, views
 from basket.news.newsletters import newsletter_fields, newsletter_languages
 from basket.news.tasks import SUBSCRIBE
+from basket.news.tests import mock_metrics
 from basket.news.utils import email_block_list_cache
 
 none_mock = Mock(return_value=None)
@@ -324,15 +325,6 @@ class ViewsPatcherMixin(object):
         self.addCleanup(patcher.stop)
 
 
-def mock_metrics(f):
-    @functools.wraps(f)
-    def wrapper(self, *args, **kwargs):
-        with MetricsMock() as mm:
-            return f(self, mm, *args, **kwargs)
-
-    return wrapper
-
-
 @override_settings(DEBUG=True)
 class SubscribeMainTests(ViewsPatcherMixin, TestCase):
     def setUp(self):
@@ -536,7 +528,8 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
             },
         )
 
-    def test_source_url_from_referrer(self):
+    @mock_metrics
+    def test_source_url_from_referrer(self, metrics_mock):
         self.process_email.return_value = "dude@example.com"
         self.email_is_blocked.return_value = False
         response = self._request(
@@ -557,6 +550,7 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
                 "source_url": "https://example.com/bowling",
             },
         )
+        metrics_mock.assert_incr_once("news.views.subscribe_main", tags=["info:use_referrer"])
 
     def test_source_url_from_invalid_referrer(self):
         self.process_email.return_value = "dude@example.com"
@@ -634,7 +628,8 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
             },
         )
 
-    def test_blocked_email(self):
+    @mock_metrics
+    def test_blocked_email(self, metrics_mock):
         self.process_email.return_value = "dude@example.com"
         self.email_is_blocked.return_value = True
         response = self._request(
@@ -642,6 +637,7 @@ class SubscribeMainTests(ViewsPatcherMixin, TestCase):
         )
         assert response.status_code == 200
         self.upsert_user.delay.assert_not_called()
+        metrics_mock.assert_incr_once("news.views.subscribe_main", tags=["info:email_blocked"])
 
 
 class SubscribeTests(ViewsPatcherMixin, TestCase):
@@ -725,7 +721,8 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             invalid_email_response.assert_called()
 
     @patch("basket.news.utils.get_email_block_list")
-    def test_blocked_email(self, get_block_list_mock):
+    @mock_metrics
+    def test_blocked_email(self, metrics_mock, get_block_list_mock):
         """Test basic success case with no optin or sync."""
         get_block_list_mock.return_value = ["example.com"]
         request_data = {
@@ -739,9 +736,11 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         response = views.subscribe(request)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(self.update_user_task.called)
+        metrics_mock.assert_incr_once("news.views.subscribe", tags=["info:email_blocked"])
 
     @patch("basket.news.views.update_user_task")
-    def test_email_fxos_malformed_post_bad_data(self, update_user_mock):
+    @mock_metrics
+    def test_email_fxos_malformed_post_bad_data(self, metrics_mock, update_user_mock):
         """Should be able to parse data from the raw request body even with bad data."""
         # example from real error with PII details changed
         self.process_email.return_value = "dude@example.com"
@@ -771,9 +770,11 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             optin=False,
             sync=False,
         )
+        metrics_mock.assert_incr_once("news.views.subscribe", tags=["info:fxos_workaround"])
 
     @patch("basket.news.views.update_user_task")
-    def test_email_fxos_malformed_post(self, update_user_mock):
+    @mock_metrics
+    def test_email_fxos_malformed_post(self, metrics_mock, update_user_mock):
         """Should be able to parse data from the raw request body."""
         self.process_email.return_value = "dude@example.com"
         req = self.factory.generic(
@@ -790,8 +791,10 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             optin=False,
             sync=False,
         )
+        metrics_mock.assert_incr_once("news.views.subscribe", tags=["info:fxos_workaround"])
 
-    def test_no_source_url_referrer(self):
+    @mock_metrics
+    def test_no_source_url_referrer(self, metrics_mock):
         """Test referrer used when no source_url."""
         request_data = {
             "newsletters": "news,lets",
@@ -823,6 +826,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             optin=False,
             sync=False,
         )
+        metrics_mock.assert_incr_once("news.views.subscribe", tags=["info:use_referrer"])
 
     def test_source_url_overrides_referrer(self):
         """Test source_url used when referrer also provided."""
@@ -980,6 +984,33 @@ class TestRateLimitingFunctions(ViewsPatcherMixin, TestCase):
     def test_source_ip_rate_limit_rate(self):
         req = self.rf.get("/", HTTP_X_SOURCE_IP="2.2.2.2")
         self.assertEqual(views.source_ip_rate_limit_rate(None, req), "40/m")
+
+
+class TestRatelimit(TestCase):
+    @mock_metrics
+    def test_ratelimit_view(self, metrics_mock):
+        # The django-ratelimit middleware will call the view defined by `RATELIMIT_VIEW`.
+        # We want to test it here so we call it directly.
+        req = RequestFactory().get("/")
+        req.path = "/path/to/test/"
+
+        resp = views.ratelimited(req, Ratelimited())
+
+        assert resp.status_code == 429
+        metrics_mock.assert_incr_once("news.views.ratelimited", tags=["path:path.to.test"])
+
+    @mock_metrics
+    def test_ratelimit_view_token_filter(self, metrics_mock):
+        # The django-ratelimit middleware will call the view defined by `RATELIMIT_VIEW`.
+        # We want to test it here so we call it directly.
+        token = str(uuid.uuid4())
+        req = RequestFactory().get("/")
+        req.path = f"/path/to/test/{token}/included/"
+
+        resp = views.ratelimited(req, Ratelimited())
+
+        assert resp.status_code == 429
+        metrics_mock.assert_incr_once("news.views.ratelimited", tags=["path:path.to.test.included"])
 
 
 class TestNewslettersAPI(TestCase):
@@ -1282,7 +1313,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         resp = self.client.get("/fxa/callback/")
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
-        metrics_mock.assert_incr_once("news.views.fxa_callback.error.no_state")
+        metrics_mock.assert_incr_once("news.views.fxa_callback", tags=["status:error", "error:no_sess_state"])
 
     @mock_metrics
     def test_no_returned_state(self, metrics_mock):
@@ -1293,7 +1324,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         resp = self.client.get("/fxa/callback/", {"code": "thecode"})
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
-        metrics_mock.assert_incr_once("news.views.fxa_callback.error.no_code_state")
+        metrics_mock.assert_incr_once("news.views.fxa_callback", tags=["status:error", "error:no_code_or_state"])
 
     @mock_metrics
     def test_no_returned_code(self, metrics_mock):
@@ -1304,7 +1335,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         resp = self.client.get("/fxa/callback/", {"state": "thedude"})
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
-        metrics_mock.assert_incr_once("news.views.fxa_callback.error.no_code_state")
+        metrics_mock.assert_incr_once("news.views.fxa_callback", tags=["status:error", "error:no_code_or_state"])
 
     @mock_metrics
     def test_session_and_request_state_no_match(self, metrics_mock):
@@ -1316,7 +1347,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         resp = self.client.get("/fxa/callback/", {"code": "thecode", "state": "walter"})
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
-        metrics_mock.assert_incr_once("news.views.fxa_callback.error.no_state_match")
+        metrics_mock.assert_incr_once("news.views.fxa_callback", tags=["status:error", "error:no_state_match"])
 
     @mock_metrics
     def test_fxa_communication_issue(self, metrics_mock):
@@ -1334,7 +1365,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         )
         assert resp.status_code == 302
         assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
-        metrics_mock.assert_incr_once("news.views.fxa_callback.error.fxa_comm")
+        metrics_mock.assert_incr_once("news.views.fxa_callback", tags=["status:error", "error:fxa_comm"])
         self.sentry_sdk.capture_exception.assert_called()
 
     @mock_metrics
@@ -1359,7 +1390,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
             ttl=settings.FXA_OAUTH_TOKEN_TTL,
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
-        metrics_mock.assert_incr_once("news.views.fxa_callback.success")
+        metrics_mock.assert_incr_once("news.views.fxa_callback", tags=["status:success"])
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-token/?fxa=1"
         self.get_user_data.assert_called_with(email="dude@example.com")
 
@@ -1389,7 +1420,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
             ttl=settings.FXA_OAUTH_TOKEN_TTL,
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
-        metrics_mock.assert_incr_once("news.views.fxa_callback.success")
+        metrics_mock.assert_incr_once("news.views.fxa_callback", tags=["status:success"])
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
         self.get_user_data.assert_called_with(email="dude@example.com")
         self.upsert_contact.assert_called_with(
@@ -1431,7 +1462,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
             ttl=settings.FXA_OAUTH_TOKEN_TTL,
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
-        metrics_mock.assert_incr_once("news.views.fxa_callback.success")
+        metrics_mock.assert_incr_once("news.views.fxa_callback", tags=["status:success"])
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
         self.get_user_data.assert_called_with(email="dude@example.com")
         self.upsert_contact.assert_called_with(

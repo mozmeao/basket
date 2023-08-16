@@ -68,9 +68,4 @@ class TestDecorator:
         worker = get_worker()
         worker.work(burst=True)  # Burst = worker will quit after all jobs consumed.
 
-        assert len(metrics_mock.filter_records("incr")) == 2
-        metrics_mock.assert_incr_once("basket.base.tests.tasks.empty_job.success")
-        metrics_mock.assert_incr_once("news.tasks.success_total")
-        assert len(metrics_mock.filter_records("timing")) == 2
-        metrics_mock.assert_timing_once("basket.base.tests.tasks.empty_job.duration")
-        metrics_mock.assert_timing_once("news.tasks.duration_total")
+        metrics_mock.assert_timing_once("task.timings", tags=["task:basket.base.tests.tasks.empty_job", "status:success"])
