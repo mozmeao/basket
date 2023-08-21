@@ -4,7 +4,7 @@ boto3==1.28.19
 configparser==6.0.0
 contextlib2==21.6.0
 cryptography==41.0.3
-dj-database-url==2.0.0
+dj-database-url==2.1.0
 django-allow-cidr==0.7.1
 django-cache-url==3.4.4
 django-cors-headers==4.2.0
