@@ -12,10 +12,6 @@ asgiref==3.6.0 \
     --hash=sha256:71e68008da809b957b7ee4b43dbccff33d1b23519fb8344e33f049897077afac \
     --hash=sha256:9567dfe7bd8d3c8c892227827c41cce860b368104c3431da67a0c5a65a949506
     # via django
-async-timeout==4.0.2 \
-    --hash=sha256:2163e1640ddb52b7a8c80d0a67a08587e5d245cc9c553a74a847056bc2976b15 \
-    --hash=sha256:8ca1e4fcf50d07413d66d1a5e416e42cfdf5851c981d679a09851a6853383b3c
-    # via redis
 backports-zoneinfo==0.2.1 \
     --hash=sha256:17746bd546106fa389c51dbea67c8b7c8f0d14b5526a579ca6ccf5ed72c526cf \
     --hash=sha256:1b13e654a55cd45672cb54ed12148cd33628f672548f373963b0bff67b217328 \
@@ -577,22 +573,22 @@ mysqlclient==2.1.1 \
     --hash=sha256:c812b67e90082a840efb82a8978369e6e69fc62ce1bda4ca8f3084a9d862308b \
     --hash=sha256:dea88c8d3f5a5d9293dfe7f087c16dd350ceb175f2f6631c9cf4caf3e19b7a96
     # via -r requirements/prod.in
-newrelic==8.8.1 \
-    --hash=sha256:1996ed51f92366f5ba9ad4992687aaca4d0bb3541e239ef4a40e0ae5da6939fc \
-    --hash=sha256:3b66123c5f542d29c7f2e6ed9ab92327fb9b6f857f4a635d5a5c530eb5a0c3a7 \
-    --hash=sha256:418a29b20972413f8839aa5b77fa485d71bd897f1257ff05d86a1496d10b75de \
-    --hash=sha256:4e82a095d8136ac6df10a702ac0c293d97a2a7beddf899c8ecc55564d0f02c0a \
-    --hash=sha256:659d880fe7b44cc8974b40e796b612f1719f33d315093893e49ba9aec16ad8b1 \
-    --hash=sha256:880c38f65645f681ea66e18613178b8df96b8fa8873a0b4da4d4076cab738363 \
-    --hash=sha256:8979eb30019c4d0568842f0d8c17f3616fc8631a57b9ca67ebe1e61cee55c7bd \
-    --hash=sha256:8f801a8fa30453c421747420232e56533a4c88c066eb14f852f34a757d1595f4 \
-    --hash=sha256:9603b69eb75f9aecb6246d95c7eeb1f8d41d5c4f34feb5aa0400548eb03b9d3b \
-    --hash=sha256:a370283955065a1a55ac85ff97bd97e87144325732dd1ab87bf99a1617a3ecdc \
-    --hash=sha256:ba87bac65018c6015cb778ff3a6806949879b2ae42f79b405a32e13177e11b13 \
-    --hash=sha256:bcbdf28cdd07bf593942b9de076258ed0fe8b5bc85583bdece64ae136e53035f \
-    --hash=sha256:dba619d7b654b01ab5742e059096788b54d8b3dfac14a32c46f00151b848ee6c \
-    --hash=sha256:de28d2113ac7a499e54f710d6b7bbcc338c02513f70a166ddceb23b45d752a03 \
-    --hash=sha256:ff9f8977a1a0e9a03c50d43e6eb94135da77c2ab9c00723cd1bf689c5685e4b0
+newrelic==8.11.0 \
+    --hash=sha256:16761522dde9c05146078f7729aefbf05cea7fc42c703c0b756618168939f872 \
+    --hash=sha256:18dae1606f79a92c21967d11cbd4f42c03eb5b04b2f6b86a954b5e6a736113d7 \
+    --hash=sha256:1c9463dd1b1407ade27a4c7ebb2137b77c51e23498cec7ee2671fff3fd33fd73 \
+    --hash=sha256:2e70371c8b5fcfca6e7f57395f205ed6b38228b4a5594f49f7aae4d978aa9eef \
+    --hash=sha256:313aa30918e54bfc226229d3b4fa7f8879fa5beab98ed46218ef36265b7205e5 \
+    --hash=sha256:41cf36017b1b54187c5b422fff32528abc4f2043227397f7a242864c31939c37 \
+    --hash=sha256:59cb3da7e5dd526e7f8696a5ed704d06c43bc2d4da840897534e9a51da7266eb \
+    --hash=sha256:5d5a3921c73913ea91407a6b2cda4e68aa3e52d7ceba77365d9b090b184f7e15 \
+    --hash=sha256:5e32b7c92ed8922df599769270dbc5a322ca78e29b5c89083b2b39af80a44361 \
+    --hash=sha256:68fec20006b312a3c93de82e91cb39be44ac73ba08d15552fff5206dfabda227 \
+    --hash=sha256:7a649068a0cf5c4a7ba0f9739e52f1ad9d2882aafcfe3361fd264cbb975c5318 \
+    --hash=sha256:b8954dcfa78cb5d0398490938f3a84f29d53554bb498bb50bf232715a3577a68 \
+    --hash=sha256:cc169ad19cb3b44ec028df08d172327b72d0137d62935c87cbbef173f710c2ed \
+    --hash=sha256:d95eade883fb3aa0a2a2d04f1dd85f0df04d31bfc32f78139fe91c0362c1987e \
+    --hash=sha256:fc4e0fe04ad4f1fc19cb86844d73e834d99dd613dd8a4f2e7be204193d5b8dc8
     # via -r requirements/prod.in
 oauthlib==3.2.2 \
     --hash=sha256:8139f29aac13e25d502680e9e19963e83f16838d48a0d71c287fe40e7067fbca \
@@ -781,5 +777,6 @@ whitenoise==6.5.0 \
     # via -r requirements/prod.in
 
 # WARNING: The following packages were not pinned, but pip requires them to be
-# pinned when the requirements file includes hashes. Consider using the --allow-unsafe flag.
+# pinned when the requirements file includes hashes and the requirement is not
+# satisfied by a package already installed. Consider using the --allow-unsafe flag.
 # setuptools
