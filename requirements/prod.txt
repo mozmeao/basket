@@ -4,9 +4,9 @@
 #
 #    make compile-requirements
 #
-apscheduler==3.10.1 \
-    --hash=sha256:0293937d8f6051a0f493359440c1a1b93e882c57daf0197afeff0e727777b96e \
-    --hash=sha256:e813ad5ada7aff36fb08cdda746b520531eaac7757832abc204868ba78e0c8f6
+apscheduler==3.10.4 \
+    --hash=sha256:e6df071b27d9be898e486bc7940a7be50b4af2e9da7c08f0744a96d4bd4cef4a \
+    --hash=sha256:fb91e8a768632a4756a585f79ec834e0e27aad5860bac7eaa523d9ccefd87661
     # via -r requirements/prod.in
 asgiref==3.6.0 \
     --hash=sha256:71e68008da809b957b7ee4b43dbccff33d1b23519fb8344e33f049897077afac \
@@ -34,13 +34,13 @@ backports-zoneinfo==0.2.1 \
     --hash=sha256:f04e857b59d9d1ccc39ce2da1021d196e47234873820cbeaad210724b1ee28ac \
     --hash=sha256:fadbfe37f74051d024037f223b8e001611eac868b5c5b06144ef4d8b799862f2
     # via -r requirements/prod.in
-boto3==1.28.19 \
-    --hash=sha256:1bae3e6222c7272af44ab4dc456fc4cb7d2d7044489b7a4a08f9cd0fbad6d213 \
-    --hash=sha256:8630c2c38c3130e31e1a4182943aee8bc7dd1a1ad9729092b46fdbc8ac045a77
+boto3==1.28.40 \
+    --hash=sha256:6ff9a5b815e106656596064d51c9b6ba97a307807baa5f89634384b7d3f7ecc6 \
+    --hash=sha256:bd7c760afb195eaeaab907dc6b2c21fa64ddbba3fed4a869e80d820ddbd6cc70
     # via -r requirements/prod.in
-botocore==1.31.19 \
-    --hash=sha256:15f269945f319b0263cde9a61a25f2c9a83f6074b62cddae71edafec4a61e637 \
-    --hash=sha256:724f9a1a91f88291f5adc6347705a31e52312c88cddd56e38709215b161e025a
+botocore==1.31.40 \
+    --hash=sha256:ce22a82ef8674f49691477d09558992cc87e7331f65c6a5b0da897ab192240ca \
+    --hash=sha256:df766969f0d9ef9eda1a9c9946e0e173c10199f37a9e4c92861f11ddb5c9e702
     # via
     #   boto3
     #   s3transfer
@@ -255,13 +255,13 @@ datadog==0.46.0 \
     --hash=sha256:3d7bcda6177b43be4cdb52e16b4bdd4f9005716c0dd7cfea009e018c36bb7a3d \
     --hash=sha256:e4fbc92a85e2b0919a226896ae45fc5e4b356c0c57f1c2659659dfbe0789c674
     # via markus
-dj-database-url==2.0.0 \
-    --hash=sha256:9c9e5f7224f62635a787e9cc3c6762c9be2b19541a21e3c08fa573bd01609b4b \
-    --hash=sha256:a35a9f0f43775ca6f90d819dc456233ef7bcc76b47377d5d908b75c7eb320624
+dj-database-url==2.1.0 \
+    --hash=sha256:04bc34b248d4c21aaa13e4ab419ae6575ef5f10f3df735ce7da97722caa356e0 \
+    --hash=sha256:f2042cefe1086e539c9da39fad5ad7f61173bf79665e69bf7e4de55fa88b135f
     # via -r requirements/prod.in
-django==3.2.20 \
-    --hash=sha256:a477ab326ae7d8807dc25c186b951ab8c7648a3a23f9497763c37307a2b5ef87 \
-    --hash=sha256:dec2a116787b8e14962014bf78e120bba454135108e1af9e9b91ade7b2964c40
+django==3.2.21 \
+    --hash=sha256:a5de4c484e7b7418e6d3e52a5b8794f0e6b9f9e4ce3c037018cf1c489fa87f3c \
+    --hash=sha256:d31b06c58aa2cd73998ca5966bc3001243d3c4e77ee2d0c479bced124765fd99
     # via
     #   -r requirements/prod.in
     #   dj-database-url
@@ -781,5 +781,6 @@ whitenoise==6.5.0 \
     # via -r requirements/prod.in
 
 # WARNING: The following packages were not pinned, but pip requires them to be
-# pinned when the requirements file includes hashes. Consider using the --allow-unsafe flag.
+# pinned when the requirements file includes hashes and the requirement is not
+# satisfied by a package already installed. Consider using the --allow-unsafe flag.
 # setuptools
