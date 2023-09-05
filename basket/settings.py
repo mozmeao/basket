@@ -287,8 +287,18 @@ SENSITIVE_FIELDS_TO_MASK_ENTIRELY = [
 
 SENSITIVE_FIELDS_TO_MASK_PARTIALLY = []
 
+SENTRY_IGNORE_ERRORS = (
+    BrokenPipeError,
+    ConnectionResetError,
+)
+
 
 def before_send(event, hint):
+    if hint and "exc_info" in hint:
+        exc_type, exc_value, tb = hint["exc_info"]
+        if isinstance(exc_value, SENTRY_IGNORE_ERRORS):
+            return None
+
     processor = DesensitizationProcessor(
         with_default_keys=True,
         sensitive_keys=SENSITIVE_FIELDS_TO_MASK_ENTIRELY,
