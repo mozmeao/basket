@@ -25,7 +25,7 @@ meinheld==1.0.2
 mozilla-django-oidc==3.0.0
 msgpack-python==0.5.6
 mysqlclient==2.1.1
-newrelic==8.8.1
+newrelic==9.1.0
 PyFxA==0.7.7
 pyOpenSSL==23.2.0
 pysilverpop==0.2.6
