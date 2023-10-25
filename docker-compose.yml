@@ -33,6 +33,7 @@ services:
   worker:
     image: mozmeao/basket:${GIT_COMMIT_SHORT:-latest}
     platform: linux/amd64
+    restart: unless-stopped
     volumes:
       - .:/app
     env_file:

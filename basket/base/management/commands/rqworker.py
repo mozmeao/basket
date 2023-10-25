@@ -23,11 +23,19 @@ class Command(BaseCommand):
             default=False,
             help="Run worker with scheduler enabled. Default: False",
         )
+        parser.add_argument(
+            "--max-jobs",
+            dest="max_jobs",
+            default=None,
+            type=int,
+            help="Maximum number of jobs to execute before quitting. Default: None (infinite)",
+        )
 
     def handle(self, *args, **options):
         kwargs = {
             "burst": options.get("burst", False),
             "with_scheduler": options.get("with_scheduler", False),
+            "max_jobs": options.get("max_jobs", None),
         }
         try:
             worker = get_worker()
