@@ -30,14 +30,14 @@ class CommaSeparatedEmailField(models.TextField):
 
     def formfield(self, **kwargs):
         kwargs["widget"] = TextInput(attrs={"style": "width: 400px"})
-        return super(CommaSeparatedEmailField, self).formfield(**kwargs)
+        return super().formfield(**kwargs)
 
 
 ENGLISH_LANGUAGE_CHOICES = sorted(
-    [(key, "{0} ({1})".format(key, value["English"])) for key, value in product_details.languages.items()],
+    [(key, f"{key} ({value['English']})") for key, value in product_details.languages.items()],
 )
 COUNTRY_CHOICES = sorted(
-    [(key, "{0} ({1})".format(key, value)) for key, value in SFDC_COUNTRIES.items()],
+    [(key, f"{key} ({value})") for key, value in SFDC_COUNTRIES.items()],
 )
 
 
@@ -52,7 +52,7 @@ class CountryField(models.CharField):
         for key, value in defaults.items():
             kwargs.setdefault(key, value)
 
-        super(CountryField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
 
 class LocaleField(models.CharField):
@@ -66,4 +66,4 @@ class LocaleField(models.CharField):
         for key, value in defaults.items():
             kwargs.setdefault(key, value)
 
-        super(LocaleField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)

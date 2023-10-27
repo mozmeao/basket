@@ -1,5 +1,3 @@
-# -*- coding: utf8 -*-
-
 from unittest.mock import Mock, patch
 
 from django.test import RequestFactory, TestCase, override_settings

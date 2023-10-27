@@ -91,7 +91,7 @@ class Newsletter(models.Model):
         help_text="Order to display the newsletters on the web site. Newsletters with lower order numbers will display first.",
     )
 
-    class Meta(object):
+    class Meta:
         ordering = ["order"]
 
     def __str__(self):  # pragma: no cover
@@ -100,7 +100,7 @@ class Newsletter(models.Model):
     def save(self, *args, **kwargs):
         # Strip whitespace from langs before save
         self.languages = self.languages.replace(" ", "")
-        super(Newsletter, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     @property
     def language_list(self):
@@ -200,8 +200,8 @@ class FailedTask(models.Model):
     def formatted_call(self):
         """Return a string that could be evalled to repeat the original call"""
         formatted_args = [repr(arg) for arg in self.args]
-        formatted_kwargs = ["%s=%r" % (key, val) for key, val in self.kwargs.items()]
-        return "%s(%s)" % (self.name, ", ".join(formatted_args + formatted_kwargs))
+        formatted_kwargs = [f"{key}={val!r}" for key, val in self.kwargs.items()]
+        return f"{self.name}({', '.join(formatted_args + formatted_kwargs)})"
 
     def retry(self):
         kwargs = get_enqueue_kwargs(self.name)
@@ -274,7 +274,7 @@ class Interest(models.Model):
             emails = self.default_steward_emails_list
 
         send_mail(
-            "Inquiry about {0}".format(self.title),
+            f"Inquiry about {self.title}",
             email_body,
             "contribute@mozilla.org",
             emails,

@@ -40,7 +40,7 @@ class Command(BaseCommand):
 
         time_since = int(time() - self.snitch_last_timestamp)
         if time_since > self.snitch_delay:
-            requests.post("https://nosnch.in/{}".format(self.snitch_id))
+            requests.post(f"https://nosnch.in/{self.snitch_id}")
             self.snitch_last_timestamp = time()
 
     def handle(self, *args, **options):
