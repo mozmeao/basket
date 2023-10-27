@@ -172,7 +172,7 @@ class EmailIsBlockedTests(TestCase):
         BlockedEmail.objects.create(email_domain="whatnot.dude")
         BlockedEmail.objects.create(email_domain=".ninja")
         blocklist = get_email_block_list()
-        expected = set(["stuff.web", "whatnot.dude", ".ninja"])
+        expected = {"stuff.web", "whatnot.dude", ".ninja"}
         self.assertSetEqual(set(blocklist), expected)
 
     @patch("basket.news.utils.BlockedEmail")

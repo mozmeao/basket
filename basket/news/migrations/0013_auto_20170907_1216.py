@@ -465,6 +465,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name="localizedsmsmessage",
-            unique_together=set([("message_id", "language", "country")]),
+            unique_together={("message_id", "language", "country")},
         ),
     ]

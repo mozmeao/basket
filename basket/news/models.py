@@ -298,7 +298,7 @@ class LocaleStewards(models.Model):
     )
 
     class Meta:
-        unique_together = ("interest", "locale")
+        unique_together = ["interest", "locale"]
         verbose_name = "Locale Steward"
         verbose_name_plural = "Locale Stewards"
 
