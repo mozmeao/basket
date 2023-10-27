@@ -1300,6 +1300,8 @@ class CommonVoiceGoalsTests(ViewsPatcherMixin, TestCase):
 
 @override_settings(FXA_EMAIL_PREFS_DOMAIN="www.mozilla.org")
 class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
+    FXA_ERROR_URL = "https://www.mozilla.org/newsletter/recovery/?fxa_error=1"
+
     def setUp(self):
         self.client = Client()
         self._patch_views("get_user_data")
@@ -1312,7 +1314,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         """Should return a redirect to error page"""
         resp = self.client.get("/fxa/callback/")
         assert resp.status_code == 302
-        assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
+        assert resp["location"] == self.FXA_ERROR_URL
         metrics_mock.assert_incr_once("news.views.fxa_callback", tags=["status:error", "error:no_sess_state"])
 
     @mock_metrics
@@ -1323,7 +1325,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         session.save()
         resp = self.client.get("/fxa/callback/", {"code": "thecode"})
         assert resp.status_code == 302
-        assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
+        assert resp["location"] == self.FXA_ERROR_URL
         metrics_mock.assert_incr_once("news.views.fxa_callback", tags=["status:error", "error:no_code_or_state"])
 
     @mock_metrics
@@ -1334,7 +1336,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         session.save()
         resp = self.client.get("/fxa/callback/", {"state": "thedude"})
         assert resp.status_code == 302
-        assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
+        assert resp["location"] == self.FXA_ERROR_URL
         metrics_mock.assert_incr_once("news.views.fxa_callback", tags=["status:error", "error:no_code_or_state"])
 
     @mock_metrics
@@ -1346,7 +1348,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         # no state
         resp = self.client.get("/fxa/callback/", {"code": "thecode", "state": "walter"})
         assert resp.status_code == 302
-        assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
+        assert resp["location"] == self.FXA_ERROR_URL
         metrics_mock.assert_incr_once("news.views.fxa_callback", tags=["status:error", "error:no_state_match"])
 
     @mock_metrics
@@ -1364,7 +1366,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
             {"code": "thecode", "state": "thedude"},
         )
         assert resp.status_code == 302
-        assert resp["location"] == "https://www.mozilla.org/newsletter/fxa-error/"
+        assert resp["location"] == self.FXA_ERROR_URL
         metrics_mock.assert_incr_once("news.views.fxa_callback", tags=["status:error", "error:fxa_comm"])
         self.sentry_sdk.capture_exception.assert_called()
 
