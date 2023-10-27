@@ -15,4 +15,4 @@ def snitch(start_time):
         requests.post(f"https://nosnch.in/{settings.SNITCH_ID}", data={"m": duration})
         metrics.timing("task.snitch", duration)
     else:
-        print(f"Snitch: {duration}ms")
+        print(f"Snitch: {duration}ms")  # noqa: T201

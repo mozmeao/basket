@@ -10,6 +10,7 @@ select = [
   "F", # pyflakes errors
   "I", # import sorting
   "Q", # flake8-quotes errors
+  "T20", # flake8-print errors
   "UP", # py-upgrade
   "W", # pycodestyle warnings
 ]
@@ -18,7 +19,7 @@ target-version = 'py39'
 extend-exclude = ["__pycache__", "docker", "docs"]
 
 [tool.ruff.per-file-ignores]
-"bedrock/settings/__init__.py" = ["F405"]
+"basket/news/management/commands/*" = ["T201"]
 
 [tool.ruff.isort]
 known-first-party = ["basket"]
