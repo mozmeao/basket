@@ -151,7 +151,7 @@ def fxa_start(request):
 @require_safe
 def fxa_callback(request):
     # remove state from session to prevent multiple attempts
-    error_url = f"https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/fxa-error/"
+    error_url = f"https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/recovery/?fxa_error=1"
     sess_state = request.session.pop("fxa_state", None)
     if sess_state is None:
         metrics.incr("news.views.fxa_callback", tags=["status:error", "error:no_sess_state"])
