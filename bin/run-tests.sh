@@ -3,7 +3,7 @@
 set -exo pipefail
 
 ruff check basket/
-black --check basket/
+ruff format --check basket/
 urlwait
 python manage.py makemigrations | grep "No changes detected"
 python manage.py migrate --noinput
