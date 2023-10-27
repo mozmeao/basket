@@ -332,18 +332,16 @@ def upsert_contact(api_call_type, data, user_data):
             # If none require confirmation, user goes straight to confirmed (optin)
             # Otherwise, prepare to send a fx or moz confirmation
             if check_optin:
-                exempt_from_confirmation = any(
-                    [not o.requires_double_optin for o in to_subscribe],
-                )
+                exempt_from_confirmation = any(not o.requires_double_optin for o in to_subscribe)
                 if exempt_from_confirmation:
                     update_data["optin"] = True
                 else:
-                    send_fx_confirm = all([o.firefox_confirm for o in to_subscribe])
+                    send_fx_confirm = all(o.firefox_confirm for o in to_subscribe)
                     send_confirm = "fx" if send_fx_confirm else "moz"
 
             # Update a user to MoFo-relevant if they subscribed to a MoFo newsletters
             if check_mofo:
-                if any([ns.is_mofo for ns in to_subscribe]):
+                if any(ns.is_mofo for ns in to_subscribe):
                     update_data["mofo_relevant"] = True
 
     if user_data is None:

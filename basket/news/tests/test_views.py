@@ -1090,7 +1090,7 @@ class TestNewslettersAPI(TestCase):
             languages="en-US, fr",
             vendor_id="VENDOR3",
         )
-        expect = set(["en-US", "fr", "de"])
+        expect = {"en-US", "fr", "de"}
         self.assertEqual(expect, newsletter_languages())
 
     def test_newsletters_cached(self):
@@ -1130,7 +1130,7 @@ class TestNewslettersAPI(TestCase):
             languages="en-US, fr, de ",
         )
         vendor_ids2 = set(newsletter_fields())
-        self.assertEqual(set(["VEND1", "VEND2"]), vendor_ids2)
+        self.assertEqual({"VEND1", "VEND2"}, vendor_ids2)
 
     def test_cache_clear_on_delete(self):
         # Our caching of newsletter data doesn't result in wrong answers

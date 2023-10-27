@@ -4,6 +4,7 @@
 select = [
   "A", # flake8-builtin errors
   "B", # bugbear errors
+  "C4", # flake8-comprehensions errors
   "DJ", # flake8-django errors
   "E", # pycodestyle errors
   "F", # pyflakes errors

@@ -1077,7 +1077,7 @@ class CTMSSessionTests(TestCase):
 def mock_interface(expected_call, status_code, response_data, reason=None):
     """Return a CTMSInterface with a mocked session and response"""
     call = expected_call.lower()
-    assert call in set(("patch", "post", "get"))
+    assert call in {"patch", "post", "get"}
     session = Mock(spec_set=[call])
     caller = getattr(session, call)
 

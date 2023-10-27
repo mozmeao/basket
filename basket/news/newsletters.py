@@ -66,7 +66,7 @@ def _newsletters():
 
 def _get_newsletter_groups_data():
     groups = NewsletterGroup.objects.filter(active=True)
-    return dict((nlg.slug, nlg.newsletter_slugs()) for nlg in groups)
+    return {nlg.slug: nlg.newsletter_slugs() for nlg in groups}
 
 
 def _get_newsletters_data():

@@ -555,6 +555,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name="localestewards",
-            unique_together=set([("interest", "locale")]),
+            unique_together={("interest", "locale")},
         ),
     ]

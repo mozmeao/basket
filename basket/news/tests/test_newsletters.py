@@ -82,14 +82,14 @@ class TestNewsletterUtils(TestCase):
     def test_parse_newsletters_for_groups(self):
         """If newsletter slug is a group for SUBSCRIBE, expand to group's
         newsletters."""
-        subs = utils.parse_newsletters(utils.SUBSCRIBE, ["bowling"], list())
+        subs = utils.parse_newsletters(utils.SUBSCRIBE, ["bowling"], [])
         self.assertTrue(subs["surfing"])
         self.assertTrue(subs["extorting"])
 
     def test_parse_newsletters_not_groups_set(self):
         """If newsletter slug is a group for SET mode, don't expand to group's
         newsletters."""
-        subs = utils.parse_newsletters(utils.SET, ["bowling"], list())
+        subs = utils.parse_newsletters(utils.SET, ["bowling"], [])
         self.assertDictEqual(subs, {"bowling": True})
 
     def test_parse_newsletters_not_groups_unsubscribe(self):
@@ -104,5 +104,5 @@ class TestNewsletterUtils(TestCase):
 
     def test_parse_newsletters_private_with_set(self):
         """If newsletter is private for SET mode, that newsletter should be removed."""
-        subs = utils.parse_newsletters(utils.SET, ["bowling", "papers"], list())
+        subs = utils.parse_newsletters(utils.SET, ["bowling", "papers"], [])
         self.assertDictEqual(subs, {"bowling": True})
