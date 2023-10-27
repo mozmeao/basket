@@ -254,7 +254,7 @@ def get_default_gateway_linux():
                     continue
 
                 return socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
-    except IOError:
+    except OSError:
         return "localhost"
 
 

@@ -206,10 +206,7 @@ def _add_fxa_activity(data):
         "FIRST_DEVICE": "y" if data.get("first_device") else "n",
         "OS_NAME": user_agent.os.family,
         "OS_VERSION": user_agent.os.version_string,
-        "BROWSER": "{0} {1}".format(
-            user_agent.browser.family,
-            user_agent.browser.version_string,
-        ),
+        "BROWSER": f"{user_agent.browser.family} {user_agent.browser.version_string}",
         "DEVICE_NAME": user_agent.device.family,
         "DEVICE_TYPE": device_type,
     }

@@ -318,7 +318,7 @@ class RecoveryMessageEmailValidationTest(SubscribeEmailValidationTest):
     view = "send_recovery_message"
 
 
-class ViewsPatcherMixin(object):
+class ViewsPatcherMixin:
     def _patch_views(self, name):
         patcher = patch("basket.news.views." + name)
         setattr(self, name, patcher.start())

@@ -70,7 +70,7 @@ def generate_token():
 
 class HttpResponseJSON(HttpResponse):
     def __init__(self, data, status=None):
-        super(HttpResponseJSON, self).__init__(
+        super().__init__(
             content=json.dumps(data),
             content_type="application/json",
             status=status,
@@ -448,7 +448,7 @@ def _fix_supported_lang(code):
     """
     if "-" in code:
         codebits = code.split("-")
-        code = "{}-{}".format(codebits[0], codebits[1].upper())
+        code = f"{codebits[0]}-{codebits[1].upper()}"
 
     return code
 

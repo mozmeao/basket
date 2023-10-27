@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 SFDC_COUNTRIES = {
     "af": "Afghanistan",
     "ax": "Aland Islands",

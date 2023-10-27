@@ -24,7 +24,7 @@ class EmailField(forms.CharField):
     """EmailField with better validation and value cleaning"""
 
     def to_python(self, value):
-        value = super(EmailField, self).to_python(value)
+        value = super().to_python(value)
         email = process_email(value)
         if not email:
             raise ValidationError("Enter a valid email address.", "invalid")
@@ -51,7 +51,7 @@ class NewslettersField(forms.MultipleChoiceField):
         help_text="",
         **kwargs,
     ):
-        super(NewslettersField, self).__init__(
+        super().__init__(
             choices=newsletter_field_choices,
             required=required,
             widget=widget,
@@ -62,7 +62,7 @@ class NewslettersField(forms.MultipleChoiceField):
         )
 
     def to_python(self, value):
-        value = super(NewslettersField, self).to_python(value)
+        value = super().to_python(value)
         full_list = []
         for v in value:
             full_list.extend(parse_newsletters_csv(v))

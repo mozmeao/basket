@@ -132,7 +132,7 @@ def get_fxa_authorization_url(state, redirect_uri, email):
     if email:
         params["email"] = email
 
-    return "{}/authorization?{}".format(fxa_server, urlencode(params))
+    return f"{fxa_server}/authorization?{urlencode(params)}"
 
 
 @require_safe
@@ -369,7 +369,7 @@ def format_form_errors(errors):
     error_list = []
     for fname, ferrors in errors.items():
         for err in ferrors:
-            error_list.append("{}: {}".format(fname, err))
+            error_list.append(f"{fname}: {err}")
 
     return error_list
 
@@ -455,7 +455,7 @@ def subscribe_main(request):
         if is_ratelimited(
             request,
             group="basket.news.views.subscribe_main",
-            key=lambda x, y: "%s-%s" % (":".join(data["newsletters"]), data["email"]),
+            key=lambda x, y: f"{':'.join(data['newsletters'])}-{data['email']}",
             rate=EMAIL_SUBSCRIBE_RATE_LIMIT,
             increment=True,
         ):
@@ -894,7 +894,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
         if is_ratelimited(
             request,
             group="basket.news.views.update_user_task.subscribe",
-            key=lambda x, y: "%s-%s" % (data["newsletters"], email),
+            key=lambda x, y: f"{data['newsletters']}-{email}",
             rate=EMAIL_SUBSCRIBE_RATE_LIMIT,
             increment=True,
         ):
@@ -905,7 +905,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
         if is_ratelimited(
             request,
             group="basket.news.views.update_user_task.set",
-            key=lambda x, y: "%s-%s" % (data["newsletters"], token),
+            key=lambda x, y: f"{data['newsletters']}-{token}",
             rate=EMAIL_SUBSCRIBE_RATE_LIMIT,
             increment=True,
         ):
