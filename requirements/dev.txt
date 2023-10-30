@@ -62,13 +62,13 @@ black==23.10.0 \
     --hash=sha256:f74892b4b836e5162aa0452393112a574dac85e13902c57dfbaaf388e4eda37c \
     --hash=sha256:f8dc7d50d94063cdfd13c82368afd8588bac4ce360e4224ac399e769d6704e98
     # via -r requirements/dev.in
-boto3==1.28.65 \
-    --hash=sha256:9d52a1605657aeb5b19b09cfc01d9a92f88a616a5daf5479a59656d6341ea6b3 \
-    --hash=sha256:ff3d0116e0ca6c096547652390025780eace3a28f6c04c9ffbf38448f1e5a87b
+boto3==1.28.73 \
+    --hash=sha256:a61cf96f7e196b1450afdf4856b7ea0e58080752e687b0011157be96934489be \
+    --hash=sha256:bbe377a288b6b12b526fae3b3d743318c6868626cf67e1e97f104345a5194b1e
     # via -r requirements/prod.txt
-botocore==1.31.65 \
-    --hash=sha256:90716c6f1af97e5c2f516e9a3379767ebdddcc6cbed79b026fa5038ce4e5e43e \
-    --hash=sha256:f74e3da98dfcec17bc63ef58f82c643bf5bd7ec6cc11a26ede21cc4cd064917f
+botocore==1.31.73 \
+    --hash=sha256:5334c22d5a3f4643931896137c57b2496fef005b039d87d8740e7a28eb31519d \
+    --hash=sha256:6e9caaa7205e0c0505f4868a4053e96eaf3f4b6bce0368a46970a8efeeacb492
     # via
     #   -r requirements/prod.txt
     #   boto3
@@ -307,9 +307,7 @@ coverage[toml]==7.1.0 \
     --hash=sha256:f2cba5c6db29ce991029b5e4ac51eb36774458f0a3b8d3137241b32d1bb91f06 \
     --hash=sha256:f5b4198d85a3755d27e64c52f8c95d6333119e49fd001ae5798dac872c95e0f8 \
     --hash=sha256:ffeeb38ee4a80a30a6877c5c4c359e5498eec095878f1581453202bfacc8fbc2
-    # via
-    #   coverage
-    #   pytest-cov
+    # via pytest-cov
 crontab==1.0.1 \
     --hash=sha256:89477e3f93c81365e738d5ee2659509e6373bb2846de13922663e79aa74c6b91
     # via
@@ -673,9 +671,7 @@ lxml==4.9.3 \
 markus[datadog]==4.2.0 \
     --hash=sha256:156398b7de56db4e8ef420a80fcce1c49b6d3d41405874a3e128cb209cf4bfd8 \
     --hash=sha256:9dd41ce53b25a3e806b0d065808fec00c4ec945e80cf5a72431bf9b61b44d7fb
-    # via
-    #   -r requirements/prod.txt
-    #   markus
+    # via -r requirements/prod.txt
 meinheld==1.0.2 \
     --hash=sha256:008c76937ac2117cc69e032dc69cea9f85fc605de9bac1417f447c41c16a56d6
     # via -r requirements/prod.txt
