@@ -1,4 +1,7 @@
+import uuid
+
 from django.conf import settings
+from django.core.cache import cache
 from django.urls import reverse
 
 import pytest
@@ -88,3 +91,48 @@ def test_petition_cors(client):
     assert response.status_code == 200
     assert response["Access-Control-Allow-Origin"] == settings.PETITION_CORS_URL
     assert response["Access-Control-Allow-Methods"] == "POST, OPTIONS"
+
+
+@pytest.mark.django_db
+def test_signatures_json(client):
+    url = reverse("signatures-json")
+
+    # No signatures.
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response.json() == {"signatures": []}
+    cache.clear()
+
+    # One approved signature.
+    Petition.objects.create(
+        name="The Dude",
+        email="thedude@example.com",
+        title="Dude",
+        affiliation="The Knudsens",
+        approved=True,
+        token=uuid.uuid4(),
+    )
+    # One not yet approved signature.
+    Petition.objects.create(
+        name="The Troll",
+        email="troll@example.com",
+        title="Troll",
+        affiliation="Troll Farm",
+        approved=False,
+        token=uuid.uuid4(),
+    )
+
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response.json() == {
+        "signatures": [
+            {
+                "name": "The Dude",
+                "title": "Dude",
+                "affiliation": "The Knudsens",
+            }
+        ]
+    }
+
+    # Confirm there's caching on the response.
+    assert response["Cache-Control"] == "max-age=900"
