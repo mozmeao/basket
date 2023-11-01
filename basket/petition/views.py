@@ -3,8 +3,10 @@ import uuid
 from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import redirect
+from django.views.decorators.cache import cache_page
 
 from basket.petition.forms import PetitionForm
+from basket.petition.models import Petition
 
 
 # Doing this here to not affect the rest of basket.
@@ -36,3 +38,10 @@ def sign_petition(request):
         return _add_cors(JsonResponse({"status": "success"}))
 
         # TODO: Send confirmation email to user's email.
+
+
+@cache_page(60 * 15)
+def signatures_json(request):
+    petitions = Petition.objects.filter(approved=True).order_by("created").values("name", "title", "affiliation")
+    data = {"signatures": list(petitions)}
+    return JsonResponse(data)
