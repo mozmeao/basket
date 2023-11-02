@@ -159,8 +159,9 @@ MIDDLEWARE = (
 ROOT_URLCONF = "basket.urls"
 
 INSTALLED_APPS = (
-    "basket.news",
     "basket.base",
+    "basket.news",
+    "basket.petition",
     "corsheaders",
     "product_details",
     "django_extensions",
@@ -461,3 +462,6 @@ if OIDC_ENABLE:
         "/readiness/",
         "/watchman/",
     ]
+
+PETITION_CORS_URL = config("PETITION_CORS_URL", default="https://open.mozilla.org")
+PETITION_REDIRECT_URL = config("PETITION_REDIRECT_URL", default="https://open.mozilla.org/letter")

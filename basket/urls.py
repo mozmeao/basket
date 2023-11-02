@@ -19,6 +19,8 @@ urlpatterns = [
     path("subscribe.json", subscribe_json),
     path("fxa/", fxa_start),
     path("fxa/callback/", fxa_callback),
+    # Petition URLS
+    path("petition/", include("basket.petition.urls")),
 ]
 
 if settings.OIDC_ENABLE:
