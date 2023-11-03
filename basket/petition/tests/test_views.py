@@ -3,6 +3,7 @@ import uuid
 from django.conf import settings
 from django.core.cache import cache
 from django.urls import reverse
+from django.utils.http import urlsafe_base64_encode
 
 import pytest
 
@@ -18,7 +19,8 @@ def test_petition_get(client):
 
 
 @pytest.mark.django_db
-def test_petition_post_success(client):
+def test_petition_post_success(client, mocker):
+    mock_send_mail = mocker.patch("basket.petition.views.send_mail")
     url = reverse("sign-petition")
     data = {
         "name": "The Dude",
@@ -42,10 +44,17 @@ def test_petition_post_success(client):
     assert petition.verified_research is False
     assert petition.approved is False
     assert petition.created is not None
+    assert str(petition) == "The Dude, Dude (thedude@example.com)"
+
+    assert mock_send_mail.call_count == 1
+    pidb64 = urlsafe_base64_encode(str(petition.pk).encode())
+    assert f"http://testserver/petition/confirm/{pidb64}/{petition.token}/" in mock_send_mail.call_args[0][1]
+    assert [f"{petition.name} <{petition.email}>"] == mock_send_mail.call_args[0][3]
 
 
 @pytest.mark.django_db
-def test_petition_post_invalid(client):
+def test_petition_post_invalid(client, mocker):
+    mock_send_mail = mocker.patch("basket.petition.views.send_mail")
     url = reverse("sign-petition")
     data = {
         "name": "The Dude",
@@ -63,10 +72,12 @@ def test_petition_post_invalid(client):
         },
     }
     assert Petition.objects.count() == 0
+    assert mock_send_mail.call_count == 0
 
 
 @pytest.mark.django_db
-def test_petition_email_invalid(client):
+def test_petition_email_invalid(client, mocker):
+    mock_send_mail = mocker.patch("basket.petition.views.send_mail")
     url = reverse("sign-petition")
     data = {
         "name": "The Dude",
@@ -83,6 +94,7 @@ def test_petition_email_invalid(client):
         },
     }
     assert Petition.objects.count() == 0
+    assert mock_send_mail.call_count == 0
 
 
 def test_petition_cors(client):
@@ -94,24 +106,12 @@ def test_petition_cors(client):
 
 
 @pytest.mark.django_db
-def test_signatures_json(client):
+def test_signatures_json(client, petition):
     url = reverse("signatures-json")
 
-    # No signatures.
-    response = client.get(url)
-    assert response.status_code == 200
-    assert response.json() == {"signatures": []}
     cache.clear()
 
-    # One approved signature.
-    Petition.objects.create(
-        name="The Dude",
-        email="thedude@example.com",
-        title="Dude",
-        affiliation="The Knudsens",
-        approved=True,
-        token=uuid.uuid4(),
-    )
+    # One approved signature is defined in conftest.py.
     # One not yet approved signature.
     Petition.objects.create(
         name="The Troll",
@@ -127,12 +127,47 @@ def test_signatures_json(client):
     assert response.json() == {
         "signatures": [
             {
-                "name": "The Dude",
-                "title": "Dude",
-                "affiliation": "The Knudsens",
+                "name": petition.name,
+                "title": petition.title,
+                "affiliation": petition.affiliation,
             }
         ]
     }
 
+    # No signatures.
+    cache.clear()
+    petition.delete()
+
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response.json() == {"signatures": []}
+
     # Confirm there's caching on the response.
     assert response["Cache-Control"] == "max-age=900"
+
+
+@pytest.mark.django_db
+def test_confirm_token(client, petition):
+    assert petition.email_confirmed is False
+
+    pidb64 = urlsafe_base64_encode(str(petition.pk).encode())
+    response = client.get(reverse("confirm-token", args=[pidb64, petition.token]))
+    assert response.status_code == 302
+    assert response.url == settings.PETITION_REDIRECT_URL
+
+    petition.refresh_from_db()
+    assert petition.email_confirmed is True
+
+
+@pytest.mark.django_db
+def test_confirm_token_invalid(client, petition):
+    assert petition.email_confirmed is False
+
+    pidb64 = urlsafe_base64_encode(str(petition.pk).encode())
+    # Using a different UUID token so it's invalid.
+    response = client.get(reverse("confirm-token", args=[pidb64, uuid.uuid4()]))
+    assert response.status_code == 302
+    assert response.url == settings.PETITION_REDIRECT_URL
+
+    petition.refresh_from_db()
+    assert petition.email_confirmed is False
