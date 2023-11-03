@@ -17,6 +17,7 @@ from basket.petition.models import Petition
 def _add_cors(response):
     response["Access-Control-Allow-Origin"] = settings.PETITION_CORS_URL
     response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    response["Access-Control-Allow-Headers"] = "*"
     return response
 
 
