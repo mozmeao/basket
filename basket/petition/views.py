@@ -33,7 +33,7 @@ def _send_confirmation(request, petition):
             "confirm_link": confirm_link,
         },
     )
-    email_from = "noreply@mozilla.com"
+    email_from = "Mozilla <noreply@mozilla.com>"
     email_to = [f"{petition.name} <{petition.email}>"]
 
     send_mail(email_subject, email_body, email_from, email_to)
