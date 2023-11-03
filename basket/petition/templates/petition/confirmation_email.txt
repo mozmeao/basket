@@ -1,0 +1,9 @@
+This email address was used to sign the Joint Statement on AI Safety and Openness.
+
+To validate your email address, click the link below:
+
+{{ confirm_link }}
+
+=========
+
+If you did not sign the statement, you can safely ignore this email, and your signature will not be added.
