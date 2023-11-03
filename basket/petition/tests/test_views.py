@@ -103,6 +103,7 @@ def test_petition_cors(client):
     assert response.status_code == 200
     assert response["Access-Control-Allow-Origin"] == settings.PETITION_CORS_URL
     assert response["Access-Control-Allow-Methods"] == "POST, OPTIONS"
+    assert response["Access-Control-Allow-Headers"] == "*"
 
 
 @pytest.mark.django_db
