@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.db import Error
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.utils.http import urlsafe_base64_decode
@@ -35,7 +36,10 @@ def sign_petition(request):
         petition.user_agent = request.META.get("HTTP_USER_AGENT", "")
         petition.referrer = request.META.get("HTTP_REFERER", "")
         petition.token = uuid.uuid4()
-        petition.save()
+        try:
+            petition.save()
+        except Error:
+            return _add_cors(JsonResponse({"status": "error", "errors": {"__all__": "Database error"}}))
 
         # Send email confirmation.
         petition.send_email_confirmation()
