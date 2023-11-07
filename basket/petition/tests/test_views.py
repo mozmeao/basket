@@ -19,8 +19,9 @@ def test_petition_get(client):
 
 
 @pytest.mark.django_db
-def test_petition_post_success(client, mocker):
-    mock_send_mail = mocker.patch("basket.petition.views.send_email_confirmation")
+def test_petition_post_success(client, mocker, settings):
+    mock_send_mail = mocker.patch("basket.petition.models.send_email_confirmation")
+    settings.SITE_URL = "http://testserver"
     url = reverse("sign-petition")
     data = {
         "name": "The Dude",
@@ -54,7 +55,7 @@ def test_petition_post_success(client, mocker):
 
 @pytest.mark.django_db
 def test_petition_post_invalid(client, mocker):
-    mock_send_mail = mocker.patch("basket.petition.views.send_email_confirmation")
+    mock_send_mail = mocker.patch("basket.petition.models.send_email_confirmation")
     url = reverse("sign-petition")
     data = {
         "name": "The Dude",
@@ -77,7 +78,7 @@ def test_petition_post_invalid(client, mocker):
 
 @pytest.mark.django_db
 def test_petition_email_invalid(client, mocker):
-    mock_send_mail = mocker.patch("basket.petition.views.send_email_confirmation")
+    mock_send_mail = mocker.patch("basket.petition.models.send_email_confirmation")
     url = reverse("sign-petition")
     data = {
         "name": "The Dude",
