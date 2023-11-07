@@ -112,6 +112,8 @@ USE_TZ = True
 SITE_ID = 1
 USE_I18N = False
 
+SITE_URL = config("SITE_URL", default="https://basket.mozilla.org")
+
 STATIC_ROOT = path("static")
 STATIC_URL = "/static/"
 if not DEBUG:

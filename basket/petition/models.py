@@ -1,5 +1,12 @@
+from urllib.parse import urljoin
+
+from django.conf import settings
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import urlsafe_base64_encode
+
+from basket.petition.tasks import send_email_confirmation
 
 
 class Petition(models.Model):
@@ -28,3 +35,9 @@ class Petition(models.Model):
 
     def __str__(self):
         return f"{self.name}, {self.title} ({self.email})"
+
+    def send_email_confirmation(self):
+        # Send email confirmation.
+        pidb64 = urlsafe_base64_encode(str(self.pk).encode())
+        confirm_link = urljoin(settings.SITE_URL, reverse("confirm-token", args=[pidb64, self.token]))
+        send_email_confirmation.delay(self.name, self.email, confirm_link)

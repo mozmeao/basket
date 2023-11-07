@@ -3,13 +3,11 @@ import uuid
 from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import redirect
-from django.urls import reverse
-from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.cache import cache_page
 
 from basket.petition.forms import PetitionForm
 from basket.petition.models import Petition
-from basket.petition.tasks import send_email_confirmation
 
 
 # Doing this here to not affect the rest of basket.
@@ -40,9 +38,7 @@ def sign_petition(request):
         petition.save()
 
         # Send email confirmation.
-        pidb64 = urlsafe_base64_encode(str(petition.pk).encode())
-        confirm_link = request.build_absolute_uri(reverse("confirm-token", args=[pidb64, petition.token]))
-        send_email_confirmation.delay(petition.name, petition.email, confirm_link)
+        petition.send_email_confirmation()
 
         return _add_cors(JsonResponse({"status": "success"}))
 
