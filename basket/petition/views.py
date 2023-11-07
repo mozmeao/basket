@@ -25,7 +25,7 @@ def sign_petition(request):
         return _add_cors(JsonResponse({"status": "none"}))
 
     if request.method == "GET":
-        return redirect(settings.PETITION_REDIRECT_URL)
+        return redirect(settings.PETITION_LETTER_URL)
 
     if request.method == "POST":
         form = PetitionForm(request.POST)
@@ -59,9 +59,9 @@ def confirm_token(request, pidb64, token):
     try:
         petition = Petition.objects.get(id=petition_id, token=token, email_confirmed=False)
     except Petition.DoesNotExist:
-        return redirect(settings.PETITION_REDIRECT_URL)
+        return redirect(settings.PETITION_LETTER_URL)
 
     petition.email_confirmed = True
     petition.save()
 
-    return redirect(settings.PETITION_REDIRECT_URL)
+    return redirect(settings.PETITION_THANKS_URL)

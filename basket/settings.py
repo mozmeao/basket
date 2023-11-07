@@ -464,4 +464,5 @@ if OIDC_ENABLE:
     ]
 
 PETITION_CORS_URL = config("PETITION_CORS_URL", default="https://open.mozilla.org")
-PETITION_REDIRECT_URL = config("PETITION_REDIRECT_URL", default="https://open.mozilla.org/letter")
+PETITION_LETTER_URL = config("PETITION_LETTER_URL", default="https://open.mozilla.org/letter")
+PETITION_THANKS_URL = config("PETITION_THANKS_URL", default="https://open.mozilla.org/letter/thanks")

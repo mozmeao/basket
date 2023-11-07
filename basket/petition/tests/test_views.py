@@ -15,7 +15,7 @@ def test_petition_get(client):
     url = reverse("sign-petition")
     response = client.get(url)
     assert response.status_code == 302
-    assert response.url == settings.PETITION_REDIRECT_URL
+    assert response.url == settings.PETITION_LETTER_URL
 
 
 @pytest.mark.django_db
@@ -154,7 +154,7 @@ def test_confirm_token(client, petition):
     pidb64 = urlsafe_base64_encode(str(petition.pk).encode())
     response = client.get(reverse("confirm-token", args=[pidb64, petition.token]))
     assert response.status_code == 302
-    assert response.url == settings.PETITION_REDIRECT_URL
+    assert response.url == settings.PETITION_THANKS_URL
 
     petition.refresh_from_db()
     assert petition.email_confirmed is True
@@ -168,7 +168,7 @@ def test_confirm_token_invalid(client, petition):
     # Using a different UUID token so it's invalid.
     response = client.get(reverse("confirm-token", args=[pidb64, uuid.uuid4()]))
     assert response.status_code == 302
-    assert response.url == settings.PETITION_REDIRECT_URL
+    assert response.url == settings.PETITION_LETTER_URL
 
     petition.refresh_from_db()
     assert petition.email_confirmed is False
