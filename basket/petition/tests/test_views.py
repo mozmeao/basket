@@ -20,7 +20,7 @@ def test_petition_get(client):
 
 @pytest.mark.django_db
 def test_petition_post_success(client, mocker):
-    mock_send_mail = mocker.patch("basket.petition.views.send_mail")
+    mock_send_mail = mocker.patch("basket.petition.views.send_email_confirmation")
     url = reverse("sign-petition")
     data = {
         "name": "The Dude",
@@ -46,15 +46,15 @@ def test_petition_post_success(client, mocker):
     assert petition.created is not None
     assert str(petition) == "The Dude, Dude (thedude@example.com)"
 
-    assert mock_send_mail.call_count == 1
+    assert mock_send_mail.delay.call_count == 1
     pidb64 = urlsafe_base64_encode(str(petition.pk).encode())
-    assert f"http://testserver/petition/confirm/{pidb64}/{petition.token}/" in mock_send_mail.call_args[0][1]
-    assert [f"{petition.name} <{petition.email}>"] == mock_send_mail.call_args[0][3]
+    link = f"http://testserver/petition/confirm/{pidb64}/{petition.token}/"
+    assert mock_send_mail.delay.call_args[0] == ("The Dude", "thedude@example.com", link)
 
 
 @pytest.mark.django_db
 def test_petition_post_invalid(client, mocker):
-    mock_send_mail = mocker.patch("basket.petition.views.send_mail")
+    mock_send_mail = mocker.patch("basket.petition.views.send_email_confirmation")
     url = reverse("sign-petition")
     data = {
         "name": "The Dude",
@@ -77,7 +77,7 @@ def test_petition_post_invalid(client, mocker):
 
 @pytest.mark.django_db
 def test_petition_email_invalid(client, mocker):
-    mock_send_mail = mocker.patch("basket.petition.views.send_mail")
+    mock_send_mail = mocker.patch("basket.petition.views.send_email_confirmation")
     url = reverse("sign-petition")
     data = {
         "name": "The Dude",
