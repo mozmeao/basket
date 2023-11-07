@@ -1,16 +1,15 @@
 import uuid
 
 from django.conf import settings
-from django.core.mail import send_mail
 from django.http import JsonResponse
 from django.shortcuts import redirect
-from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.cache import cache_page
 
 from basket.petition.forms import PetitionForm
 from basket.petition.models import Petition
+from basket.petition.tasks import send_email_confirmation
 
 
 # Doing this here to not affect the rest of basket.
@@ -19,24 +18,6 @@ def _add_cors(response):
     response["Access-Control-Allow-Methods"] = "POST, OPTIONS"
     response["Access-Control-Allow-Headers"] = "*"
     return response
-
-
-def _send_confirmation(request, petition):
-    pidb64 = urlsafe_base64_encode(str(petition.pk).encode())
-    confirm_link = request.build_absolute_uri(reverse("confirm-token", args=[pidb64, petition.token]))
-
-    email_subject = "Verify your email: Joint Statement on AI Safety and Openness"
-    email_body = render_to_string(
-        "petition/confirmation_email.txt",
-        {
-            "name": petition.name,
-            "confirm_link": confirm_link,
-        },
-    )
-    email_from = "Mozilla <noreply@mozilla.com>"
-    email_to = [f"{petition.name} <{petition.email}>"]
-
-    send_mail(email_subject, email_body, email_from, email_to)
 
 
 def sign_petition(request):
@@ -59,7 +40,9 @@ def sign_petition(request):
         petition.save()
 
         # Send email confirmation.
-        _send_confirmation(request, petition)
+        pidb64 = urlsafe_base64_encode(str(petition.pk).encode())
+        confirm_link = request.build_absolute_uri(reverse("confirm-token", args=[pidb64, petition.token]))
+        send_email_confirmation.delay(petition.name, petition.email, confirm_link)
 
         return _add_cors(JsonResponse({"status": "success"}))
 
