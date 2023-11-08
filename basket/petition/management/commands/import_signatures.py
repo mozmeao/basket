@@ -32,6 +32,7 @@ class Command(BaseCommand):
                     created = parse_datetime(created)
                     if not email:
                         email = "not-provided@null.com"
+                    vip = tag == "VIP"
 
                     try:
                         Petition.objects.create(
@@ -43,6 +44,7 @@ class Command(BaseCommand):
                             user_agent="Imported from CSV",
                             token=uuid.uuid4(),
                             approved=True,
+                            vip=vip,
                         )
                     except Exception as e:
                         print(f"Error importing row: {row}: {e}")  # noqa: T201
