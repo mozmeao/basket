@@ -17,10 +17,11 @@ class PetitionAdmin(admin.ModelAdmin):
         "verified_linkedin",
         "verified_research",
         "approved",
+        "vip",
     ]
     search_fields = ["name", "email", "title", "affiliation"]
-    list_filter = ["email_confirmed", "verified_general", "verified_linkedin", "verified_research", "approved"]
-    list_editable = ["verified_general", "verified_linkedin", "verified_research", "approved"]
+    list_filter = ["email_confirmed", "verified_general", "verified_linkedin", "verified_research", "approved", "vip"]
+    list_editable = ["verified_general", "verified_linkedin", "verified_research", "approved", "vip"]
     readonly_fields = ["ip", "user_agent", "referrer", "token", "email_confirmed", "created"]
     fieldsets = (
         (
@@ -36,6 +37,7 @@ class PetitionAdmin(admin.ModelAdmin):
                     "verified_linkedin",
                     "verified_research",
                     "approved",
+                    "vip",
                 )
             },
         ),

@@ -44,6 +44,7 @@ def test_petition_post_success(client, mocker, settings):
     assert petition.verified_linkedin is False
     assert petition.verified_research is False
     assert petition.approved is False
+    assert petition.vip is False
     assert petition.created is not None
     assert str(petition) == "The Dude, Dude (thedude@example.com)"
 
