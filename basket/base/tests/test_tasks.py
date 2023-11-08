@@ -7,7 +7,6 @@ from django.test import override_settings
 
 from freezegun import freeze_time
 
-from basket.base.rq import get_worker
 from basket.base.tasks import snitch
 
 
@@ -27,9 +26,6 @@ def test_snitch(mock_post, metrics_mock):
 def test_snitch_with_worker(mock_post, metrics_mock):
     seconds_ago = time() - 1
     snitch.delay(seconds_ago)
-
-    worker = get_worker()
-    worker.work(burst=True)  # Burst = worker will quit after all jobs consumed.
 
     mock_post.assert_called_with("https://nosnch.in/999", data={"m": 1000})
     metrics_mock.assert_timing_once("task.snitch", 1000)
