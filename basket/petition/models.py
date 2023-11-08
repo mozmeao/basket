@@ -20,6 +20,7 @@ class Petition(models.Model):
     verified_linkedin = models.BooleanField(default=False, help_text="LinkedIn verification")
     verified_research = models.BooleanField(default=False, help_text="Research verification")
     approved = models.BooleanField(default=False)
+    vip = models.BooleanField(default=False)
     # Internal use:
     ip = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
