@@ -47,7 +47,7 @@ def sign_petition(request):
         return _add_cors(JsonResponse({"status": "success"}))
 
 
-@cache_page(60 * 15)
+@cache_page(60 * 5)
 def signatures_json(request):
     petitions = Petition.objects.filter(approved=True).order_by("created").values("name", "title", "affiliation")
     data = {"signatures": list(petitions)}
