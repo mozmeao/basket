@@ -167,7 +167,7 @@ def test_signatures_json(client, petition):
     assert response.json() == {"signatures": []}
 
     # Confirm there's caching on the response.
-    assert response["Cache-Control"] == "max-age=900"
+    assert response["Cache-Control"] == "max-age=300"
 
 
 @pytest.mark.django_db
