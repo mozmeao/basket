@@ -35,6 +35,6 @@ redis==4.6.0
 rq==1.15.1
 rq-scheduler==0.13.1
 sentry-processor==0.0.1
-sentry-sdk==1.26.0  # Later versions cause test failures due to tracing meta HTML tags leaking into the `delay()` calls. Needs investigation.
+sentry-sdk==1.35.0  # Later versions cause test failures due to tracing meta HTML tags leaking into the `delay()` calls. Needs investigation.
 user-agents==2.2.0
 whitenoise==6.6.0
