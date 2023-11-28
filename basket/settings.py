@@ -64,11 +64,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 REDIS_URL = config("REDIS_URL", None)
 if REDIS_URL:
     REDIS_URL = REDIS_URL.rstrip("/0")
-    HIREDIS_URL = REDIS_URL.replace("redis://", "hiredis://")
     # Use Redis for cache and rq.
     # Note: We save the URL in the environment so `config` can pull from it below.
-    os.environ["CACHE_URL"] = HIREDIS_URL + "/" + config("REDIS_CACHE_DB", "1")
-    RQ_URL = REDIS_URL + "/" + config("REDIS_RQ_DB", "2")
+    os.environ["CACHE_URL"] = f'{REDIS_URL}/{config("REDIS_CACHE_DB", "1")}'
+    RQ_URL = f'{REDIS_URL}/{config("REDIS_RQ_DB", "2")}'
 
 CACHES = {
     "default": config("CACHE_URL", default="locmem://", cast=django_cache_url.parse),
