@@ -40,13 +40,13 @@ backports-zoneinfo==0.2.1 \
     --hash=sha256:f04e857b59d9d1ccc39ce2da1021d196e47234873820cbeaad210724b1ee28ac \
     --hash=sha256:fadbfe37f74051d024037f223b8e001611eac868b5c5b06144ef4d8b799862f2
     # via -r requirements/prod.in
-boto3==1.33.1 \
-    --hash=sha256:1fe5fa75ff0f0c29a6f55e818d149d33571731e692a7b785ded7a28ac832cae8 \
-    --hash=sha256:fa5aa92d16763cb906fb4a83d6eba887342202a980bea07862af5ba40827aa5a
+boto3==1.33.2 \
+    --hash=sha256:70626598dd6698d6da8f2854a1ae5010f175572e2a465b2aa86685c745c1013c \
+    --hash=sha256:fc7c0dd5fa74ae0d57e11747695bdba4ad164e62dee35db15b43762c392fbd92
     # via -r requirements/prod.in
-botocore==1.33.1 \
-    --hash=sha256:c744b90980786c610dd9ad9c50cf2cdde3f1c4634b954a33613f6f8a1865a1de \
-    --hash=sha256:d22d29916905e5f0670b91f07688e92b2c4a2075f9a474d6edbe7d22040d8fbf
+botocore==1.33.2 \
+    --hash=sha256:16a30faac6e6f17961c009defb74ab1a3508b8abc58fab98e7cf96af0d91ea84 \
+    --hash=sha256:5c46b7e8450efbf7ddc2a0016eee7225a5564583122e25a20ca92a29a105225c
     # via
     #   boto3
     #   s3transfer
