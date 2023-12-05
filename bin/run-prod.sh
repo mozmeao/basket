@@ -2,10 +2,9 @@
 
 echo "$GIT_SHA" > static/revision.txt
 NEW_RELIC_CONFIG_FILE=newrelic.ini newrelic-admin run-program \
-granian \
-    --interface wsgi \
-    --host 0.0.0.0 \
-    --port "${PORT:-8000}" \
-    --no-ws \
-    --workers "${WSGI_NUM_WORKERS:-8}" \
-    basket.wsgi:application
+gunicorn basket.wsgi --bind "0.0.0.0:${PORT:-8000}" \
+                     --workers "${WSGI_NUM_WORKERS:-8}" \
+                     --worker-class "${WSGI_WORKER_CLASS:-meinheld.gmeinheld.MeinheldWorker}" \
+                     --log-level "${WSGI_LOG_LEVEL:-info}" \
+                     --error-logfile - \
+                     --access-logfile -
