@@ -312,13 +312,14 @@ def before_send(event, hint):
     return event
 
 
-sentry_sdk.init(
-    dsn=config("SENTRY_DSN", None),
-    release=config("GIT_SHA", None),
-    server_name=".".join(x for x in [K8S_NAMESPACE, CLUSTER_NAME, HOSTNAME] if x),
-    integrations=[DjangoIntegration(signals_spans=False), RedisIntegration(), RqIntegration()],
-    before_send=before_send,
-)
+if not UNITTEST:
+    sentry_sdk.init(
+        dsn=config("SENTRY_DSN", None),
+        release=config("GIT_SHA", None),
+        server_name=".".join(x for x in [K8S_NAMESPACE, CLUSTER_NAME, HOSTNAME] if x),
+        integrations=[DjangoIntegration(signals_spans=False), RedisIntegration(), RqIntegration()],
+        before_send=before_send,
+    )
 
 STATSD_HOST = config("STATSD_HOST", get_default_gateway_linux())
 STATSD_PORT = config("STATSD_PORT", 8125, cast=int)
