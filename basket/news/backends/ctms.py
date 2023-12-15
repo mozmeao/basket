@@ -12,7 +12,9 @@ from django.core.cache import cache
 
 import sentry_sdk
 from oauthlib.oauth2 import BackendApplicationClient
+from requests.adapters import HTTPAdapter
 from requests_oauthlib import OAuth2Session
+from urllib3.util import Retry
 
 from basket import metrics
 from basket.news.backends.common import get_timer_decorator
@@ -483,6 +485,13 @@ class CTMSSession:
             "refresh_token_response",
             CTMSSession.check_2xx_response,
         )
+        # Mount an HTTPAdapter to retry requests.
+        retries = Retry(
+            total=5,
+            backoff_factor=0.5,
+            allowed_methods={"GET", "POST", "PATCH"},
+        )
+        session.mount(self.api_url, HTTPAdapter(max_retries=retries))
         if not session.authorized:
             session = self._authorize_session(session)
         return session
