@@ -864,6 +864,7 @@ class CTMSSessionTests(TestCase):
             spec_set=(
                 "authorized",
                 "fetch_token",
+                "mount",
                 "request",
                 "register_compliance_hook",
             ),
@@ -912,7 +913,7 @@ class CTMSSessionTests(TestCase):
     def test_get_with_existing_auth(self, mock_oauth2_session, mock_cache):
         """An existing OAuth2 token is reused without calling fetch_token."""
         mock_session = Mock(
-            spec_set=("authorized", "request", "register_compliance_hook"),
+            spec_set=("authorized", "mount", "request", "register_compliance_hook"),
         )
         mock_session.authorized = True
         mock_response = Mock(spec_set=("status_code",))
@@ -949,6 +950,7 @@ class CTMSSessionTests(TestCase):
             spec_set=(
                 "authorized",
                 "fetch_token",
+                "mount",
                 "request",
                 "register_compliance_hook",
             ),
@@ -998,7 +1000,7 @@ class CTMSSessionTests(TestCase):
     def test_get_with_failed_auth(self, mock_oauth2_session, mock_cache):
         """A new OAuth2 token is fetched on an auth error."""
         mock_session = Mock(
-            spec_set=("authorized", "fetch_token", "register_compliance_hook"),
+            spec_set=("authorized", "mount", "fetch_token", "register_compliance_hook"),
         )
         mock_session.authorized = False
         err_resp = Response()
