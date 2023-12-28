@@ -29,12 +29,12 @@ class UpsertUserTests(TestCase):
 
     def test_update_first_last_names(
         self,
-        get_user_data,
+        get_user_mock,
         ctms_mock,
         confirm_mock,
     ):
         """sending name fields should result in names being passed to SF/CTMS"""
-        get_user_data.return_value = None  # Does not exist yet
+        get_user_mock.return_value = None  # Does not exist yet
         email_id = str(uuid4())
         ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
@@ -63,7 +63,7 @@ class UpsertUserTests(TestCase):
 
     def test_update_user_set_works_if_no_newsletters(
         self,
-        get_user_data,
+        get_user_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -90,24 +90,24 @@ class UpsertUserTests(TestCase):
         update_data = data.copy()
         update_data["newsletters"] = {"slug": False}
 
-        get_user_data.return_value = self.get_user_data
+        get_user_mock.return_value = self.get_user_data
 
         upsert_user(SET, data)
         # We should have looked up the user's data
-        get_user_data.assert_called()
+        get_user_mock.assert_called()
         # We'll specifically unsubscribe each newsletter the user is
         # subscribed to.
         ctms_mock.update.assert_called_with(self.get_user_data, update_data)
 
     def test_resubscribe_doesnt_update_newsletter(
         self,
-        get_user_data,
+        get_user_mock,
         ctms_mock,
         confirm_mock,
     ):
         """
         When subscribing to things the user is already subscribed to, we
-        do not pass that newsletter to SF/CTMS because we don't want that newsletter
+        do not pass that newsletter to CTMS because we don't want that newsletter
         to be updated for no reason as that could cause another welcome to be sent.
         """
         models.Newsletter.objects.create(
@@ -128,23 +128,23 @@ class UpsertUserTests(TestCase):
         update_data = data.copy()
         update_data["newsletters"] = {}
 
-        get_user_data.return_value = self.get_user_data
+        get_user_mock.return_value = self.get_user_data
 
         upsert_user(SUBSCRIBE, data)
         # We should have looked up the user's data
-        get_user_data.assert_called()
+        get_user_mock.assert_called()
         # We should not have mentioned this newsletter in our call to ET
         ctms_mock.update.assert_called_with(self.get_user_data, update_data)
 
     def test_set_doesnt_update_newsletter(
         self,
-        get_user_data,
+        get_user_mock,
         ctms_mock,
         confirm_mock,
     ):
         """
         When setting the newsletters to ones the user is already subscribed
-        to, we do not pass that newsletter to SF/CTMS because we
+        to, we do not pass that newsletter to CTMS because we
         don't want that newsletter to send a new welcome.
         """
         models.Newsletter.objects.create(
@@ -167,15 +167,15 @@ class UpsertUserTests(TestCase):
         update_data["newsletters"] = {}
 
         # Mock user data - we want our user subbed to our newsletter to start
-        get_user_data.return_value = self.get_user_data
+        get_user_mock.return_value = self.get_user_data
 
         upsert_user(SET, data)
         # We should have looked up the user's data
-        self.assertTrue(get_user_data.called)
-        # We should not have mentioned this newsletter in our call to SF/CTMS
+        self.assertTrue(get_user_mock.called)
+        # We should not have mentioned this newsletter in our call to CTMS
         ctms_mock.update.assert_called_with(self.get_user_data, update_data)
 
-    def test_unsub_is_careful(self, get_user_data, ctms_mock, confirm_mock):
+    def test_unsub_is_careful(self, get_user_mock, ctms_mock, confirm_mock):
         """
         When unsubscribing, we only unsubscribe things the user is
         currently subscribed to.
@@ -205,11 +205,11 @@ class UpsertUserTests(TestCase):
         update_data = data.copy()
         # We should only mention slug, not slug2
         update_data["newsletters"] = {"slug": False}
-        get_user_data.return_value = self.get_user_data
+        get_user_mock.return_value = self.get_user_data
 
         upsert_user(UNSUBSCRIBE, data)
         # We should have looked up the user's data
-        self.assertTrue(get_user_data.called)
+        self.assertTrue(get_user_mock.called)
         ctms_mock.update.assert_called_with(self.get_user_data, update_data)
 
     def test_update_user_without_format_doesnt_send_format(
@@ -219,11 +219,11 @@ class UpsertUserTests(TestCase):
         confirm_mock,
     ):
         """
-        SF/CTMS format not changed if update_user call doesn't specify.
+        CTMS format not changed if update_user call doesn't specify.
 
         If update_user call doesn't specify a format (e.g. if bedrock
         doesn't get a changed value on a form submission), then Basket
-        doesn't send any format to SF/CTMS.
+        doesn't send any format to CTMS.
 
         It does use the user's choice of format to send them their
         welcome message.
@@ -293,9 +293,9 @@ class UpsertUserTests(TestCase):
         upsert_user(SUBSCRIBE, data)
         ctms_mock.update.assert_called_with(get_user_mock.return_value, update_data)
 
-    def test_send_confirm(self, get_user_data, ctms_mock, confirm_mock):
+    def test_send_confirm(self, get_user_mock, ctms_mock, confirm_mock):
         """Subscribing to a newsletter should send a confirm email"""
-        get_user_data.return_value = None  # Does not exist yet
+        get_user_mock.return_value = None  # Does not exist yet
         email_id = str(uuid4())
         ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
@@ -321,9 +321,9 @@ class UpsertUserTests(TestCase):
         update_data["email_id"] = email_id
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
-    def test_send_fx_confirm(self, get_user_data, ctms_mock, confirm_mock):
+    def test_send_fx_confirm(self, get_user_mock, ctms_mock, confirm_mock):
         """Subscribing to a Fx newsletter should send a Fx confirm email"""
-        get_user_data.return_value = None  # Does not exist yet
+        get_user_mock.return_value = None  # Does not exist yet
         email_id = str(uuid4())
         ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
@@ -350,9 +350,9 @@ class UpsertUserTests(TestCase):
         update_data["email_id"] = email_id
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "fx")
 
-    def test_send_moz_confirm(self, get_user_data, ctms_mock, confirm_mock):
+    def test_send_moz_confirm(self, get_user_mock, ctms_mock, confirm_mock):
         """Subscribing to a Fx and moz newsletters should send a moz confirm email"""
-        get_user_data.return_value = None  # Does not exist yet
+        get_user_mock.return_value = None  # Does not exist yet
         email_id = str(uuid4())
         ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
@@ -390,7 +390,7 @@ class UpsertUserTests(TestCase):
 
     def test_no_send_confirm_newsletter(
         self,
-        get_user_data,
+        get_user_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -398,7 +398,7 @@ class UpsertUserTests(TestCase):
         Subscribing to a newsletter should not send a confirm email
         if the newsletter does not require it
         """
-        get_user_data.return_value = None  # Does not exist yet
+        get_user_mock.return_value = None  # Does not exist yet
         email_id = str(uuid4())
         ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
@@ -427,7 +427,7 @@ class UpsertUserTests(TestCase):
 
     def test_no_send_confirm_user(
         self,
-        get_user_data,
+        get_user_mock,
         ctms_mock,
         confirm_mock,
     ):
@@ -438,7 +438,7 @@ class UpsertUserTests(TestCase):
         user_data = self.get_user_data.copy()
         user_data["optin"] = True
         user_data["newsletters"] = ["not-slug"]
-        get_user_data.return_value = user_data
+        get_user_mock.return_value = user_data
         models.Newsletter.objects.create(
             slug="slug",
             title="title",
@@ -460,15 +460,83 @@ class UpsertUserTests(TestCase):
         ctms_mock.update.assert_called_with(user_data, update_data)
         confirm_mock.delay.assert_not_called()
 
-    def test_new_subscription_with_ctms_conflict(
+    def test_send_confirm_optin_false_double_opt_in(
         self,
-        get_user_data,
+        get_user_mock,
         ctms_mock,
         confirm_mock,
     ):
-        """When CTMS returns an error for a new contact, the email_id is not
-        sent to SF"""
-        get_user_data.return_value = None  # Does not exist yet
+        """
+        Re-subscribing to a newsletter should send a confirm email if the user is not already confirmed
+        """
+        user_data = self.get_user_data.copy()
+        user_data["optin"] = False
+        user_data["newsletters"] = ["slug"]
+        get_user_mock.return_value = user_data
+        models.Newsletter.objects.create(
+            slug="slug",
+            title="title",
+            active=True,
+            languages="en,fr",
+            vendor_id="VENDOR1",
+            requires_double_optin=True,
+        )
+        data = {
+            "country": "US",
+            "lang": "en",
+            "format": "H",
+            "newsletters": "slug",
+            "email": self.email,
+        }
+        upsert_user(SUBSCRIBE, data)
+        update_data = data.copy()
+        update_data["newsletters"] = {}  # Gets stripped since it's already subscribed to.
+        ctms_mock.update.assert_called_with(user_data, update_data)
+        confirm_mock.delay.assert_called()
+
+    def test_send_confirm_optin_false_not_double_opt_in(
+        self,
+        get_user_mock,
+        ctms_mock,
+        confirm_mock,
+    ):
+        """
+        Re-subscribing to a newsletter should not send a confirm email if the user is not already
+        confirmed but the newsletter does not require double opt-in.
+        """
+        user_data = self.get_user_data.copy()
+        user_data["optin"] = False
+        user_data["newsletters"] = ["slug"]
+        get_user_mock.return_value = user_data
+        models.Newsletter.objects.create(
+            slug="slug",
+            title="title",
+            active=True,
+            languages="en,fr",
+            vendor_id="VENDOR1",
+            requires_double_optin=False,
+        )
+        data = {
+            "country": "US",
+            "lang": "en",
+            "format": "H",
+            "newsletters": "slug",
+            "email": self.email,
+        }
+        upsert_user(SUBSCRIBE, data)
+        update_data = data.copy()
+        update_data["newsletters"] = {}  # Gets stripped since it's already subscribed to.
+        ctms_mock.update.assert_called_with(user_data, update_data)
+        confirm_mock.delay.assert_not_called()
+
+    def test_new_subscription_with_ctms_conflict(
+        self,
+        get_user_mock,
+        ctms_mock,
+        confirm_mock,
+    ):
+        """Test when CTMS returns an error for a new contact"""
+        get_user_mock.return_value = None  # Does not exist yet
         ctms_mock.add.return_value = None  # Conflict on create
         models.Newsletter.objects.create(
             slug="slug",
@@ -494,13 +562,13 @@ class UpsertUserTests(TestCase):
 
     def test_new_user_subscribes_to_mofo_newsletter(
         self,
-        get_user_data,
+        get_user_mock,
         ctms_mock,
         confirm_mock,
     ):
         """Subscribing to a MoFo-relevant newsletter makes the new user
         mofo-relevant."""
-        get_user_data.return_value = None  # Does not exist yet
+        get_user_mock.return_value = None  # Does not exist yet
         email_id = str(uuid4())
         ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
@@ -531,13 +599,13 @@ class UpsertUserTests(TestCase):
 
     def test_existing_user_subscribes_to_mofo_newsletter(
         self,
-        get_user_data,
+        get_user_mock,
         ctms_mock,
         confirm_mock,
     ):
         """Subscribing to a MoFo-relevant newsletter makes the user mofo-relevant."""
         user_data = self.get_user_data.copy()
-        get_user_data.return_value = user_data
+        get_user_mock.return_value = user_data
         models.Newsletter.objects.create(
             slug="mozilla-foundation",
             title="The Mozilla Foundation News",
@@ -564,14 +632,14 @@ class UpsertUserTests(TestCase):
 
     def test_existing_mofo_user_subscribes_to_mofo_newsletter(
         self,
-        get_user_data,
+        get_user_mock,
         ctms_mock,
         confirm_mock,
     ):
         """If a user is already MoFo-relevant, a subscription does not set it again."""
         user_data = self.get_user_data.copy()
         user_data["mofo_relevant"] = True
-        get_user_data.return_value = user_data
+        get_user_mock.return_value = user_data
         models.Newsletter.objects.create(
             slug="mozilla-foundation",
             title="The Mozilla Foundation News",

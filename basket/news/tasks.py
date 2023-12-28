@@ -22,7 +22,7 @@ from basket.news.models import (
     Interest,
     Newsletter,
 )
-from basket.news.newsletters import get_transactional_message_ids, newsletter_languages
+from basket.news.newsletters import get_transactional_message_ids, newsletter_languages, newsletter_obj
 from basket.news.utils import (
     SUBSCRIBE,
     UNSUBSCRIBE,
@@ -325,6 +325,7 @@ def upsert_contact(api_call_type, data, user_data):
         to_subscribe_slugs = [nl for nl, sub in update_data["newsletters"].items() if sub]
         check_optin = not (forced_optin or (user_data and user_data.get("optin")))
         check_mofo = not (user_data and user_data.get("mofo_relevant"))
+
         if to_subscribe_slugs and (check_optin or check_mofo):
             to_subscribe = Newsletter.objects.filter(slug__in=to_subscribe_slugs)
 
@@ -380,6 +381,16 @@ def upsert_contact(api_call_type, data, user_data):
         ctms_add_or_update.delay(update_data, user_data)
     else:
         ctms.update(user_data, update_data)
+
+    # In the rare case the user hasn't confirmed their email and is subscribing to the same newsletter, send the confirmation again.
+    # We catch this by checking if the user `optin` is `False` and if the `update_data["newsletters"]` is empty.
+    if user_data and user_data.get("optin", False) is False and not update_data["newsletters"]:
+        newsletter_objs = filter(None, [newsletter_obj(n) for n in newsletters])
+        if newsletter_objs:
+            needs_confirmation = any(n.requires_double_optin for n in newsletter_objs)
+            if needs_confirmation:
+                send_fx_confirm = all(n.firefox_confirm for n in newsletter_objs)
+                send_confirm = "fx" if send_fx_confirm else "moz"
 
     if send_confirm and settings.SEND_CONFIRM_MESSAGES:
         send_confirm_message.delay(
