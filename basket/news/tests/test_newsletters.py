@@ -52,6 +52,11 @@ class TestNewsletterUtils(TestCase):
         ]
         self.groupies[0].newsletters.add(self.newsies[1], self.newsies[2])
 
+    def test_newsletter_obj(self):
+        self.assertEqual(newsletters.newsletter_obj("bowling"), self.newsies[0])
+        self.assertEqual(newsletters.newsletter_obj("surfing"), self.newsies[1])
+        self.assertIsNone(newsletters.newsletter_obj("failing"))
+
     def test_newsletter_private_slugs(self):
         self.assertEqual(newsletters.newsletter_private_slugs(), ["papers"])
 

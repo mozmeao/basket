@@ -91,6 +91,14 @@ def newsletter_inv_map():
     return {v: k for k, v in newsletter_map().items()}
 
 
+def newsletter_obj(slug):
+    """Lookup the newsletter object for the given slug"""
+    try:
+        return _newsletters()["by_name"][slug]
+    except KeyError:
+        return None
+
+
 def newsletter_field(name):
     """Lookup the backend-specific field (vendor ID) for the newsletter"""
     try:
