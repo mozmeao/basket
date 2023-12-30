@@ -1,5 +1,5 @@
+DJANGO_CONFIGURATION=Local
 DEBUG=True
-LOCAL_DEV=True
 
 # change this to something secret when deployed
 SECRET_KEY=sssssssshhhhhhhhhh

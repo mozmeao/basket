@@ -4,11 +4,7 @@ import json
 from django.test.utils import override_settings
 
 from basket.base.utils import email_is_testing
-from basket.settings import (
-    SENSITIVE_FIELDS_TO_MASK_ENTIRELY,
-    SENSITIVE_FIELDS_TO_MASK_PARTIALLY,
-    before_send,
-)
+from basket.settings import SentryConfigurationMixin
 
 
 @override_settings(TESTING_EMAIL_DOMAINS=["restmail.net"], USE_SANDBOX_BACKEND=False)
@@ -25,14 +21,14 @@ def test_pre_sentry_sanitisation__before_send_setup():
     # but we can at least confirm the source is set up how we expect
 
     # Sense check that we're passing in the params
-    _func_source = inspect.getsource(before_send)
+    _func_source = inspect.getsource(SentryConfigurationMixin.before_send)
     assert "with_default_keys=True,\n" in _func_source
-    assert "sensitive_keys=SENSITIVE_FIELDS_TO_MASK_ENTIRELY,\n" in _func_source
-    assert "# partial_keys=SENSITIVE_FIELDS_TO_MASK_PARTIALLY,\n" in _func_source
+    assert "sensitive_keys=cls.SENSITIVE_FIELDS_TO_MASK_ENTIRELY,\n" in _func_source
+    assert "# partial_keys=cls.SENSITIVE_FIELDS_TO_MASK_PARTIALLY,\n" in _func_source
     assert "# mask_position=POSITION.LEFT," in _func_source
     assert "# off_set=3" in _func_source
 
-    assert SENSITIVE_FIELDS_TO_MASK_ENTIRELY == [
+    assert SentryConfigurationMixin.SENSITIVE_FIELDS_TO_MASK_ENTIRELY == [
         "amo_id",
         "custom_id",
         "email",
@@ -51,8 +47,6 @@ def test_pre_sentry_sanitisation__before_send_setup():
         "user",
         "x-forwarded-for",
     ]
-
-    assert SENSITIVE_FIELDS_TO_MASK_PARTIALLY == []
 
 
 example_unsanitised_data = {
@@ -161,7 +155,7 @@ def test_pre_sentry_sanitisation(shared_datadir):
 
     assert "blocklist" in stringified
 
-    output = before_send(
+    output = SentryConfigurationMixin.before_send(
         event=input_event,
         hint=noop_because_hint_is_not_used,
     )

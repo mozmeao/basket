@@ -30,4 +30,5 @@ django = ["django"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "basket.settings"
+DJANGO_CONFIGURATION = "Testing"
 addopts = "-ra --ignore=vendor"

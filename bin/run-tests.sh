@@ -7,7 +7,7 @@ ruff format --check basket/
 urlwait
 python manage.py makemigrations | grep "No changes detected"
 python manage.py migrate --noinput
-py.test basket \
+py.test --dc=Testing basket \
   --cov-config=.coveragerc \
   --cov-report=html \
   --cov-report=term-missing \

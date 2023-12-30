@@ -342,6 +342,7 @@ django==3.2.23 \
     #   -r requirements/prod.txt
     #   dj-database-url
     #   django-allow-cidr
+    #   django-configurations
     #   django-cors-headers
     #   django-extensions
     #   django-mozilla-product-details
@@ -356,6 +357,10 @@ django-allow-cidr==0.7.1 \
 django-cache-url==3.4.4 \
     --hash=sha256:5ca4760b4580b80e41279bc60d1e5c16a822e4e462265faab0a330701bb0ef9a \
     --hash=sha256:ef2cfacea361ee22e9b67d6ca941db22e0a9eaf892b67ca71cad52c62a17fd36
+    # via -r requirements/prod.txt
+django-configurations==2.5 \
+    --hash=sha256:63fa252c40dc88ea17b8b90f5f4a31a2726e586acb1ff0edc74c228c61f19e5d \
+    --hash=sha256:cf063b99ad30013df49eaa971bd8543deffb008ff080cf3a92955dbccfe81a5c
     # via -r requirements/prod.txt
 django-cors-headers==4.3.1 \
     --hash=sha256:0b1fd19297e37417fc9f835d39e45c8c642938ddba1acce0c1753d3edef04f36 \
