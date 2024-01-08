@@ -36,13 +36,13 @@ backports-zoneinfo==0.2.1 \
     --hash=sha256:f04e857b59d9d1ccc39ce2da1021d196e47234873820cbeaad210724b1ee28ac \
     --hash=sha256:fadbfe37f74051d024037f223b8e001611eac868b5c5b06144ef4d8b799862f2
     # via -r requirements/prod.in
-boto3==1.33.1 \
-    --hash=sha256:1fe5fa75ff0f0c29a6f55e818d149d33571731e692a7b785ded7a28ac832cae8 \
-    --hash=sha256:fa5aa92d16763cb906fb4a83d6eba887342202a980bea07862af5ba40827aa5a
+boto3==1.34.14 \
+    --hash=sha256:1f94042f4efb5133b6b9b8b3243afc01143a81d21b3197a3afadf5780f97b05d \
+    --hash=sha256:5c1bb487c68120aae236354d81b8a1a55d0aa3395d30748a01825ef90891921e
     # via -r requirements/prod.in
-botocore==1.33.1 \
-    --hash=sha256:c744b90980786c610dd9ad9c50cf2cdde3f1c4634b954a33613f6f8a1865a1de \
-    --hash=sha256:d22d29916905e5f0670b91f07688e92b2c4a2075f9a474d6edbe7d22040d8fbf
+botocore==1.34.14 \
+    --hash=sha256:041bed0852649cab7e4dcd4d87f9d1cc084467fb846e5b60015e014761d96414 \
+    --hash=sha256:3b592f50f0406e236782a3a0a9ad1c3976060fdb2e04a23d18c3df5b7dfad3e0
     # via
     #   boto3
     #   s3transfer
@@ -725,9 +725,9 @@ rq-scheduler==0.13.1 \
     --hash=sha256:89d6a18f215536362b22c0548db7dbb8678bc520c18dc18a82fd0bb2b91695ce \
     --hash=sha256:c2b19c3aedfc7de4d405183c98aa327506e423bf4cdc556af55aaab9bbe5d1a1
     # via -r requirements/prod.in
-s3transfer==0.8.0 \
-    --hash=sha256:baa479dc2e63e5c2ed51611b4d46cdf0295e2070d8d0b86b22f335ee5b954986 \
-    --hash=sha256:e8d6bd52ffd99841e3a57b34370a54841f12d3aab072af862cdcc50955288002
+s3transfer==0.10.0 \
+    --hash=sha256:3cdb40f5cfa6966e812209d0994f2a4709b561c88e90cf00c2696d2df4e56b2e \
+    --hash=sha256:d0c8bbf672d5eebbe4e57945e23b972d963f07d82f661cabf678a5c88831595b
     # via boto3
 sentry-processor==0.0.1 \
     --hash=sha256:fd7a30fb57aaf05c01cd04cf7d949c628376b2b55d7a0aaa222efe58a8f122bc

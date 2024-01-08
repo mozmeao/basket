@@ -43,13 +43,13 @@ backports-zoneinfo==0.2.1 \
     --hash=sha256:f04e857b59d9d1ccc39ce2da1021d196e47234873820cbeaad210724b1ee28ac \
     --hash=sha256:fadbfe37f74051d024037f223b8e001611eac868b5c5b06144ef4d8b799862f2
     # via -r requirements/prod.txt
-boto3==1.33.1 \
-    --hash=sha256:1fe5fa75ff0f0c29a6f55e818d149d33571731e692a7b785ded7a28ac832cae8 \
-    --hash=sha256:fa5aa92d16763cb906fb4a83d6eba887342202a980bea07862af5ba40827aa5a
+boto3==1.34.14 \
+    --hash=sha256:1f94042f4efb5133b6b9b8b3243afc01143a81d21b3197a3afadf5780f97b05d \
+    --hash=sha256:5c1bb487c68120aae236354d81b8a1a55d0aa3395d30748a01825ef90891921e
     # via -r requirements/prod.txt
-botocore==1.33.1 \
-    --hash=sha256:c744b90980786c610dd9ad9c50cf2cdde3f1c4634b954a33613f6f8a1865a1de \
-    --hash=sha256:d22d29916905e5f0670b91f07688e92b2c4a2075f9a474d6edbe7d22040d8fbf
+botocore==1.34.14 \
+    --hash=sha256:041bed0852649cab7e4dcd4d87f9d1cc084467fb846e5b60015e014761d96414 \
+    --hash=sha256:3b592f50f0406e236782a3a0a9ad1c3976060fdb2e04a23d18c3df5b7dfad3e0
     # via
     #   -r requirements/prod.txt
     #   boto3
@@ -884,9 +884,9 @@ ruff==0.1.6 \
     --hash=sha256:ea284789861b8b5ca9d5443591a92a397ac183d4351882ab52f6296b4fdd5462 \
     --hash=sha256:fd89b45d374935829134a082617954120d7a1470a9f0ec0e7f3ead983edc48cc
     # via -r requirements/dev.in
-s3transfer==0.8.0 \
-    --hash=sha256:baa479dc2e63e5c2ed51611b4d46cdf0295e2070d8d0b86b22f335ee5b954986 \
-    --hash=sha256:e8d6bd52ffd99841e3a57b34370a54841f12d3aab072af862cdcc50955288002
+s3transfer==0.10.0 \
+    --hash=sha256:3cdb40f5cfa6966e812209d0994f2a4709b561c88e90cf00c2696d2df4e56b2e \
+    --hash=sha256:d0c8bbf672d5eebbe4e57945e23b972d963f07d82f661cabf678a5c88831595b
     # via
     #   -r requirements/prod.txt
     #   boto3
