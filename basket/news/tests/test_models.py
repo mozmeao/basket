@@ -79,6 +79,7 @@ class InterestTests(TestCase):
         notify the default stewards.
         """
         interest = models.Interest(
+            pk=1,
             title="mytest",
             default_steward_emails="bob@example.com,bill@example.com",
         )

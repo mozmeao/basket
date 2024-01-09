@@ -447,7 +447,7 @@ def subscribe_main(request):
         # NOTE this is not a typo; Referrer is misspelled in the HTTP spec
         # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
         if not data["source_url"] and request.headers.get("Referer"):
-            referrer = request.META["HTTP_REFERER"]
+            referrer = request.headers["referer"]
             if SOURCE_URL_RE.match(referrer):
                 metrics.incr("news.views.subscribe_main", tags=["info:use_referrer"])
                 data["source_url"] = referrer
@@ -560,7 +560,7 @@ def subscribe(request):
     if not data.get("source_url") and request.headers.get("Referer"):
         # try to get it from referrer
         metrics.incr("news.views.subscribe", tags=["info:use_referrer"])
-        data["source_url"] = request.META["HTTP_REFERER"]
+        data["source_url"] = request.headers["referer"]
 
     return update_user_task(request, SUBSCRIBE, data=data, optin=optin, sync=sync)
 

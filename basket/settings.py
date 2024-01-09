@@ -115,8 +115,16 @@ SITE_URL = config("SITE_URL", default="https://basket.mozilla.org")
 
 STATIC_ROOT = path("static")
 STATIC_URL = "/static/"
-if not DEBUG:
-    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+if DEBUG:
+    STORAGES["staticfiles"]["BACKEND"] = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 try:
     # Make this unique, and don't share it with anybody.

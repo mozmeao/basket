@@ -2,8 +2,6 @@ import functools
 
 from markus.testing import MetricsMock
 
-default_app_config = "basket.news.apps.BasketNewsConfig"
-
 
 def mock_metrics(f):
     @functools.wraps(f)
