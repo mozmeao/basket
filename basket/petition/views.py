@@ -33,8 +33,8 @@ def sign_petition(request):
 
         petition = form.save(commit=False)
         petition.ip = request.META.get("REMOTE_ADDR", "")
-        petition.user_agent = request.META.get("HTTP_USER_AGENT", "")
-        petition.referrer = request.META.get("HTTP_REFERER", "")
+        petition.user_agent = request.headers.get("user-agent", "")
+        petition.referrer = request.headers.get("referer", "")
         petition.token = uuid.uuid4()
         try:
             petition.save()

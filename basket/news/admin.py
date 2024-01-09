@@ -33,6 +33,7 @@ class LanguageFilter(admin.SimpleListFilter):
             return queryset.filter(language=self.value())
 
 
+@admin.register(AcousticTxEmailMessage)
 class AcousticTxEmailMessageAdmin(admin.ModelAdmin):
     fields = ("message_id", "vendor_id", "language", "description", "private")
     list_display = ("message_id", "vendor_id", "language", "description", "private")
@@ -40,11 +41,13 @@ class AcousticTxEmailMessageAdmin(admin.ModelAdmin):
     list_filter = ("private", "message_id", "vendor_id", LanguageFilter)
 
 
+@admin.register(BlockedEmail)
 class BlockedEmailAdmin(admin.ModelAdmin):
     fields = ("email_domain",)
     list_display = ("email_domain",)
 
 
+@admin.register(NewsletterGroup)
 class NewsletterGroupAdmin(admin.ModelAdmin):
     fields = ("title", "slug", "description", "show", "active", "newsletters")
     list_display = ("title", "slug", "show", "active")
@@ -57,6 +60,7 @@ class LocaleStewardsInline(admin.TabularInline):
     fields = ("locale", "emails")
 
 
+@admin.register(Interest)
 class InterestAdmin(admin.ModelAdmin):
     fields = ("title", "interest_id", "_welcome_id", "default_steward_emails")
     list_display = ("title", "interest_id", "_welcome_id", "default_steward_emails")
@@ -65,10 +69,12 @@ class InterestAdmin(admin.ModelAdmin):
     inlines = [LocaleStewardsInline]
 
 
+@admin.register(APIUser)
 class APIUserAdmin(admin.ModelAdmin):
     list_display = ("name", "enabled")
 
 
+@admin.register(Newsletter)
 class NewsletterAdmin(admin.ModelAdmin):
     fields = (
         "title",
@@ -143,6 +149,7 @@ class TaskNameFilter(admin.SimpleListFilter):
         return queryset
 
 
+@admin.register(QueuedTask)
 class QueuedTaskAdmin(admin.ModelAdmin):
     list_display = ("when", "name")
     list_filter = (TaskNameFilter,)
@@ -150,6 +157,7 @@ class QueuedTaskAdmin(admin.ModelAdmin):
     date_hierarchy = "when"
     actions = ["retry_task_action"]
 
+    @admin.action(description="Process task(s)")
     def retry_task_action(self, request, queryset):
         """Admin action to retry some tasks that were queued for maintenance"""
         if settings.MAINTENANCE_MODE:
@@ -162,9 +170,8 @@ class QueuedTaskAdmin(admin.ModelAdmin):
             count += 1
         messages.info(request, f"Queued {count} task{pluralize(count)} to process.")
 
-    retry_task_action.short_description = "Process task(s)"
 
-
+@admin.register(FailedTask)
 class FailedTaskAdmin(admin.ModelAdmin):
     list_display = ("when", "name", "formatted_call", "exc")
     list_filter = (TaskNameFilter,)
@@ -172,6 +179,7 @@ class FailedTaskAdmin(admin.ModelAdmin):
     date_hierarchy = "when"
     actions = ["retry_task_action"]
 
+    @admin.action(description="Retry task(s)")
     def retry_task_action(self, request, queryset):
         """Admin action to retry some tasks that have failed previously"""
         count = 0
@@ -180,20 +188,8 @@ class FailedTaskAdmin(admin.ModelAdmin):
             count += 1
         messages.info(request, f"Queued {count} task{pluralize(count)} to try again.")
 
-    retry_task_action.short_description = "Retry task(s)"
 
-
+@admin.register(admin.models.LogEntry)
 class LogEntryAdmin(admin.ModelAdmin):
     list_display = ("action_time", "user", "__str__")
     list_filter = ("user", "content_type")
-
-
-admin.site.register(AcousticTxEmailMessage, AcousticTxEmailMessageAdmin)
-admin.site.register(APIUser, APIUserAdmin)
-admin.site.register(BlockedEmail, BlockedEmailAdmin)
-admin.site.register(FailedTask, FailedTaskAdmin)
-admin.site.register(QueuedTask, QueuedTaskAdmin)
-admin.site.register(Interest, InterestAdmin)
-admin.site.register(Newsletter, NewsletterAdmin)
-admin.site.register(NewsletterGroup, NewsletterGroupAdmin)
-admin.site.register(admin.models.LogEntry, LogEntryAdmin)

@@ -172,6 +172,8 @@ class TestRQUtils:
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "failed")
 
+        queue.empty()
+
     @patch("basket.base.rq.sentry_sdk")
     def test_rq_exception_error_ignore(self, mock_sentry_sdk, metrics_mock):
         queue = get_queue()
@@ -196,6 +198,8 @@ class TestRQUtils:
 
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
+
+        queue.empty()
 
     def test_rq_exception_handler_snitch(self):
         """
@@ -231,3 +235,5 @@ class TestRQUtils:
         metrics_mock.assert_incr_once("base.tasks.retried", tags=["task:job.rescheduled"])
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "retried")
+
+        queue.empty()

@@ -11,4 +11,4 @@ def test_redis():
     # switches to using the built-in Django `RedisCache`. This is a reminder to remove the
     # `django_redis` dependency and update this test.
     with mock.patch.dict("os.environ", {"REDIS_URL": "redis://localhost:6379/0"}):
-        assert settings.CACHES["default"]["BACKEND"] == "django_redis.cache.RedisCache"
+        assert settings.CACHES["default"]["BACKEND"] == "django.core.cache.backends.redis.RedisCache"
