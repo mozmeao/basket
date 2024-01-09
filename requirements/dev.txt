@@ -619,14 +619,16 @@ mozilla-django-oidc==3.0.0 \
 msgpack-python==0.5.6 \
     --hash=sha256:378cc8a6d3545b532dfd149da715abae4fda2a3adb6d74e525d0d5e51f46909b
     # via -r requirements/prod.txt
-mysqlclient==2.1.1 \
-    --hash=sha256:0d1cd3a5a4d28c222fa199002810e8146cffd821410b67851af4cc80aeccd97c \
-    --hash=sha256:828757e419fb11dd6c5ed2576ec92c3efaa93a0f7c39e263586d1ee779c3d782 \
-    --hash=sha256:996924f3483fd36a34a5812210c69e71dea5a3d5978d01199b78b7f6d485c855 \
-    --hash=sha256:b355c8b5a7d58f2e909acdbb050858390ee1b0e13672ae759e5e784110022994 \
-    --hash=sha256:c1ed71bd6244993b526113cca3df66428609f90e4652f37eb51c33496d478b37 \
-    --hash=sha256:c812b67e90082a840efb82a8978369e6e69fc62ce1bda4ca8f3084a9d862308b \
-    --hash=sha256:dea88c8d3f5a5d9293dfe7f087c16dd350ceb175f2f6631c9cf4caf3e19b7a96
+mysqlclient==2.2.1 \
+    --hash=sha256:1f8889cc5f0141bb307b915e981a66793df663ace92259344661084a7dd8d12a \
+    --hash=sha256:2c7ad15b87293b12fd44b47c46879ec95ec647f4567e866ccd70b8337584e9b2 \
+    --hash=sha256:45600f4f321096bd1ead3355bc62cfcf8d97dc78df94e4ab5db72ecb5db1bd04 \
+    --hash=sha256:4fabe1f4b545ed6244ad0ff426e6b27054b7e5c5b1392be0de2e5f2f59be0392 \
+    --hash=sha256:641a7c9de443ddef186a0e89f24b4251ad44f4ddc5e7094332bf2d286d7c9e33 \
+    --hash=sha256:8f40c872f19639366e3df27bef2ff087be0e3ee0bd3453470bd29f46b54a90f6 \
+    --hash=sha256:97eee76818774bb695e018ff4c3dafaab74b9a0b0cf32c90b02caeec3b19cd8e \
+    --hash=sha256:9db6305cdf2a1da350f827d2a19be7f2666eafd9eb8d4f7cbbac5df847d61b99 \
+    --hash=sha256:c5a293baebbfcfa2905545198a54e90f1cf00f211eae6637d24930abb6432cba
     # via -r requirements/prod.txt
 newrelic==9.3.0 \
     --hash=sha256:1ce38949404e974b566b21487394f5ea36a1fb80ba36cc4a6e8fb968d2e150ab \
