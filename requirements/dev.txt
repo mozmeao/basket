@@ -683,9 +683,9 @@ pyjwt==2.8.0 \
     # via
     #   -r requirements/prod.txt
     #   pyfxa
-pyopenssl==23.3.0 \
-    --hash=sha256:6756834481d9ed5470f4a9393455154bc92fe7a64b7bc6ee2c804e78c52099b2 \
-    --hash=sha256:6b2cba5cc46e822750ec3e5a81ee12819850b11303630d575e98108a079c2b12
+pyopenssl==24.0.0 \
+    --hash=sha256:6aa33039a93fffa4563e655b61d11364d01264be8ccb49906101e02a334530bf \
+    --hash=sha256:ba07553fb6fd6a7a2259adb9b84e12302a9a8a75c44046e8bb5d3e5ee887e3c3
     # via
     #   -r requirements/prod.txt
     #   josepy
