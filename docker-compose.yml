@@ -6,6 +6,26 @@ services:
       - MYSQL_ALLOW_EMPTY_PASSWORD=yes
       - MYSQL_DATABASE=basket
 
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: basket
+      POSTGRES_USER: basket
+      POSTGRES_PASSWORD: basket
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  pgloader:
+    image: dimitri/pgloader:latest
+    depends_on:
+      - db
+      - postgres
+    command:
+      pgloader --verbose mysql://root@db/basket postgresql://basket:basket@postgres/basket
+
   redis:
     image: redis
     platform: linux/amd64
@@ -26,6 +46,7 @@ services:
       - "8000:8000"
     depends_on:
       - db
+      - postgres
       - redis
     command:
       ./bin/run-dev.sh
@@ -41,6 +62,7 @@ services:
       - .env
     depends_on:
       - db
+      - postgres
       - redis
     command:
       ./bin/run-worker.sh
@@ -55,6 +77,7 @@ services:
       - docker/envfiles/test.env
     depends_on:
       - db
+      - postgres
       - redis
     command:
       ./bin/run-tests.sh
@@ -67,6 +90,7 @@ services:
       - docker/envfiles/test.env
     depends_on:
       - db
+      - postgres
       - redis
     command:
       ./bin/run-tests.sh
