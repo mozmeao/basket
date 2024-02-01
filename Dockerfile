@@ -42,7 +42,7 @@ WORKDIR /app
 ENV DJANGO_SETTINGS_MODULE=basket.settings
 
 COPY docker/bin/apt-install /usr/local/bin/
-RUN apt-install default-libmysqlclient-dev libxslt1.1 libxml2
+RUN apt-install default-libmysqlclient-dev libxslt1.1 libxml2 postgresql-client
 
 ARG GIT_SHA=latest
 ENV GIT_SHA=${GIT_SHA}
