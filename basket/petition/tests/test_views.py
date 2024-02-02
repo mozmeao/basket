@@ -100,6 +100,28 @@ def test_petition_email_invalid(client, mocker):
 
 
 @pytest.mark.django_db
+def test_petition_name_invalid(client, mocker):
+    mock_send_mail = mocker.patch("basket.petition.models.send_email_confirmation")
+    url = reverse("sign-petition")
+    data = {
+        "name": "The Dude <script>alert('xss');</script>",
+        "email": "thedude@example.com",
+        "title": "Dude",
+        "affiliation": "The Knudsens",
+    }
+    response = client.post(url, data=data)
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "error",
+        "errors": {
+            "name": ["Invalid characters"],
+        },
+    }
+    assert Petition.objects.count() == 0
+    assert mock_send_mail.call_count == 0
+
+
+@pytest.mark.django_db
 def test_petition_db_error(client, mocker):
     mock_send_mail = mocker.patch("basket.petition.models.send_email_confirmation")
     url = reverse("sign-petition")
