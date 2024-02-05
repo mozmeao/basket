@@ -74,7 +74,7 @@ def test_petition_post_invalid(client, mocker):
         },
     }
     assert Petition.objects.count() == 0
-    assert mock_send_mail.call_count == 0
+    assert mock_send_mail.delay.call_count == 0
 
 
 @pytest.mark.django_db
@@ -96,7 +96,7 @@ def test_petition_email_invalid(client, mocker):
         },
     }
     assert Petition.objects.count() == 0
-    assert mock_send_mail.call_count == 0
+    assert mock_send_mail.delay.call_count == 0
 
 
 @pytest.mark.django_db
@@ -118,11 +118,11 @@ def test_petition_name_invalid(client, mocker):
         },
     }
     assert Petition.objects.count() == 0
-    assert mock_send_mail.call_count == 0
+    assert mock_send_mail.delay.call_count == 0
 
 
 @pytest.mark.django_db
-def test_petition_db_error(client, mocker):
+def test_petition_db_emoji(client, mocker):
     mock_send_mail = mocker.patch("basket.petition.models.send_email_confirmation")
     url = reverse("sign-petition")
     data = {
@@ -134,12 +134,9 @@ def test_petition_db_error(client, mocker):
     response = client.post(url, data=data)
     assert response.status_code == 200
     assert response.json() == {
-        "status": "error",
-        "errors": {
-            "__all__": "Database error",
-        },
+        "status": "success",
     }
-    assert mock_send_mail.call_count == 0
+    assert mock_send_mail.delay.call_count == 1
 
 
 def test_petition_cors(client):

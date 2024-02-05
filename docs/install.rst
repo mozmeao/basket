@@ -42,7 +42,7 @@ code according to our style and check for errors for every commit.
 Use Docker
 ----------
 
-Basket requires a database (either MySQL or SQLite locally, depending on the ``DATABASE_URL`` setting) and Redis. We use Docker to run these services.
+Basket requires a database (either Postgres or SQLite locally, depending on the ``DATABASE_URL`` setting) and Redis. We use Docker to run these services.
 
 The steps to get up and running are these:
 
