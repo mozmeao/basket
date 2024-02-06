@@ -508,7 +508,7 @@ def mask_email(email):
 
 def parse_newsletters_csv(newsletters):
     """Return a list of newsletter names from a comma separated string"""
-    if isinstance(newsletters, (list, tuple)):
+    if isinstance(newsletters, (list | tuple)):
         return newsletters
 
     if not isinstance(newsletters, str):
