@@ -45,8 +45,8 @@ MANAGERS = ADMINS
 # avoids a warning from django
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
-# Production uses MySQL, but Sqlite should be sufficient for local development.
-# Our CI server tests against MySQL.
+# Production uses Postgres, but Sqlite should be sufficient for local development.
+# Our CI server tests against Postgres.
 DATABASES = {
     "default": config(
         "DATABASE_URL",
@@ -54,10 +54,6 @@ DATABASES = {
         cast=dj_database_url.parse,
     ),
 }
-if DATABASES["default"]["ENGINE"] == "django.db.backends.mysql":
-    DATABASES["default"]["OPTIONS"] = {
-        "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-    }
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 # CACHE_URL and RQ_URL are derived from REDIS_URL.
