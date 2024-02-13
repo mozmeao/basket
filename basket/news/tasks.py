@@ -12,6 +12,7 @@ from basket.base.decorators import rq_task
 from basket.base.exceptions import BasketError
 from basket.base.utils import email_is_testing
 from basket.news.backends.acoustic import acoustic, acoustic_tx
+from basket.news.backends.braze import braze
 from basket.news.backends.ctms import (
     CTMSNotFoundByAltIDError,
     CTMSUniqueIDConflictError,
@@ -19,10 +20,11 @@ from basket.news.backends.ctms import (
 )
 from basket.news.models import (
     AcousticTxEmailMessage,
+    BrazeTxEmailMessage,
     Interest,
     Newsletter,
 )
-from basket.news.newsletters import get_transactional_message_ids, newsletter_languages, newsletter_obj
+from basket.news.newsletters import get_transactional_message_ids, get_tx_message_ids, newsletter_languages, newsletter_obj
 from basket.news.utils import (
     SUBSCRIBE,
     UNSUBSCRIBE,
@@ -297,16 +299,35 @@ def upsert_contact(api_call_type, data, user_data):
 
     # check for and remove transactional newsletters
     if api_call_type == SUBSCRIBE:
-        all_transactionals = set(get_transactional_message_ids())
+        braze_msg_ids = set(get_tx_message_ids())
+        acoustic_msg_ids = set(get_transactional_message_ids())
+        all_transactionals = braze_msg_ids | acoustic_msg_ids
         newsletters_set = set(newsletters)
         transactionals = newsletters_set & all_transactionals
         if transactionals:
             newsletters = list(newsletters_set - transactionals)
-            send_acoustic_tx_messages(
-                data["email"],
-                data.get("lang", "en-US"),
-                list(transactionals),
-            )
+            # Check Braze first
+            braze_msgs = []
+            for msg_id in transactionals:
+                if msg_id in braze_msg_ids:
+                    braze_msgs.append(msg_id)
+            if braze_msgs:
+                send_braze_tx_messages(
+                    data["email"],
+                    data.get("lang", "en-US"),
+                    braze_msgs,
+                )
+            # Then Acoustic
+            acoustic_msgs = []
+            for msg_id in transactionals:
+                if msg_id in acoustic_msg_ids:
+                    acoustic_msgs.append(msg_id)
+            if acoustic_msgs:
+                send_acoustic_tx_messages(
+                    data["email"],
+                    data.get("lang", "en-US"),
+                    acoustic_msgs,
+                )
             if not newsletters:
                 # no regular newsletters
                 return None, None
@@ -429,6 +450,11 @@ def send_acoustic_tx_message(email, vendor_id, fields=None):
     acoustic_tx.send_mail(email, vendor_id, fields)
 
 
+@rq_task
+def send_braze_tx_message(email, campaign_id):
+    braze.send_transactional_message(email, campaign_id)
+
+
 def send_acoustic_tx_messages(email, lang, message_ids):
     sent = 0
     lang = lang.strip()
@@ -442,11 +468,29 @@ def send_acoustic_tx_messages(email, lang, message_ids):
     return sent
 
 
+def send_braze_tx_messages(email, lang, message_ids):
+    sent = 0
+    lang = lang.strip() or "en-US"
+    for mid in message_ids:
+        cid = BrazeTxEmailMessage.objects.get_campaign_id(mid, lang)
+        if cid:
+            send_braze_tx_message.delay(email, cid)
+            sent += 1
+
+    return sent
+
+
 @rq_task
 def send_confirm_message(email, token, lang, message_type):
     lang = lang.strip()
     lang = lang or "en-US"
     message_id = f"newsletter-confirm-{message_type}"
+    cid = BrazeTxEmailMessage.objects.get_campaign_id(message_id, lang)
+    if cid:
+        send_braze_tx_message.delay(email, cid)
+        return
+
+    # Fall back to Acoustic if not in Braze.
     vid = AcousticTxEmailMessage.objects.get_vendor_id(message_id, lang)
     if vid:
         acoustic_tx.send_mail(email, vid, {"basket_token": token}, save_to_db=True)
@@ -495,11 +539,14 @@ def update_custom_unsub(token, reason):
 
 @rq_task
 def send_recovery_message_acoustic(email, token, lang, fmt):
-    message_name = "account-recovery"
-    if fmt != "H":
-        message_name += "-text"
+    message_id = f"account-recovery{'' if fmt == 'H' else '-text'}"
+    cid = BrazeTxEmailMessage.objects.get_campaign_id(message_id, lang)
+    if cid:
+        send_braze_tx_message.delay(email, cid)
+        return
 
-    vid = AcousticTxEmailMessage.objects.get_vendor_id(message_name, lang)
+    # Fall back to Acoustic if not in Braze.
+    vid = AcousticTxEmailMessage.objects.get_vendor_id(message_id, lang)
     if vid:
         acoustic_tx.send_mail(email, vid, {"basket_token": token})
 

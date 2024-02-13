@@ -224,6 +224,9 @@ ACOUSTIC_TX_SERVER_NUMBER = config("ACOUSTIC_TX_SERVER_NUMBER", None)
 # Send confirmation messages via Acoustic Transact
 SEND_CONFIRM_MESSAGES = config("SEND_CONFIRM_MESSAGES", False, cast=bool)
 
+BRAZE_API_KEY = config("BRAZE_API_KEY", None)
+BRAZE_BASE_API_URL = config("BRAZE_BASE_API_URL", "https://rest.iad-05.braze.com")
+
 # Mozilla CTMS
 CTMS_ENV = config("CTMS_ENV", "").lower()
 CTMS_ENABLED = config("CTMS_ENABLED", False, cast=bool)
