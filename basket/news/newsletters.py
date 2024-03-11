@@ -4,6 +4,7 @@ backend-specific data for working with them in the email provider.
 It's used to lookup the backend-specific newsletter name from a
 generic one passed by the user. This decouples the API from any
 specific email provider."""
+
 from django.core.cache import cache
 from django.db.models.signals import post_delete, post_save
 

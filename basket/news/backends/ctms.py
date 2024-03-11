@@ -2,6 +2,7 @@
 API Client Library for Mozilla's Contact Management System (CTMS)
 https://github.com/mozilla-it/ctms-api/
 """
+
 import logging
 import re
 from functools import cached_property, partial, partialmethod
