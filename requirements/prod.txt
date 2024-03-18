@@ -577,8 +577,9 @@ pycparser==2.21 \
     --hash=sha256:8ee45429555515e1f6b185e78100aea234072576aa43ab53aefcae078162fca9 \
     --hash=sha256:e644fdec12f7872f86c58ff790da456218b10f863970249516d60a5eaca77206
     # via cffi
-pyfxa==0.7.7 \
-    --hash=sha256:6c85cd08cf05f7138dee1cf2a8a1d68fd428b7b5ad488917c70a2a763d651cdb
+pyfxa==0.7.8 \
+    --hash=sha256:0cc15997585b60d69270e4d69006cada72ad8bac03e524b9037d2aed35b9bcee \
+    --hash=sha256:dd762831892ac102ac99e7bc1b186d0dacdccd719a391b36512195867c96b7ff
     # via -r requirements/prod.in
 pyjwt==2.8.0 \
     --hash=sha256:57e28d156e3d5c10088e0c68abb90bfac3df82b40a71bd0daa20c65ccd5c23de \

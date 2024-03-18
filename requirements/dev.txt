@@ -671,8 +671,9 @@ pycparser==2.21 \
     # via
     #   -r requirements/prod.txt
     #   cffi
-pyfxa==0.7.7 \
-    --hash=sha256:6c85cd08cf05f7138dee1cf2a8a1d68fd428b7b5ad488917c70a2a763d651cdb
+pyfxa==0.7.8 \
+    --hash=sha256:0cc15997585b60d69270e4d69006cada72ad8bac03e524b9037d2aed35b9bcee \
+    --hash=sha256:dd762831892ac102ac99e7bc1b186d0dacdccd719a391b36512195867c96b7ff
     # via -r requirements/prod.txt
 pyjwt==2.8.0 \
     --hash=sha256:57e28d156e3d5c10088e0c68abb90bfac3df82b40a71bd0daa20c65ccd5c23de \
