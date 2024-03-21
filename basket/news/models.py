@@ -1,15 +1,12 @@
 from uuid import uuid4
 
-from django.core.mail import send_mail
 from django.db import models
-from django.template.loader import render_to_string
 from django.utils.timezone import now
 
 import sentry_sdk
-from product_details import product_details
 
 from basket.base.rq import get_enqueue_kwargs, get_queue
-from basket.news.fields import CommaSeparatedEmailField, LocaleField, parse_emails
+from basket.news.fields import LocaleField
 
 
 def get_uuid():
@@ -208,109 +205,6 @@ class FailedTask(models.Model):
         get_queue().enqueue(self.name, args=self.args, kwargs=self.kwargs, **kwargs)
         # Forget the old task
         self.delete()
-
-
-class Interest(models.Model):
-    title = models.CharField(
-        max_length=128,
-        help_text="Public name of interest in English",
-    )
-    interest_id = models.SlugField(
-        unique=True,
-        db_index=True,
-        help_text="The ID for the interest that will be used by clients",
-    )
-    # Note: use .welcome_id property to get this field or the default
-    _welcome_id = models.CharField(
-        max_length=64,
-        help_text=(
-            "The ID of the welcome message sent for this interest. "
-            "This is the HTML version of the message; append _T to this "
-            "ID to get the ID of the text-only version.  If blank, "
-            "welcome message ID will be assumed to be the same as "
-            "the interest_id"
-        ),
-        blank=True,
-        verbose_name="Welcome ID",
-    )
-    default_steward_emails = CommaSeparatedEmailField(
-        blank=True,
-        help_text="Comma-separated list of the default / en-US stewards' email addresses.",
-        verbose_name="Default / en-US Steward Emails",
-    )
-
-    def __str__(self):  # pragma: no cover
-        return self.title
-
-    @property
-    def default_steward_emails_list(self):
-        return parse_emails(self.default_steward_emails)
-
-    @property
-    def welcome_id(self):
-        return self._welcome_id or self.interest_id
-
-    def notify_stewards(self, name, email, lang, message):
-        """
-        Send an email to the stewards about a new interested
-        subscriber.
-        """
-        email_body = render_to_string(
-            "news/get_involved/steward_email.txt",
-            {
-                "contributor_name": name,
-                "contributor_email": email,
-                "interest": self,
-                "lang": lang,
-                "message": message,
-            },
-        )
-
-        # Find the right stewards for the given language.
-        try:
-            stewards = self.stewards.get(locale=lang)
-            emails = stewards.emails_list
-        except LocaleStewards.DoesNotExist:
-            emails = self.default_steward_emails_list
-
-        send_mail(
-            f"Inquiry about {self.title}",
-            email_body,
-            "contribute@mozilla.org",
-            emails,
-        )
-
-
-class LocaleStewards(models.Model):
-    """
-    List of steward emails for a specific interest-locale combination.
-    """
-
-    interest = models.ForeignKey(
-        Interest,
-        on_delete=models.CASCADE,
-        related_name="stewards",
-    )
-    locale = LocaleField()
-    emails = CommaSeparatedEmailField(
-        blank=False,
-        help_text="Comma-separated list of the stewards' email addresses.",
-    )
-
-    class Meta:
-        unique_together = ["interest", "locale"]
-        verbose_name = "Locale Steward"
-        verbose_name_plural = "Locale Stewards"
-
-    def __str__(self):  # pragma: no cover
-        return "Stewards for {lang_code} ({lang_name})".format(
-            lang_code=self.locale,
-            lang_name=product_details.languages[self.locale]["English"],
-        )
-
-    @property
-    def emails_list(self):
-        return parse_emails(self.emails)
 
 
 class AcousticTxEmailMessageManager(models.Manager):

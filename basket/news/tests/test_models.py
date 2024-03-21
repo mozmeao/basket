@@ -1,6 +1,5 @@
 from unittest.mock import patch
 
-from django.core import mail
 from django.test import TestCase
 from django.test.utils import override_settings
 
@@ -70,43 +69,3 @@ class FailedTaskTest(TestCase):
         assert mock_enqueue.call_args.kwargs["args"] == self.args
         assert mock_enqueue.call_args.kwargs["kwargs"] == self.kwargs
         assert mock_enqueue.call_args.kwargs["retry"].intervals == [60, 90]
-
-
-class InterestTests(TestCase):
-    def test_notify_default_stewards(self):
-        """
-        If there are no locale-specific stewards for the given language,
-        notify the default stewards.
-        """
-        interest = models.Interest(
-            pk=1,
-            title="mytest",
-            default_steward_emails="bob@example.com,bill@example.com",
-        )
-        interest.notify_stewards("Steve", "interested@example.com", "en-US", "BYE")
-
-        self.assertEqual(len(mail.outbox), 1)
-        email = mail.outbox[0]
-        self.assertTrue("mytest" in email.subject)
-        self.assertEqual(email.to, ["bob@example.com", "bill@example.com"])
-
-    def test_notify_locale_stewards(self):
-        """
-        If there are locale-specific stewards for the given language,
-        notify them instead of the default stewards.
-        """
-        interest = models.Interest.objects.create(
-            title="mytest",
-            default_steward_emails="bob@example.com,bill@example.com",
-        )
-        models.LocaleStewards.objects.create(
-            interest=interest,
-            locale="ach",
-            emails="ach@example.com",
-        )
-        interest.notify_stewards("Steve", "interested@example.com", "ach", "BYE")
-
-        self.assertEqual(len(mail.outbox), 1)
-        email = mail.outbox[0]
-        self.assertTrue("mytest" in email.subject)
-        self.assertEqual(email.to, ["ach@example.com"])
