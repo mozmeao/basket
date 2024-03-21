@@ -22,7 +22,7 @@ from basket.news.forms import (
     SubscribeForm,
     UpdateUserMeta,
 )
-from basket.news.models import Interest, Newsletter
+from basket.news.models import Newsletter
 from basket.news.newsletters import (
     get_transactional_message_ids,
     newsletter_and_group_slugs,
@@ -35,7 +35,6 @@ from basket.news.tasks import (
     record_common_voice_update,
     send_recovery_message_acoustic,
     update_custom_unsub,
-    update_get_involved,
     update_user_meta,
     upsert_contact,
     upsert_user,
@@ -228,99 +227,6 @@ def confirm(request, token):
     ):
         raise Ratelimited()
     confirm_user.delay(token)
-    return HttpResponseJSON({"status": "ok"})
-
-
-@require_POST
-@csrf_exempt
-def get_involved(request):
-    data = request.POST.dict()
-    if "email" not in data:
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "email is required",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            401,
-        )
-    if email_is_blocked(data["email"]):
-        # don't let on there's a problem
-        return HttpResponseJSON({"status": "ok"})
-    if "interest_id" not in data:
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "interest_id is required",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            401,
-        )
-
-    try:
-        Interest.objects.get(interest_id=data["interest_id"])
-    except Interest.DoesNotExist:
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "invalid interest_id",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            401,
-        )
-
-    if "lang" not in data:
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "lang is required",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            401,
-        )
-    if not language_code_is_valid(data["lang"]):
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "invalid language",
-                "code": errors.BASKET_INVALID_LANGUAGE,
-            },
-            400,
-        )
-    if "name" not in data:
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "name is required",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            401,
-        )
-    if "country" not in data:
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "country is required",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            401,
-        )
-
-    email = process_email(data.get("email"))
-    if not email:
-        return invalid_email_response()
-
-    update_get_involved.delay(
-        data["interest_id"],
-        data["lang"],
-        data["name"],
-        email,
-        data["country"],
-        data.get("format", "H"),
-        data.get("subscribe", False),
-        data.get("message", None),
-        data.get("source_url", None),
-    )
     return HttpResponseJSON({"status": "ok"})
 
 

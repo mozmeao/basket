@@ -4,7 +4,6 @@ from .views import (
     common_voice_goals,
     confirm,
     custom_unsub_reason,
-    get_involved,
     list_newsletters,
     lookup_user,
     newsletters,
@@ -16,7 +15,6 @@ from .views import (
 )
 
 urlpatterns = (
-    path("get-involved/", get_involved),
     path("common-voice-goals/", common_voice_goals),
     path("subscribe/", subscribe),
     path("unsubscribe/<uuid:token>/", unsubscribe),

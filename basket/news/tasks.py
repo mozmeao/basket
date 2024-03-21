@@ -19,7 +19,6 @@ from basket.news.backends.ctms import (
 )
 from basket.news.models import (
     AcousticTxEmailMessage,
-    Interest,
     Newsletter,
 )
 from basket.news.newsletters import get_transactional_message_ids, newsletter_languages, newsletter_obj
@@ -219,28 +218,6 @@ def fxa_activity_acoustic(data):
         table_id=settings.ACOUSTIC_FXA_TABLE_ID,
         rows=[data],
     )
-
-
-@rq_task
-def update_get_involved(
-    interest_id,
-    lang,
-    name,
-    email,
-    country,
-    email_format,
-    subscribe,
-    message,
-    source_url,
-):
-    """Send a user contribution information. Should be removed soon."""
-    try:
-        interest = Interest.objects.get(interest_id=interest_id)
-    except Interest.DoesNotExist:
-        # invalid request; no need to raise exception and retry
-        return
-
-    interest.notify_stewards(name, email, lang, message)
 
 
 @rq_task

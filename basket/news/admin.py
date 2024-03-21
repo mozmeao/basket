@@ -9,8 +9,6 @@ from basket.news.models import (
     APIUser,
     BlockedEmail,
     FailedTask,
-    Interest,
-    LocaleStewards,
     Newsletter,
     NewsletterGroup,
     QueuedTask,
@@ -53,20 +51,6 @@ class NewsletterGroupAdmin(admin.ModelAdmin):
     list_display = ("title", "slug", "show", "active")
     list_display_links = ("title", "slug")
     prepopulated_fields = {"slug": ("title",)}
-
-
-class LocaleStewardsInline(admin.TabularInline):
-    model = LocaleStewards
-    fields = ("locale", "emails")
-
-
-@admin.register(Interest)
-class InterestAdmin(admin.ModelAdmin):
-    fields = ("title", "interest_id", "_welcome_id", "default_steward_emails")
-    list_display = ("title", "interest_id", "_welcome_id", "default_steward_emails")
-    list_editable = ("interest_id", "_welcome_id", "default_steward_emails")
-    prepopulated_fields = {"interest_id": ("title",)}
-    inlines = [LocaleStewardsInline]
 
 
 @admin.register(APIUser)
