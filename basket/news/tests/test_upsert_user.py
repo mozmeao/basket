@@ -319,7 +319,7 @@ class UpsertUserTests(TestCase):
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
-        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
+        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz", email_id)
 
     def test_send_fx_confirm(self, get_user_mock, ctms_mock, confirm_mock):
         """Subscribing to a Fx newsletter should send a Fx confirm email"""
@@ -348,7 +348,7 @@ class UpsertUserTests(TestCase):
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
-        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "fx")
+        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "fx", email_id)
 
     def test_send_moz_confirm(self, get_user_mock, ctms_mock, confirm_mock):
         """Subscribing to a Fx and moz newsletters should send a moz confirm email"""
@@ -386,7 +386,7 @@ class UpsertUserTests(TestCase):
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
-        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
+        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz", email_id)
 
     def test_no_send_confirm_newsletter(
         self,
@@ -558,7 +558,7 @@ class UpsertUserTests(TestCase):
         update_data["newsletters"] = {"slug": True}
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
-        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
+        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz", None)
 
     def test_new_user_subscribes_to_mofo_newsletter(
         self,
@@ -662,3 +662,38 @@ class UpsertUserTests(TestCase):
         update_data["optin"] = True
         ctms_mock.update.assert_called_with(user_data, update_data)
         confirm_mock.delay.assert_not_called()
+
+    @patch("basket.news.tasks.send_acoustic_tx_messages")
+    def test_send_transactional_old(self, acoustic_mock, get_user_mock, ctms_mock, confirm_mock):
+        """Subscribing to a transactional should send a transactional email"""
+        get_user_mock.return_value = None  # Does not exist yet
+        data = {
+            "country": "US",
+            "lang": "en",
+            "format": "H",
+            "newsletters": "download-foo",
+            "email": self.email,
+        }
+        with patch("basket.news.tasks.get_transactional_message_ids") as get_transactional_message_ids:
+            get_transactional_message_ids.return_value = ["download-foo"]
+            upsert_user(SUBSCRIBE, data)
+            acoustic_mock.assert_called_with("dude@example.com", "en", ["download-foo"])
+            ctms_mock.update.assert_not_called()
+
+    @patch("basket.news.tasks.send_tx_messages")
+    def test_send_transactional(self, braze_mock, get_user_mock, ctms_mock, confirm_mock):
+        """Subscribing to a transactional should send a transactional email"""
+        get_user_mock.return_value = None  # Does not exist yet
+        data = {
+            "country": "US",
+            "lang": "en",
+            "format": "H",
+            "newsletters": "download-foo",
+            "email": self.email,
+        }
+        with patch("basket.news.tasks.get_tx_message_ids") as get_tx_message_ids:
+            get_tx_message_ids.return_value = ["download-foo"]
+            upsert_user(SUBSCRIBE, data)
+            braze_mock.assert_called_with("dude@example.com", "en", ["download-foo"])
+            assert braze_mock.called
+            ctms_mock.update.assert_not_called()

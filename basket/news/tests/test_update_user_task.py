@@ -8,20 +8,16 @@ from ratelimit.exceptions import Ratelimited
 
 from basket import errors
 from basket.news import views
+from basket.news.tests import TasksPatcherMixin
 from basket.news.utils import SET, SUBSCRIBE, UNSUBSCRIBE
 
 
-class UpdateUserTaskTests(TestCase):
+class UpdateUserTaskTests(TestCase, TasksPatcherMixin):
     def setUp(self):
         self.factory = RequestFactory()
 
-        patcher = patch("basket.news.views.upsert_contact")
-        self.upsert_contact = patcher.start()
-        self.addCleanup(patcher.stop)
-
-        patcher = patch("basket.news.views.upsert_user")
-        self.upsert_user = patcher.start()
-        self.addCleanup(patcher.stop)
+        self._patch_tasks("upsert_user")
+        self._patch_tasks("upsert_contact")
 
         cache.clear()
 
@@ -146,6 +142,30 @@ class UpdateUserTaskTests(TestCase):
 
         with patch("basket.news.views.newsletter_and_group_slugs") as newsletter_slugs:
             newsletter_slugs.return_value = ["foo", "bar"]
+            response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
+            self.assert_response_ok(response)
+
+    def test_success_with_transactional_message(self):
+        """
+        If the specified newsletters are not newsletters, but transactional.
+        """
+        request = self.factory.post("/")
+        data = {"email": "a@example.com", "newsletters": "tx-foo"}
+
+        with patch("basket.news.views.get_tx_message_ids") as get_tx_message_ids:
+            get_tx_message_ids.return_value = ["tx-foo"]
+            response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
+            self.assert_response_ok(response)
+
+    def test_success_with_transactional_message_old(self):
+        """
+        If the specified newsletters are not newsletters, but transactional.
+        """
+        request = self.factory.post("/")
+        data = {"email": "a@example.com", "newsletters": "tx-foo"}
+
+        with patch("basket.news.views.get_transactional_message_ids") as get_transactional_message_ids:
+            get_transactional_message_ids.return_value = ["tx-foo"]
             response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
             self.assert_response_ok(response)
 
