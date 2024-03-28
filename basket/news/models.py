@@ -14,10 +14,6 @@ def get_uuid():
     return str(uuid4())
 
 
-def make_slug(*args):
-    return "-".join(args).lower()
-
-
 class BlockedEmail(models.Model):
     email_domain = models.CharField(max_length=50)
 
@@ -270,6 +266,58 @@ class AcousticTxEmailMessage(models.Model):
     def __str__(self):  # pragma: no cover
         return f"{self.message_id}: {self.language}"
 
-    @property
-    def slug(self):
-        return make_slug(self.message_id, self.language)
+
+class BrazeTxEmailMessageManager(models.Manager):
+    def get_message(self, message_id, language):
+        message = None
+        req_language = language  # Store this for error reporting below.
+        language = language.strip() or "en-US"
+        exc = BrazeTxEmailMessage.DoesNotExist
+        try:
+            # try to get the exact language
+            message = self.get(message_id=message_id, language=language)
+        except exc:
+            if "-" in language:
+                language = language.split("-")[0]
+
+            try:
+                # failing above, try to get the language prefix
+                message = self.get(message_id=message_id, language__startswith=language)
+            except exc:
+                try:
+                    # failing above, try to get the default language
+                    message = self.get(message_id=message_id, language="en-US")
+                except exc:
+                    # couldn't find a message. give up.
+                    with sentry_sdk.push_scope() as scope:
+                        scope.set_tag("language", req_language)
+                        scope.set_tag("message_id", message_id)
+                        sentry_sdk.capture_exception()
+
+        return message
+
+
+class BrazeTxEmailMessage(models.Model):
+    message_id = models.SlugField(
+        help_text="The ID for the message that will be used by clients",
+    )
+    description = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Optional short description of this message",
+    )
+    language = LocaleField(default="en-US")
+    private = models.BooleanField(
+        default=False,
+        help_text="Whether this email is private. Private emails are not allowed to be sent via the normal subscribe API.",
+    )
+
+    objects = BrazeTxEmailMessageManager()
+
+    class Meta:
+        unique_together = ["message_id", "language"]
+        verbose_name = "Braze transactional email"
+        ordering = ["message_id"]
+
+    def __str__(self):  # pragma: no cover
+        return f"{self.message_id}: {self.language}"

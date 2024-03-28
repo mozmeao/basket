@@ -4,6 +4,7 @@ from enum import Enum
 from urllib.parse import urljoin, urlparse, urlunparse
 
 from django.conf import settings
+from django.utils import timezone
 
 import requests
 
@@ -83,33 +84,38 @@ class BrazeClient:
         }
 
         try:
+            if settings.DEBUG:
+                print(f"POST {url}")  # noqa: T201
+                print(f"Headers: {headers}")  # noqa: T201
+                print(json.dumps(data, indent=2))  # noqa: T201
             response = requests.post(url, headers=headers, data=json.dumps(data))
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as exc:
             status_code = exc.response.status_code
+            message = exc.response.text
 
             if status_code == 400:
-                raise BrazeBadRequestError from exc
+                raise BrazeBadRequestError(message) from exc
 
             if status_code == 401:
-                raise BrazeUnauthorizedError from exc
+                raise BrazeUnauthorizedError(message) from exc
 
             if status_code == 403:
-                raise BrazeForbiddenError from exc
+                raise BrazeForbiddenError(message) from exc
 
             if status_code == 404:
-                raise BrazeNotFoundError from exc
+                raise BrazeNotFoundError(message) from exc
 
             if status_code == 429:
-                raise BrazeRateLimitError from exc
+                raise BrazeRateLimitError(message) from exc
 
             if status_code >= 500 and status_code <= 599:
-                raise BrazeInternalServerError from exc
+                raise BrazeInternalServerError(message) from exc
 
-            raise BrazeClientError from exc
+            raise BrazeClientError(message) from exc
 
-    def track_user(self, email):
+    def track_user(self, email, event=None, user_data=None):
         """
         Track a user in Braze.
 
@@ -120,22 +126,41 @@ class BrazeClient:
 
         https://www.braze.com/docs/api/endpoints/user_data/post_user_track/
 
-        Note: `email_subscribed` values are:
-          - “opted_in” - explicitly registered to receive email messages
-          - “unsubscribed” - explicitly opted out of email messages
-          - “subscribed” - neither opted in nor out
-
         """
+        email_id = user_data and user_data.pop("email_id", None)
+        basket_token = user_data and user_data.pop("basket_token", None)
+
+        if email_id:
+            # If we have an `email_id`, we can submit this without a user alias.
+            attributes = {
+                "email": email,
+                "external_id": email_id,
+                "basket_token": basket_token,
+            }
+        else:
+            # If we don't have an `email_id`, we need to submit the user alias.
+            attributes = {
+                "email": email,
+                "_update_existing_only": False,
+                "user_alias": {"alias_name": email, "alias_label": "email"},
+            }
+            if basket_token:
+                attributes["basket_token"] = basket_token
+
         data = {
-            "attributes": [
-                {
-                    "_update_existing_only": False,
-                    "user_alias": {"alias_name": email, "alias_label": "email"},
-                    "email": email,
-                    "email_subscribe": "subscribed",
-                }
-            ],
+            "attributes": [attributes],
         }
+        # Events. Event names are based off of the message ID and trigger email sends in Braze.
+        if event:
+            events = {
+                "name": event,
+                "time": timezone.now().isoformat(),
+            }
+            if email_id:
+                events["external_id"] = email_id
+            else:
+                events["user_alias"] = {"alias_name": email, "alias_label": "email"}
+            data["events"] = [events]
 
         return self._request(BrazeEndpoint.USERS_TRACK, data)
 

@@ -8,7 +8,7 @@ specific email provider."""
 from django.core.cache import cache
 from django.db.models.signals import post_delete, post_save
 
-from basket.news.models import AcousticTxEmailMessage, Newsletter, NewsletterGroup
+from basket.news.models import AcousticTxEmailMessage, BrazeTxEmailMessage, Newsletter, NewsletterGroup
 
 __all__ = (
     "clear_newsletter_cache",
@@ -19,7 +19,7 @@ __all__ = (
 
 
 CACHE_KEY = "newsletters_cache_data"
-TRANSACTIONAL_CACHE_KEY = "transactional_messages_cache_data"
+TRANSACTIONAL_CACHE_KEY = "transactional_messages_cache_data"  # Acoustic
 
 
 def get_transactional_message_ids():
@@ -32,6 +32,13 @@ def get_transactional_message_ids():
         cache.set(TRANSACTIONAL_CACHE_KEY, data)
 
     return data
+
+
+def get_tx_message_ids():
+    """
+    Returns a list of Braze transactional message IDs that basket clients send.
+    """
+    return list(BrazeTxEmailMessage.objects.filter(private=False).values_list("message_id", flat=True))
 
 
 def _newsletters():
@@ -183,6 +190,7 @@ def newsletter_languages():
         lang_set |= set(newsletter.language_list)
 
     # include Tx email languages
+    lang_set |= set(BrazeTxEmailMessage.objects.values_list("language", flat=True))
     lang_set |= set(AcousticTxEmailMessage.objects.values_list("language", flat=True))
 
     return lang_set

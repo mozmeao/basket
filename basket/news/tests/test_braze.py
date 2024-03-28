@@ -1,7 +1,10 @@
 from unittest import mock
 
+from django.utils import timezone
+
 import pytest
 import requests_mock
+from freezegun import freeze_time
 
 from basket.news.backends import braze
 
@@ -44,13 +47,65 @@ def test_braze_track_user(braze_client):
                 "_update_existing_only": False,
                 "user_alias": {"alias_name": email, "alias_label": "email"},
                 "email": email,
-                "email_subscribe": "subscribed",
             }
         ],
     }
     with requests_mock.mock() as m:
         m.register_uri("POST", "http://test.com/users/track", json={})
         braze_client.track_user(email)
+        assert m.last_request.json() == expected
+
+
+def test_braze_track_user_with_event(braze_client):
+    dt = timezone.now()
+    email = "test@test.com"
+    expected = {
+        "attributes": [
+            {
+                "_update_existing_only": False,
+                "user_alias": {"alias_name": email, "alias_label": "email"},
+                "email": email,
+            },
+        ],
+        "events": [
+            {
+                "user_alias": {"alias_name": email, "alias_label": "email"},
+                "name": "test_event",
+                "time": dt.isoformat(),
+            }
+        ],
+    }
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/track", json={})
+        with freeze_time(dt):
+            braze_client.track_user(email, "test_event")
+        assert m.last_request.json() == expected
+
+
+def test_braze_track_user_with_event_and_token(braze_client):
+    dt = timezone.now()
+    email = "test@test.com"
+    expected = {
+        "attributes": [
+            {
+                "_update_existing_only": False,
+                "user_alias": {"alias_name": email, "alias_label": "email"},
+                "email": email,
+                "basket_token": "abc123",
+            },
+        ],
+        "events": [
+            {
+                "user_alias": {"alias_name": email, "alias_label": "email"},
+                "name": "test_event",
+                "time": dt.isoformat(),
+            }
+        ],
+    }
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/track", json={})
+        with freeze_time(dt):
+            braze_client.track_user(email, "test_event", user_data={"basket_token": "abc123"})
         assert m.last_request.json() == expected
 
 
