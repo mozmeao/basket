@@ -404,6 +404,7 @@ else:
         cast=Csv(),
     )
 
+# FIXME: MAINTENANCE_MODE is considered broken and needs to be fixed before use.
 MAINTENANCE_MODE = config("MAINTENANCE_MODE", False, cast=bool)
 QUEUE_BATCH_SIZE = config("QUEUE_BATCH_SIZE", 500, cast=int)
 # can we read user data in maintenance mode

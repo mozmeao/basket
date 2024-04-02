@@ -16,6 +16,7 @@ from ratelimit.core import is_ratelimited
 from ratelimit.exceptions import Ratelimited
 
 from basket import errors, metrics
+from basket.news import tasks
 from basket.news.forms import (
     SOURCE_URL_RE,
     CommonVoiceForm,
@@ -25,19 +26,11 @@ from basket.news.forms import (
 from basket.news.models import Newsletter
 from basket.news.newsletters import (
     get_transactional_message_ids,
+    get_tx_message_ids,
     newsletter_and_group_slugs,
     newsletter_languages,
     newsletter_private_slugs,
     newsletter_slugs,
-)
-from basket.news.tasks import (
-    confirm_user,
-    record_common_voice_update,
-    send_recovery_message_acoustic,
-    update_custom_unsub,
-    update_user_meta,
-    upsert_contact,
-    upsert_user,
 )
 from basket.news.utils import (
     MSG_EMAIL_OR_TOKEN_REQUIRED,
@@ -203,7 +196,7 @@ def fxa_callback(request):
             new_user_data["lang"] = lang
 
         try:
-            token = upsert_contact(SUBSCRIBE, new_user_data, None)[0]
+            token = tasks.upsert_contact(SUBSCRIBE, new_user_data, None)[0]
         except Exception:
             metrics.incr("news.views.fxa_callback", tags=["status:error", "error:upsert_contact"])
             sentry_sdk.capture_exception()
@@ -226,7 +219,7 @@ def confirm(request, token):
         increment=True,
     ):
         raise Ratelimited()
-    confirm_user.delay(token)
+    tasks.confirm_user.delay(token)
     return HttpResponseJSON({"status": "ok"})
 
 
@@ -297,7 +290,7 @@ def common_voice_goals(request):
     if form.is_valid():
         # don't send empty values and use ISO formatted date strings
         data = {k: v for k, v in form.cleaned_data.items() if not (v == "" or v is None)}
-        record_common_voice_update.delay(data)
+        tasks.record_common_voice_update.delay(data)
 
         return HttpResponseJSON({"status": "ok"})
     else:
@@ -369,7 +362,7 @@ def subscribe_main(request):
             return respond_error(request, form, "Rate limit reached", 429)
 
         try:
-            upsert_user.delay(SUBSCRIBE, data)
+            tasks.upsert_user.delay(SUBSCRIBE, data)
         except Exception:
             return respond_error(request, form, "Unknown error", 500)
 
@@ -504,7 +497,7 @@ def user_meta(request, token):
     if form.is_valid():
         # don't send empty values
         data = {k: v for k, v in form.cleaned_data.items() if v}
-        update_user_meta.delay(token, data)
+        tasks.update_user_meta.delay(token, data)
         return HttpResponseJSON({"status": "ok"})
 
     return HttpResponseJSON(
@@ -573,8 +566,8 @@ def send_recovery_message(request):
         )  # Note: Bedrock looks for this 404
 
     lang = user_data.get("lang", "en") or "en"
-    fmt = user_data.get("format", "H") or "H"
-    send_recovery_message_acoustic.delay(email, user_data["token"], lang, fmt)
+    email_id = user_data.get("email_id")
+    tasks.send_recovery_message.delay(email, user_data["token"], lang, email_id)
     return HttpResponseJSON({"status": "ok"})
 
 
@@ -596,7 +589,7 @@ def custom_unsub_reason(request):
             400,
         )
 
-    update_custom_unsub.delay(request.POST["token"], request.POST["reason"])
+    tasks.update_custom_unsub.delay(request.POST["token"], request.POST["reason"])
     return HttpResponseJSON({"status": "ok"})
 
 
@@ -734,7 +727,10 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
     newsletters = parse_newsletters_csv(data.get("newsletters"))
     if newsletters:
         if api_call_type == SUBSCRIBE:
-            all_newsletters = newsletter_and_group_slugs() + get_transactional_message_ids()
+            braze_msg_ids = set(get_tx_message_ids())
+            acoustic_msg_ids = set(get_transactional_message_ids())
+            all_transactionals = list(braze_msg_ids | acoustic_msg_ids)
+            all_newsletters = newsletter_and_group_slugs() + all_transactionals
         else:
             all_newsletters = newsletter_slugs()
 
@@ -821,7 +817,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
         metrics.incr("news.views.subscribe.sync")
         if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
             # save what we can
-            upsert_user.delay(api_call_type, data)
+            tasks.upsert_user.delay(api_call_type, data)
             # have to error since we can't return a token
             return HttpResponseJSON(
                 {
@@ -849,8 +845,8 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
                     400,
                 )
 
-        token, created = upsert_contact(api_call_type, data, user_data)
+        token, created = tasks.upsert_contact(api_call_type, data, user_data)
         return HttpResponseJSON({"status": "ok", "token": token, "created": created})
     else:
-        upsert_user.delay(api_call_type, data)
+        tasks.upsert_user.delay(api_call_type, data)
         return HttpResponseJSON({"status": "ok"})
