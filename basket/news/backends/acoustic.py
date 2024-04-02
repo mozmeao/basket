@@ -7,6 +7,8 @@ from lxml import etree
 from requests import ConnectionError
 from silverpop.api import Silverpop, SilverpopResponseException
 
+from basket import metrics
+
 logger = logging.getLogger(__name__)
 XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
 
@@ -122,6 +124,7 @@ class AcousticTransact(Silverpop):
         return process_tx_response(response)
 
     def send_mail(self, to, campaign_id, fields=None, bcc=None, save_to_db=False):
+        metrics.incr("news.tasks.acoustic_send_mail", tags=[f"vendor_id:{campaign_id}"])
         self._call_xt(transact_xml(to, campaign_id, fields, bcc, save_to_db))
 
 

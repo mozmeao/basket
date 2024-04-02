@@ -12,16 +12,16 @@ from email_validator import EmailSyntaxError
 from ratelimit.exceptions import Ratelimited
 
 from basket import errors
-from basket.news import models, utils, views
+from basket.news import models, tasks, utils, views
 from basket.news.newsletters import newsletter_fields, newsletter_languages
 from basket.news.tasks import SUBSCRIBE
-from basket.news.tests import mock_metrics
+from basket.news.tests import TasksPatcherMixin, ViewsPatcherMixin, mock_metrics
 from basket.news.utils import email_block_list_cache
 
 none_mock = Mock(return_value=None)
 
 
-@patch.object(views, "update_user_meta")
+@patch.object(tasks, "update_user_meta")
 class UpdateUserMetaTests(TestCase):
     def setUp(self):
         self.rf = RequestFactory()
@@ -177,19 +177,12 @@ class RecoveryMessageEmailValidationTest(SubscribeEmailValidationTest):
     view = "send_recovery_message"
 
 
-class ViewsPatcherMixin:
-    def _patch_views(self, name):
-        patcher = patch("basket.news.views." + name)
-        setattr(self, name, patcher.start())
-        self.addCleanup(patcher.stop)
-
-
 @override_settings(DEBUG=True)
-class SubscribeMainTests(ViewsPatcherMixin, TestCase):
+class SubscribeMainTests(ViewsPatcherMixin, TasksPatcherMixin, TestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
-        self._patch_views("upsert_user")
+        self._patch_tasks("upsert_user")
         self._patch_views("process_email")
         self._patch_views("email_is_blocked")
         models.Newsletter.objects.create(
@@ -1037,7 +1030,7 @@ class RecoveryViewTest(TestCase):
         self.assertEqual(404, resp.status_code)
 
     @patch("basket.news.utils.get_email_block_list")
-    @patch("basket.news.views.send_recovery_message_acoustic.delay", autospec=True)
+    @patch("basket.news.tasks.send_recovery_message.delay", autospec=True)
     def test_blocked_email(
         self,
         mock_send_recovery_message_task,
@@ -1053,11 +1046,11 @@ class RecoveryViewTest(TestCase):
 
     @patch("basket.news.views.process_email", Mock(return_value="dude@example.com"))
     @patch("basket.news.views.get_user_data", autospec=True)
-    @patch("basket.news.views.send_recovery_message_acoustic.delay", autospec=True)
+    @patch("basket.news.tasks.send_recovery_message.delay", autospec=True)
     def test_known_email(self, mock_send_recovery_message_task, mock_get_user_data):
         """email provided - pass to the task, return 200"""
         email = "dude@example.com"
-        mock_get_user_data.return_value = {"token": "el-dudarino"}
+        mock_get_user_data.return_value = {"token": "el-dudarino", "email_id": "fed654"}
         # It should pass the email to the task
         resp = self.client.post(self.url, {"email": email})
         self.assertEqual(200, resp.status_code)
@@ -1065,7 +1058,7 @@ class RecoveryViewTest(TestCase):
             email,
             "el-dudarino",
             "en",
-            "H",
+            "fed654",
         )
 
 
@@ -1083,12 +1076,12 @@ class TestValidateEmail(TestCase):
         self.assertIsNone(utils.process_email(self.email))
 
 
-class CommonVoiceGoalsTests(ViewsPatcherMixin, TestCase):
+class CommonVoiceGoalsTests(ViewsPatcherMixin, TasksPatcherMixin, TestCase):
     def setUp(self):
         self.rf = RequestFactory()
 
         self._patch_views("has_valid_api_key")
-        self._patch_views("record_common_voice_update")
+        self._patch_tasks("record_common_voice_update")
 
     def test_valid_submission(self):
         self.has_valid_api_key.return_value = True
@@ -1158,7 +1151,7 @@ class CommonVoiceGoalsTests(ViewsPatcherMixin, TestCase):
 
 
 @override_settings(FXA_EMAIL_PREFS_DOMAIN="www.mozilla.org")
-class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
+class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TasksPatcherMixin, TestCase):
     FXA_ERROR_URL = "https://www.mozilla.org/newsletter/recovery/?fxa_error=1"
 
     def setUp(self):
@@ -1166,7 +1159,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TestCase):
         self._patch_views("get_user_data")
         self._patch_views("get_fxa_clients")
         self._patch_views("sentry_sdk")
-        self._patch_views("upsert_contact")
+        self._patch_tasks("upsert_contact")
 
     @mock_metrics
     def test_no_session_state(self, metrics_mock):

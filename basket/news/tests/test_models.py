@@ -45,6 +45,46 @@ class AcousticTxEmailTests(TestCase):
         )
 
 
+class BrazeTxEmailTests(TestCase):
+    def setUp(self):
+        self.message1, self.message2, self.message3 = models.BrazeTxEmailMessage.objects.bulk_create(
+            [
+                models.BrazeTxEmailMessage(
+                    message_id="the-dude",
+                    language="en-US",
+                ),
+                models.BrazeTxEmailMessage(
+                    message_id="the-dude",
+                    language="es-ES",
+                ),
+                models.BrazeTxEmailMessage(
+                    message_id="the-dude",
+                    language="fr",
+                ),
+            ]
+        )
+
+    def test_get_message(self):
+        # default language is en-US
+        assert self.message1 == models.BrazeTxEmailMessage.objects.get_message(
+            "the-dude",
+            "de",
+        )
+        # get best match
+        assert self.message2 == models.BrazeTxEmailMessage.objects.get_message(
+            "the-dude",
+            "es-AR",
+        )
+        assert self.message3 == models.BrazeTxEmailMessage.objects.get_message(
+            "the-dude",
+            "fr-FR",
+        )
+        assert self.message1 == models.BrazeTxEmailMessage.objects.get_message(
+            "the-dude",
+            "en",
+        )
+
+
 class FailedTaskTest(TestCase):
     args = [{"case_type": "ringer", "email": "dude@example.com"}, "walter"]
     kwargs = {"foo": "bar"}

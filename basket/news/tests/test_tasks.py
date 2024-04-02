@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 
 from basket.news.backends.ctms import CTMSNotFoundByAltIDError
-from basket.news.models import FailedTask
+from basket.news.models import BrazeTxEmailMessage, FailedTask
 from basket.news.tasks import (
     SUBSCRIBE,
     _add_fxa_activity,
@@ -17,6 +17,10 @@ from basket.news.tasks import (
     fxa_verified,
     get_fxa_user_data,
     record_common_voice_update,
+    send_confirm_message,
+    send_recovery_message,
+    send_tx_message,
+    send_tx_messages,
     update_custom_unsub,
     update_user_meta,
 )
@@ -702,3 +706,78 @@ class TestFxaDelete(TestCase):
             "123",
             {"fxa_deleted": True},
         )
+
+
+@patch("basket.news.tasks.braze")
+def test_send_tx_message(mock_braze, metrics_mock):
+    send_tx_message("test@example.com", "download-foo", "en-US")
+    mock_braze.track_user.assert_called_once_with("test@example.com", event="send-download-foo-en-US", user_data=None)
+    metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
+
+
+@patch("basket.news.tasks.braze")
+@patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
+def test_send_tx_messages(mock_model, mock_braze, metrics_mock):
+    """Test multipe message IDs, but only one is a transactional message."""
+    mock_model.side_effect = [BrazeTxEmailMessage(message_id="download-foo", language="en-US"), None]
+    send_tx_messages("test@example.com", "en-US", ["newsletter", "download-foo"])
+    mock_braze.track_user.assert_called_once_with("test@example.com", event="send-download-foo-en-US", user_data=None)
+    metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
+
+
+@patch("basket.news.tasks.acoustic_tx")
+@patch("basket.news.tasks.braze")
+@patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
+@patch("basket.news.models.AcousticTxEmailMessage.objects.get_vendor_id")
+def test_send_confirm_message_acoustic(mock_get_vendor, mock_get_message, mock_braze, mock_acoustic_tx, metrics_mock):
+    # TODO: Delete this test when acoustic goes away.
+    mock_get_vendor.return_value = "12345"  # Message in acoustic table.
+    mock_get_message.return_value = None  # No messages in braze table.
+    send_confirm_message("test@example.com", "abc123", "en", "fx", "fed654")
+    mock_acoustic_tx.send_mail.assert_called_once_with("test@example.com", "12345", {"basket_token": "abc123"}, save_to_db=True)
+    metrics_mock.assert_not_incr("news.tasks.send_tx_message")
+    mock_braze.assert_not_called()
+
+
+@patch("basket.news.tasks.acoustic_tx")
+@patch("basket.news.tasks.braze")
+@patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
+@patch("basket.news.models.AcousticTxEmailMessage.objects.get_vendor_id")
+def test_send_confirm_message(mock_get_vendor, mock_get_message, mock_braze, mock_acoustic, metrics_mock):
+    mock_get_vendor.return_value = None
+    mock_get_message.return_value = BrazeTxEmailMessage(message_id="newsletter-confirm-fx", language="en-US")
+    send_confirm_message("test@example.com", "abc123", "en", "fx", "fed654")
+    mock_braze.track_user.assert_called_once_with(
+        "test@example.com", event="send-newsletter-confirm-fx-en-US", user_data={"basket_token": "abc123", "email_id": "fed654"}
+    )
+    metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
+    mock_acoustic.assert_not_called()
+
+
+@patch("basket.news.tasks.acoustic_tx")
+@patch("basket.news.tasks.braze")
+@patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
+@patch("basket.news.models.AcousticTxEmailMessage.objects.get_vendor_id")
+def test_send_recovery_message_acoustic(mock_get_vendor, mock_get_message, mock_braze, mock_acoustic_tx, metrics_mock):
+    # TODO: Delete this test when acoustic goes away.
+    mock_get_vendor.return_value = "12345"  # Message in acoustic table.
+    mock_get_message.return_value = None  # No messages in braze table.
+    send_recovery_message("test@example.com", "abc123", "en", "fed654")
+    mock_acoustic_tx.send_mail.assert_called_once_with("test@example.com", "12345", {"basket_token": "abc123"})
+    metrics_mock.assert_not_incr("news.tasks.send_tx_message")
+    mock_braze.assert_not_called()
+
+
+@patch("basket.news.tasks.acoustic_tx")
+@patch("basket.news.tasks.braze")
+@patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
+@patch("basket.news.models.AcousticTxEmailMessage.objects.get_vendor_id")
+def test_send_recovery_message(mock_get_vendor, mock_get_message, mock_braze, mock_acoustic, metrics_mock):
+    mock_get_vendor.return_value = None
+    mock_get_message.return_value = BrazeTxEmailMessage(message_id="newsletter-confirm-fx", language="en-US")
+    send_recovery_message("test@example.com", "abc123", "en", "fed654")
+    mock_braze.track_user.assert_called_once_with(
+        "test@example.com", event="send-newsletter-confirm-fx-en-US", user_data={"basket_token": "abc123", "email_id": "fed654"}
+    )
+    metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
+    mock_acoustic.assert_not_called()
