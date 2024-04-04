@@ -20,7 +20,6 @@ class UpsertUserTests(TestCase):
         self.get_user_data = {
             "email": self.email,
             "token": self.token,
-            "format": "H",
             "country": "us",
             "lang": "en",
             "newsletters": ["slug"],
@@ -48,7 +47,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "slug",
             "first_name": "The",
             "last_name": "Dude",
@@ -83,7 +81,6 @@ class UpsertUserTests(TestCase):
             "lang": "en",
             "country": "US",
             "newsletters": "",
-            "format": "H",
             "email": self.email,
             "token": self.token,
         }
@@ -122,7 +119,6 @@ class UpsertUserTests(TestCase):
             "lang": "en",
             "country": "US",
             "newsletters": "slug",
-            "format": "H",
             "email": self.email,
         }
         update_data = data.copy()
@@ -159,7 +155,6 @@ class UpsertUserTests(TestCase):
             "lang": "en",
             "country": "US",
             "newsletters": "slug",
-            "format": "H",
             "email": self.email,
             "token": self.token,
         }
@@ -199,7 +194,6 @@ class UpsertUserTests(TestCase):
             "lang": "en",
             "country": "US",
             "newsletters": "slug,slug2",
-            "format": "H",
             "token": self.token,
         }
         update_data = data.copy()
@@ -211,49 +205,6 @@ class UpsertUserTests(TestCase):
         # We should have looked up the user's data
         self.assertTrue(get_user_mock.called)
         ctms_mock.update.assert_called_with(self.get_user_data, update_data)
-
-    def test_update_user_without_format_doesnt_send_format(
-        self,
-        get_user_mock,
-        ctms_mock,
-        confirm_mock,
-    ):
-        """
-        CTMS format not changed if update_user call doesn't specify.
-
-        If update_user call doesn't specify a format (e.g. if bedrock
-        doesn't get a changed value on a form submission), then Basket
-        doesn't send any format to CTMS.
-
-        It does use the user's choice of format to send them their
-        welcome message.
-        """
-        models.Newsletter.objects.create(
-            slug="slug",
-            title="title",
-            active=True,
-            languages="en-US,fr",
-            vendor_id="TITLE_UNKNOWN",
-        )
-        get_user_mock.return_value = {
-            "status": "ok",
-            "format": "T",
-            "email": "dude@example.com",
-            "token": "foo-token",
-            "newsletters": ["other-one"],
-            "optin": True,
-        }
-        data = {
-            "lang": "en",
-            "country": "US",
-            "newsletters": "slug",
-            "email": "dude@example.com",
-        }
-        update_data = data.copy()
-        # We should only mention slug, not slug2
-        update_data["newsletters"] = {"slug": True}
-        upsert_user(SUBSCRIBE, data)
-        ctms_mock.update.assert_called_with(get_user_mock.return_value, update_data)
 
     def test_update_user_with_email_id(
         self,
@@ -273,7 +224,6 @@ class UpsertUserTests(TestCase):
         )
         get_user_mock.return_value = {
             "status": "ok",
-            "format": "T",
             "email": "dude@example.com",
             "token": "foo-token",
             "email_id": "ctms-email-id",
@@ -309,7 +259,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "slug",
             "email": self.email,
         }
@@ -338,7 +287,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "slug",
             "email": self.email,
         }
@@ -376,7 +324,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "slug,slug2",
             "email": self.email,
         }
@@ -412,7 +359,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "slug",
             "email": self.email,
         }
@@ -450,7 +396,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "slug",
             "email": self.email,
         }
@@ -484,7 +429,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "slug",
             "email": self.email,
         }
@@ -519,7 +463,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "slug",
             "email": self.email,
         }
@@ -549,7 +492,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "slug",
             "email": self.email,
         }
@@ -583,7 +525,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "mozilla-foundation",
             "email": self.email,
         }
@@ -618,7 +559,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "mozilla-foundation",
             "email": self.email,
         }
@@ -652,7 +592,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "mozilla-foundation",
             "email": self.email,
         }
@@ -670,7 +609,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "download-foo",
             "email": self.email,
         }
@@ -687,7 +625,6 @@ class UpsertUserTests(TestCase):
         data = {
             "country": "US",
             "lang": "en",
-            "format": "H",
             "newsletters": "download-foo",
             "email": self.email,
         }

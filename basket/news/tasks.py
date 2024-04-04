@@ -126,7 +126,6 @@ def fxa_verified(data):
         "fxa_service": data.get("service", ""),
         "fxa_id": fxa_id,
         "optin": True,
-        "format": "H",
     }
     if create_date:
         new_data["fxa_create_date"] = iso_format_unix_timestamp(create_date)
@@ -155,7 +154,6 @@ def fxa_newsletters_update(data):
         "fxa_lang": data.get("locale"),
         "fxa_id": fxa_id,
         "optin": True,
-        "format": "H",
     }
     upsert_contact(SUBSCRIBE, new_data, get_fxa_user_data(fxa_id, email))
 
@@ -264,8 +262,6 @@ def upsert_contact(api_call_type, data, user_data):
     """
     update_data = data.copy()
     forced_optin = data.pop("optin", False)
-    if "format" in data:
-        update_data["format"] = "T" if data["format"].upper().startswith("T") else "H"
 
     newsletters = parse_newsletters_csv(data.get("newsletters"))
     cur_newsletters = user_data and user_data.get("newsletters")

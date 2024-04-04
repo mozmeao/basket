@@ -9,7 +9,6 @@ from basket.news.country_codes import SFDC_COUNTRIES
 from basket.news.newsletters import newsletter_field_choices
 from basket.news.utils import LANG_RE, parse_newsletters_csv, process_email
 
-FORMATS = (("H", "HTML"), ("T", "Text"))
 SOURCE_URL_RE = re.compile(r"^https?://")
 UTC_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
@@ -112,7 +111,6 @@ class SubscribeForm(forms.Form):
     email = EmailField()
     newsletters = NewslettersField()
     privacy = forms.BooleanField()
-    fmt = forms.ChoiceField(required=False, choices=FORMATS)
     source_url = forms.CharField(required=False)
     first_name = forms.CharField(required=False)
     last_name = forms.CharField(required=False)
