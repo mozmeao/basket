@@ -55,13 +55,11 @@ The following URLs are available (assuming "/news" is app url):
     newsletters. "email" and "newsletters" are required::
 
         method: POST
-        fields: email, format, country, lang, newsletters, optin, source_url, trigger_welcome, sync
+        fields: email, country, lang, newsletters, optin, source_url, trigger_welcome, sync
         returns: { status: ok } on success
                  { status: error, desc: <desc>, code: <error_code> } on error
         SSL required if sync=Y
         token or API key required if sync=Y
-
-    ``format`` can be any of the following values: H, html, T, or text
 
     ``country`` is the 2 letter country code for the subscriber.
 
@@ -139,7 +137,7 @@ The following URLs are available (assuming "/news" is app url):
     newsletters. "optin" should be Y or N and opts in/out the user::
 
         method: POST
-        fields: email, format, country, lang, newsletters, optin
+        fields: email, country, lang, newsletters, optin
         returns: { status: ok } on success
                  { status: error, desc: <desc> } on error
         token-required
@@ -250,7 +248,7 @@ The following URLs are available (assuming "/news" is app url):
     with their token in it, so they can use it to manage their subscriptions.
 
     If the user is known in CTMS, the message will be sent in their preferred
-    language and format.
+    language.
 
     If the email provided is not known, a 404 status is returned.
 

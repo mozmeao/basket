@@ -182,7 +182,6 @@ def fxa_callback(request):
         new_user_data = {
             "email": email,
             "optin": True,
-            "format": "H",
             "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
             "source_url": f"{settings.FXA_REGISTER_SOURCE_URL}?utm_source=basket-fxa-oauth",
         }
@@ -324,8 +323,6 @@ def subscribe_main(request):
             metrics.incr("news.views.subscribe_main", tags=["info:email_blocked"])
             # don't let on there's a problem
             return respond_ok(request, data)
-
-        data["format"] = data.pop("fmt") or "H"
 
         if data["lang"]:
             if not language_code_is_valid(data["lang"]):

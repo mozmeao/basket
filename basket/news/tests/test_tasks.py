@@ -205,7 +205,6 @@ class FxAVerifiedTests(TestCase):
                 "fxa_service": "sync",
                 "fxa_id": "the-fxa-id",
                 "optin": True,
-                "format": "H",
             },
             fxa_data_mock(),
         )
@@ -236,7 +235,6 @@ class FxAVerifiedTests(TestCase):
                 "fxa_service": "sync",
                 "fxa_id": "the-fxa-id",
                 "optin": True,
-                "format": "H",
             },
             None,
         )
@@ -264,7 +262,6 @@ class FxAVerifiedTests(TestCase):
                 "fxa_service": "monitor",
                 "fxa_id": "the-fxa-id",
                 "optin": True,
-                "format": "H",
             },
             None,
         )
@@ -292,7 +289,6 @@ class FxAVerifiedTests(TestCase):
                 "fxa_id": "the-fxa-id",
                 "fxa_create_date": iso_format_unix_timestamp(create_date),
                 "optin": True,
-                "format": "H",
             },
             None,
         )
