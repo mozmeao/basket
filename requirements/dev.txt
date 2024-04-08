@@ -338,9 +338,9 @@ django-mozilla-product-details==1.0.3 \
     --hash=sha256:1d139ba01f4484f3bb43b72864ce33f249835405449e0dc940217cfa42ce5b46 \
     --hash=sha256:a4aba6a68b296dffe8c1afb95d236cdbd402bd855cd49eef4d8a1a610105fd36
     # via -r requirements/prod.txt
-django-picklefield==3.1 \
-    --hash=sha256:c786cbeda78d6def2b43bff4840d19787809c8909f7ad683961703060398d356 \
-    --hash=sha256:d77c504df7311e8ec14e8b779f10ca6fec74de6c7f8e2c136e1ef60cf955125d
+django-picklefield==3.2 \
+    --hash=sha256:aa463f5d79d497dbe789f14b45180f00a51d0d670067d0729f352a3941cdfa4d \
+    --hash=sha256:e9a73539d110f69825d9320db18bcb82e5189ff48dbed41821c026a20497764c
     # via -r requirements/prod.txt
 django-ratelimit==3.0.1 \
     --hash=sha256:73223d860abd5c5d7b9a807fabb39a6220068129b514be8d78044b52607ab154 \
