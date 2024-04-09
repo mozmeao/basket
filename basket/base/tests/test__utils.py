@@ -38,7 +38,6 @@ def test_pre_sentry_sanitisation__before_send_setup():
         "email",
         "first_name",
         "fxa_id",
-        "id",
         "ip_address",
         "last_name",
         "mobile_number",
@@ -78,7 +77,6 @@ example_unsanitised_data = {
     "last_name": "These items are on our blocklist and should be removed entirely",
     "amo_id": "These items are on our blocklist and should be removed entirely",
     "fxa_id": "These items are on our blocklist and should be removed entirely",
-    "id": "These items are on our blocklist and should be removed entirely",
     "uid": "These items are on our blocklist and should be removed entirely",
 }
 
@@ -104,7 +102,6 @@ expected_sanitised_data = {
     "last_name": "********",
     "amo_id": "********",
     "fxa_id": "********",
-    "id": "********",
     "uid": "********",
 }
 
