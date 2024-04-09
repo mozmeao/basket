@@ -435,6 +435,7 @@ def send_acoustic_tx_messages(email, lang, message_ids):
     for mid in message_ids:
         vid = AcousticTxEmailMessage.objects.get_vendor_id(mid, lang)
         if vid:
+            metrics.incr("acoustic_tx_messages_ids", tags=[f"message_id:{mid}"])
             send_acoustic_tx_message.delay(email, vid)
             sent += 1
 
