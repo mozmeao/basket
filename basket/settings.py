@@ -284,7 +284,6 @@ SENSITIVE_FIELDS_TO_MASK_ENTIRELY = [
     "email",
     "first_name",
     "fxa_id",
-    "id",
     "ip_address",
     "last_name",
     "mobile_number",
