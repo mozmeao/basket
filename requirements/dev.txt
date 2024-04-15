@@ -189,9 +189,9 @@ click==8.1.7 \
     # via
     #   -r requirements/prod.txt
     #   rq
-configparser==6.0.1 \
-    --hash=sha256:5a0da275bea56f871abaa9e0806331791e9d8ae2938e8b8797b99ab3e8e192c4 \
-    --hash=sha256:db45513e971e509496b150be31bd67b0e14ab20b78a383b677e4b158e2c682d8
+configparser==7.0.0 \
+    --hash=sha256:af3c618a67aaaedc4d689fd7317d238f566b9aa03cae50102e92d7f0dfe78ba0 \
+    --hash=sha256:f46d52a12811c637104c6bb8eb33693be0038ab6bf01d69aae009c39ec8c2017
     # via -r requirements/prod.txt
 contextlib2==21.6.0 \
     --hash=sha256:3fbdb64466afd23abaf6c977627b75b6139a5a3e8ce38405c5b413aed7a0471f \
