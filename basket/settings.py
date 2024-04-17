@@ -226,6 +226,12 @@ SEND_CONFIRM_MESSAGES = config("SEND_CONFIRM_MESSAGES", False, cast=bool)
 
 BRAZE_API_KEY = config("BRAZE_API_KEY", None)
 BRAZE_BASE_API_URL = config("BRAZE_BASE_API_URL", "https://rest.iad-05.braze.com")
+# Map of Braze message IDs to the actual message IDs.
+# This is intended for older messages that are hard to change.
+BRAZE_MESSAGE_ID_MAP = {
+    "download-firefox-mobile-whatsnew": "download-firefox-mobile",
+    "firefox-mobile-welcome": "download-firefox-mobile",
+}
 
 # Mozilla CTMS
 CTMS_ENV = config("CTMS_ENV", "").lower()

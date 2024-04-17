@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from django.conf import settings
 from django.db import models
 from django.utils.timezone import now
 
@@ -295,6 +296,9 @@ class BrazeTxEmailMessageManager(models.Manager):
                         sentry_sdk.capture_exception()
 
         return message
+
+    def get_tx_message_ids(self):
+        return list(set(list(self.filter(private=False).values_list("message_id", flat=True)) + list(settings.BRAZE_MESSAGE_ID_MAP.keys())))
 
 
 class BrazeTxEmailMessage(models.Model):

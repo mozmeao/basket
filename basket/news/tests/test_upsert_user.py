@@ -691,7 +691,7 @@ class UpsertUserTests(TestCase):
             "newsletters": "download-foo",
             "email": self.email,
         }
-        with patch("basket.news.tasks.get_tx_message_ids") as get_tx_message_ids:
+        with patch("basket.news.models.BrazeTxEmailMessage.objects.get_tx_message_ids") as get_tx_message_ids:
             get_tx_message_ids.return_value = ["download-foo"]
             upsert_user(SUBSCRIBE, data)
             braze_mock.assert_called_with("dude@example.com", "en", ["download-foo"])

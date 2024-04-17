@@ -23,10 +23,9 @@ from basket.news.forms import (
     SubscribeForm,
     UpdateUserMeta,
 )
-from basket.news.models import Newsletter
+from basket.news.models import BrazeTxEmailMessage, Newsletter
 from basket.news.newsletters import (
     get_transactional_message_ids,
-    get_tx_message_ids,
     newsletter_and_group_slugs,
     newsletter_languages,
     newsletter_private_slugs,
@@ -727,7 +726,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
     newsletters = parse_newsletters_csv(data.get("newsletters"))
     if newsletters:
         if api_call_type == SUBSCRIBE:
-            braze_msg_ids = set(get_tx_message_ids())
+            braze_msg_ids = set(BrazeTxEmailMessage.objects.get_tx_message_ids())
             acoustic_msg_ids = set(get_transactional_message_ids())
             all_transactionals = list(braze_msg_ids | acoustic_msg_ids)
             all_newsletters = newsletter_and_group_slugs() + all_transactionals
