@@ -90,7 +90,7 @@ class BrazeTxEmailTests(TestCase):
 
     @override_settings(BRAZE_MESSAGE_ID_MAP={"jeff-dowd": "the-dude"})
     def test_get_tx_message_ids_with_map(self):
-        assert ["the-dude", "jeff-dowd"] == models.BrazeTxEmailMessage.objects.get_tx_message_ids()
+        assert sorted(["the-dude", "jeff-dowd"]) == sorted(models.BrazeTxEmailMessage.objects.get_tx_message_ids())
 
 
 class FailedTaskTest(TestCase):
