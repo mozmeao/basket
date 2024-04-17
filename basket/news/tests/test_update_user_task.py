@@ -152,7 +152,7 @@ class UpdateUserTaskTests(TestCase, TasksPatcherMixin):
         request = self.factory.post("/")
         data = {"email": "a@example.com", "newsletters": "tx-foo"}
 
-        with patch("basket.news.views.get_tx_message_ids") as get_tx_message_ids:
+        with patch("basket.news.models.BrazeTxEmailMessage.objects.get_tx_message_ids") as get_tx_message_ids:
             get_tx_message_ids.return_value = ["tx-foo"]
             response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
             self.assert_response_ok(response)

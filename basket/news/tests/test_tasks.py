@@ -725,6 +725,17 @@ def test_send_tx_messages(mock_model, mock_braze, metrics_mock):
     metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
 
 
+@override_settings(BRAZE_MESSAGE_ID_MAP={"download-zzz": "download-foo"})
+@patch("basket.news.tasks.braze")
+@patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
+def test_send_tx_messages_with_map(mock_model, mock_braze, metrics_mock):
+    """Test multipe message IDs, but only one is a transactional message."""
+    mock_model.side_effect = [BrazeTxEmailMessage(message_id="download-foo", language="en-US"), None]
+    send_tx_messages("test@example.com", "en-US", ["newsletter", "download-foo"])
+    mock_braze.track_user.assert_called_once_with("test@example.com", event="send-download-foo-en-US", user_data=None)
+    metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
+
+
 @patch("basket.news.tasks.acoustic_tx")
 @patch("basket.news.tasks.braze")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")

@@ -28,13 +28,6 @@ def get_transactional_message_ids():
     return list(AcousticTxEmailMessage.objects.filter(private=False).values_list("message_id", flat=True))
 
 
-def get_tx_message_ids():
-    """
-    Returns a list of Braze transactional message IDs that basket clients send.
-    """
-    return list(BrazeTxEmailMessage.objects.filter(private=False).values_list("message_id", flat=True))
-
-
 def _newsletters():
     """Returns a data structure with the data about newsletters.
     It's cached until clear_newsletter_cache() is called, so we're

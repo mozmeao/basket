@@ -23,7 +23,7 @@ from basket.news.models import (
     BrazeTxEmailMessage,
     Newsletter,
 )
-from basket.news.newsletters import get_transactional_message_ids, get_tx_message_ids, newsletter_languages, newsletter_obj
+from basket.news.newsletters import get_transactional_message_ids, newsletter_languages, newsletter_obj
 from basket.news.utils import (
     SUBSCRIBE,
     UNSUBSCRIBE,
@@ -274,7 +274,7 @@ def upsert_contact(api_call_type, data, user_data):
         newsletters_set = set(newsletters)
 
         # Check for Braze transactional messages in the set of newsletters, and remove after processing.
-        braze_msg_ids = set(get_tx_message_ids())
+        braze_msg_ids = set(BrazeTxEmailMessage.objects.get_tx_message_ids())
         braze_txs = newsletters_set & braze_msg_ids
         if braze_txs:
             braze_msgs = [t for t in braze_txs if t in braze_msg_ids]
@@ -446,6 +446,7 @@ def send_tx_messages(email, lang, message_ids):
     sent = 0
     lang = lang.strip() or "en-US"
     for mid in message_ids:
+        mid = settings.BRAZE_MESSAGE_ID_MAP.get(mid, mid)
         txm = BrazeTxEmailMessage.objects.get_message(mid, lang)
         if txm:
             send_tx_message.delay(email, txm.message_id, txm.language)

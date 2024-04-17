@@ -84,6 +84,14 @@ class BrazeTxEmailTests(TestCase):
             "en",
         )
 
+    @override_settings(BRAZE_MESSAGE_ID_MAP={})
+    def test_get_tx_message_ids(self):
+        assert ["the-dude"] == models.BrazeTxEmailMessage.objects.get_tx_message_ids()
+
+    @override_settings(BRAZE_MESSAGE_ID_MAP={"jeff-dowd": "the-dude"})
+    def test_get_tx_message_ids_with_map(self):
+        assert ["the-dude", "jeff-dowd"] == models.BrazeTxEmailMessage.objects.get_tx_message_ids()
+
 
 class FailedTaskTest(TestCase):
     args = [{"case_type": "ringer", "email": "dude@example.com"}, "walter"]
