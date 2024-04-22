@@ -282,6 +282,7 @@ class ToVendorTests(TestCase):
             (" USA ", "us"),
             ("en", None),
             (" ABC ", None),
+            (None, None),
         )
 
         for original, converted in tests:
@@ -311,6 +312,7 @@ class ToVendorTests(TestCase):
             (" ru", "en"),
             ("en-CA", "en"),
             ("es-MX", "es"),
+            (None, "en"),
         )
         for original, converted in tests:
             data = to_vendor({"lang": original})
