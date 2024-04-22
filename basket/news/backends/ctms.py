@@ -174,27 +174,28 @@ DISCARD_BASKET_NAMES = {
 
 def process_country(raw_country):
     """Convert to 2-letter country, and throw out unknown countries."""
-    country = raw_country.strip().lower()
-    if len(country) == 3:
-        new_country = convert_country_3_to_2(country)
-        if new_country:
-            country = new_country
+    if raw_country is not None:
+        country = raw_country.strip().lower()
+        if len(country) == 3:
+            new_country = convert_country_3_to_2(country)
+            if new_country:
+                country = new_country
 
-    if country not in SFDC_COUNTRIES_LIST:
-        raise ValueError(f"{country} not in SFDC_COUNTRIES_LIST")
-    return country
+        if country not in SFDC_COUNTRIES_LIST:
+            raise ValueError(f"{country} not in SFDC_COUNTRIES_LIST")
+        return country
 
 
 def process_lang(raw_lang):
     """Ensure language is supported."""
-    lang = raw_lang.strip()
-    if lang.lower() in settings.EXTRA_SUPPORTED_LANGS:
-        return lang
-    elif is_supported_newsletter_language(lang):
-        return lang[:2].lower()
-    else:
-        # Use the default language (English) for unsupported languages
-        return "en"
+    if raw_lang is not None:
+        lang = raw_lang.strip()
+        if lang.lower() in settings.EXTRA_SUPPORTED_LANGS:
+            return lang
+        elif is_supported_newsletter_language(lang):
+            return lang[:2].lower()
+    # Use the default language (English) for unsupported languages
+    return "en"
 
 
 def truncate_string(max_length, raw_string):
