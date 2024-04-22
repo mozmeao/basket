@@ -109,6 +109,33 @@ def test_braze_track_user_with_event_and_token(braze_client):
         assert m.last_request.json() == expected
 
 
+def test_braze_track_user_with_event_and_token_and_email_id(braze_client):
+    dt = timezone.now()
+    email = "test@test.com"
+    email_id = "fed654"
+    expected = {
+        "attributes": [
+            {
+                "external_id": "fed654",
+                "email": email,
+                "basket_token": "abc123",
+            },
+        ],
+        "events": [
+            {
+                "external_id": "fed654",
+                "name": "test_event",
+                "time": dt.isoformat(),
+            }
+        ],
+    }
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/track", json={})
+        with freeze_time(dt):
+            braze_client.track_user(email, "test_event", user_data={"basket_token": "abc123", "email_id": email_id})
+        assert m.last_request.json() == expected
+
+
 def test_braze_export_users(braze_client):
     email = "test@test.com"
     expected = {
