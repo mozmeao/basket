@@ -736,20 +736,6 @@ def test_send_tx_messages_with_map(mock_model, mock_braze, metrics_mock):
 @patch("basket.news.tasks.braze")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
 @patch("basket.news.models.AcousticTxEmailMessage.objects.get_vendor_id")
-def test_send_confirm_message_acoustic(mock_get_vendor, mock_get_message, mock_braze, mock_acoustic_tx, metrics_mock):
-    # TODO: Delete this test when acoustic goes away.
-    mock_get_vendor.return_value = "12345"  # Message in acoustic table.
-    mock_get_message.return_value = None  # No messages in braze table.
-    send_confirm_message("test@example.com", "abc123", "en", "fx", "fed654")
-    mock_acoustic_tx.send_mail.assert_called_once_with("test@example.com", "12345", {"basket_token": "abc123"}, save_to_db=True)
-    metrics_mock.assert_not_incr("news.tasks.send_tx_message")
-    mock_braze.assert_not_called()
-
-
-@patch("basket.news.tasks.acoustic_tx")
-@patch("basket.news.tasks.braze")
-@patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
-@patch("basket.news.models.AcousticTxEmailMessage.objects.get_vendor_id")
 def test_send_confirm_message(mock_get_vendor, mock_get_message, mock_braze, mock_acoustic, metrics_mock):
     mock_get_vendor.return_value = None
     mock_get_message.return_value = BrazeTxEmailMessage(message_id="newsletter-confirm-fx", language="en-US")
@@ -759,20 +745,6 @@ def test_send_confirm_message(mock_get_vendor, mock_get_message, mock_braze, moc
     )
     metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
     mock_acoustic.assert_not_called()
-
-
-@patch("basket.news.tasks.acoustic_tx")
-@patch("basket.news.tasks.braze")
-@patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
-@patch("basket.news.models.AcousticTxEmailMessage.objects.get_vendor_id")
-def test_send_recovery_message_acoustic(mock_get_vendor, mock_get_message, mock_braze, mock_acoustic_tx, metrics_mock):
-    # TODO: Delete this test when acoustic goes away.
-    mock_get_vendor.return_value = "12345"  # Message in acoustic table.
-    mock_get_message.return_value = None  # No messages in braze table.
-    send_recovery_message("test@example.com", "abc123", "en", "fed654")
-    mock_acoustic_tx.send_mail.assert_called_once_with("test@example.com", "12345", {"basket_token": "abc123"})
-    metrics_mock.assert_not_incr("news.tasks.send_tx_message")
-    mock_braze.assert_not_called()
 
 
 @patch("basket.news.tasks.acoustic_tx")
