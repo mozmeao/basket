@@ -261,6 +261,7 @@ def upsert_contact(api_call_type, data, user_data):
     @return: token, created
     """
     update_data = data.copy()
+    update_data.pop("format", None)  # Format defaults to "H".
     forced_optin = data.pop("optin", False)
 
     newsletters = parse_newsletters_csv(data.get("newsletters"))
