@@ -452,10 +452,8 @@ def send_tx_messages(email, lang, message_ids):
     return sent
 
 
-# TODO: After initial deployment of this code, change `email_id` to be a required argument.
-# We want to process any tasks on the queue, but require this argument for new tasks.
 @rq_task
-def send_confirm_message(email, token, lang, message_type, email_id=None):
+def send_confirm_message(email, token, lang, message_type, email_id):
     lang = lang.strip()
     lang = lang or "en-US"
     message_id = f"newsletter-confirm-{message_type}"
@@ -521,16 +519,6 @@ def send_recovery_message(email, token, lang, email_id):
         return
 
     # Fall back to Acoustic if not in Braze.
-    vid = AcousticTxEmailMessage.objects.get_vendor_id(message_id, lang)
-    if vid:
-        acoustic_tx.send_mail(email, vid, {"basket_token": token})
-
-
-# TODO: Remove function after migrating to Braze and consuming tasks.
-#       Removing to generalize this task name.
-@rq_task
-def send_recovery_message_acoustic(email, token, lang, fmt):
-    message_id = f"account-recovery{'' if fmt == 'H' else '-text'}"
     vid = AcousticTxEmailMessage.objects.get_vendor_id(message_id, lang)
     if vid:
         acoustic_tx.send_mail(email, vid, {"basket_token": token})
