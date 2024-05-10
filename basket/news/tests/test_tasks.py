@@ -6,6 +6,8 @@ from django.conf import settings
 from django.test import TestCase
 from django.test.utils import override_settings
 
+from markus.testing import MetricsMock
+
 from basket.news.backends.ctms import CTMSNotFoundByAltIDError
 from basket.news.models import BrazeTxEmailMessage, FailedTask
 from basket.news.tasks import (
@@ -177,9 +179,7 @@ class AddFxaActivityTests(TestCase):
         self.assertEqual(record["DEVICE_TYPE"], "T")
 
 
-@override_settings(
-    FXA_REGISTER_NEWSLETTER="firefox-accounts-journey",
-)
+@override_settings(FXA_REGISTER_NEWSLETTER="firefox-accounts-journey")
 @patch("basket.news.tasks.get_best_language", Mock(return_value="en-US"))
 @patch("basket.news.tasks.newsletter_languages", Mock(return_value=["en-US"]))
 @patch("basket.news.tasks.upsert_contact")
@@ -293,6 +293,18 @@ class FxAVerifiedTests(TestCase):
             None,
         )
 
+    def test_invalid_email(self, fxa_data_mock, upsert_mock):
+        fxa_data_mock.return_value = None
+        data = {
+            "email": "thedude.@example.com",
+            "uid": "the-fxa-id",
+            "locale": "en-US,en",
+        }
+        with MetricsMock() as mm:
+            fxa_verified(data)
+        upsert_mock.assert_not_called()
+        mm.assert_incr_once("news.tasks.invalid_fxa_email", tags=["task:fxa_verified"])
+
 
 @patch("basket.news.tasks.upsert_user")
 @patch("basket.news.tasks._add_fxa_activity")
@@ -384,6 +396,15 @@ class FxALoginTests(TestCase):
         )
         upsert_mock.delay.assert_not_called()
 
+    def test_fxa_login_invalid_email(self, afa_mock, upsert_mock):
+        data = self.get_data()
+        data["email"] = "the.dude.@example.com"
+        with MetricsMock() as mm:
+            fxa_login(data)
+        afa_mock.assert_not_called()
+        upsert_mock.delay.assert_not_called()
+        mm.assert_incr_once("news.tasks.invalid_fxa_email", tags=["task:fxa_login"])
+
 
 @patch("basket.news.tasks.ctms", spec_set=["update", "add"])
 @patch("basket.news.tasks.get_user_data")
@@ -474,12 +495,7 @@ class FxAEmailChangedTests(TestCase):
             },
         )
 
-    def test_fxa_id_nor_email_found_ctms_add_fails(
-        self,
-        cache_mock,
-        gud_mock,
-        ctms_mock,
-    ):
+    def test_fxa_id_nor_email_found_ctms_add_fails(self, cache_mock, gud_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -504,6 +520,22 @@ class FxAEmailChangedTests(TestCase):
                 "fxa_primary_email": data["email"],
             },
         )
+
+    def test_fxa_invalid_email(self, cache_mock, gud_mock, ctms_mock):
+        data = {
+            "ts": 1234.567,
+            "uid": "the-fxa-id-for-el-dudarino",
+            "email": "the-dudes-new-email.@example.com",
+        }
+        cache_mock.get.return_value = 0
+        gud_mock.return_value = None
+        ctms_mock.add.return_value = None
+        with MetricsMock() as mm:
+            fxa_email_changed(data)
+        gud_mock.assert_not_called()
+        ctms_mock.update.assert_not_called()
+        ctms_mock.add.assert_not_called()
+        mm.assert_incr_once("news.tasks.invalid_fxa_email", tags=["task:fxa_email_changed"])
 
 
 @patch("basket.news.tasks.ctms")

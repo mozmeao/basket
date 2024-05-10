@@ -1,36 +1,13 @@
-from django.core.validators import validate_email
 from django.db import models
-from django.forms import TextInput
 
 from product_details import product_details
 
 from basket.news.country_codes import SFDC_COUNTRIES
 
 
-def parse_emails(emails_string):
-    emails = []
-    for email in emails_string.split(","):
-        email = email.strip()
-        if email:
-            validate_email(email)
-            emails.append(email)
-
-    return emails
-
-
 class CommaSeparatedEmailField(models.TextField):
-    """TextField that stores a comma-separated list of emails."""
-
-    def pre_save(self, model_instance, add):
-        """Remove whitespace and excess commas."""
-        emails = getattr(model_instance, self.attname)
-        emails = ",".join(parse_emails(emails))
-        setattr(model_instance, self.attname, emails)
-        return emails
-
-    def formfield(self, **kwargs):
-        kwargs["widget"] = TextInput(attrs={"style": "width: 400px"})
-        return super().formfield(**kwargs)
+    # Unused. But keeping until we clear the migrations that import this.
+    pass
 
 
 ENGLISH_LANGUAGE_CHOICES = sorted(

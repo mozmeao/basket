@@ -34,6 +34,7 @@ from basket.news.utils import (
     iso_format_unix_timestamp,
     parse_newsletters,
     parse_newsletters_csv,
+    process_email,
 )
 
 log = logging.getLogger(__name__)
@@ -52,7 +53,11 @@ def fxa_source_url(metrics):
 def fxa_email_changed(data):
     ts = data["ts"]
     fxa_id = data["uid"]
-    email = data["email"]
+    email = process_email(data["email"])
+    if not email:
+        metrics.incr("news.tasks.invalid_fxa_email", tags=["task:fxa_email_changed"])
+        return
+
     cache_key = "fxa_email_changed:%s" % fxa_id
     prev_ts = float(cache.get(cache_key, 0))
     if prev_ts and prev_ts > ts:
@@ -106,14 +111,18 @@ def fxa_delete(data):
 def fxa_verified(data):
     """Add new FxA users"""
     # if we're not using the sandbox ignore testing domains
-    if email_is_testing(data["email"]):
+    email = process_email(data["email"])
+    if not email:
+        metrics.incr("news.tasks.invalid_fxa_email", tags=["task:fxa_verified"])
+        return
+
+    if email_is_testing(email):
         return
 
     lang = get_best_language(get_accept_languages(data.get("locale")))
     if not lang or lang not in newsletter_languages():
         lang = "other"
 
-    email = data["email"]
     fxa_id = data["uid"]
     create_date = data.get("createDate", data.get("ts"))
     newsletters = data.get("newsletters")
@@ -144,7 +153,11 @@ def fxa_verified(data):
 
 @rq_task
 def fxa_newsletters_update(data):
-    email = data["email"]
+    email = process_email(data["email"])
+    if not email:
+        metrics.incr("news.tasks.invalid_fxa_email", tags=["task:fxa_newsletters_update"])
+        return
+
     fxa_id = data["uid"]
     new_data = {
         "email": email,
@@ -160,7 +173,11 @@ def fxa_newsletters_update(data):
 
 @rq_task
 def fxa_login(data):
-    email = data["email"]
+    email = process_email(data["email"])
+    if not email:
+        metrics.incr("news.tasks.invalid_fxa_email", tags=["task:fxa_login"])
+        return
+
     # if we're not using the sandbox ignore testing domains
     if email_is_testing(email):
         return

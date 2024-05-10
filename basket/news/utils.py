@@ -485,6 +485,7 @@ def process_email(email):
         #      here until they do or we switch providers
         info = validate_email(email, allow_smtputf8=False, check_deliverability=False)
     except EmailNotValidError:
+        sentry_sdk.capture_exception()
         return None
 
     return info.ascii_email
