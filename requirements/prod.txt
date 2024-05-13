@@ -734,9 +734,9 @@ requests-oauthlib==2.0.0 \
     --hash=sha256:7dd8a5c40426b779b0868c404bdef9768deccf22749cde15852df527e6269b36 \
     --hash=sha256:b3dffaebd884d8cd778494369603a9e7b58d29111bf6b41bdc2dcd87203af4e9
     # via pysilverpop
-rq==1.16.1 \
-    --hash=sha256:273de33f10bb9f18cd1e8ccc0a4e8dba2b8eb86a6ab2a91ae674f99bd68025f1 \
-    --hash=sha256:d9a6314bc759a743b4a5d89aa467eaa3a31dbbc0a34bcd0ee82e8852d9ec166d
+rq==1.16.2 \
+    --hash=sha256:52e619f6cb469b00e04da74305045d244b75fecb2ecaa4f26422add57d3c5f09 \
+    --hash=sha256:5c5b9ad5fbaf792b8fada25cc7627f4d206a9a4455aced371d4f501cc3f13b34
     # via
     #   -r requirements/prod.in
     #   rq-scheduler
