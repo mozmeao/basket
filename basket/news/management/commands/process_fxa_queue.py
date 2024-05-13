@@ -92,7 +92,7 @@ class Command(BaseCommand):
                     metrics.incr("fxa.events.message", tags=["info:received", f"event:{event_type}"])
                     if event_type not in FXA_EVENT_TYPES:
                         metrics.incr("fxa.events.message", tags=["info:ignored_excluded", f"event:{event_type}"])
-                        log.debug("IGNORED: %s" % event)
+                        log.debug(f"IGNORED: {event}")
                         # we can safely remove from the queue message types we
                         # don't need this keeps the queue from filling up with
                         # old messages

@@ -55,7 +55,7 @@ class FxAOauthTests(TestCase):
         rf = RequestFactory()
         kwargs = {}
         if bearer:
-            kwargs["HTTP_AUTHORIZATION"] = "Bearer %s" % bearer
+            kwargs["HTTP_AUTHORIZATION"] = f"Bearer {bearer}"
         return rf.get("/", **kwargs)
 
     def test_bad_oauth_verify(self, gfc_mock):

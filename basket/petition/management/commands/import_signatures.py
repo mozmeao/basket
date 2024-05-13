@@ -24,7 +24,7 @@ class Command(BaseCommand):
             count = 0
             for row in reader:
                 if len(row) != 8:
-                    raise CommandError("Invalid row: %s" % row)
+                    raise CommandError(f"Invalid row: {row}")
 
                 name, affiliation, email, title, created, tag, _, notes = (f.strip() for f in row)
 
