@@ -53,7 +53,7 @@ def fxa_email_changed(data):
     ts = data["ts"]
     fxa_id = data["uid"]
     email = data["email"]
-    cache_key = "fxa_email_changed:%s" % fxa_id
+    cache_key = f"fxa_email_changed:{fxa_id}"
     prev_ts = float(cache.get(cache_key, 0))
     if prev_ts and prev_ts > ts:
         # message older than our last update for this UID

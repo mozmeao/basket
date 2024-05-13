@@ -14,7 +14,7 @@ XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
 
 
 def process_response(resp):
-    logger.debug("Response: %s" % resp.text)
+    logger.debug(f"Response: {resp.text}")
     response = etree.fromstring(resp.text.encode("utf-8"))
     failure = response.find(".//FAILURES/FAILURE")
     if failure:
@@ -28,7 +28,7 @@ def process_response(resp):
 
 
 def process_tx_response(resp):
-    logger.debug("Response: %s" % resp.text)
+    logger.debug(f"Response: {resp.text}")
     response = etree.fromstring(resp.text.encode("utf-8"))
     errors = response.findall(".//ERROR_STRING")
     if errors:
@@ -86,7 +86,7 @@ def transact_xml(to, campaign_id, fields=None, bcc=None, save_to_db=False):
 
 class Acoustic(Silverpop):
     def _call(self, xml):
-        logger.debug("Request: %s" % xml)
+        logger.debug(f"Request: {xml}")
         try:
             response = self.session.post(
                 self.api_endpoint,
@@ -114,7 +114,7 @@ class AcousticTransact(Silverpop):
         super().__init__(client_id, client_secret, refresh_token, server_number)
 
     def _call_xt(self, xml):
-        logger.debug("Request: %s" % xml)
+        logger.debug(f"Request: {xml}")
         response = self.session.post(
             self.api_xt_endpoint,
             data=force_bytes(xml),
