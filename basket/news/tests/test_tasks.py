@@ -732,31 +732,23 @@ def test_send_tx_messages_with_map(mock_model, mock_braze, metrics_mock):
     metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
 
 
-@patch("basket.news.tasks.acoustic_tx")
 @patch("basket.news.tasks.braze")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
-@patch("basket.news.models.AcousticTxEmailMessage.objects.get_vendor_id")
-def test_send_confirm_message(mock_get_vendor, mock_get_message, mock_braze, mock_acoustic, metrics_mock):
-    mock_get_vendor.return_value = None
+def test_send_confirm_message(mock_get_message, mock_braze, metrics_mock):
     mock_get_message.return_value = BrazeTxEmailMessage(message_id="newsletter-confirm-fx", language="en-US")
     send_confirm_message("test@example.com", "abc123", "en", "fx", "fed654")
     mock_braze.track_user.assert_called_once_with(
         "test@example.com", event="send-newsletter-confirm-fx-en-US", user_data={"basket_token": "abc123", "email_id": "fed654"}
     )
     metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
-    mock_acoustic.assert_not_called()
 
 
-@patch("basket.news.tasks.acoustic_tx")
 @patch("basket.news.tasks.braze")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
-@patch("basket.news.models.AcousticTxEmailMessage.objects.get_vendor_id")
-def test_send_recovery_message(mock_get_vendor, mock_get_message, mock_braze, mock_acoustic, metrics_mock):
-    mock_get_vendor.return_value = None
+def test_send_recovery_message(mock_get_message, mock_braze, metrics_mock):
     mock_get_message.return_value = BrazeTxEmailMessage(message_id="newsletter-confirm-fx", language="en-US")
     send_recovery_message("test@example.com", "abc123", "en", "fed654")
     mock_braze.track_user.assert_called_once_with(
         "test@example.com", event="send-newsletter-confirm-fx-en-US", user_data={"basket_token": "abc123", "email_id": "fed654"}
     )
     metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
-    mock_acoustic.assert_not_called()

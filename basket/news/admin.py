@@ -5,7 +5,6 @@ from django.template.defaultfilters import pluralize
 from product_details import product_details
 
 from basket.news.models import (
-    AcousticTxEmailMessage,
     APIUser,
     BlockedEmail,
     BrazeTxEmailMessage,
@@ -30,14 +29,6 @@ class LanguageFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         if self.value():
             return queryset.filter(language=self.value())
-
-
-@admin.register(AcousticTxEmailMessage)
-class AcousticTxEmailMessageAdmin(admin.ModelAdmin):
-    fields = ("message_id", "vendor_id", "language", "description", "private")
-    list_display = ("message_id", "vendor_id", "language", "description", "private")
-    search_fields = ("message_id", "vendor_id", "description")
-    list_filter = ("private", "message_id", "vendor_id", LanguageFilter)
 
 
 @admin.register(BrazeTxEmailMessage)

@@ -6,45 +6,6 @@ from django.test.utils import override_settings
 from basket.news import models
 
 
-class AcousticTxEmailTests(TestCase):
-    def setUp(self):
-        self.message1 = models.AcousticTxEmailMessage.objects.create(
-            message_id="the-dude",
-            vendor_id="12345",
-            language="en-US",
-        )
-        self.message2 = models.AcousticTxEmailMessage.objects.create(
-            message_id="the-dude",
-            vendor_id="22345",
-            language="es-ES",
-        )
-        self.message3 = models.AcousticTxEmailMessage.objects.create(
-            message_id="the-dude",
-            vendor_id="32345",
-            language="fr",
-        )
-
-    def test_get_vendor_id(self):
-        # default language is en-US
-        assert "12345" == models.AcousticTxEmailMessage.objects.get_vendor_id(
-            "the-dude",
-            "de",
-        )
-        # get best match
-        assert "22345" == models.AcousticTxEmailMessage.objects.get_vendor_id(
-            "the-dude",
-            "es-AR",
-        )
-        assert "32345" == models.AcousticTxEmailMessage.objects.get_vendor_id(
-            "the-dude",
-            "fr-FR",
-        )
-        assert "12345" == models.AcousticTxEmailMessage.objects.get_vendor_id(
-            "the-dude",
-            "en",
-        )
-
-
 class BrazeTxEmailTests(TestCase):
     def setUp(self):
         self.message1, self.message2, self.message3 = models.BrazeTxEmailMessage.objects.bulk_create(

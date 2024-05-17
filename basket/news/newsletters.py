@@ -8,7 +8,7 @@ specific email provider."""
 from django.core.cache import cache
 from django.db.models.signals import post_delete, post_save
 
-from basket.news.models import AcousticTxEmailMessage, BrazeTxEmailMessage, Newsletter, NewsletterGroup
+from basket.news.models import BrazeTxEmailMessage, Newsletter, NewsletterGroup
 
 __all__ = (
     "clear_newsletter_cache",
@@ -19,13 +19,6 @@ __all__ = (
 
 
 CACHE_KEY = "newsletters_cache_data"
-
-
-def get_transactional_message_ids():
-    """
-    Returns a list of transactional message IDs that basket clients send.
-    """
-    return list(AcousticTxEmailMessage.objects.filter(private=False).values_list("message_id", flat=True))
 
 
 def _newsletters():
@@ -178,7 +171,6 @@ def newsletter_languages():
 
     # include Tx email languages
     lang_set |= set(BrazeTxEmailMessage.objects.values_list("language", flat=True))
-    lang_set |= set(AcousticTxEmailMessage.objects.values_list("language", flat=True))
 
     return lang_set
 
@@ -188,7 +180,7 @@ def newsletter_field_choices():
     Return a list of 2 tuples of newsletter slugs suitable for use in a Django
     form field.
     """
-    all_newsletters = newsletter_and_group_slugs() + get_transactional_message_ids()
+    all_newsletters = newsletter_and_group_slugs() + BrazeTxEmailMessage.objects.get_tx_message_ids()
     return [(slug, slug) for slug in all_newsletters]
 
 
