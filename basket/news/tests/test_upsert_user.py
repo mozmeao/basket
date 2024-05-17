@@ -602,22 +602,6 @@ class UpsertUserTests(TestCase):
         ctms_mock.update.assert_called_with(user_data, update_data)
         confirm_mock.delay.assert_not_called()
 
-    @patch("basket.news.tasks.send_acoustic_tx_messages")
-    def test_send_transactional_old(self, acoustic_mock, get_user_mock, ctms_mock, confirm_mock):
-        """Subscribing to a transactional should send a transactional email"""
-        get_user_mock.return_value = None  # Does not exist yet
-        data = {
-            "country": "US",
-            "lang": "en",
-            "newsletters": "download-foo",
-            "email": self.email,
-        }
-        with patch("basket.news.tasks.get_transactional_message_ids") as get_transactional_message_ids:
-            get_transactional_message_ids.return_value = ["download-foo"]
-            upsert_user(SUBSCRIBE, data)
-            acoustic_mock.assert_called_with("dude@example.com", "en", ["download-foo"])
-            ctms_mock.update.assert_not_called()
-
     @patch("basket.news.tasks.send_tx_messages")
     def test_send_transactional(self, braze_mock, get_user_mock, ctms_mock, confirm_mock):
         """Subscribing to a transactional should send a transactional email"""

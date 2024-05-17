@@ -7,8 +7,6 @@ from lxml import etree
 from requests import ConnectionError
 from silverpop.api import Silverpop, SilverpopResponseException
 
-from basket import metrics
-
 logger = logging.getLogger(__name__)
 XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
 
@@ -23,18 +21,6 @@ def process_response(resp):
     fault = response.find(".//Fault/FaultString")
     if fault:
         raise SilverpopResponseException(fault.text)
-
-    return response
-
-
-def process_tx_response(resp):
-    logger.debug(f"Response: {resp.text}")
-    response = etree.fromstring(resp.text.encode("utf-8"))
-    errors = response.findall(".//ERROR_STRING")
-    if errors:
-        for e in errors:
-            if e.text:
-                raise SilverpopResponseException(e.text)
 
     return response
 
@@ -106,37 +92,9 @@ class Acoustic(Silverpop):
         return process_response(response)
 
 
-class AcousticTransact(Silverpop):
-    api_xt_endpoint = "https://transact-campaign-us-%s.goacoustic.com/XTMail"
-
-    def __init__(self, client_id, client_secret, refresh_token, server_number):
-        self.api_xt_endpoint = self.api_xt_endpoint % server_number
-        super().__init__(client_id, client_secret, refresh_token, server_number)
-
-    def _call_xt(self, xml):
-        logger.debug(f"Request: {xml}")
-        response = self.session.post(
-            self.api_xt_endpoint,
-            data=force_bytes(xml),
-            timeout=10,
-            headers={"Content-Type": "text/xml"},
-        )
-        return process_tx_response(response)
-
-    def send_mail(self, to, campaign_id, fields=None, bcc=None, save_to_db=False):
-        metrics.incr("news.tasks.acoustic_send_mail", tags=[f"vendor_id:{campaign_id}"])
-        self._call_xt(transact_xml(to, campaign_id, fields, bcc, save_to_db))
-
-
 acoustic = Acoustic(
     client_id=settings.ACOUSTIC_CLIENT_ID,
     client_secret=settings.ACOUSTIC_CLIENT_SECRET,
     refresh_token=settings.ACOUSTIC_REFRESH_TOKEN,
     server_number=settings.ACOUSTIC_SERVER_NUMBER,
-)
-acoustic_tx = AcousticTransact(
-    client_id=settings.ACOUSTIC_TX_CLIENT_ID,
-    client_secret=settings.ACOUSTIC_TX_CLIENT_SECRET,
-    refresh_token=settings.ACOUSTIC_TX_REFRESH_TOKEN,
-    server_number=settings.ACOUSTIC_TX_SERVER_NUMBER,
 )

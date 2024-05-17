@@ -157,18 +157,6 @@ class UpdateUserTaskTests(TestCase, TasksPatcherMixin):
             response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
             self.assert_response_ok(response)
 
-    def test_success_with_transactional_message_old(self):
-        """
-        If the specified newsletters are not newsletters, but transactional.
-        """
-        request = self.factory.post("/")
-        data = {"email": "a@example.com", "newsletters": "tx-foo"}
-
-        with patch("basket.news.views.get_transactional_message_ids") as get_transactional_message_ids:
-            get_transactional_message_ids.return_value = ["tx-foo"]
-            response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
-            self.assert_response_ok(response)
-
     def test_success_with_valid_lang(self):
         """If the specified language is valid, return an OK response."""
         request = self.factory.post("/")
