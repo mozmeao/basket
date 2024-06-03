@@ -31,5 +31,5 @@ rq-scheduler==0.13.1
 sentry-processor==0.0.1
 sentry-sdk==1.45.0
 user-agents==2.2.0
-uwsgi==2.0.25.1
+uwsgi==2.0.26
 whitenoise==6.6.0
