@@ -25,7 +25,7 @@ pyOpenSSL==24.1.0
 pysilverpop==0.2.6
 python-decouple==3.8
 PyYAML==6.0.1
-redis==5.0.3
+redis==5.0.5
 rq==1.16.1
 rq-scheduler==0.13.1
 sentry-processor==0.0.1
