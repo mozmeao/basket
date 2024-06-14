@@ -6,16 +6,15 @@
 
 set -exo pipefail
 
-export CUSTOM_COMPILE_COMMAND="make compile-requirements"
+export UV_CUSTOM_COMPILE_COMMAND="make compile-requirements"
 
 # We need this installed, but we don't want it to live in the main requirements
 # We will need to periodically review this pinning
 
-pip install -U pip
-pip install pip-tools
+pip install -U uv
 
 # Purge old requirements/*.txt files so we get our subdeps automatically upgraded if allowed
 rm -f requirements/*.txt
 
-pip-compile --generate-hashes -r requirements/prod.in
-pip-compile --generate-hashes -r requirements/dev.in
+uv pip compile --generate-hashes --no-strip-extras requirements/prod.in -o requirements/prod.txt
+uv pip compile --generate-hashes --no-strip-extras requirements/dev.in -o requirements/dev.txt
