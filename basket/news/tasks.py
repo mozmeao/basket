@@ -1,17 +1,13 @@
 import logging
-from datetime import date
 from urllib.parse import urlencode
 
 from django.conf import settings
 from django.core.cache import cache
 
-import user_agents
-
 from basket import metrics
 from basket.base.decorators import rq_task
 from basket.base.exceptions import BasketError
 from basket.base.utils import email_is_testing
-from basket.news.backends.acoustic import acoustic
 from basket.news.backends.braze import braze
 from basket.news.backends.ctms import (
     CTMSNotFoundByAltIDError,
@@ -164,17 +160,6 @@ def fxa_login(data):
     if email_is_testing(email):
         return
 
-    ua = data.get("userAgent")
-    if ua:
-        new_data = {
-            "user_agent": ua,
-            "fxa_id": data["uid"],
-            "first_device": data["deviceCount"] == 1,
-            "service": data.get("service", ""),
-            "ts": data["ts"],
-        }
-        _add_fxa_activity(new_data)
-
     metrics_context = data.get("metricsContext", {})
     newsletter = settings.FXA_LOGIN_CAMPAIGNS.get(metrics_context.get("utm_campaign"))
     if newsletter:
@@ -187,36 +172,6 @@ def fxa_login(data):
                 "country": data.get("countryCode", ""),
             },
         )
-
-
-def _add_fxa_activity(data):
-    user_agent = user_agents.parse(data["user_agent"])
-    device_type = "D"
-    if user_agent.is_mobile:
-        device_type = "M"
-    elif user_agent.is_tablet:
-        device_type = "T"
-
-    login_data = {
-        "FXA_ID": data["fxa_id"],
-        "SERVICE": data.get("service", "unknown").strip() or "unknown",
-        "LOGIN_DATE": date.fromtimestamp(data["ts"]).isoformat(),
-        "FIRST_DEVICE": "y" if data.get("first_device") else "n",
-        "OS_NAME": user_agent.os.family,
-        "OS_VERSION": user_agent.os.version_string,
-        "BROWSER": f"{user_agent.browser.family} {user_agent.browser.version_string}",
-        "DEVICE_NAME": user_agent.device.family,
-        "DEVICE_TYPE": device_type,
-    }
-    fxa_activity_acoustic.delay(login_data)
-
-
-@rq_task
-def fxa_activity_acoustic(data):
-    acoustic.insert_update_relational_table(
-        table_id=settings.ACOUSTIC_FXA_TABLE_ID,
-        rows=[data],
-    )
 
 
 @rq_task

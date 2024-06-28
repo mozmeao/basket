@@ -263,8 +263,7 @@ def get_user_data(
     whether they are an account holder or not.
 
     When `masked` is True, we return masked emails. We should only set
-    `masked=False` when a valid API key is being used. This defaults to False to
-    avoid problems with requests to acoustic.
+    `masked=False` when a valid API key is being used. This defaults to False.
 
     Review of results:
 

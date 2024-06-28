@@ -404,9 +404,6 @@ class TestGetUserData(TestCase):
     def test_no_kwarg_get_user_data(self, ctms_mock):
         """
         Test that the default kwarg for `masked` is `False.
-
-        When the default is true it can cause problems with requests to acoustic
-        since this method is used internally as well.
         """
         ctms_mock.get.return_value = {"email": self.email}
         data = get_user_data(email=self.email)
