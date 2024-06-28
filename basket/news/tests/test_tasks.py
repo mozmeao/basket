@@ -10,7 +10,6 @@ from basket.news.backends.ctms import CTMSNotFoundByAltIDError
 from basket.news.models import BrazeTxEmailMessage, FailedTask
 from basket.news.tasks import (
     SUBSCRIBE,
-    _add_fxa_activity,
     fxa_delete,
     fxa_email_changed,
     fxa_login,
@@ -60,121 +59,6 @@ class RetryTaskTest(TestCase):
         assert mock_enqueue.call_args.kwargs["retry"].intervals == [60, 90]
         # Previous failed task was deleted
         self.assertTrue(failed_task.delete.called)
-
-
-class AddFxaActivityTests(TestCase):
-    def _base_test(self, user_agent=False, fxa_id="123", first_device=True):
-        if not user_agent:
-            user_agent = "Mozilla/5.0 (Windows NT 6.1; rv:10.0) Gecko/20100101 Firefox/10.0"
-
-        data = {
-            "fxa_id": fxa_id,
-            "first_device": first_device,
-            "user_agent": user_agent,
-            "service": "sync",
-            "ts": 1614301517.225,
-        }
-
-        with patch("basket.news.tasks.fxa_activity_acoustic") as apply_updates_mock:
-            _add_fxa_activity(data)
-        record = apply_updates_mock.delay.call_args[0][0]
-        return record
-
-    def test_login_date(self):
-        with patch("basket.news.tasks.date") as date_mock:
-            date_mock.fromtimestamp().isoformat.return_value = "this is time"
-            record = self._base_test()
-        self.assertEqual(record["LOGIN_DATE"], "this is time")
-
-    def test_first_device(self):
-        record = self._base_test(first_device=True)
-        self.assertEqual(record["FIRST_DEVICE"], "y")
-
-        record = self._base_test(first_device=False)
-        self.assertEqual(record["FIRST_DEVICE"], "n")
-
-    def test_fxa_id(self):
-        record = self._base_test(fxa_id="This is id")
-        self.assertEqual(record["FXA_ID"], "This is id")
-
-    def test_windows(self):
-        ua = "Mozilla/5.0 (Windows NT 6.1; rv:10.0) Gecko/20100101 Firefox/10.0"
-        record = self._base_test(ua)
-        self.assertEqual(record["OS_NAME"], "Windows")
-        self.assertEqual(record["OS_VERSION"], "7")  # Not sure if we expect '7' here.
-        self.assertEqual(record["BROWSER"], "Firefox 10.0")
-        self.assertEqual(record["DEVICE_NAME"], "Other")
-        self.assertEqual(record["DEVICE_TYPE"], "D")
-
-    def test_mac(self):
-        ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.6; rv:10.0) Gecko/20100101 Firefox/30.2"
-        record = self._base_test(ua)
-        self.assertEqual(record["OS_NAME"], "Mac OS X")
-        self.assertEqual(record["OS_VERSION"], "10.6")
-        self.assertEqual(record["BROWSER"], "Firefox 30.2")
-        self.assertEqual(record["DEVICE_NAME"], "Mac")
-        self.assertEqual(record["DEVICE_TYPE"], "D")
-
-    def test_linux(self):
-        ua = "Mozilla/5.0 (X11; Linux i686 on x86_64; rv:10.0) Gecko/20100101 Firefox/42.0"
-        record = self._base_test(ua)
-        self.assertEqual(record["OS_NAME"], "Linux")
-        self.assertEqual(record["OS_VERSION"], "")
-        self.assertEqual(record["BROWSER"], "Firefox 42.0")
-        self.assertEqual(record["DEVICE_NAME"], "Other")
-        self.assertEqual(record["DEVICE_TYPE"], "D")
-
-    def test_android_phone_below_version_41(self):
-        ua = "Mozilla/5.0 (Android; Mobile; rv:40.0) Gecko/40.0 Firefox/40.0"
-        record = self._base_test(ua)
-        self.assertEqual(record["OS_NAME"], "Android")
-        self.assertEqual(record["OS_VERSION"], "")
-        self.assertEqual(record["BROWSER"], "Firefox Mobile 40.0")
-        self.assertEqual(record["DEVICE_NAME"], "Generic Smartphone")
-        self.assertEqual(record["DEVICE_TYPE"], "M")
-
-    def test_android_tablet_below_version_41(self):
-        ua = "Mozilla/5.0 (Android; Tablet; rv:40.0) Gecko/40.0 Firefox/40.0"
-        record = self._base_test(ua)
-        self.assertEqual(record["OS_NAME"], "Android")
-        self.assertEqual(record["OS_VERSION"], "")
-        self.assertEqual(record["BROWSER"], "Firefox Mobile 40.0")
-        self.assertEqual(record["DEVICE_NAME"], "Generic Tablet")
-
-    def test_android_phone_from_version_41(self):
-        ua = "Mozilla/5.0 (Android 4.4; Mobile; rv:41.0) Gecko/41.0 Firefox/41.0"
-        record = self._base_test(ua)
-        self.assertEqual(record["OS_NAME"], "Android")
-        self.assertEqual(record["OS_VERSION"], "4.4")
-        self.assertEqual(record["BROWSER"], "Firefox Mobile 41.0")
-        self.assertEqual(record["DEVICE_NAME"], "Generic Smartphone")
-        self.assertEqual(record["DEVICE_TYPE"], "M")
-
-    def test_android_tablet_from_version_41(self):
-        ua = "Mozilla/5.0 (Android 5.0; Tablet; rv:41.0) Gecko/41.0 Firefox/41.0"
-        record = self._base_test(ua)
-        self.assertEqual(record["OS_NAME"], "Android")
-        self.assertEqual(record["OS_VERSION"], "5.0")
-        self.assertEqual(record["BROWSER"], "Firefox Mobile 41.0")
-        self.assertEqual(record["DEVICE_NAME"], "Generic Tablet")
-
-    def test_firefox_ios_iphone(self):
-        ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 8_3 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) FxiOS/1.0 Mobile/12F69 Safari/600.1.4"
-        record = self._base_test(ua)
-        self.assertEqual(record["OS_NAME"], "iOS")
-        self.assertEqual(record["OS_VERSION"], "8.3")
-        self.assertEqual(record["BROWSER"], "Firefox iOS 1.0")
-        self.assertEqual(record["DEVICE_NAME"], "iPhone")
-        self.assertEqual(record["DEVICE_TYPE"], "M")
-
-    def test_firefox_ios_tablet(self):
-        ua = "Mozilla/5.0 (iPad; CPU iPhone OS 8_3 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) FxiOS/1.0 Mobile/12F69 Safari/600.1.4"
-        record = self._base_test(ua)
-        self.assertEqual(record["OS_NAME"], "iOS")
-        self.assertEqual(record["OS_VERSION"], "8.3")
-        self.assertEqual(record["BROWSER"], "Firefox iOS 1.0")
-        self.assertEqual(record["DEVICE_NAME"], "iPad")
-        self.assertEqual(record["DEVICE_TYPE"], "T")
 
 
 @override_settings(
@@ -295,7 +179,6 @@ class FxAVerifiedTests(TestCase):
 
 
 @patch("basket.news.tasks.upsert_user")
-@patch("basket.news.tasks._add_fxa_activity")
 class FxALoginTests(TestCase):
     # based on real data pulled from the queue
     base_data = {
@@ -325,34 +208,16 @@ class FxALoginTests(TestCase):
     def get_data(self):
         return deepcopy(self.base_data)
 
-    def test_fxa_login_task_with_no_utm(self, afa_mock, upsert_mock):
+    def test_fxa_login_task_with_no_utm(self, upsert_mock):
         data = self.get_data()
         del data["metricsContext"]
         data["deviceCount"] = 1
         fxa_login(data)
-        afa_mock.assert_called_with(
-            {
-                "user_agent": data["userAgent"],
-                "fxa_id": data["uid"],
-                "first_device": True,
-                "service": "sync",
-                "ts": 1508897239.207,
-            },
-        )
         upsert_mock.delay.assert_not_called()
 
-    def test_fxa_login_task_with_utm_data(self, afa_mock, upsert_mock):
+    def test_fxa_login_task_with_utm_data(self, upsert_mock):
         data = self.get_data()
         fxa_login(data)
-        afa_mock.assert_called_with(
-            {
-                "user_agent": data["userAgent"],
-                "fxa_id": data["uid"],
-                "first_device": False,
-                "service": "sync",
-                "ts": 1508897239.207,
-            },
-        )
         upsert_mock.delay.assert_called_with(
             SUBSCRIBE,
             {
@@ -368,20 +233,11 @@ class FxALoginTests(TestCase):
         assert "utm_medium=referral" in source_url
         assert "utm_source=firstrun_f131" in source_url
 
-    def test_fxa_login_task_with_utm_data_no_subscribe(self, afa_mock, upsert_mock):
+    def test_fxa_login_task_with_utm_data_no_subscribe(self, upsert_mock):
         data = self.get_data()
         # not in the FXA_LOGIN_CAMPAIGNS setting
         data["metricsContext"]["utm_campaign"] = "nonesense"
         fxa_login(data)
-        afa_mock.assert_called_with(
-            {
-                "user_agent": data["userAgent"],
-                "fxa_id": data["uid"],
-                "first_device": False,
-                "service": "sync",
-                "ts": 1508897239.207,
-            },
-        )
         upsert_mock.delay.assert_not_called()
 
 
