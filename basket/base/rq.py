@@ -190,7 +190,7 @@ def store_task_exception_handler(job, *exc_info):
 
         # Don't log to sentry if we explicitly raise `RetryTask`.
         if not isinstance(exc_info[1], RetryTask):
-            with sentry_sdk.push_scope() as scope:
+            with sentry_sdk.isolation_scope() as scope:
                 scope.set_tag("action", "retried")
                 sentry_sdk.capture_exception()
 
@@ -211,13 +211,13 @@ def store_task_exception_handler(job, *exc_info):
         )
 
         if ignore_error(exc_info[1]):
-            with sentry_sdk.push_scope() as scope:
+            with sentry_sdk.isolation_scope() as scope:
                 scope.set_tag("action", "ignored")
                 sentry_sdk.capture_exception()
             return
 
         # Don't log to sentry if we explicitly raise `RetryTask`.
         if not isinstance(exc_info[1], RetryTask):
-            with sentry_sdk.push_scope() as scope:
+            with sentry_sdk.isolation_scope() as scope:
                 scope.set_tag("action", "failed")
                 sentry_sdk.capture_exception()

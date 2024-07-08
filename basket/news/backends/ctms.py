@@ -403,7 +403,7 @@ def to_vendor(data, existing_data=None):
             "ctms.to_vendor() could not convert unknown data",
             extra={"unknown_data": unknown_data},
         )
-        with sentry_sdk.push_scope() as scope:
+        with sentry_sdk.isolation_scope() as scope:
             scope.set_extra("unknown_data", unknown_data)
             sentry_sdk.capture_message("ctms.to_vendor() could not convert unknown data")
 

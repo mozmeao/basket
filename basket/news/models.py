@@ -226,7 +226,7 @@ class BrazeTxEmailMessageManager(models.Manager):
                     message = self.get(message_id=message_id, language="en-US")
                 except exc:
                     # couldn't find a message. give up.
-                    with sentry_sdk.push_scope() as scope:
+                    with sentry_sdk.isolation_scope() as scope:
                         scope.set_tag("language", req_language)
                         scope.set_tag("message_id", message_id)
                         sentry_sdk.capture_exception()
