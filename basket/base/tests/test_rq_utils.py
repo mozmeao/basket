@@ -85,7 +85,7 @@ class TestRQUtils:
         assert worker.serializer == JSONSerializer
 
     @override_settings(RQ_EXCEPTION_HANDLERS=["basket.base.rq.store_task_exception_handler"])
-    def test_on_failure(self, metrics_mock):
+    def test_on_failure(self, metricsmock):
         """
         Test that the on_failure function creates a FailedTask object and sends
         statsd metrics.
@@ -111,11 +111,11 @@ class TestRQUtils:
         # assert fail.exc == 'ValueError("An exception to trigger the failure handler.")'
         # assert "Traceback (most recent call last):" in fail.einfo
         # assert "ValueError: An exception to trigger the failure handler." in fail.einfo
-        # metrics_mock.assert_incr_once("news.tasks.failure_total")
-        # metrics_mock.assert_incr_once("news.tasks.failing_job.failure")
+        # metricsmock.assert_incr_once("news.tasks.failure_total")
+        # metricsmock.assert_incr_once("news.tasks.failing_job.failure")
 
     @override_settings(MAINTENANCE_MODE=True)
-    def test_on_failure_maintenance(self, metrics_mock):
+    def test_on_failure_maintenance(self, metricsmock):
         """
         Test that the on_failure callback does nothing if we're in maintenance mode.
         """
@@ -127,12 +127,12 @@ class TestRQUtils:
         worker.work(burst=True)  # Burst = worker will quit after all jobs consumed.
 
         assert FailedTask.objects.count() == 0
-        metrics_mock.assert_incr_once("basket.base.tests.tasks.failing_job.queued")
-        metrics_mock.assert_not_incr("basket.base.tests.tasks.failing_job.failure")
-        metrics_mock.assert_not_incr("news.tasks.failure_total")
+        metricsmock.assert_incr_once("basket.base.tests.tasks.failing_job.queued")
+        metricsmock.assert_not_incr("basket.base.tests.tasks.failing_job.failure")
+        metricsmock.assert_not_incr("news.tasks.failure_total")
 
     @patch("basket.base.rq.sentry_sdk")
-    def test_rq_exception_handler(self, mock_sentry_sdk, metrics_mock):
+    def test_rq_exception_handler(self, mock_sentry_sdk, metricsmock):
         """
         Test that the exception handler creates a FailedTask object.
         """
@@ -167,7 +167,7 @@ class TestRQUtils:
         assert "Traceback (most recent call last):" in failed_job.einfo
         assert "ValueError: This is a fake exception" in failed_job.einfo
 
-        metrics_mock.assert_incr_once("base.tasks.failed", tags=["task:job.failed"])
+        metricsmock.assert_incr_once("base.tasks.failed", tags=["task:job.failed"])
 
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "failed")
@@ -175,7 +175,7 @@ class TestRQUtils:
         queue.empty()
 
     @patch("basket.base.rq.sentry_sdk")
-    def test_rq_exception_error_ignore(self, mock_sentry_sdk, metrics_mock):
+    def test_rq_exception_error_ignore(self, mock_sentry_sdk, metricsmock):
         queue = get_queue()
         job = Job.create(func=print, meta={"task_name": "job.ignore_error"}, connection=queue.connection)
         job.set_status(JobStatus.FAILED)
@@ -183,18 +183,18 @@ class TestRQUtils:
         for error_str in IGNORE_ERROR_MSGS:
             store_task_exception_handler(job, Exception, Exception(error_str), None)
 
-            metrics_mock.assert_incr_once("base.tasks.failed", tags=["task:job.ignore_error"])
+            metricsmock.assert_incr_once("base.tasks.failed", tags=["task:job.ignore_error"])
 
             assert mock_sentry_sdk.capture_exception.call_count == 1
             mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
 
-            metrics_mock.clear_records()
+            metricsmock.clear_records()
             mock_sentry_sdk.reset_mock()
 
         # Also test IGNORE_ERROR_MSGS_RE.
         store_task_exception_handler(job, Exception, Exception("campaignId 123 not found"), None)
 
-        metrics_mock.assert_incr_once("base.tasks.failed", tags=["task:job.ignore_error"])
+        metricsmock.assert_incr_once("base.tasks.failed", tags=["task:job.ignore_error"])
 
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
@@ -215,7 +215,7 @@ class TestRQUtils:
         assert FailedTask.objects.count() == 0
 
     @patch("basket.base.rq.sentry_sdk")
-    def test_rq_exception_handler_retry(self, mock_sentry_sdk, metrics_mock):
+    def test_rq_exception_handler_retry(self, mock_sentry_sdk, metricsmock):
         queue = get_queue()
         job = Job.create(func=print, meta={"task_name": "job.rescheduled"}, connection=queue.connection)
         job.retries_left = 1
@@ -232,7 +232,7 @@ class TestRQUtils:
         store_task_exception_handler(job, e.type, e.value, e.tb)
 
         assert FailedTask.objects.count() == 0
-        metrics_mock.assert_incr_once("base.tasks.retried", tags=["task:job.rescheduled"])
+        metricsmock.assert_incr_once("base.tasks.retried", tags=["task:job.rescheduled"])
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "retried")
 

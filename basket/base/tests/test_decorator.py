@@ -47,7 +47,7 @@ class TestDecorator:
         )
 
     @override_settings(MAINTENANCE_MODE=True)
-    def test_maintenance_mode_no_readonly(self, metrics_mock):
+    def test_maintenance_mode_no_readonly(self, metricsmock):
         """
         Test that the decorator doesn't run the task if maintenance mode is on.
         """
@@ -55,10 +55,10 @@ class TestDecorator:
 
         empty_job.delay("arg1")
 
-        metrics_mock.assert_incr_once("basket.base.tests.tasks.empty_job.queued")
+        metricsmock.assert_incr_once("basket.base.tests.tasks.empty_job.queued")
         assert QueuedTask.objects.count() == 1
 
-    def test_job_success(self, metrics_mock):
+    def test_job_success(self, metricsmock):
         """
         Test that the decorator marks the job as successful if the task runs
         successfully.
@@ -68,4 +68,4 @@ class TestDecorator:
         worker = get_worker()
         worker.work(burst=True)  # Burst = worker will quit after all jobs consumed.
 
-        metrics_mock.assert_timing_once("task.timings", tags=["task:basket.base.tests.tasks.empty_job", "status:success"])
+        metricsmock.assert_timing_once("task.timings", tags=["task:basket.base.tests.tasks.empty_job", "status:success"])

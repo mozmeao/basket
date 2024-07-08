@@ -561,50 +561,50 @@ class TestFxaDelete(TestCase):
 
 
 @patch("basket.news.tasks.braze")
-def test_send_tx_message(mock_braze, metrics_mock):
+def test_send_tx_message(mock_braze, metricsmock):
     send_tx_message("test@example.com", "download-foo", "en-US")
     mock_braze.track_user.assert_called_once_with("test@example.com", event="send-download-foo-en-US", user_data=None)
-    metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
+    metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
 
 
 @patch("basket.news.tasks.braze")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
-def test_send_tx_messages(mock_model, mock_braze, metrics_mock):
+def test_send_tx_messages(mock_model, mock_braze, metricsmock):
     """Test multipe message IDs, but only one is a transactional message."""
     mock_model.side_effect = [BrazeTxEmailMessage(message_id="download-foo", language="en-US"), None]
     send_tx_messages("test@example.com", "en-US", ["newsletter", "download-foo"])
     mock_braze.track_user.assert_called_once_with("test@example.com", event="send-download-foo-en-US", user_data=None)
-    metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
+    metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
 
 
 @override_settings(BRAZE_MESSAGE_ID_MAP={"download-zzz": "download-foo"})
 @patch("basket.news.tasks.braze")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
-def test_send_tx_messages_with_map(mock_model, mock_braze, metrics_mock):
+def test_send_tx_messages_with_map(mock_model, mock_braze, metricsmock):
     """Test multipe message IDs, but only one is a transactional message."""
     mock_model.side_effect = [BrazeTxEmailMessage(message_id="download-foo", language="en-US"), None]
     send_tx_messages("test@example.com", "en-US", ["newsletter", "download-foo"])
     mock_braze.track_user.assert_called_once_with("test@example.com", event="send-download-foo-en-US", user_data=None)
-    metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
+    metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
 
 
 @patch("basket.news.tasks.braze")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
-def test_send_confirm_message(mock_get_message, mock_braze, metrics_mock):
+def test_send_confirm_message(mock_get_message, mock_braze, metricsmock):
     mock_get_message.return_value = BrazeTxEmailMessage(message_id="newsletter-confirm-fx", language="en-US")
     send_confirm_message("test@example.com", "abc123", "en", "fx", "fed654")
     mock_braze.track_user.assert_called_once_with(
         "test@example.com", event="send-newsletter-confirm-fx-en-US", user_data={"basket_token": "abc123", "email_id": "fed654"}
     )
-    metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
+    metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
 
 
 @patch("basket.news.tasks.braze")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
-def test_send_recovery_message(mock_get_message, mock_braze, metrics_mock):
+def test_send_recovery_message(mock_get_message, mock_braze, metricsmock):
     mock_get_message.return_value = BrazeTxEmailMessage(message_id="newsletter-confirm-fx", language="en-US")
     send_recovery_message("test@example.com", "abc123", "en", "fed654")
     mock_braze.track_user.assert_called_once_with(
         "test@example.com", event="send-newsletter-confirm-fx-en-US", user_data={"basket_token": "abc123", "email_id": "fed654"}
     )
-    metrics_mock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
+    metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
