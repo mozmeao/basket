@@ -170,7 +170,7 @@ class TestRQUtils:
         metricsmock.assert_incr_once("base.tasks.failed", tags=["task:job.failed"])
 
         assert mock_sentry_sdk.capture_exception.call_count == 1
-        mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "failed")
+        mock_sentry_sdk.isolation_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "failed")
 
         queue.empty()
 
@@ -186,7 +186,7 @@ class TestRQUtils:
             metricsmock.assert_incr_once("base.tasks.failed", tags=["task:job.ignore_error"])
 
             assert mock_sentry_sdk.capture_exception.call_count == 1
-            mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
+            mock_sentry_sdk.isolation_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
 
             metricsmock.clear_records()
             mock_sentry_sdk.reset_mock()
@@ -197,7 +197,7 @@ class TestRQUtils:
         metricsmock.assert_incr_once("base.tasks.failed", tags=["task:job.ignore_error"])
 
         assert mock_sentry_sdk.capture_exception.call_count == 1
-        mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
+        mock_sentry_sdk.isolation_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
 
         queue.empty()
 
@@ -234,6 +234,6 @@ class TestRQUtils:
         assert FailedTask.objects.count() == 0
         metricsmock.assert_incr_once("base.tasks.retried", tags=["task:job.rescheduled"])
         assert mock_sentry_sdk.capture_exception.call_count == 1
-        mock_sentry_sdk.push_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "retried")
+        mock_sentry_sdk.isolation_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "retried")
 
         queue.empty()

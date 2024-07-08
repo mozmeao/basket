@@ -657,7 +657,7 @@ class ToVendorTests(TestCase):
         mock_sentry.capture_message.assert_called_once_with(
             "ctms.to_vendor() could not convert unknown data",
         )
-        mock_sentry.push_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
+        mock_sentry.isolation_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
             "unknown_data",
             {"foo": "bar"},
         )
@@ -789,7 +789,7 @@ class ToVendorTests(TestCase):
         mock_sentry.capture_message.assert_called_once_with(
             "ctms.to_vendor() could not convert unknown data",
         )
-        mock_sentry.push_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
+        mock_sentry.isolation_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
             "unknown_data",
             {"fpn_country": "fr", "fpn_platform": "ios,mac"},
         )
@@ -815,7 +815,7 @@ class ToVendorTests(TestCase):
         mock_sentry.capture_message.assert_called_once_with(
             "ctms.to_vendor() could not convert unknown data",
         )
-        mock_sentry.push_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
+        mock_sentry.isolation_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
             "unknown_data",
             {"vpn_bundle_currency": "eur", "vpn_bundle_pack": "gold"},
         )
@@ -842,7 +842,7 @@ class ToVendorTests(TestCase):
         mock_sentry.capture_message.assert_called_once_with(
             "ctms.to_vendor() could not convert unknown data",
         )
-        mock_sentry.push_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
+        mock_sentry.isolation_scope.return_value.__enter__.return_value.set_extra.assert_called_once_with(
             "unknown_data",
             {"fpn_country": "fr", "fpn_platform": "ios,mac"},
         )

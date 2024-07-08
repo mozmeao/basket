@@ -81,7 +81,7 @@ class Command(BaseCommand):
                     except ValueError:
                         # body was not JSON
                         metrics.incr("fxa.events.message", tags=["info:json_error"])
-                        with sentry_sdk.push_scope() as scope:
+                        with sentry_sdk.isolation_scope() as scope:
                             scope.set_extra("msg.body", msg.body)
                             sentry_sdk.capture_exception()
 
@@ -104,7 +104,7 @@ class Command(BaseCommand):
                     except Exception:
                         # something's wrong with the queue. try again.
                         metrics.incr("fxa.events.message", tags=["info:queue_error", f"event:{event_type}"])
-                        with sentry_sdk.push_scope() as scope:
+                        with sentry_sdk.isolation_scope() as scope:
                             scope.set_tag("action", "retried")
                             sentry_sdk.capture_exception()
 
