@@ -16,23 +16,23 @@ class TestHostnameMiddleware:
 
 
 class TestMetricsMiddleware:
-    def test_200(self, metrics_mock):
+    def test_200(self, metricsmock):
         resp = Client().get(reverse("watchman.ping"))
         assert resp.status_code == 200
-        metrics_mock.assert_timing_once(
+        metricsmock.assert_timing_once(
             "view.timings", tags=["view_path:watchman.views.ping.GET", "module:watchman.views.GET", "method:GET", "status_code:200"]
         )
 
-    def test_404(self, metrics_mock):
+    def test_404(self, metricsmock):
         resp = Client().get("/404/")
         assert resp.status_code == 404
         # We don't time 404 responses.
-        assert not metrics_mock.filter_records("timing")
+        assert not metricsmock.filter_records("timing")
 
-    def test_500(self, metrics_mock):
+    def test_500(self, metricsmock):
         resp = Client().get("/500/")
         assert resp.status_code == 500
-        metrics_mock.assert_timing_once(
+        metricsmock.assert_timing_once(
             "view.timings",
             tags=["view_path:django.views.defaults.server_error.GET", "module:django.views.defaults.GET", "method:GET", "status_code:500"],
         )
