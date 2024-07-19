@@ -18,9 +18,7 @@ from ratelimit.exceptions import Ratelimited
 from basket import errors, metrics
 from basket.news import tasks
 from basket.news.forms import (
-    SOURCE_URL_RE,
     CommonVoiceForm,
-    SubscribeForm,
     UpdateUserMeta,
 )
 from basket.news.models import BrazeTxEmailMessage, Newsletter
@@ -300,82 +298,6 @@ def common_voice_goals(request):
             },
             400,
         )
-
-
-@require_POST
-@csrf_exempt
-def subscribe_json(request):
-    request.META["HTTP_X_REQUESTED_WITH"] = "XMLHttpRequest"
-    return subscribe_main(request)
-
-
-@require_POST
-@csrf_exempt
-def subscribe_main(request):
-    """Subscription view for use with client side JS"""
-    form = SubscribeForm(request.POST)
-    if form.is_valid():
-        data = form.cleaned_data
-
-        if email_is_blocked(data["email"]):
-            metrics.incr("news.views.subscribe_main", tags=["info:email_blocked"])
-            # don't let on there's a problem
-            return respond_ok(request, data)
-
-        if data["lang"]:
-            if not language_code_is_valid(data["lang"]):
-                data["lang"] = "en"
-        # if lang not provided get the best one from the accept-language header
-        else:
-            lang = get_best_request_lang(request)
-            if lang:
-                data["lang"] = lang
-            else:
-                del data["lang"]
-
-        # now ensure that if we do have a lang that it's a supported one
-        if "lang" in data:
-            data["lang"] = get_best_supported_lang(data["lang"])
-
-        # if source_url not provided we should store the referrer header
-        # NOTE this is not a typo; Referrer is misspelled in the HTTP spec
-        # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
-        if not data["source_url"] and request.headers.get("Referer"):
-            referrer = request.headers["referer"]
-            if SOURCE_URL_RE.match(referrer):
-                metrics.incr("news.views.subscribe_main", tags=["info:use_referrer"])
-                data["source_url"] = referrer
-
-        if is_ratelimited(
-            request,
-            group="basket.news.views.subscribe_main",
-            key=lambda x, y: f"{':'.join(data['newsletters'])}-{data['email']}",
-            rate=EMAIL_SUBSCRIBE_RATE_LIMIT,
-            increment=True,
-        ):
-            metrics.incr("news.views.subscribe_main", tags=["info:ratelimited"])
-            return respond_error(request, form, "Rate limit reached", 429)
-
-        try:
-            tasks.upsert_user.delay(SUBSCRIBE, data)
-        except Exception:
-            return respond_error(request, form, "Unknown error", 500)
-
-        return respond_ok(request, data)
-
-    else:
-        # form is invalid
-        if request.headers.get("x-requested-with") == "XMLHttpRequest":
-            return HttpResponseJSON(
-                {
-                    "status": "error",
-                    "errors": format_form_errors(form.errors),
-                    "errors_by_field": form.errors,
-                },
-                400,
-            )
-        else:
-            return render(request, "news/formerror.html", {"form": form}, status=400)
 
 
 @require_POST

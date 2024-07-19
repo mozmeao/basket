@@ -1,4 +1,3 @@
-import re
 from time import strptime
 
 from django import forms
@@ -9,14 +8,7 @@ from basket.news.country_codes import SFDC_COUNTRIES
 from basket.news.newsletters import newsletter_field_choices
 from basket.news.utils import LANG_RE, parse_newsletters_csv, process_email
 
-SOURCE_URL_RE = re.compile(r"^https?://")
 UTC_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
-
-
-class EmailForm(forms.Form):
-    """Form to validate email addresses"""
-
-    email = forms.EmailField()
 
 
 class EmailField(forms.CharField):
@@ -105,32 +97,6 @@ class CommonVoiceForm(forms.Form):
         validators=[validate_datetime_str],
     )
     two_day_streak = forms.NullBooleanField()
-
-
-class SubscribeForm(forms.Form):
-    email = EmailField()
-    newsletters = NewslettersField()
-    privacy = forms.BooleanField()
-    source_url = forms.CharField(required=False)
-    first_name = forms.CharField(required=False)
-    last_name = forms.CharField(required=False)
-    country = forms.ChoiceField(required=False, choices=country_choices)
-    lang = forms.CharField(required=False, validators=[RegexValidator(regex=LANG_RE)])
-
-    def clean_source_url(self):
-        source_url = self.cleaned_data["source_url"]
-        if source_url:
-            if SOURCE_URL_RE.match(source_url):
-                return source_url
-
-        return ""
-
-    def clean_country(self):
-        country = self.cleaned_data["country"]
-        if country:
-            return country.lower()
-
-        return country
 
 
 class UpdateUserMeta(forms.Form):
