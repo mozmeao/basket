@@ -116,6 +116,17 @@ class SubscribeEmailValidationTest(TestCase):
         self.assertEqual(resp_data["status"], "error")
         self.assertEqual(resp_data["code"], errors.BASKET_INVALID_EMAIL)
 
+    @patch("basket.news.views.is_token")
+    def test_invalid_token(self, mock_is_token):
+        """Should return proper error for invalid token."""
+        mock_is_token.return_value = False
+        resp = self.client.post(reverse("subscribe"), {"newsletters": "os", "token": "abc123"})
+        mock_is_token.assert_called_with("abc123")
+        json_resp = resp.json()
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(json_resp["status"], "error")
+        self.assertEqual(json_resp["code"], errors.BASKET_INVALID_TOKEN)
+
     @patch("basket.news.views.update_user_task")
     def test_non_ascii_email_fxos_malformed_post(self, update_user_mock):
         """Should be able to parse data from the raw request body including
@@ -161,7 +172,7 @@ class SubscribeEmailValidationTest(TestCase):
         resp = views.subscribe(req)
         resp_data = json.loads(resp.content)
         self.assertEqual(resp_data["status"], "error")
-        self.assertEqual(resp_data["code"], errors.BASKET_INVALID_EMAIL)
+        self.assertEqual(resp_data["code"], errors.BASKET_USAGE_ERROR)
         self.assertFalse(update_user_mock.called)
 
         # no email at all
@@ -489,6 +500,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
 
         self._patch_views("update_user_task")
         self._patch_views("process_email")
+        self._patch_views("is_token")
         self._patch_views("is_authorized")
 
     def tearDown(self):
@@ -562,6 +574,20 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             self.assertEqual(response, invalid_email_response.return_value)
             self.process_email.assert_called_with(request_data["email"])
             invalid_email_response.assert_called()
+
+    def test_invalid_token_response(self):
+        """
+        If `is_token` returns `False`, return an invalid token response.
+        """
+        request_data = {"newsletters": "asdf", "token": "abc123"}
+        request = self.factory.post("/", request_data)
+        self.is_token.return_value = False
+
+        with patch("basket.news.views.invalid_token_response") as invalid_token_response:
+            response = views.subscribe(request)
+            self.assertEqual(response, invalid_token_response.return_value)
+            self.is_token.assert_called_with(request_data["token"])
+            invalid_token_response.assert_called()
 
     @patch("basket.news.utils.get_email_block_list")
     @mock_metrics
@@ -704,7 +730,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             sync=False,
         )
 
-    def test_success(self):
+    def test_success_with_email(self):
         """Test basic success case with no optin or sync."""
         request_data = {
             "newsletters": "news,lets",
@@ -724,6 +750,39 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
 
         self.assertEqual(response, self.update_user_task.return_value)
         self.process_email.assert_called_with(request_data["email"])
+        self.update_user_task.assert_called_with(
+            request,
+            SUBSCRIBE,
+            data=update_data,
+            optin=False,
+            sync=False,
+        )
+
+    @patch("basket.news.views.get_user_data")
+    def test_success_with_token(self, get_user_data_mock):
+        """Test basic success case with no optin or sync."""
+        email = "dude@example.com"
+        get_user_data_mock.return_value = {"email": email}
+        self.process_email.return_value = email
+        request_data = {
+            "newsletters": "news,lets",
+            "optin": "N",
+            "sync": "N",
+            "token": str(uuid.uuid4()),
+            "first_name": "The",
+            "last_name": "Dude",
+        }
+        update_data = request_data.copy()
+        for k in ("optin", "sync", "token"):
+            del update_data[k]
+        update_data["email"] = email
+
+        request = self.factory.post("/", request_data)
+        response = views.subscribe(request)
+
+        self.assertEqual(response, self.update_user_task.return_value)
+        self.is_token.assert_called_with(request_data["token"])
+        self.process_email.assert_called_with(email)
         self.update_user_task.assert_called_with(
             request,
             SUBSCRIBE,

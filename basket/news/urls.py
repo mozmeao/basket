@@ -16,8 +16,8 @@ from .views import (
 
 urlpatterns = (
     path("common-voice-goals/", common_voice_goals),
-    path("subscribe/", subscribe),
-    path("unsubscribe/<uuid:token>/", unsubscribe),
+    path("subscribe/", subscribe, name="subscribe"),
+    path("unsubscribe/<uuid:token>/", unsubscribe, name="unsubscribe"),
     path("user/<uuid:token>/", user, name="user"),
     path("user-meta/<uuid:token>/", user_meta),
     path("confirm/<uuid:token>/", confirm),

@@ -404,23 +404,33 @@ def subscribe(request):
                 400,
             )
 
-    if "email" not in data:
+    email = data.pop("email", None)
+    token = data.pop("token", None)
+
+    if not (email or token):
         return HttpResponseJSON(
             {
                 "status": "error",
-                "desc": "email is required",
+                "desc": "email or token is required",
                 "code": errors.BASKET_USAGE_ERROR,
             },
             401,
         )
 
-    email = process_email(data["email"])
+    # If we don't have an email, we must have a token after the above check.
+    if not email:
+        # Validate we have a UUID token.
+        if not is_token(token):
+            return invalid_token_response()
+        # Get the user's email from the token.
+        email = get_user_data(token=token).get("email")
+
+    email = process_email(email)
     if not email:
         return invalid_email_response()
-
     data["email"] = email
 
-    if email_is_blocked(data["email"]):
+    if email_is_blocked(email):
         metrics.incr("news.views.subscribe", tags=["info:email_blocked"])
         # don't let on there's a problem
         return HttpResponseJSON({"status": "ok"})
@@ -466,6 +476,16 @@ def invalid_email_response():
         "desc": "Invalid email address",
     }
     metrics.incr("news.views.invalid_email_response")
+    return HttpResponseJSON(resp_data, 400)
+
+
+def invalid_token_response():
+    resp_data = {
+        "status": "error",
+        "code": errors.BASKET_INVALID_TOKEN,
+        "desc": "Invalid basket token",
+    }
+    metrics.incr("news.views.invalid_token_response")
     return HttpResponseJSON(resp_data, 400)
 
 
