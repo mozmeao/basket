@@ -306,25 +306,14 @@ def subscribe(request):
     data = request.POST.dict()
     newsletters = data.get("newsletters", None)
     if not newsletters:
-        # request.body causes tests to raise exceptions
-        # while request.read() works.
-        raw_request = request.read().decode()
-        if "newsletters=" in raw_request:
-            # malformed request from FxOS
-            # Can't use QueryDict since the string is not url-encoded.
-            # It will convert '+' to ' ' for example.
-            # TODO: Ensure this is still needed, if not remove it.
-            data = dict(pair.split("=") for pair in raw_request.split("&") if "=" in pair)
-            metrics.incr("news.views.subscribe", tags=["info:fxos_workaround"])
-        else:
-            return HttpResponseJSON(
-                {
-                    "status": "error",
-                    "desc": "newsletters is missing",
-                    "code": errors.BASKET_USAGE_ERROR,
-                },
-                400,
-            )
+        return HttpResponseJSON(
+            {
+                "status": "error",
+                "desc": "newsletters is missing",
+                "code": errors.BASKET_USAGE_ERROR,
+            },
+            400,
+        )
 
     email = data.pop("email", None)
     token = data.pop("token", None)
