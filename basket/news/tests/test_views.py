@@ -62,37 +62,6 @@ class TestIsToken(TestCase):
         self.assertTrue(views.is_token(utils.generate_token()))
 
 
-@patch("basket.news.views.update_user_task")
-class FxOSMalformedPOSTTest(TestCase):
-    """Bug 962225"""
-
-    def setUp(self):
-        self.rf = RequestFactory()
-
-    def test_deals_with_broken_post_data(self, update_user_mock):
-        """Should be able to parse data from the raw request body.
-
-        FxOS sends POST requests with the wrong mime-type, so request.POST is never
-        filled out. We should parse the raw request body to get the data until this
-        is fixed in FxOS in bug 949170.
-        """
-        req = self.rf.generic(
-            "POST",
-            "/news/subscribe/",
-            data="email=dude+abides@example.com&newsletters=firefox-os",
-            content_type="text/plain; charset=UTF-8",
-        )
-        self.assertFalse(bool(req.POST))
-        views.subscribe(req)
-        update_user_mock.assert_called_with(
-            req,
-            views.SUBSCRIBE,
-            data={"email": "dude+abides@example.com", "newsletters": "firefox-os"},
-            optin=False,
-            sync=False,
-        )
-
-
 class SubscribeEmailValidationTest(TestCase):
     email = "dude@example.com"
     data = {
@@ -126,25 +95,6 @@ class SubscribeEmailValidationTest(TestCase):
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(json_resp["status"], "error")
         self.assertEqual(json_resp["code"], errors.BASKET_INVALID_TOKEN)
-
-    @patch("basket.news.views.update_user_task")
-    def test_non_ascii_email_fxos_malformed_post(self, update_user_mock):
-        """Should be able to parse data from the raw request body including
-        non-ascii chars."""
-        req = self.rf.generic(
-            "POST",
-            "/news/subscribe/",
-            data="email=dude@黒川.日本&newsletters=firefox-os",
-            content_type="text/plain; charset=UTF-8",
-        )
-        views.subscribe(req)
-        update_user_mock.assert_called_with(
-            req,
-            views.SUBSCRIBE,
-            data={"email": "dude@xn--5rtw95l.xn--wgv71a", "newsletters": "firefox-os"},
-            optin=False,
-            sync=False,
-        )
 
     @patch("basket.news.views.update_user_task")
     def test_non_ascii_email(self, update_user_mock):
@@ -300,61 +250,6 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(self.update_user_task.called)
         metricsmock.assert_incr_once("news.views.subscribe", tags=["info:email_blocked"])
-
-    @patch("basket.news.views.update_user_task")
-    @mock_metrics
-    def test_email_fxos_malformed_post_bad_data(self, metricsmock, update_user_mock):
-        """Should be able to parse data from the raw request body even with bad data."""
-        # example from real error with PII details changed
-        self.process_email.return_value = "dude@example.com"
-        req = self.factory.generic(
-            "POST",
-            "/news/subscribe/",
-            data=(
-                "newsletters=mozilla-foundation&"
-                "source_url=https%3A%2F%2Fadvocacy.mozilla.org%2Fencrypt"
-                "&lang=en&email=dude@example.com"
-                "&country=DE&first_name=Dude&Walter"
-            ),
-            content_type="text/plain; charset=UTF-8",
-        )
-        views.subscribe(req)
-        update_user_mock.assert_called_with(
-            req,
-            views.SUBSCRIBE,
-            data={
-                "email": "dude@example.com",
-                "newsletters": "mozilla-foundation",
-                "source_url": "https%3A%2F%2Fadvocacy.mozilla.org%2Fencrypt",
-                "lang": "en",
-                "country": "DE",
-                "first_name": "Dude",
-            },
-            optin=False,
-            sync=False,
-        )
-        metricsmock.assert_incr_once("news.views.subscribe", tags=["info:fxos_workaround"])
-
-    @patch("basket.news.views.update_user_task")
-    @mock_metrics
-    def test_email_fxos_malformed_post(self, metricsmock, update_user_mock):
-        """Should be able to parse data from the raw request body."""
-        self.process_email.return_value = "dude@example.com"
-        req = self.factory.generic(
-            "POST",
-            "/news/subscribe/",
-            data="email=dude@example.com&newsletters=firefox-os",
-            content_type="text/plain; charset=UTF-8",
-        )
-        views.subscribe(req)
-        update_user_mock.assert_called_with(
-            req,
-            views.SUBSCRIBE,
-            data={"email": "dude@example.com", "newsletters": "firefox-os"},
-            optin=False,
-            sync=False,
-        )
-        metricsmock.assert_incr_once("news.views.subscribe", tags=["info:fxos_workaround"])
 
     @mock_metrics
     def test_no_source_url_referrer(self, metricsmock):
