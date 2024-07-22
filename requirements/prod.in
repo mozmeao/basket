@@ -29,7 +29,7 @@ redis==5.0.7
 rq==1.16.2
 rq-scheduler==0.13.1
 sentry-processor==0.0.1
-sentry-sdk==2.8.0
+sentry-sdk==2.10.0
 user-agents==2.2.0
 uwsgi==2.0.26
 whitenoise==6.7.0
