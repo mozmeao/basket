@@ -8,4 +8,4 @@ pytest==8.2.2
 requests-mock==1.12.1
 ruff==0.5.1
 urlwait==1.0
-uv==0.2.23
+uv==0.2.27
