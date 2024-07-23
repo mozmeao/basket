@@ -334,11 +334,16 @@ def subscribe(request):
         if not is_token(token):
             return invalid_token_response()
         # Get the user's email from the token.
-        email = get_user_data(token=token).get("email")
+        try:
+            user_data = get_user_data(token=token)
+            if user_data:
+                email = user_data.get("email")
+        except NewsletterException as e:
+            return newsletter_exception_response(e)
 
     email = process_email(email)
     if not email:
-        return invalid_email_response()
+        return invalid_token_response() if token else invalid_email_response()
     data["email"] = email
 
     if email_is_blocked(email):

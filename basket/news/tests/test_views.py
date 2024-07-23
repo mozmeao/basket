@@ -233,6 +233,28 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             self.is_token.assert_called_with(request_data["token"])
             invalid_token_response.assert_called()
 
+    @patch("basket.news.views.get_user_data")
+    def test_token_finds_no_user(self, get_user_data_mock):
+        """Test no user found for token."""
+        get_user_data_mock.return_value = None  # No user found.
+        self.process_email.return_value = None
+        request_data = {
+            "newsletters": "news,lets",
+            "optin": "N",
+            "sync": "N",
+            "token": str(uuid.uuid4()),
+            "first_name": "The",
+            "last_name": "Dude",
+        }
+
+        request = self.factory.post("/", request_data)
+        response = views.subscribe(request)
+
+        self.assert_response_error(response, 400, errors.BASKET_INVALID_TOKEN)
+        self.is_token.assert_called_with(request_data["token"])
+        self.process_email.assert_called_with(None)
+        self.update_user_task.assert_not_called()
+
     @patch("basket.news.utils.get_email_block_list")
     @mock_metrics
     def test_blocked_email(self, metricsmock, get_block_list_mock):
