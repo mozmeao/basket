@@ -140,7 +140,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "default_steward_emails",
-                    basket.news.fields.CommaSeparatedEmailField(
+                    models.TextField(
                         help_text="Comma-separated list of the default / en-US stewards' email addresses.",
                         verbose_name="Default / en-US Steward Emails",
                         blank=True,
@@ -311,7 +311,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "emails",
-                    basket.news.fields.CommaSeparatedEmailField(
+                    models.TextField(
                         help_text="Comma-separated list of the stewards' email addresses.",
                     ),
                 ),

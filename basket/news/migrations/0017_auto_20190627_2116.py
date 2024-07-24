@@ -37,7 +37,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="interest",
             name="default_steward_emails",
-            field=basket.news.fields.CommaSeparatedEmailField(
+            field=models.TextField(
                 blank=True,
                 help_text="Comma-separated list of the default / en-US stewards' email addresses.",
                 verbose_name="Default / en-US Steward Emails",
@@ -62,7 +62,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="localestewards",
             name="emails",
-            field=basket.news.fields.CommaSeparatedEmailField(
+            field=models.TextField(
                 help_text="Comma-separated list of the stewards' email addresses.",
             ),
         ),
