@@ -238,7 +238,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="localizedsmsmessage",
             name="country",
-            field=basket.news.fields.CountryField(
+            field=models.CharField(
                 choices=[
                     ("ad", "ad (Andorra)"),
                     ("ae", "ae (United Arab Emirates)"),

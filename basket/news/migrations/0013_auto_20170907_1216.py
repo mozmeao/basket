@@ -207,7 +207,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "country",
-                    basket.news.fields.CountryField(
+                    models.CharField(
                         default="us",
                         max_length=3,
                         choices=[
