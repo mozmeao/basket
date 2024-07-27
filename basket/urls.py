@@ -5,6 +5,7 @@ from django.views.generic import TemplateView
 
 from watchman import views as watchman_views
 
+from basket.api.api import api
 from basket.news.views import fxa_callback, fxa_start
 
 # NOTE: When adding any new URLs be sure to update `settings.OIDC_EXEMPT_URLS` if needed.
@@ -14,6 +15,7 @@ urlpatterns = [
     path("watchman/", watchman_views.dashboard, name="watchman.dashboard"),
     path("healthz/", watchman_views.ping, name="watchman.ping"),
     path("readiness/", watchman_views.status, name="watchman.status"),
+    path("api/", api.urls),
     path("news/", include("basket.news.urls")),
     path("fxa/", fxa_start),
     path("fxa/callback/", fxa_callback),

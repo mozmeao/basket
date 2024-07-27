@@ -33,3 +33,4 @@ sentry-sdk==2.8.0
 user-agents==2.2.0
 uwsgi==2.0.26
 whitenoise==6.7.0
+django-ninja==1.2.2
