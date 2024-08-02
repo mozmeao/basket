@@ -5,7 +5,7 @@ BIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source $BIN_DIR/set_git_env_vars.sh
 
 # Push to docker hub
-docker-compose push web
+docker compose push web
 
 if [[ "$GIT_BRANCH" == "prod" ]]; then
     # git tag

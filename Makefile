@@ -1,5 +1,5 @@
 DC_CI = bin/dc.sh
-DC = docker-compose
+DC = docker compose
 
 all: help
 
@@ -89,7 +89,7 @@ install-local-python-deps:
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
-	@echo "  run                  - docker-compose up the entire system for dev"
+	@echo "  run                  - 'docker compose' up the entire system for dev"
 	@echo "  build                - build docker images for dev"
 	@echo "  pull                 - pull the latest production images from Docker Hub"
 	@echo "  run-shell            - open a bash shell in a fresh container"
