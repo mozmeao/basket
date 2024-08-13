@@ -888,7 +888,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TasksPatcherMixin, Test
         """Should return a redirect to email pref center"""
         fxa_oauth_mock, fxa_profile_mock = Mock(), Mock()
         fxa_oauth_mock.trade_code.return_value = {"access_token": "access-token"}
-        fxa_profile_mock.get_profile.return_value = {"email": "dude@example.com"}
+        fxa_profile_mock.get_profile.return_value = {"email": "dude@example.com", "uid": "abc123"}
         self.get_fxa_clients.return_value = fxa_oauth_mock, fxa_profile_mock
         self.get_user_data.return_value = {"token": "the-token"}
         session = self.client.session
@@ -907,7 +907,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TasksPatcherMixin, Test
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         metricsmock.assert_incr_once("news.views.fxa_callback", tags=["status:success"])
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-token/?fxa=1"
-        self.get_user_data.assert_called_with(email="dude@example.com")
+        self.get_user_data.assert_called_with(email="dude@example.com", fxa_id="abc123")
 
     @mock_metrics
     def test_new_user_with_locale(self, metricsmock):
@@ -937,7 +937,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TasksPatcherMixin, Test
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         metricsmock.assert_incr_once("news.views.fxa_callback", tags=["status:success"])
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
-        self.get_user_data.assert_called_with(email="dude@example.com")
+        self.get_user_data.assert_called_with(email="dude@example.com", fxa_id=None)
         self.upsert_contact.assert_called_with(
             SUBSCRIBE,
             {
@@ -978,7 +978,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TasksPatcherMixin, Test
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         metricsmock.assert_incr_once("news.views.fxa_callback", tags=["status:success"])
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
-        self.get_user_data.assert_called_with(email="dude@example.com")
+        self.get_user_data.assert_called_with(email="dude@example.com", fxa_id=None)
         self.upsert_contact.assert_called_with(
             SUBSCRIBE,
             {

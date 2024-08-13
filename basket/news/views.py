@@ -164,9 +164,10 @@ def fxa_callback(request):
         sentry_sdk.capture_exception()
         return HttpResponseRedirect(error_url)
 
-    email = user_profile["email"]
+    email = user_profile.get("email")
+    uid = user_profile.get("uid")
     try:
-        user_data = get_user_data(email=email)
+        user_data = get_user_data(email=email, fxa_id=uid)
     except Exception:
         metrics.incr("news.views.fxa_callback", tags=["status:error", "error:user_data"])
         sentry_sdk.capture_exception()
