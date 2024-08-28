@@ -17,8 +17,6 @@ urlpatterns = [
     path("news/", include("basket.news.urls")),
     path("fxa/", fxa_start),
     path("fxa/callback/", fxa_callback),
-    # Petition URLS
-    path("petition/", include("basket.petition.urls")),
 ]
 
 if settings.OIDC_ENABLE:
