@@ -170,7 +170,6 @@ ROOT_URLCONF = "basket.urls"
 INSTALLED_APPS = (
     "basket.base",
     "basket.news",
-    "basket.petition",
     "corsheaders",
     "product_details",
     "django_extensions",
