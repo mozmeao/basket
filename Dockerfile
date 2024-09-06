@@ -1,58 +1,62 @@
 # BUILDER IMAGE
 FROM python:3.12-slim-bookworm AS builder
 
-# Extra python env
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
-ENV PATH="/venv/bin:$PATH"
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PATH="/venv/bin:$PATH" \
+    DJANGO_SETTINGS_MODULE=basket.settings
 
 COPY docker/bin/apt-install /usr/local/bin/
-RUN apt-install build-essential default-libmysqlclient-dev libxslt1.1 libxml2 libxml2-dev libxslt1-dev
-
-RUN python -m venv /venv
+RUN <<EOT
+apt-install build-essential ca-certificates default-libmysqlclient-dev libxslt1.1 libxml2 libxml2-dev libxslt1-dev
+python -m venv /venv
+EOT
 
 WORKDIR /app
-ENV DJANGO_SETTINGS_MODULE=basket.settings
 
-# Install app
+# Install Python dependencies
 COPY requirements/* /app/requirements/
-
 # The setuptools install is needed for pyfxa (currently v0.7.7) which calls `pkg_resources`,
 # and Python 3.12 no longer adds setuptools by default to the venv.
-RUN pip install -U setuptools && \
-    pip install --require-hashes --no-cache-dir -r requirements/dev.txt
+RUN <<EOT
+pip install -U setuptools
+pip install --require-hashes --no-cache-dir -r requirements/dev.txt
+EOT
 
 COPY . /app
-RUN DEBUG=False SECRET_KEY=foo ALLOWED_HOSTS=localhost, DATABASE_URL=sqlite:// \
-    ./manage.py collectstatic --noinput
+RUN DEBUG=False SECRET_KEY=foo ALLOWED_HOSTS=localhost, DATABASE_URL=sqlite:// ./manage.py collectstatic --noinput
+
 # END BUILDER IMAGE
 
 # FINAL IMAGE
 FROM python:3.12-slim-bookworm
 
-# Extra python env
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
-ENV PATH="/venv/bin:$PATH"
+# Set environment variables
+ARG GIT_SHA=latest
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PATH="/venv/bin:$PATH" \
+    DJANGO_SETTINGS_MODULE=basket.settings \
+    GIT_SHA=${GIT_SHA}
+
 EXPOSE 8000
 CMD ["bin/run-prod.sh"]
+
 WORKDIR /app
-ENV DJANGO_SETTINGS_MODULE=basket.settings
 
+# Install runtime dependencies and create non-root user
 COPY docker/bin/apt-install /usr/local/bin/
-RUN apt-install default-libmysqlclient-dev libxslt1.1 libxml2
+RUN <<EOT
+apt-install default-libmysqlclient-dev libxslt1.1 libxml2
+adduser --uid 1000 --disabled-password --gecos '' --no-create-home webdev
+chown webdev:webdev /app
+EOT
 
-ARG GIT_SHA=latest
-ENV GIT_SHA=${GIT_SHA}
-
-# add non-priviledged user
-RUN adduser --uid 1000 --disabled-password --gecos '' --no-create-home webdev
+# Switch to non-root user before copying files
+USER webdev
 
 COPY --from=builder /venv /venv
 COPY --from=builder /app /app
-
-# Change User
-RUN chown webdev.webdev -R .
-USER webdev
