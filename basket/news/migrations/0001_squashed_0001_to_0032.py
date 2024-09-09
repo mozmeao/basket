@@ -7,53 +7,8 @@ from django.db import migrations, models
 import basket.news.fields
 import basket.news.models
 
-# Notes:
-# basket.news.migrations.0005_convert_newsletter_vendor_id
-# - `convert_vendor_id` has already run on all data. Removing.
-# basket.news.migrations.0010_auto_20160607_0815
-# - `convert_transactionals` has already run on all data. Removing.
-# basket.news.migrations.0014_move_sms_messages
-# - `move_sms_messages` no longer needed. Removing.
-# basket.news.migrations.0026_newsletter_is_waitlist
-# - `set_waitlist_field` has already run on all data. Removing.
-
 
 class Migration(migrations.Migration):
-    replaces = [
-        ("news", "0001_initial"),
-        ("news", "0002_delete_subscriber"),
-        ("news", "0003_auto_20151202_0808"),
-        ("news", "0005_convert_newsletter_vendor_id"),
-        ("news", "0004_queuedtask"),
-        ("news", "0006_merge"),
-        ("news", "0007_auto_20160531_1454"),
-        ("news", "0008_auto_20160605_1345"),
-        ("news", "0009_transactionalemailmessage"),
-        ("news", "0010_auto_20160607_0815"),
-        ("news", "0011_auto_20160607_1203"),
-        ("news", "0012_auto_20170713_1021"),
-        ("news", "0013_auto_20170907_1216"),
-        ("news", "0014_move_sms_messages"),
-        ("news", "0015_delete_smsmessage"),
-        ("news", "0016_auto_20190515_1951"),
-        ("news", "0017_auto_20190627_2116"),
-        ("news", "0018_commonvoiceupdate"),
-        ("news", "0019_acoustictxemailmessage"),
-        ("news", "0020_auto_20210225_1544"),
-        ("news", "0021_delete_localizedsmsmessage"),
-        ("news", "0022_delete_transactionalemailmessage"),
-        ("news", "0023_newsletter_firefox_confirm"),
-        ("news", "0024_newsletter_is_mofo"),
-        ("news", "0025_auto_20220308_1803"),
-        ("news", "0026_newsletter_is_waitlist"),
-        ("news", "0027_alter_newsletter_requires_double_optin"),
-        ("news", "0028_django_jsonfield"),
-        ("news", "0029_delete_commonvoiceupdate"),
-        ("news", "0030_alter_localestewards_unique_together_and_more"),
-        ("news", "0031_brazetxemailmessage"),
-        ("news", "0032_delete_acoustictxemailmessage"),
-    ]
-
     initial = True
 
     dependencies = []
