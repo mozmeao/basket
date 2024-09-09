@@ -1,7 +1,7 @@
 APScheduler==3.10.4
 boto3==1.35.10
 contextlib2==21.6.0
-cryptography==43.0.0
+cryptography==43.0.1
 dj-database-url==2.2.0
 django-allow-cidr==0.7.1
 django-cache-url==3.4.5
