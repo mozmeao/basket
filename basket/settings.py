@@ -172,7 +172,6 @@ INSTALLED_APPS = (
     "basket.news",
     "corsheaders",
     "product_details",
-    "django_extensions",
     "mozilla_django_oidc",
     "watchman",
     "django.contrib.auth",
