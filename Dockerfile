@@ -58,5 +58,6 @@ EOT
 # Switch to non-root user before copying files
 USER webdev
 
-COPY --from=builder /venv /venv
-COPY --from=builder /app /app
+# On Linux, the COPY command still executes as root by default, ∴ `chown`.
+COPY --from=builder --chown=webdev:webdev /venv /venv
+COPY --from=builder --chown=webdev:webdev /app /app
