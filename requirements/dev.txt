@@ -728,9 +728,9 @@ pycparser==2.22 \
     # via
     #   -r requirements/prod.txt
     #   cffi
-pyfxa==0.7.8 \
-    --hash=sha256:0cc15997585b60d69270e4d69006cada72ad8bac03e524b9037d2aed35b9bcee \
-    --hash=sha256:dd762831892ac102ac99e7bc1b186d0dacdccd719a391b36512195867c96b7ff
+pyfxa==0.7.9 \
+    --hash=sha256:67af665149ab87318bc8d4bf2216bb7945fb2dcdc5442106cbcd3c7d70559630 \
+    --hash=sha256:753b161566aa5fa632a4d273f564a573126560eb2d993bb6660386dd13d2562c
     # via -r requirements/prod.txt
 pyjwt==2.9.0 \
     --hash=sha256:3b02fb0f44517787776cf48f2ae25d8e14f300e6d7545a4315cee571a415e850 \
@@ -923,7 +923,6 @@ six==1.16.0 \
     # via
     #   -r requirements/prod.txt
     #   apscheduler
-    #   pyfxa
     #   pysilverpop
     #   python-dateutil
 sqlparse==0.5.1 \
