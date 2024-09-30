@@ -986,8 +986,8 @@ uv==0.4.7 \
     --hash=sha256:e8bc35e30f2bb03f0e1812f1c0dce0e73d8ab01e90392d39f334da9d75e522b0 \
     --hash=sha256:ec49a00317799226d33135bf40e8da44262f44e3980a5bb9e6dae7250523c963
     # via -r requirements/dev.in
-uwsgi==2.0.26 \
-    --hash=sha256:86e6bfcd4dc20529665f5b7777193cdc48622fb2c59f0a7f1e3dc32b3882e7f9
+uwsgi==2.0.27 \
+    --hash=sha256:3ee5bfb7e6e9c93478c22aa8183eef35b95a2d5b14cca16172e67f135565c458
     # via -r requirements/prod.txt
 webob==1.8.8 \
     --hash=sha256:2abc1555e118fc251e705fc6dc66c7f5353bb9fbfab6d20e22f1c02b4b71bcee \
