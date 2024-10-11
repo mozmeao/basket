@@ -428,9 +428,9 @@ FXA_EVENTS_QUEUE_URL = config("FXA_EVENTS_QUEUE_URL", default="")
 FXA_EVENTS_QUEUE_WAIT_TIME = config("FXA_EVENTS_QUEUE_WAIT_TIME", cast=int, default=10)
 FXA_EVENTS_SNITCH_ID = config("FXA_EVENTS_SNITCH_ID", default="")
 
-# stable, stage, or production
-# https://github.com/mozilla/PyFxA/blob/master/fxa/constants.py
-FXA_OAUTH_SERVER_ENV = config("FXA_OAUTH_SERVER_ENV", default="stable")
+# stage or production
+# https://github.com/mozilla/PyFxA/blob/main/fxa/constants.py
+FXA_OAUTH_SERVER_ENV = config("FXA_OAUTH_SERVER_ENV", default="production")
 FXA_CLIENT_ID = config("FXA_CLIENT_ID", default="")
 FXA_CLIENT_SECRET = config("FXA_CLIENT_SECRET", default="")
 FXA_OAUTH_TOKEN_TTL = config("FXA_OAUTH_TOKEN_TTL", default=300, cast=int)  # 5 minutes
