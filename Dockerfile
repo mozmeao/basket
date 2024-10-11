@@ -1,29 +1,34 @@
 # BUILDER IMAGE
 FROM python:3.12-slim-bookworm AS builder
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+ENV DJANGO_SETTINGS_MODULE=basket.settings \
     PATH="/venv/bin:$PATH" \
-    DJANGO_SETTINGS_MODULE=basket.settings
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_CACHE_DIR=/root/.cache/uv \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/venv \
+    UV_PYTHON=python3.12 \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_REQUIRE_HASHES=1 \
+    UV_VERIFY_HASHES=1 \
+    VIRTUAL_ENV=/venv
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 COPY docker/bin/apt-install /usr/local/bin/
 RUN <<EOT
 apt-install build-essential ca-certificates default-libmysqlclient-dev libxslt1.1 libxml2 libxml2-dev libxslt1-dev
-python -m venv /venv
+uv venv $VIRTUAL_ENV
 EOT
 
 WORKDIR /app
 
 # Install Python dependencies
 COPY requirements/* /app/requirements/
-# The setuptools install is needed for pyfxa (currently v0.7.7) which calls `pkg_resources`,
-# and Python 3.12 no longer adds setuptools by default to the venv.
-RUN <<EOT
-pip install -U setuptools
-pip install --require-hashes --no-cache-dir -r requirements/dev.txt
-EOT
+RUN --mount=type=cache,target=/root/.cache \
+    uv pip install --no-deps -r requirements/dev.txt
 
 COPY . /app
 RUN DEBUG=False SECRET_KEY=foo ALLOWED_HOSTS=localhost, DATABASE_URL=sqlite:// ./manage.py collectstatic --noinput
@@ -35,12 +40,12 @@ FROM python:3.12-slim-bookworm
 
 # Set environment variables
 ARG GIT_SHA=latest
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+ENV DJANGO_SETTINGS_MODULE=basket.settings \
+    GIT_SHA=${GIT_SHA} \
     PATH="/venv/bin:$PATH" \
-    DJANGO_SETTINGS_MODULE=basket.settings \
-    GIT_SHA=${GIT_SHA}
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    VIRTUAL_ENV=/venv
 
 EXPOSE 8000
 CMD ["bin/run-prod.sh"]
