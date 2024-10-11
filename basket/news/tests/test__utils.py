@@ -25,7 +25,7 @@ from basket.news.utils import (
 
 
 @override_settings(
-    FXA_OAUTH_SERVER_ENV="stable",
+    FXA_OAUTH_SERVER_ENV="production",
     FXA_CLIENT_ID="dude",
     FXA_CLIENT_SECRET="abides",
 )
@@ -35,12 +35,12 @@ class GetFxAClientsTests(TestCase):
     def test_get_fxa_clients(self, profile_mock, oauth_mock):
         oauth, profile = get_fxa_clients()
         oauth_mock.Client.assert_called_with(
-            server_url=fxa.constants.STABLE_URLS["oauth"],
+            server_url=fxa.constants.PRODUCTION_URLS["oauth"],
             client_id="dude",
             client_secret="abides",
         )
         profile_mock.Client.assert_called_with(
-            server_url=fxa.constants.STABLE_URLS["profile"],
+            server_url=fxa.constants.PRODUCTION_URLS["profile"],
         )
         assert oauth == oauth_mock.Client.return_value
         assert profile == profile_mock.Client.return_value
