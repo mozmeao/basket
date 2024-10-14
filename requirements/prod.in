@@ -1,5 +1,5 @@
 APScheduler==3.10.4
-boto3==1.35.38
+boto3==1.35.39
 contextlib2==21.6.0
 cryptography==43.0.1
 dj-database-url==2.2.0
