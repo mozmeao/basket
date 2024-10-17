@@ -1,3 +1,4 @@
+import uuid
 from unittest.mock import Mock, patch
 
 from django.test import RequestFactory, TestCase, override_settings
@@ -396,23 +397,70 @@ class TestMaskEmail(TestCase):
 
 @patch("basket.news.utils.ctms", spec_set=["get"])
 class TestGetUserData(TestCase):
-    # TODO: Add more testing for `get_user_data` here.
-
     def setUp(self):
         self.email = "hisdudeness@example.com"
+
+    def test_ignore_fields(self, ctms_mock):
+        rv = {"email": self.email}
+        # Just a random set of keys that aren't in the ALLOWED_USER_FIELDS list.
+        not_allowed = ("id", "fxa_id", "amo_id", "fxa_other")
+        for fn in not_allowed:
+            rv[fn] = "ignore"
+        ctms_mock.get.return_value = rv
+
+        data = get_user_data(token="foo")
+        for fn in not_allowed:
+            self.assertNotIn(fn, data)
+
+    def test_extra_fields(self, ctms_mock):
+        email_id = uuid.uuid4()
+        rv = {
+            "email": self.email,
+            "fxa_primary_email": self.email,
+            "fxa_id": "fxa123",
+            "email_id": email_id,
+        }
+        extra = ["fxa_id", "email_id"]
+        ctms_mock.get.return_value = rv
+
+        data = get_user_data(token="foo", extra_fields=extra)
+        self.assertEqual(data["fxa_id"], "fxa123")
+        self.assertEqual(data["email_id"], email_id)
 
     def test_no_kwarg_get_user_data(self, ctms_mock):
         """
         Test that the default kwarg for `masked` is `False.
         """
-        ctms_mock.get.return_value = {"email": self.email}
-        data = get_user_data(email=self.email)
+        ctms_mock.get.return_value = {"email": self.email, "fxa_primary_email": self.email}
+        data = get_user_data(token="foo")
         self.assertEqual(data["email"], self.email)
+        self.assertEqual(data["fxa_primary_email"], self.email)
 
-        data = get_user_data(email=self.email, masked=False)
+        ctms_mock.get.return_value = {"email": self.email, "fxa_primary_email": self.email}
+        data = get_user_data(token="foo", masked=False)
         self.assertEqual(data["email"], self.email)
+        self.assertEqual(data["fxa_primary_email"], self.email)
 
     def test_get_user_data_masked(self, ctms_mock):
-        ctms_mock.get.return_value = {"email": self.email}
-        data = get_user_data(email=self.email, masked=True)
+        ctms_mock.get.return_value = {"email": self.email, "fxa_primary_email": self.email}
+        data = get_user_data(token="foo", masked=True)
         self.assertEqual(data["email"], "h*********s@e*****e.com")
+        self.assertEqual(data["fxa_primary_email"], "h*********s@e*****e.com")
+
+    def test_has_fxa_no_fxa_id(self, ctms_mock):
+        ctms_mock.get.return_value = {"email": self.email}
+        data = get_user_data(token="foo", get_fxa=False)  # default
+        self.assertNotIn("has_fxa", data)
+
+        ctms_mock.get.return_value = {"email": self.email}
+        data = get_user_data(token="foo", get_fxa=True)
+        self.assertEqual(data["has_fxa"], False)
+
+    def test_has_fxa_with_fxa_id(self, ctms_mock):
+        ctms_mock.get.return_value = {"email": self.email, "fxa_primary_email": self.email, "fxa_id": "123"}
+        data = get_user_data(token="foo", get_fxa=False)  # default
+        self.assertNotIn("has_fxa", data)
+
+        ctms_mock.get.return_value = {"email": self.email, "fxa_primary_email": self.email, "fxa_id": "123"}
+        data = get_user_data(token="foo", get_fxa=True)
+        self.assertEqual(data["has_fxa"], True)
