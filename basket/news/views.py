@@ -483,7 +483,7 @@ def send_recovery_message(request):
         return HttpResponseJSON({"status": "ok"})
 
     try:
-        user_data = get_user_data(email=email)
+        user_data = get_user_data(email=email, extra_fields=["email_id"])
     except NewsletterException as e:
         return newsletter_exception_response(e)
 
