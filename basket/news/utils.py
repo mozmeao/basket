@@ -211,29 +211,22 @@ def language_code_is_valid(code):
         return bool(LANG_RE.match(code))
 
 
-IGNORE_USER_FIELDS = [
-    "id",
-    "reason",
-    "fsa_school",
-    "fsa_grad_year",
-    "fsa_major",
-    "fsa_city",
-    "fsa_current_status",
-    "fsa_allow_share",
-    "cv_days_interval",
-    "cv_created_at",
-    "cv_goal_reached_at",
-    "cv_first_contribution_date",
-    "cv_two_day_streak",
-    "cv_last_active_date",
-    "amo_id",
-    "amo_user",
-    "amo_display_name",
-    "amo_last_login",
-    "amo_location",
-    "amo_homepage",
-    "payee_id",
-    "fxa_id",
+ALLOWED_USER_FIELDS = [
+    "country",
+    "created_date",
+    "email",
+    "email_id",
+    "first_name",
+    "format",
+    "fxa_primary_email",
+    "lang",
+    "last_modified_date",
+    "last_name",
+    "mofo_relevant",
+    "newsletters",
+    "optin",
+    "optout",
+    "token",
 ]
 
 
@@ -254,12 +247,12 @@ def get_user_data(
 
     If the user was not found, return None instead of a dictionary.
 
-    Some data fields are not returned by default. Those fields are listed
-    in the IGNORE_USER_FIELDS list. If you need one of those fields then
-    call this function with said field name in a list passed in
-    the `extra_fields` argument.
+    By default, only certain data fields are returned. These fields are defined
+    in the ALLOWED_USER_FIELDS list. If you need additional fields, pass their
+    names in a list using the `extra_fields` argument, and they will be included
+    in the returned data.
 
-    If `get_fxa` is True then a boolean field will be including indicating
+    If `get_fxa` is True then a boolean field `has_fxa` will be including indicating
     whether they are an account holder or not.
 
     When `masked` is True, we return masked emails. We should only set
@@ -273,22 +266,26 @@ def get_user_data(
 
     {
         'status':  'ok',      # no errors talking to ET
-        'status':  'error',   # errors talking to ET, see next field
-        'desc':  'error message'   # details if status is error
         'email': 'email@address',
         'email_id': CTMS UUID,
-        'format': 'T'|'H',
+        'fxa_primary_email': primary email from fxa,
+        "first_name": name,
+        "last_name": name,
         'country': country code,
         'lang': language code,
-        'token': UUID,
-        'created-date': date created,
+        'token': basket token, a UUID,
+        'format': 'T' | 'H',
+        'mofo_relevant': subscribed to a mofo newsletter,
+        'optin': double opted in,
+        'optout': unsubscribed from newsletters,
+        'created_date': date created,
+        "last_modified_date": date last modified,
         'newsletters': list of slugs of newsletters subscribed to,
-        'confirmed': True if user has confirmed subscription (or was excepted),
-        'pending': True if we're waiting for user to confirm subscription
-        'master': True if we found them in the master subscribers table
     }
     """
     user = {}
+    if extra_fields is None:
+        extra_fields = []
 
     ctms_user = None
     try:
@@ -324,21 +321,22 @@ def get_user_data(
             error_code=errors.BASKET_NETWORK_FAILURE,
             status_code=400,
         ) from exc
-    if ctms_user:
-        user = ctms_user
-    else:
+
+    if not ctms_user:
         return None
 
-    # don't send some of the returned data
-    for fn in IGNORE_USER_FIELDS:
-        if extra_fields and fn not in extra_fields:
-            user.pop(fn, None)
+    # Only return fields in `ALLOWED_USER_FIELDS` or in the `extra_fields` arg.
+    allowed = set(ALLOWED_USER_FIELDS + extra_fields)
+    user = {fn: ctms_user[fn] for fn in allowed if fn in ctms_user}
 
     if get_fxa:
-        user["has_fxa"] = bool(user.get("fxa_id"))
+        user["has_fxa"] = bool(ctms_user.get("fxa_id"))
 
-    if masked and user.get("email"):
-        user["email"] = mask_email(user["email"])
+    if masked:
+        # mask all emails
+        for fn in ("email", "fxa_primary_email"):
+            if value := user.get(fn):
+                user[fn] = mask_email(value)
 
     user["status"] = "ok"
     return user

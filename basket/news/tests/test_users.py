@@ -66,7 +66,6 @@ class UserTest(TestCase):
         assert resp.status_code == 200
         assert resp.json() == {
             "email": "h*********s@e*****e.com",
-            "fxa_id": "the-dude-abides",
             "has_fxa": True,
             "status": "ok",
         }
@@ -164,7 +163,6 @@ class TestLookupUser(TestCase):
         assert rsp.status_code == 200
         assert rsp.json() == {
             "email": "h*********s@e*****e.com",
-            "fxa_id": "the-dude-abides",
             "has_fxa": True,
             "status": "ok",
         }
@@ -199,7 +197,6 @@ class TestLookupUser(TestCase):
             rsp.json(),
             {
                 "email": "hisdudeness@example.com",
-                "fxa_id": "the-dude-abides",
                 "has_fxa": True,
                 "status": "ok",
             },
