@@ -15,7 +15,9 @@ jobs:
           python-version: "3.12"  # matches current Python in production
       - name: "Run Python tests (on Docker)"
         run: |
-            make clean test-ci
+            bin/dc.sh build --pull web
+            bin/dc.sh build builder
+            bin/dc.sh run test-image
             CONTAINER_ID=$(docker ps -alq)
             docker cp $CONTAINER_ID:/app/python_coverage .
       - name: "Upload coverage to Codecov"
