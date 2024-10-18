@@ -44,38 +44,40 @@ Use Docker
 
 Basket requires a database (either MySQL or SQLite locally, depending on the ``DATABASE_URL`` setting) and Redis. We use Docker to run these services.
 
+This project uses `just <https://just.systems/>`_ to run utility commands. See the just `installation docs <https://just.systems/man/en/installation.html>`_.
+
 The steps to get up and running are these:
 
 .. code-block:: bash
 
-    $ make build
-    $ make run  # runs both the web app and the worker.
+    $ just build
+    $ just run  # runs both the web app and the worker.
 
 If you've made changes to the `Dockerfile` or `requirements/*.txt` you'll need to rebuild the image to run the app and tests:
 
 .. code-block:: bash
 
-    $ make build
+    $ just build
 
-Then to run the app you run the `make run` command again, or for running tests against your local changes you run:
+Then to run the app you run the `just run` command again, or for running tests against your local changes you run:
 
 .. code-block:: bash
 
-    $ make test
+    $ just test
 
 We use pytest for running tests. So if you'd like to craft your own pytest command to run individual test files or something
 you can do so by passing in a command to the above:
 
 .. code-block:: bash
 
-    $ make run-shell
+    $ just run-shell
     $ pytest basket/news/tests/test_views.py
 
 And if you need to debug a running container, you can open another terminal to your basket code and run the following:
 
 .. code-block:: bash
 
-    $ make shell
+    $ just shell
     $ python manage.py shell
 
 
@@ -85,10 +87,10 @@ Maintaining Python requirements
 .. code-block:: bash
 
     $ # If you've added a new dependency or changed the hard pinning of one
-    $ make compile-requirements
+    $ just compile-requirements
     $ # or to just check if there are stale deps so you can
     $ # update the hard pinning in the *.in files
-    $ make check-requirements
+    $ just check-requirements
 
 
 Install Python requirements locally
@@ -98,5 +100,5 @@ Ideally, do this in a virtual environment (eg a `venv` or `virtualenv`)
 
 .. code-block:: bash
 
-    $ make install-local-python-deps
+    $ just install-local-python-deps
 
