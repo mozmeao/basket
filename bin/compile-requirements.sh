@@ -6,7 +6,7 @@
 
 set -exo pipefail
 
-export UV_CUSTOM_COMPILE_COMMAND="make compile-requirements"
+export UV_CUSTOM_COMPILE_COMMAND="just compile-requirements"
 
 # We need this installed, but we don't want it to live in the main requirements
 # We will need to periodically review this pinning

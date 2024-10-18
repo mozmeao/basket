@@ -9,6 +9,7 @@
 .DS_Store
 .coverage
 .env
+.just-*
 .make.*
 .noseids
 .vscode/
