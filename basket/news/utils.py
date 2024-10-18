@@ -215,7 +215,6 @@ ALLOWED_USER_FIELDS = [
     "country",
     "created_date",
     "email",
-    "email_id",
     "first_name",
     "format",
     "fxa_primary_email",
@@ -267,7 +266,6 @@ def get_user_data(
     {
         'status':  'ok',      # no errors talking to ET
         'email': 'email@address',
-        'email_id': CTMS UUID,
         'fxa_primary_email': primary email from fxa,
         "first_name": name,
         "last_name": name,
