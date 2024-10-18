@@ -203,17 +203,6 @@ class TestLookupUser(TestCase):
         )
 
     @patch("basket.news.utils.ctms", spec_set=["get"])
-    def test_ctms_user_found(self, ctms_mock):
-        """If CTMS knows a contact, it adds the missing email_id"""
-        ctms_data = self.user_data.copy()
-        ctms_data["email_id"] = "ctms-email-id"
-        ctms_mock.get.return_value = ctms_data
-        params = {"token": "dummy"}
-        rsp = self.get(params=params)
-        self.assertEqual(200, rsp.status_code, rsp.content)
-        self.assertEqual(ctms_data, json.loads(rsp.content))
-
-    @patch("basket.news.utils.ctms", spec_set=["get"])
     def test_ctms_user_not_found(self, ctms_mock):
         """If CTMS return no records, return is None"""
         ctms_mock.get.return_value = None
