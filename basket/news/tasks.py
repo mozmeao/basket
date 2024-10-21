@@ -55,12 +55,12 @@ def fxa_email_changed(data):
         return
 
     # Update CTMS
-    user_data = get_user_data(fxa_id=fxa_id, extra_fields=["id"])
+    user_data = get_user_data(fxa_id=fxa_id, extra_fields=["id", "email_id"])
     if user_data:
         ctms.update(user_data, {"fxa_primary_email": email})
     else:
         # FxA record not found, try email
-        user_data = get_user_data(email=email, extra_fields=["id"])
+        user_data = get_user_data(email=email, extra_fields=["id", "email_id"])
         if user_data:
             ctms.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
         else:
@@ -199,7 +199,7 @@ def upsert_user(api_call_type, data):
         get_user_data(
             token=data.get("token"),
             email=data.get("email"),
-            extra_fields=["id"],
+            extra_fields=["id", "email_id"],
         ),
     )
 
@@ -348,7 +348,7 @@ def ctms_add_or_update(update_data, user_data=None):
         ctms.add(update_data)
     except CTMSUniqueIDConflictError:
         # Try as an update
-        user_data = get_user_data(email=update_data["email"])
+        user_data = get_user_data(email=update_data["email"], extra_fields=["email_id"])
         if not user_data:
             raise
         update_data.pop("token", None)
@@ -400,7 +400,7 @@ def confirm_user(token):
     :raises: BasketError for fatal errors, NewsletterException for retryable
         errors.
     """
-    user_data = get_user_data(token=token)
+    user_data = get_user_data(token=token, extra_fields=["email_id"])
 
     if user_data is None:
         metrics.incr("news.tasks.confirm_user.confirm_user_not_found")
@@ -440,7 +440,7 @@ def record_common_voice_update(data):
     # do not change the sent data in place. A retry will use the changed data.
     dcopy = data.copy()
     email = dcopy.pop("email")
-    user_data = get_user_data(email=email, extra_fields=["id"])
+    user_data = get_user_data(email=email, extra_fields=["id", "email_id"])
     new_data = {
         "source_url": "https://voice.mozilla.org",
         "newsletters": [settings.COMMON_VOICE_NEWSLETTER],
@@ -468,7 +468,7 @@ def get_fxa_user_data(fxa_id, email):
     """
     user_data = None
     # try getting user data with the fxa_id first
-    user_data_fxa = get_user_data(fxa_id=fxa_id, extra_fields=["id"])
+    user_data_fxa = get_user_data(fxa_id=fxa_id, extra_fields=["id", "email_id"])
     if user_data_fxa:
         user_data = user_data_fxa
         # If email doesn't match, update FxA primary email field with the new email.
@@ -477,6 +477,6 @@ def get_fxa_user_data(fxa_id, email):
 
     # if we still don't have user data try again with email this time
     if not user_data:
-        user_data = get_user_data(email=email, extra_fields=["id"])
+        user_data = get_user_data(email=email, extra_fields=["id", "email_id"])
 
     return user_data

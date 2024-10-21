@@ -294,8 +294,8 @@ class FxAEmailChangedTests(TestCase):
         fxa_email_changed(data)
         gud_mock.assert_has_calls(
             [
-                call(fxa_id=data["uid"], extra_fields=["id"]),
-                call(email=data["email"], extra_fields=["id"]),
+                call(fxa_id=data["uid"], extra_fields=["id", "email_id"]),
+                call(email=data["email"], extra_fields=["id", "email_id"]),
             ],
         )
         ctms_mock.update.assert_called_with(
@@ -316,8 +316,8 @@ class FxAEmailChangedTests(TestCase):
         fxa_email_changed(data)
         gud_mock.assert_has_calls(
             [
-                call(fxa_id=data["uid"], extra_fields=["id"]),
-                call(email=data["email"], extra_fields=["id"]),
+                call(fxa_id=data["uid"], extra_fields=["id", "email_id"]),
+                call(email=data["email"], extra_fields=["id", "email_id"]),
             ],
         )
         ctms_mock.update.assert_not_called()
@@ -347,8 +347,8 @@ class FxAEmailChangedTests(TestCase):
         fxa_email_changed(data)
         gud_mock.assert_has_calls(
             [
-                call(fxa_id=data["uid"], extra_fields=["id"]),
-                call(email=data["email"], extra_fields=["id"]),
+                call(fxa_id=data["uid"], extra_fields=["id", "email_id"]),
+                call(email=data["email"], extra_fields=["id", "email_id"]),
             ],
         )
         ctms_mock.update.assert_not_called()
@@ -496,7 +496,7 @@ class TestGetFxaUserData(TestCase):
         fxa_user_data = get_fxa_user_data("123", "test@example.com")
         assert user_data == fxa_user_data
 
-        mock_gud.assert_called_once_with(fxa_id="123", extra_fields=["id"])
+        mock_gud.assert_called_once_with(fxa_id="123", extra_fields=["id", "email_id"])
         mock_ctms.update.assert_not_called()
 
     def test_found_by_fxa_id_email_mismatch(self, mock_gud, mock_ctms):
@@ -512,7 +512,7 @@ class TestGetFxaUserData(TestCase):
         fxa_user_data = get_fxa_user_data("123", "fxa@example.com")
         assert user_data == fxa_user_data
 
-        mock_gud.assert_called_once_with(fxa_id="123", extra_fields=["id"])
+        mock_gud.assert_called_once_with(fxa_id="123", extra_fields=["id", "email_id"])
         mock_ctms.update.assert_called_once_with(
             user_data,
             {"fxa_primary_email": "fxa@example.com"},
@@ -531,8 +531,8 @@ class TestGetFxaUserData(TestCase):
         assert user_data == fxa_user_data
 
         assert mock_gud.call_count == 2
-        mock_gud.assert_any_call(fxa_id="123", extra_fields=["id"])
-        mock_gud.assert_called_with(email="test@example.com", extra_fields=["id"])
+        mock_gud.assert_any_call(fxa_id="123", extra_fields=["id", "email_id"])
+        mock_gud.assert_called_with(email="test@example.com", extra_fields=["id", "email_id"])
         mock_ctms.update.assert_not_called()
 
 

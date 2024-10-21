@@ -902,7 +902,7 @@ class CTMS:
         if not email_id:
             # TODO: When CTMS is primary, this should be an error
             metrics.incr("news.backends.ctms.update_no_email_id")
-            return None
+            raise CTMSNotFoundByEmailIDError(email_id)
         ctms_data = to_vendor(update_data, existing_data)
         return self.interface.patch_by_email_id(email_id, ctms_data)
 

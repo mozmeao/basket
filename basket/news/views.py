@@ -759,7 +759,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
             )
 
         try:
-            user_data = get_user_data(email=email, token=token)
+            user_data = get_user_data(email=email, token=token, extra_fields=["email_id"])
         except NewsletterException as e:
             return newsletter_exception_response(e)
 
