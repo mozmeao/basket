@@ -990,8 +990,8 @@ uv==0.4.29 \
     --hash=sha256:df35d9cbe4cfbb7bce287f56e3bb7a7cef0b7b5173ed889d936d4c470f2b1b83 \
     --hash=sha256:f6224a322267570e0470c61008fd1c8e2f50bf073b339f4c3010da86aef3c44c
     # via -r requirements/dev.in
-uwsgi==2.0.26 \
-    --hash=sha256:86e6bfcd4dc20529665f5b7777193cdc48622fb2c59f0a7f1e3dc32b3882e7f9
+uwsgi==2.0.28 \
+    --hash=sha256:79ca1891ef2df14508ab0471ee8c0eb94bd2d51d03f32f90c4bbe557ab1e99d0
     # via -r requirements/prod.txt
 webob==1.8.9 \
     --hash=sha256:45e34c58ed0c7e2ecd238ffd34432487ff13d9ad459ddfd77895e67abba7c1f9 \
