@@ -12,8 +12,8 @@ from django.views.decorators.http import require_POST, require_safe
 
 import fxa.constants
 import sentry_sdk
-from ratelimit.core import is_ratelimited
-from ratelimit.exceptions import Ratelimited
+from django_ratelimit.core import is_ratelimited
+from django_ratelimit.exceptions import Ratelimited
 
 from basket import errors, metrics
 from basket.news import tasks
@@ -53,42 +53,12 @@ from basket.news.utils import (
 )
 
 TOKEN_RE = re.compile(r"^[0-9a-f-]{36}$", flags=re.IGNORECASE)
-IP_RATE_LIMIT_EXTERNAL = getattr(settings, "IP_RATE_LIMIT_EXTERNAL", "40/m")
-IP_RATE_LIMIT_INTERNAL = getattr(settings, "IP_RATE_LIMIT_INTERNAL", "400/m")
-# four submissions for a specific message per phone number per 5 minutes
-PHONE_NUMBER_RATE_LIMIT = getattr(settings, "PHONE_NUMBER_RATE_LIMIT", "4/5m")
 # four submissions for a set of newsletters per email address per 5 minutes
 EMAIL_SUBSCRIBE_RATE_LIMIT = getattr(settings, "EMAIL_SUBSCRIBE_RATE_LIMIT", "4/5m")
 
 
 def is_token(word):
     return bool(TOKEN_RE.match(word))
-
-
-def ip_rate_limit_key(group, request):
-    return request.headers.get("X-Cluster-Client-Ip", request.META.get("REMOTE_ADDR"))
-
-
-def ip_rate_limit_rate(group, request):
-    client_ip = ip_rate_limit_key(group, request)
-    if client_ip and client_ip.startswith("10."):
-        # internal request, high limit.
-        return IP_RATE_LIMIT_INTERNAL
-
-    return IP_RATE_LIMIT_EXTERNAL
-
-
-def source_ip_rate_limit_key(group, request):
-    return request.headers.get("X-Source-Ip", None)
-
-
-def source_ip_rate_limit_rate(group, request):
-    source_ip = source_ip_rate_limit_key(group, request)
-    if source_ip is None:
-        # header not provided, no limit.
-        return None
-
-    return IP_RATE_LIMIT_EXTERNAL
 
 
 def ratelimited(request, e):

@@ -8,8 +8,8 @@ from django.test import TestCase, override_settings
 from django.test.client import Client, RequestFactory
 from django.urls import reverse
 
+from django_ratelimit.exceptions import Ratelimited
 from email_validator import EmailSyntaxError
-from ratelimit.exceptions import Ratelimited
 
 from basket import errors
 from basket.news import models, tasks, utils, views
@@ -456,47 +456,6 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             optin=True,
             sync=True,
         )
-
-
-class TestRateLimitingFunctions(ViewsPatcherMixin, TestCase):
-    def setUp(self):
-        self.rf = RequestFactory()
-
-    def test_ip_rate_limit_key(self):
-        req = self.rf.get(
-            "/",
-            HTTP_X_CLUSTER_CLIENT_IP="1.1.1.1",
-            REMOTE_ADDR="2.2.2.2",
-        )
-        self.assertEqual(views.ip_rate_limit_key(None, req), "1.1.1.1")
-
-    def test_ip_rate_limit_key_fallback(self):
-        req = self.rf.get("/", REMOTE_ADDR="2.2.2.2")
-        self.assertEqual(views.ip_rate_limit_key(None, req), "2.2.2.2")
-
-    def test_source_ip_rate_limit_key_no_header(self):
-        req = self.rf.get("/")
-        self.assertIsNone(views.source_ip_rate_limit_key(None, req))
-
-    def test_source_ip_rate_limit_key(self):
-        req = self.rf.get("/", HTTP_X_SOURCE_IP="2.2.2.2")
-        self.assertEqual(views.source_ip_rate_limit_key(None, req), "2.2.2.2")
-
-    def test_ip_rate_limit_rate(self):
-        req = self.rf.get("/", HTTP_X_CLUSTER_CLIENT_IP="1.1.1.1")
-        self.assertEqual(views.ip_rate_limit_rate(None, req), "40/m")
-
-    def test_ip_rate_limit_rate_internal(self):
-        req = self.rf.get("/", HTTP_X_CLUSTER_CLIENT_IP="10.1.1.1")
-        self.assertEqual(views.ip_rate_limit_rate(None, req), "400/m")
-
-    def test_source_ip_rate_limit_rate_no_header(self):
-        req = self.rf.get("/")
-        self.assertIsNone(views.source_ip_rate_limit_rate(None, req))
-
-    def test_source_ip_rate_limit_rate(self):
-        req = self.rf.get("/", HTTP_X_SOURCE_IP="2.2.2.2")
-        self.assertEqual(views.source_ip_rate_limit_rate(None, req), "40/m")
 
 
 class TestRatelimit(TestCase):
