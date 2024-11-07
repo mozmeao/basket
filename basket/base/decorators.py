@@ -10,7 +10,7 @@ def rq_task(func):
     """
     Decorator to standardize RQ tasks.
 
-    Uses RQ's job decorator, but:
+    Similar to RQ's job decorator, but:
     - uses our default queue and connection
     - adds retry logic with exponential backoff
     - adds success/failure/retry callbacks
