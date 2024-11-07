@@ -25,8 +25,8 @@ pysilverpop==0.2.6
 python-decouple==3.8
 PyYAML==6.0.2
 redis==5.2.0
-rq==1.16.2
-rq-scheduler==0.13.1
+rq==2.0.0
+rq-scheduler==0.14.0
 sentry-processor==0.0.1
 sentry-sdk==2.17.0
 user-agents==2.2.0
