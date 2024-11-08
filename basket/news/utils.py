@@ -235,7 +235,6 @@ def get_user_data(
     payee_id=None,
     fxa_id=None,
     extra_fields=None,
-    get_fxa=False,
     masked=False,
 ):
     """
@@ -250,9 +249,6 @@ def get_user_data(
     in the ALLOWED_USER_FIELDS list. If you need additional fields, pass their
     names in a list using the `extra_fields` argument, and they will be included
     in the returned data.
-
-    If `get_fxa` is True then a boolean field `has_fxa` will be including indicating
-    whether they are an account holder or not.
 
     When `masked` is True, we return masked emails. We should only set
     `masked=False` when a valid API key is being used. This defaults to False.
@@ -274,6 +270,7 @@ def get_user_data(
         'token': basket token, a UUID,
         'format': 'T' | 'H',
         'mofo_relevant': subscribed to a mofo newsletter,
+        'has_fxa': has an fxa account,
         'optin': double opted in,
         'optout': unsubscribed from newsletters,
         'created_date': date created,
@@ -327,8 +324,7 @@ def get_user_data(
     allowed = set(ALLOWED_USER_FIELDS + extra_fields)
     user = {fn: ctms_user[fn] for fn in allowed if fn in ctms_user}
 
-    if get_fxa:
-        user["has_fxa"] = bool(ctms_user.get("fxa_id"))
+    user["has_fxa"] = bool(ctms_user.get("fxa_id"))
 
     if masked:
         # mask all emails
@@ -340,7 +336,7 @@ def get_user_data(
     return user
 
 
-def get_user(token=None, email=None, get_fxa=False, masked=True):
+def get_user(token=None, email=None, masked=True):
     if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
         # can't return user data during maintenance
         return HttpResponseJSON(
@@ -353,7 +349,7 @@ def get_user(token=None, email=None, get_fxa=False, masked=True):
         )
 
     try:
-        user_data = get_user_data(token, email, get_fxa=get_fxa, masked=masked)
+        user_data = get_user_data(token, email, masked=masked)
         status_code = 200
     except NewsletterException as e:
         return newsletter_exception_response(e)

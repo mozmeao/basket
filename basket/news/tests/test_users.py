@@ -42,6 +42,7 @@ class UserTest(TestCase):
         assert resp.json() == {
             "email": "h*********s@e*****e.com",
             "status": "ok",
+            "has_fxa": False,
         }
 
     @patch("basket.news.utils.ctms", spec_set=["get"])
@@ -54,6 +55,7 @@ class UserTest(TestCase):
         assert resp.json() == {
             "email": "hisdudeness@example.com",
             "status": "ok",
+            "has_fxa": False,
         }
 
     @patch("basket.news.utils.ctms", spec_set=["get"])
@@ -62,7 +64,7 @@ class UserTest(TestCase):
             "email": "hisdudeness@example.com",
             "fxa_id": "the-dude-abides",
         }
-        resp = self.client.get(self.url, data={"fxa": "1"})
+        resp = self.client.get(self.url)
         assert resp.status_code == 200
         assert resp.json() == {
             "email": "h*********s@e*****e.com",
@@ -125,6 +127,7 @@ class TestLookupUser(TestCase):
             "email": "h*********s@e*****e.com",
             "status": "ok",
             "token": "dummy",
+            "has_fxa": False,
         }
         ctms_mock.get.assert_called_once_with(
             email=None,
@@ -145,6 +148,7 @@ class TestLookupUser(TestCase):
             "email": "hisdudeness@example.com",
             "status": "ok",
             "token": "dummy",
+            "has_fxa": False,
         }
         ctms_mock.get.assert_called_once_with(
             email=None,
@@ -159,7 +163,7 @@ class TestLookupUser(TestCase):
             "email": "hisdudeness@example.com",
             "fxa_id": "the-dude-abides",
         }
-        rsp = self.get(params={"token": "dummy", "fxa": "1"})
+        rsp = self.get(params={"token": "dummy"})
         assert rsp.status_code == 200
         assert rsp.json() == {
             "email": "h*********s@e*****e.com",
@@ -171,7 +175,7 @@ class TestLookupUser(TestCase):
     def test_get_fxa_status_false(self, ctms_mock):
         """Should return FxA status"""
         ctms_mock.get.return_value = {"email": "hisdudeness@example.com"}
-        rsp = self.get(params={"token": "dummy", "fxa": "1"})
+        rsp = self.get(params={"token": "dummy"})
         assert rsp.status_code == 200
         assert rsp.json() == {
             "email": "h*********s@e*****e.com",
@@ -189,7 +193,6 @@ class TestLookupUser(TestCase):
         params = {
             "email": "hisdudeness@example.com",
             "api-key": self.auth.api_key,
-            "fxa": "1",
         }
         rsp = self.get(params)
         self.assertEqual(200, rsp.status_code, rsp.content)

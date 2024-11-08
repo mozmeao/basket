@@ -449,18 +449,10 @@ class TestGetUserData(TestCase):
 
     def test_has_fxa_no_fxa_id(self, ctms_mock):
         ctms_mock.get.return_value = {"email": self.email}
-        data = get_user_data(token="foo", get_fxa=False)  # default
-        self.assertNotIn("has_fxa", data)
-
-        ctms_mock.get.return_value = {"email": self.email}
-        data = get_user_data(token="foo", get_fxa=True)
+        data = get_user_data(token="foo")
         self.assertEqual(data["has_fxa"], False)
 
     def test_has_fxa_with_fxa_id(self, ctms_mock):
         ctms_mock.get.return_value = {"email": self.email, "fxa_primary_email": self.email, "fxa_id": "123"}
-        data = get_user_data(token="foo", get_fxa=False)  # default
-        self.assertNotIn("has_fxa", data)
-
-        ctms_mock.get.return_value = {"email": self.email, "fxa_primary_email": self.email, "fxa_id": "123"}
-        data = get_user_data(token="foo", get_fxa=True)
+        data = get_user_data(token="foo")
         self.assertEqual(data["has_fxa"], True)
