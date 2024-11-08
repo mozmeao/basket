@@ -16,7 +16,6 @@ class TestConfirmTask(TestCase):
             "status": "ok",
             "optin": False,
             "newsletters": Mock(),
-            "format": "ZZ",
             "email": "dude@example.com",
             "token": token,
             "email_id": "some-email-id",
@@ -31,7 +30,6 @@ class TestConfirmTask(TestCase):
             "status": "ok",
             "optin": True,
             "newsletters": Mock(),
-            "format": "ZZ",
         }
         get_user_data.return_value = user_data
         token = "TOKEN"

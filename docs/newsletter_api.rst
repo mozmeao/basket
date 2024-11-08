@@ -118,7 +118,6 @@ The following URLs are available (assuming "/news" is app url):
         returns: {
             status: ok,
             email: <email>,
-            format: <format>,
             country: <country>,
             lang: <lang>,
             newsletters: [<newsletter>, ...]
@@ -214,7 +213,6 @@ The following URLs are available (assuming "/news" is app url):
             'status':  'error',   # errors talking to CTMS, see next field
             'desc':  'error message'   # details if status is error
             'email': 'email@address',
-            'format': 'T'|'H',
             'country': country code,
             'lang': language code,
             'token': UUID,

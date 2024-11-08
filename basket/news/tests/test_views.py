@@ -347,6 +347,8 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             "newsletters": "news,lets",
             "optin": "N",
             "sync": "N",
+            # Throwing `format` in here to ensure backwards compatibility.
+            "format": "H",
             "email": "dude@example.com",
             "first_name": "The",
             "last_name": "Dude",
