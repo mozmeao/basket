@@ -127,7 +127,6 @@ SAMPLE_BASKET_FORMAT = {
     "email": "contact@example.com",
     "email_id": "332de237-cab7-4461-bcc3-48e68f42bd5c",
     "first_name": "Jane",
-    "format": "H",
     "fpn_country": "fr",
     "fpn_platform": "ios,mac",
     "relay_country": "fr",
@@ -224,7 +223,6 @@ class ToVendorTests(TestCase):
                 "basket_token": "c4a7d759-bb52-457b-896b-90f1d3ef8433",
                 "create_timestamp": "2020-03-28T15:41:00.000Z",
                 "double_opt_in": True,
-                "email_format": "H",
                 "email_id": "332de237-cab7-4461-bcc3-48e68f42bd5c",
                 "email_lang": "en",
                 "first_name": "Jane",
@@ -249,7 +247,6 @@ class ToVendorTests(TestCase):
                 {
                     "name": "mozilla-welcome",
                     "subscribed": True,
-                    "format": "H",
                     "lang": "en",
                 },
             ],
@@ -415,30 +412,26 @@ class ToVendorTests(TestCase):
             "newsletters": ["slug1", "slug2", "slug3", "other"],
             "source_url": "  https://example.com",
             "lang": "es",
-            "format": "T",
         }
         prepared = to_vendor(data)
         assert prepared == {
-            "email": {"email_format": "T", "email_lang": "es"},
+            "email": {"email_lang": "es"},
             "newsletters": [
                 {
                     "name": "slug1",
                     "subscribed": True,
-                    "format": "T",
                     "lang": "es",
                     "source": "https://example.com",
                 },
                 {
                     "name": "slug2",
                     "subscribed": True,
-                    "format": "T",
                     "lang": "es",
                     "source": "https://example.com",
                 },
                 {
                     "name": "slug3",
                     "subscribed": True,
-                    "format": "T",
                     "lang": "es",
                     "source": "https://example.com",
                 },
@@ -448,13 +441,13 @@ class ToVendorTests(TestCase):
     @patch("basket.news.newsletters.newsletter_languages", return_value=["en", "fr"])
     @patch("basket.news.backends.ctms.newsletter_slugs", return_value=["slug1"])
     def test_newsletter_list_with_defaults(self, mock_nl_slugs, mock_langs):
-        """A newsletter list uses the default language and format"""
+        """A newsletter list uses the default language"""
         data = {"newsletters": ["slug1"]}
-        existing_data = {"lang": "fr", "format": "H"}
+        existing_data = {"lang": "fr"}
         prepared = to_vendor(data, existing_data)
         assert prepared == {
             "newsletters": [
-                {"name": "slug1", "subscribed": True, "format": "H", "lang": "fr"},
+                {"name": "slug1", "subscribed": True, "lang": "fr"},
             ],
         }
 
@@ -462,13 +455,13 @@ class ToVendorTests(TestCase):
     @patch("basket.news.backends.ctms.newsletter_slugs", return_value=["slug1"])
     def test_newsletter_list_with_defaults_override(self, mock_nl_slugs, mock_langs):
         """A newsletter list uses the updated data rather than the defaults"""
-        data = {"lang": "en", "format": "T", "newsletters": ["slug1"]}
-        existing_data = {"lang": "fr", "format": "H"}
+        data = {"lang": "en", "newsletters": ["slug1"]}
+        existing_data = {"lang": "fr"}
         prepared = to_vendor(data, existing_data)
         assert prepared == {
-            "email": {"email_format": "T", "email_lang": "en"},
+            "email": {"email_lang": "en"},
             "newsletters": [
-                {"name": "slug1", "subscribed": True, "format": "T", "lang": "en"},
+                {"name": "slug1", "subscribed": True, "lang": "en"},
             ],
         }
 
@@ -527,16 +520,14 @@ class ToVendorTests(TestCase):
             },
             "source_url": "  https://example.com",
             "lang": "es",
-            "format": "T",
         }
         prepared = to_vendor(data)
         assert prepared == {
-            "email": {"email_format": "T", "email_lang": "es"},
+            "email": {"email_lang": "es"},
             "newsletters": [
                 {
                     "name": "slug1",
                     "subscribed": True,
-                    "format": "T",
                     "lang": "es",
                     "source": "https://example.com",
                 },
@@ -544,7 +535,6 @@ class ToVendorTests(TestCase):
                 {
                     "name": "slug3",
                     "subscribed": True,
-                    "format": "T",
                     "lang": "es",
                     "source": "https://example.com",
                 },
@@ -1514,8 +1504,8 @@ class CTMSTests(TestCase):
 
     @patch("basket.news.newsletters.newsletter_languages", return_value=["en", "fr"])
     @patch("basket.news.backends.ctms.newsletter_slugs", return_value=["slug1"])
-    def test_update_use_existing_lang_and_format(self, mock_slugs, mock_langs):
-        """CTMS.update uses the existing language and format"""
+    def test_update_use_existing_lang(self, mock_slugs, mock_langs):
+        """CTMS.update uses the existing language"""
         updated = {"updated": "fake_response"}
         interface = mock_interface("PATCH", 200, updated)
         ctms = CTMS(interface)
@@ -1524,7 +1514,6 @@ class CTMSTests(TestCase):
             "token": "an-existing-user",
             "email_id": "an-existing-id",
             "lang": "fr",
-            "format": "T",
         }
         update_data = {"newsletters": ["slug1"]}
         assert ctms.update(user_data, update_data) == updated
@@ -1532,7 +1521,7 @@ class CTMSTests(TestCase):
             "/ctms/an-existing-id",
             json={
                 "newsletters": [
-                    {"name": "slug1", "subscribed": True, "lang": "fr", "format": "T"},
+                    {"name": "slug1", "subscribed": True, "lang": "fr"},
                 ],
             },
         )

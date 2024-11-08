@@ -67,7 +67,7 @@ CTMS_TO_BASKET_NAMES = {
         "first_name": "first_name",
         "last_name": "last_name",
         "mailing_country": "country",
-        "email_format": "format",
+        "email_format": None,
         "email_lang": "lang",
         "has_opted_out_of_email": "optout",
         "unsubscribe_reason": "reason",
@@ -111,7 +111,7 @@ def from_vendor(contact):
                     data[basket_name] = group[ctms_name]
         elif group_name == "newsletters":
             # Import newsletter names
-            # Unimported per-newsletter data: format, language, source, unsub_reason
+            # Unimported per-newsletter data: language, source, unsub_reason
             for newsletter in group:
                 if newsletter["subscribed"]:
                     data.setdefault("newsletters", []).append(newsletter["name"])
@@ -287,8 +287,6 @@ def to_vendor(data, existing_data=None):
     if "lang" in existing_data:
         default_lang = process_lang(existing_data["lang"])
         newsletter_subscription_default["lang"] = default_lang
-    if "format" in existing_data:
-        newsletter_subscription_default["format"] = existing_data["format"]
 
     cleaned_data = {}
     for name, raw_value in data.items():
@@ -319,7 +317,7 @@ def to_vendor(data, existing_data=None):
         if name in BASKET_TO_CTMS_NAMES:
             group_name, key = BASKET_TO_CTMS_NAMES[name]
             ctms_data.setdefault(group_name, {})[key] = value
-            if name in {"lang", "format"}:
+            if name in {"lang"}:
                 newsletter_subscription_default[name] = value
         elif name == "source_url":
             newsletter_subscription_default["source"] = value
@@ -381,7 +379,7 @@ def to_vendor(data, existing_data=None):
                     output_waitlists.append(wl_sub)
                 else:
                     # Regular newsletter, which may include extra data from the
-                    # email group like `format`, `source`, and `lang`, e.g.
+                    # email group like `source` and `lang`.
                     if subscribed:
                         nl_sub = newsletter_subscription_default.copy()
                         nl_sub.update({"name": slug, "subscribed": True})
