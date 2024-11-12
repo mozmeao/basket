@@ -6,6 +6,6 @@ pytest-django==4.9.0
 pytest-mock==3.14.0
 pytest==8.3.3
 requests-mock==1.12.1
-ruff==0.7.1
+ruff==0.7.3
 urlwait==1.0
-uv==0.4.29
+uv==0.5.1
