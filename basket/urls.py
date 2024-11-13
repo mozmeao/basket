@@ -3,17 +3,28 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import TemplateView
 
+from ninja import NinjaAPI
 from watchman import views as watchman_views
 
 from basket.news.views import fxa_callback, fxa_start
 
 # NOTE: When adding any new URLs be sure to update `settings.OIDC_EXEMPT_URLS` if needed.
 
+api = NinjaAPI(
+    docs_url="/api/docs",
+    title="Basket API",
+    urls_namespace="api.v1",
+    version="v1",
+)
+api.add_router("api/v1/news/", "basket.news.api.news_router")
+api.add_router("api/v1/users/", "basket.news.api.user_router")
+
 urlpatterns = [
     path("", TemplateView.as_view(template_name="home.html")),
     path("watchman/", watchman_views.dashboard, name="watchman.dashboard"),
     path("healthz/", watchman_views.ping, name="watchman.ping"),
     path("readiness/", watchman_views.status, name="watchman.status"),
+    path("", api.urls),
     path("news/", include("basket.news.urls")),
     path("fxa/", fxa_start),
     path("fxa/callback/", fxa_callback),

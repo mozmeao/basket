@@ -20,14 +20,25 @@ class MetricsViewTimingMiddleware(MiddlewareMixin):
     """Send request timing to statsd"""
 
     def process_view(self, request, view_func, view_args, view_kwargs):
+        api_name = None
+
         if inspect.isfunction(view_func):
             view = view_func
         else:
-            view = view_func.__class__
+            try:
+                # Get the API `url_name` since the API views are class based and they would all come
+                # back as `builtins.method` otherwise.
+                api_name = view_func.__self__.url_name
+            except AttributeError:
+                view = view_func.__class__
 
         request._start_time = time.time()
-        request._view_module = getattr(view, "__module__", "none")
-        request._view_name = getattr(view, "__name__", "none")
+        if api_name:
+            request._view_module = "api"
+            request._view_name = api_name
+        else:
+            request._view_module = getattr(view, "__module__", "none")
+            request._view_name = getattr(view, "__name__", "none")
 
     def _record_timing(self, request, status_code):
         if hasattr(request, "_start_time") and hasattr(request, "_view_module") and hasattr(request, "_view_name"):
