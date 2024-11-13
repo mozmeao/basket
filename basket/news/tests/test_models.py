@@ -78,3 +78,14 @@ class FailedTaskTest(TestCase):
         assert mock_enqueue.call_args.kwargs["args"] == self.args
         assert mock_enqueue.call_args.kwargs["kwargs"] == self.kwargs
         assert mock_enqueue.call_args.kwargs["retry"].intervals == [60, 90]
+
+
+class NewsletterTest:
+    def test_newsletter_strips_languages(self):
+        n = models.Newsletter.objects.create(
+            slug="slug",
+            title="title",
+            languages="en, fr, de ",
+        )
+        obj = models.Newsletter.objects.get(id=n.id)
+        assert obj.languages == "en,fr,de"

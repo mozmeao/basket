@@ -36,8 +36,11 @@ from basket.news.newsletters import (
 )
 
 # Error messages
-MSG_TOKEN_REQUIRED = "Must have valid token for this request"
+MSG_EMAIL_AUTH_REQUIRED = "Using lookup_user with `email` requires a valid API key or FxA OAuth Authorization header"
 MSG_EMAIL_OR_TOKEN_REQUIRED = "Must have valid token OR email for this request"
+MSG_INVALID_EMAIL = "Invalid email address"
+MSG_MAINTENANCE_MODE = "Basket is currently in maintenance mode"
+MSG_TOKEN_REQUIRED = "Must have valid token for this request"
 MSG_USER_NOT_FOUND = "User not found"
 
 # A few constants to indicate the type of action to take

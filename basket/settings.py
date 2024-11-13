@@ -474,6 +474,8 @@ if OIDC_ENABLE:
         re.compile(r"^/news/*"),
         "/subscribe/",
         "/subscribe.json",
+        # API
+        re.compile(r"^/api/*"),
         # Health checks.
         "/healthz/",
         "/readiness/",

@@ -14,6 +14,7 @@ BASKET_EMAIL_NOT_CHANGED = 11
 BASKET_CHANGE_REQUEST_NOT_FOUND = 12
 BASKET_MOCK_FAILURE = 13
 BASKET_INVALID_TOKEN = 14
+BASKET_MAINTENANCE_ERROR = 15
 
 # If you get this, report it as a bug so we can add a more specific
 # error code.

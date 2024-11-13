@@ -29,7 +29,9 @@ from basket.news.newsletters import (
     newsletter_slugs,
 )
 from basket.news.utils import (
+    MSG_EMAIL_AUTH_REQUIRED,
     MSG_EMAIL_OR_TOKEN_REQUIRED,
+    MSG_MAINTENANCE_MODE,
     MSG_USER_NOT_FOUND,
     SET,
     SUBSCRIBE,
@@ -553,8 +555,8 @@ def lookup_user(request):
         return HttpResponseJSON(
             {
                 "status": "error",
-                "desc": "user data is not available in maintenance mode",
-                "code": errors.BASKET_NETWORK_FAILURE,
+                "desc": MSG_MAINTENANCE_MODE,
+                "code": errors.BASKET_MAINTENANCE_ERROR,
             },
             400,
         )
@@ -577,7 +579,7 @@ def lookup_user(request):
         return HttpResponseJSON(
             {
                 "status": "error",
-                "desc": "Using lookup_user with `email`, you need to pass a valid `api-key` or FxA OAuth Autorization header.",
+                "desc": MSG_EMAIL_AUTH_REQUIRED,
                 "code": errors.BASKET_AUTH_ERROR,
             },
             401,
@@ -720,8 +722,8 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
             return HttpResponseJSON(
                 {
                     "status": "error",
-                    "desc": "sync is not available in maintenance mode",
-                    "code": errors.BASKET_NETWORK_FAILURE,
+                    "desc": MSG_MAINTENANCE_MODE,
+                    "code": errors.BASKET_MAINTENANCE_ERROR,
                 },
                 400,
             )
