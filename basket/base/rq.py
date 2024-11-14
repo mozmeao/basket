@@ -9,6 +9,7 @@ import redis
 import requests
 import sentry_sdk
 from rq import Callback, Retry, SimpleWorker
+from rq.job import JobStatus
 from rq.queue import Queue
 from rq.serializers import JSONSerializer
 from silverpop.api import SilverpopResponseException
@@ -174,11 +175,16 @@ def store_task_exception_handler(job, *exc_info):
     if task_name.endswith("snitch"):
         return
 
-    # A job will retry if it's failed but not yet reached the max retries.
-    # We know when a job is going to be retried if the status is `is_scheduled`, otherwise the
-    # status is set to `is_failed`.
+    # NOTE: We are deliberately not using `job.is_scheduled` or `job.is_failed` properties because
+    # they trigger a `get_status` call, which refreshes the status from Redis by default. Since the code
+    # is modifying the `job._status` property directly, Redis does not accurately reflect the job's
+    # status until processing completes. This custom exception handler is triggered in the middle of
+    # that process, so we must access the `_status` property directly to get the current state.
 
-    if job.is_scheduled:
+    # A job will retry if it has failed but has not yet reached the maximum number of retries.
+    # A job is scheduled for retry when its status is `SCHEDULED`; otherwise, its status is set to `FAILED`.
+
+    if job._status == JobStatus.SCHEDULED:
         # Job failed but is scheduled for a retry.
         metrics.incr("base.tasks.retried", tags=[f"task:{task_name}"])
 
@@ -194,7 +200,7 @@ def store_task_exception_handler(job, *exc_info):
                 scope.set_tag("action", "retried")
                 sentry_sdk.capture_exception()
 
-    elif job.is_failed:
+    elif job._status == JobStatus.FAILED:
         # Job failed but no retries left.
         metrics.incr("base.tasks.failed", tags=[f"task:{task_name}"])
 
@@ -221,3 +227,6 @@ def store_task_exception_handler(job, *exc_info):
             with sentry_sdk.isolation_scope() as scope:
                 scope.set_tag("action", "failed")
                 sentry_sdk.capture_exception()
+
+    # Returning `False`` prevents any subsequent exception handlers from running.
+    return False
