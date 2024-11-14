@@ -84,7 +84,10 @@ class TestRQUtils:
         assert worker._exc_handlers == [store_task_exception_handler]
         assert worker.serializer == JSONSerializer
 
-    @override_settings(RQ_EXCEPTION_HANDLERS=["basket.base.rq.store_task_exception_handler"])
+    @override_settings(
+        RQ_EXCEPTION_HANDLERS=["basket.base.rq.store_task_exception_handler"],
+        RQ_IS_ASYNC=True,
+    )
     def test_on_failure(self, metricsmock):
         """
         Test that the on_failure function creates a FailedTask object and sends
@@ -97,22 +100,22 @@ class TestRQUtils:
         job = failing_job.delay(*args, **kwargs)
 
         worker = get_worker()
+        assert worker._exc_handlers == [store_task_exception_handler]
         worker.work(burst=True)  # Burst = worker will quit after all jobs consumed.
 
         assert job.is_failed
 
-        # TODO: Determine why the `store_task_exception_handler` is not called.
-        # assert FailedTask.objects.count() == 1
-        # fail = FailedTask.objects.get()
-        # assert fail.name == "news.tasks.failing_job"
-        # assert fail.task_id is not None
-        # assert fail.args == args
-        # assert fail.kwargs == kwargs
-        # assert fail.exc == 'ValueError("An exception to trigger the failure handler.")'
-        # assert "Traceback (most recent call last):" in fail.einfo
-        # assert "ValueError: An exception to trigger the failure handler." in fail.einfo
-        # metricsmock.assert_incr_once("news.tasks.failure_total")
-        # metricsmock.assert_incr_once("news.tasks.failing_job.failure")
+        assert FailedTask.objects.count() == 1
+        fail = FailedTask.objects.get()
+        assert fail.name == "basket.base.tests.tasks.failing_job"
+        assert fail.task_id is not None
+        assert fail.args == args
+        assert fail.kwargs == kwargs
+        assert fail.exc == "ValueError('An exception to trigger the failure handler.')"
+        assert "Traceback (most recent call last):" in fail.einfo
+        assert "ValueError: An exception to trigger the failure handler." in fail.einfo
+        metricsmock.assert_timing_once("task.timings", tags=["task:basket.base.tests.tasks.failing_job", "status:failure"])
+        metricsmock.assert_incr_once("base.tasks.failed", tags=["task:basket.base.tests.tasks.failing_job"])
 
     @override_settings(MAINTENANCE_MODE=True)
     def test_on_failure_maintenance(self, metricsmock):
