@@ -17,7 +17,7 @@ lxml==5.3.0
 markus[datadog]==5.1.0
 mozilla-django-oidc==4.0.1
 msgpack-python==0.5.6
-mysqlclient==2.1.1
+mysqlclient==2.2.6
 newrelic==10.2.0
 PyFxA==0.7.9
 pyOpenSSL==24.2.1
