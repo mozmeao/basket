@@ -15,8 +15,9 @@ from basket.base.rq import (
     rq_exponential_backoff,
     store_task_exception_handler,
 )
-from basket.base.tests.tasks import failing_job
+from basket.base.tests.tasks import failing_job, retryable_job
 from basket.news.models import FailedTask
+from basket.news.utils import NewsletterException
 
 
 @pytest.mark.django_db
@@ -117,6 +118,46 @@ class TestRQUtils:
         metricsmock.assert_timing_once("task.timings", tags=["task:basket.base.tests.tasks.failing_job", "status:failure"])
         metricsmock.assert_incr_once("base.tasks.failed", tags=["task:basket.base.tests.tasks.failing_job"])
 
+    @override_settings(
+        RQ_EXCEPTION_HANDLERS=["basket.base.rq.store_task_exception_handler"],
+        RQ_IS_ASYNC=True,
+        RQ_MAX_RETRIES=3,
+    )
+    def test_retry_allowed(self, metricsmock):
+        """
+        Test that the error raised from `retryable_job` is actually retried.
+        """
+        job = retryable_job.delay("arg1")
+
+        worker = get_worker()
+        assert worker._exc_handlers == [store_task_exception_handler]
+        worker.work(burst=True)  # Burst = worker will quit after all jobs consumed.
+
+        job.refresh()
+
+        assert job._status == JobStatus.SCHEDULED
+        assert job.retries_left == 2
+
+    @override_settings(
+        RQ_EXCEPTION_HANDLERS=["basket.base.rq.store_task_exception_handler"],
+        RQ_IS_ASYNC=True,
+        RQ_MAX_RETRIES=3,
+    )
+    def test_retry_not_allowed(self, metricsmock):
+        """
+        Test that the error raised from `failing_job` (ValueError), isn't one we attempt a retry for.
+        """
+        job = failing_job.delay("arg1")
+
+        worker = get_worker()
+        assert worker._exc_handlers == [store_task_exception_handler]
+        worker.work(burst=True)  # Burst = worker will quit after all jobs consumed.
+
+        job.refresh()
+
+        # If the job was retried, this would be `JobStatus.SCHEDULED`.
+        assert job._status == JobStatus.FAILED
+
     @override_settings(MAINTENANCE_MODE=True)
     def test_on_failure_maintenance(self, metricsmock):
         """
@@ -186,7 +227,7 @@ class TestRQUtils:
         for error_str in IGNORE_ERROR_MSGS:
             store_task_exception_handler(job, Exception, Exception(error_str), None)
 
-            metricsmock.assert_incr_once("base.tasks.failed", tags=["task:job.ignore_error"])
+            metricsmock.assert_not_incr("base.tasks.failed")
 
             assert mock_sentry_sdk.capture_exception.call_count == 1
             mock_sentry_sdk.isolation_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
@@ -197,14 +238,15 @@ class TestRQUtils:
         # Also test IGNORE_ERROR_MSGS_RE.
         store_task_exception_handler(job, Exception, Exception("campaignId 123 not found"), None)
 
-        metricsmock.assert_incr_once("base.tasks.failed", tags=["task:job.ignore_error"])
+        metricsmock.assert_not_incr("base.tasks.failed")
 
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.isolation_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
 
         queue.empty()
 
-    def test_rq_exception_handler_snitch(self):
+    @patch("basket.base.rq.sentry_sdk")
+    def test_rq_exception_handler_snitch(self, mock_sentry_sdk):
         """
         Test that the exception handler returns early if it's a snitch job.
         """
@@ -216,19 +258,20 @@ class TestRQUtils:
         store_task_exception_handler(job)
 
         assert FailedTask.objects.count() == 0
+        assert mock_sentry_sdk.capture_exception.call_count == 0
 
     @patch("basket.base.rq.sentry_sdk")
-    def test_rq_exception_handler_retry(self, mock_sentry_sdk, metricsmock):
+    def test_rq_exception_handler_retry_allowed(self, mock_sentry_sdk, metricsmock):
         queue = get_queue()
         job = Job.create(func=print, meta={"task_name": "job.rescheduled"}, connection=queue.connection)
         job.retries_left = 1
         job.retry_intervals = [1]
 
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(NewsletterException) as e:
             # This is only here to generate the exception values.
-            raise ValueError("This is a fake exception")
+            raise NewsletterException("This is a fake exception")
 
-        job.set_status(JobStatus.SCHEDULED)
+        job.set_status(JobStatus.FAILED)
 
         assert FailedTask.objects.count() == 0
 
@@ -238,5 +281,29 @@ class TestRQUtils:
         metricsmock.assert_incr_once("base.tasks.retried", tags=["task:job.rescheduled"])
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.isolation_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "retried")
+
+        queue.empty()
+
+    @patch("basket.base.rq.sentry_sdk")
+    def test_rq_exception_handler_retry_not_allowed(self, mock_sentry_sdk, metricsmock):
+        queue = get_queue()
+        job = Job.create(func=print, meta={"task_name": "job.retry_not_allowed"}, connection=queue.connection)
+        job.retries_left = 1
+        job.retry_intervals = [1]
+
+        with pytest.raises(ValueError) as e:
+            # This is only here to generate the exception values.
+            raise ValueError("This is a fake exception")
+
+        job.set_status(JobStatus.FAILED)
+
+        assert FailedTask.objects.count() == 0
+
+        store_task_exception_handler(job, e.type, e.value, e.tb)
+
+        assert FailedTask.objects.count() == 1
+        metricsmock.assert_incr_once("base.tasks.failed", tags=["task:job.retry_not_allowed"])
+        assert mock_sentry_sdk.capture_exception.call_count == 1
+        mock_sentry_sdk.isolation_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "failed")
 
         queue.empty()
