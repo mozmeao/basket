@@ -6,17 +6,14 @@ from time import time
 from django.conf import settings
 
 import redis
-import requests
 import sentry_sdk
 from rq import Callback, Retry, SimpleWorker
 from rq.job import JobStatus
 from rq.queue import Queue
 from rq.serializers import JSONSerializer
-from silverpop.api import SilverpopResponseException
 
 from basket import metrics
 from basket.base.exceptions import RetryTask
-from basket.news.backends.common import NewsletterException
 
 # don't propagate and don't retry if these are the error messages
 IGNORE_ERROR_MSGS = [
@@ -29,14 +26,6 @@ IGNORE_ERROR_MSGS = [
 ]
 # don't propagate and don't retry if these regex match the error messages
 IGNORE_ERROR_MSGS_RE = [re.compile(r"campaignId \d+ not found")]
-# Exceptions we allow to retry, all others will abort retries.
-EXCEPTIONS_ALLOW_RETRY = [
-    IOError,
-    NewsletterException,
-    requests.RequestException,
-    RetryTask,
-    SilverpopResponseException,
-]
 
 
 # Our cached Redis connection.
@@ -188,34 +177,25 @@ def store_task_exception_handler(job, *exc_info):
     # `handle_job_failure` call which checks how many retries are left before calling `job.retry`.
     # If `retries_left` is zero it goes to the FAILED state and the job doesn't get rescheduled.
 
+    # Returning `False` prevents any subsequent exception handlers from running.
+
     if job._status == JobStatus.FAILED:
         # Check if this is something we ignore and don't attempt to retry.
         # If so, abort any retries, log to sentry, and return/skip the rest.
         if ignore_error(exc_info[1]):
             job.retries_left = 0
             sentry_capture(exc_info[1], "ignored")
-            return False
-
-        if job.retries_left and job.retries_left > 0:
-            # The job will be rescheduled for a retry.
-            if type(exc_info[1]) not in EXCEPTIONS_ALLOW_RETRY:
-                # If the job is not retryable, we abort any retries and consider this a task failure.
-                job.retries_left = 0
+        else:
+            if job.retries_left and job.retries_left > 0:
+                # The job will be rescheduled for a retry.
+                metrics.incr("base.tasks.retried", tags=[f"task:{task_name}"])
+                sentry_capture(exc_info[1], "retried")
+            else:
+                # Job failed and has no retries left.
                 metrics.incr("base.tasks.failed", tags=[f"task:{task_name}"])
                 store_failed_task(job, *exc_info)
                 sentry_capture(exc_info[1], "failed")
-            else:
-                # Job failed, is retryable, and has retries left.
-                metrics.incr("base.tasks.retried", tags=[f"task:{task_name}"])
-                sentry_capture(exc_info[1], "retried")
 
-        else:
-            # Job failed and has no retries left.
-            metrics.incr("base.tasks.failed", tags=[f"task:{task_name}"])
-            store_failed_task(job, *exc_info)
-            sentry_capture(exc_info[1], "failed")
-
-    # Returning `False`` prevents any subsequent exception handlers from running.
     return False
 
 
