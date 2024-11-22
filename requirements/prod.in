@@ -1,5 +1,5 @@
 APScheduler==3.10.4
-boto3==1.35.58
+boto3==1.35.67
 contextlib2==21.6.0
 cryptography==43.0.3
 dj-database-url==2.3.0
@@ -18,8 +18,8 @@ lxml==5.3.0
 markus[datadog]==5.1.0
 mozilla-django-oidc==4.0.1
 msgpack-python==0.5.6
-mysqlclient==2.1.1
-newrelic==10.2.0
+mysqlclient==2.2.6
+newrelic==10.3.0
 PyFxA==0.7.9
 pyOpenSSL==24.2.1
 pysilverpop==0.2.6
@@ -29,7 +29,7 @@ redis==5.2.0
 rq==2.0.0
 rq-scheduler==0.14.0
 sentry-processor==0.0.1
-sentry-sdk==2.18.0
+sentry-sdk==2.19.0
 user-agents==2.2.0
 uwsgi==2.0.28
 whitenoise==6.8.2
