@@ -11,7 +11,7 @@ class NewsletterSchema(ModelSchema):
 
     class Meta:
         model = Newsletter
-        exclude = ["id", "order"]
+        exclude = ["id"]
 
 
 class NewslettersSchema(Schema):
