@@ -1,0 +1,132 @@
+name: Build and push a Docker image
+
+on:
+  push:
+    branches:
+      - main
+      - prod
+
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'ref to be deployed (e.g. "refs/heads/main", "v1.0.0", "2c0472cf")'
+        type: string
+        required: true
+        default: refs/heads/main
+env:
+  APP: basket
+  APPLICATION_REPOSITORY: mozmeao/basket
+  IMAGE: basket
+  GAR_LOCATION: us
+  GCP_PROJECT_ID: moz-fx-basket-prod
+  GAR_REPOSITORY: basket
+  REF_ID: ${{ github.ref }}
+
+
+jobs:
+  build_and_publish_public_images:
+    name: Build public basket images and push to Docker hub
+    runs-on: [self-hosted, prod, us-central1, bedrock]
+    outputs:
+      long_sha: ${{ steps.sha.outputs.LONG_SHA }}
+      short_sha: ${{ steps.sha.outputs.SHORT_SHA }}
+
+    steps:
+      - id: slack
+        name: notify slack
+        uses: mozilla-it/deploy-actions/slack@v3
+        with:
+          app_name: ${{ env.APP }}
+          env_name: "dev"
+          channel_id: ${{ env.SLACK_CHANNEL_ID }}
+          type: "start"
+          ref: ${{ env.REF_ID }}
+          slack_bot_token: ${{ secrets.SLACK_BOT_TOKEN_BUGID_1796141_20221019 }}
+        if: always()
+
+      - uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-flags: "cache-from: type=gha cache-to: type=gha,mode=max"
+
+      - id: checkout-basket-repo
+        name: checkout-basket-repo
+        uses: actions/checkout@v4
+        with:
+            fetch-depth: 10 # get enough so we have a Git history, but not everything
+            fetch-tags: true
+            ref: ${{ env.REF_ID }}
+
+      - id: sha
+        run: |-
+          cd src && echo "LONG_SHA=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          cd src && echo "SHORT_SHA=$(git rev-parse --short=8 HEAD)" >> $GITHUB_OUTPUT
+
+      - id: docker-login
+        name: Docker login
+        uses: docker/login-action@v3
+        with:
+           username: ${{ secrets.DOCKERHUB_USERNAME }}
+           password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - id: build_and_push_docker_hub_images
+        name: Build and push public images to Docker hub
+        run: |-
+          cd src
+          touch .env
+          GIT_COMMIT= docker compose pull db redis web builder
+          bin/dc.sh build --no-cache --pull web
+          bin/dc.sh build --no-cache builder
+          docker/bin/push2dockerhub.sh
+          bin/dc.sh run test-image
+
+        env:
+            GIT_COMMIT: ${{ steps.sha.outputs.LONG_SHA }}
+
+  push_image_to_gar:
+    name: Push Image to GAR
+    needs: build_and_publish_public_images
+    runs-on: [self-hosted, nonprod, us-central1, bedrock]
+    environment: build
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+
+      - id: dev_stage_image_tag
+        name: Set Docker dev/stage image tag for updates of the main branch
+        if: github.ref == 'refs/heads/main'
+        run: |
+
+          echo TAG="$(git rev-parse --short=8 HEAD)" >> "$GITHUB_ENV"
+
+
+      - id: prod_image_tag
+        name: Set Docker prod image tag for updates of the prod branch
+        if: github.ref == 'refs/heads/prod'
+        run: |
+
+          echo TAG="prod-$(git rev-parse --short=8 HEAD)" >> "$GITHUB_ENV"
+
+      - id: gcp_auth
+        name: GCP authentication
+        uses: google-github-actions/auth@v2
+        with:
+            token_format: access_token
+            service_account:  artifact-writer@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+            workload_identity_provider: ${{ vars.GCPV2_GITHUB_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - uses: docker/login-action@v3
+        name: Docker login
+        with:
+           registry: ${{ env.GAR_LOCATION }}-docker.pkg.dev
+           username: oauth2accesstoken
+           password: ${{ steps.gcp-auth.outputs.access_token }}
+
+      - id: push-existing-image-to-gar
+        name: Push existing stage image to GAR
+        run: |-
+             docker tag mozmeao/basket:${{ needs.build_and_publish_public_images.outputs.long_sha }} ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY}}/${{ env.IMAGE }}:${{ env.TAG }}
+             docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY}}/${{ env.IMAGE }}:${{ env.TAG }}
+
+
