@@ -4,35 +4,35 @@ annotated-types==0.7.0 \
     --hash=sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53 \
     --hash=sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   pydantic
 apscheduler==3.10.4 \
     --hash=sha256:e6df071b27d9be898e486bc7940a7be50b4af2e9da7c08f0744a96d4bd4cef4a \
     --hash=sha256:fb91e8a768632a4756a585f79ec834e0e27aad5860bac7eaa523d9ccefd87661
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 asgiref==3.8.1 \
     --hash=sha256:3e1e3ecc849832fe52ccf2cb6686b7a55f82bb1d6aee72a58826471390335e47 \
     --hash=sha256:c343bd80a0bec947a9860adb4c432ffa7db769836c64238fc34bdc3fec84d590
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   django
     #   django-cors-headers
 boto3==1.35.67 \
     --hash=sha256:4eb793c45123fbca1b2b152ce0d18272d19126cf89809cd6698bf2dfc66270fb \
     --hash=sha256:db4d8736ef9b0f1972740d464d77edbdf35cd9dcddf9291c645691920f8fa50d
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 botocore==1.35.67 \
     --hash=sha256:c83983c196b4452dd7f298e68a9a224bc8fd58075b60133532848813826611af \
     --hash=sha256:d782e02f2949889cf97a140a89cd5e9363d0e4b0153db51faf7fc16305c6e0e1
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   boto3
     #   s3transfer
 certifi==2024.8.30 \
     --hash=sha256:922820b53db7a7257ffbda3f597266d435245903d80737e34f8a45ff3e3230d8 \
     --hash=sha256:bec941d2aa8195e248a60b31ff9f0558284cf01a52591ceda73ea9afffd69fd9
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   requests
     #   sentry-sdk
 cffi==1.17.1 \
@@ -104,7 +104,7 @@ cffi==1.17.1 \
     --hash=sha256:f7f5baafcc48261359e14bcd6d9bff6d4b28d9103847c9e136694cb0501aef87 \
     --hash=sha256:fc48c783f9c87e60831201f2cce7f3b2e4846bf4d8728eabe54d60700b318a0b
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   cryptography
 charset-normalizer==3.4.0 \
     --hash=sha256:0099d79bdfcf5c1f0c2c72f91516702ebf8b0b8ddd8905f97a8aecf49712c621 \
@@ -213,18 +213,18 @@ charset-normalizer==3.4.0 \
     --hash=sha256:fe9f97feb71aa9896b81973a7bbada8c49501dc73e58a10fcef6663af95e5079 \
     --hash=sha256:ffc519621dce0c767e96b9c53f09c5d215578e10b02c285809f76509a3931482
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   requests
 click==8.1.7 \
     --hash=sha256:ae74fb96c20a0277a1d615f1e4d73c8414f5a98db8b799a7931d1582f3390c28 \
     --hash=sha256:ca9853ad459e787e2192211578cc907e7594e294c7ccc834310722b41b9ca6de
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   rq
 contextlib2==21.6.0 \
     --hash=sha256:3fbdb64466afd23abaf6c977627b75b6139a5a3e8ce38405c5b413aed7a0471f \
     --hash=sha256:ab1e2bfe1d01d968e1b7e8d9023bc51ef3509bba217bb730cee3827e1ee82869
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 coverage[toml]==7.6.7 \
     --hash=sha256:0266b62cbea568bd5e93a4da364d05de422110cbed5056d69339bd5af5685433 \
     --hash=sha256:0573f5cbf39114270842d01872952d301027d2d6e2d84013f30966313cadb529 \
@@ -292,7 +292,7 @@ coverage[toml]==7.6.7 \
 crontab==1.0.1 \
     --hash=sha256:89477e3f93c81365e738d5ee2659509e6373bb2846de13922663e79aa74c6b91
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   rq-scheduler
 cryptography==43.0.3 \
     --hash=sha256:0c580952eef9bf68c4747774cde7ec1d85a6e61de97281f2dba83c7d2c806362 \
@@ -323,7 +323,7 @@ cryptography==43.0.3 \
     --hash=sha256:f46304d6f0c6ab8e52770addfa2fc41e6629495548862279641972b6215451cd \
     --hash=sha256:f7b178f11ed3664fd0e995a47ed2b5ff0a12d893e41dd0494f406d1cf555cab7
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   josepy
     #   mozilla-django-oidc
     #   pyfxa
@@ -332,17 +332,17 @@ datadog==0.50.2 \
     --hash=sha256:17725774bf2bb0a48f1d096d92707492c187f24ae08960af0b0c2fa97958fd51 \
     --hash=sha256:f3297858564b624efbd9ce43e4ea1c2c21e1f0477ab6d446060b536a1d9e431e
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   markus
 dj-database-url==2.3.0 \
     --hash=sha256:ae52e8e634186b57e5a45e445da5dc407a819c2ceed8a53d1fac004cc5288787 \
     --hash=sha256:bb0d414ba0ac5cd62773ec7f86f8cc378a9dbb00a80884c2fc08cc570452521e
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 django==4.2.16 \
     --hash=sha256:1ddc333a16fc139fd253035a1606bb24261951bbc3a6ca256717fa06cc41a898 \
     --hash=sha256:6f1616c2786c408ce86ab7e10f792b8f15742f7b7b7460243929cb371e7f1dad
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   dj-database-url
     #   django-allow-cidr
     #   django-cors-headers
@@ -353,52 +353,52 @@ django==4.2.16 \
 django-allow-cidr==0.7.1 \
     --hash=sha256:11126c5bb9df3a61ff9d97304856ba7e5b26d46c6d456709a6d9e28483bff47f \
     --hash=sha256:382c5d7a9807279e3e96e4f4892b59163a2b30128c596902bf5f80e133e1ccbb
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 django-cache-url==3.4.5 \
     --hash=sha256:5f350759978483ab85dc0e3e17b3d53eed3394a28148f6bf0f53d11d0feb5b3c \
     --hash=sha256:eb9fb194717524348c95cad9905b70b647452741c1d9e481fac6d2125f0ad917
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 django-cors-headers==4.6.0 \
     --hash=sha256:14d76b4b4c8d39375baeddd89e4f08899051eeaf177cb02a29bd6eae8cf63aa8 \
     --hash=sha256:8edbc0497e611c24d5150e0055d3b178c6534b8ed826fb6f53b21c63f5d48ba3
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 django-mozilla-product-details==1.0.3 \
     --hash=sha256:1d139ba01f4484f3bb43b72864ce33f249835405449e0dc940217cfa42ce5b46 \
     --hash=sha256:a4aba6a68b296dffe8c1afb95d236cdbd402bd855cd49eef4d8a1a610105fd36
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 django-ninja==1.3.0 \
     --hash=sha256:5b320e2dc0f41a6032bfa7e1ebc33559ae1e911a426f0c6be6674a50b20819be \
     --hash=sha256:f58096b6c767d1403dfd6c49743f82d780d7b9688d9302ecab316ac1fa6131bb
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 django-ratelimit==4.1.0 \
     --hash=sha256:555943b283045b917ad59f196829530d63be2a39adb72788d985b90c81ba808b \
     --hash=sha256:d047a31cf94d83ef1465d7543ca66c6fc16695559b5f8d814d1b51df15110b92
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 django-watchman==1.3.0 \
     --hash=sha256:33b5fc734d689b83cb96fc17beda624ae2955f4cede0856897d990c363eac962 \
     --hash=sha256:5f04300bd7fbdd63b8a883b2730ed1e4d9b0f9991133b33a1281134b81f466eb
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 dnspython==2.7.0 \
     --hash=sha256:b4c34b7d10b51bcc3a5071e7b8dee77939f1e878477eeecc965e9835f63c6c86 \
     --hash=sha256:ce9c432eda0dc91cf618a5cedf1a4e142651196bbcd2c80e89ed5a907e5cfaf1
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   email-validator
 email-validator==2.2.0 \
     --hash=sha256:561977c2d73ce3611850a06fa56b414621e0c8faa9d66f2611407d87465da631 \
     --hash=sha256:cb690f344c617a714f22e66ae771445a1ceb46821152df8e165c5f9a364582b7
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 freezegun==1.5.1 \
     --hash=sha256:b29dedfcda6d5e8e083ce71b2b542753ad48cfec44037b3fc79702e2980a89e9 \
     --hash=sha256:bf111d7138a8abe55ab48a71755673dbaa4ab87f4cff5634a4442dfec34c15f1
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   rq-scheduler
 hawkauthlib==2.0.0 \
     --hash=sha256:935878d3a75832aa76f78ddee13491f1466cbd69a8e7e4248902763cf9953ba9 \
     --hash=sha256:effd64a2572e3c0d9090b55ad2180b36ad50e7760bea225cb6ce2248f421510d
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   pyfxa
 hiredis==3.0.0 \
     --hash=sha256:00018f22f38530768b73ea86c11f47e8d4df65facd4e562bd78773bd1baef35e \
@@ -495,12 +495,12 @@ hiredis==3.0.0 \
     --hash=sha256:fcecbd39bd42cef905c0b51c9689c39d0cc8b88b1671e7f40d4fb213423aef3a \
     --hash=sha256:fe91d62b0594db5ea7d23fc2192182b1a7b6973f628a9b8b2e0a42a2be721ac6 \
     --hash=sha256:fed8581ae26345dea1f1e0d1a96e05041a727a45e7d8d459164583e23c6ac441
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 idna==3.10 \
     --hash=sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9 \
     --hash=sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   email-validator
     #   requests
 iniconfig==2.0.0 \
@@ -510,19 +510,19 @@ iniconfig==2.0.0 \
 ipaddress==1.0.23 \
     --hash=sha256:6e0f4a39e66cb5bb9a137b00276a2eff74f93b71dcbdad6f10ff7df9d3557fcc \
     --hash=sha256:b7f8e0369580bb4a24d5ba1d7cc29660a4a6987763faf1d8a8046830e020e7e2
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 jmespath==1.0.1 \
     --hash=sha256:02e2e4cc71b5bcab88332eebf907519190dd9e6e82107fa7f83b1003a6252980 \
     --hash=sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   boto3
     #   botocore
 josepy==1.14.0 \
     --hash=sha256:308b3bf9ce825ad4d4bba76372cf19b5dc1c2ce96a9d298f9642975e64bd13dd \
     --hash=sha256:d2b36a30f316269f3242f4c2e45e15890784178af5ec54fa3e49cf9234ee22e0
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   mozilla-django-oidc
 lxml==5.3.0 \
     --hash=sha256:01220dca0d066d1349bd6a1726856a78f7929f3878f7e2ee83c296c69495309e \
@@ -663,18 +663,18 @@ lxml==5.3.0 \
     --hash=sha256:f7d4a670107d75dfe5ad080bed6c341d18c4442f9378c9f58e5851e86eb79965 \
     --hash=sha256:f914c03e6a31deb632e2daa881fe198461f4d06e57ac3d0e05bbcab8eae01945 \
     --hash=sha256:fb66442c2546446944437df74379e9cf9e9db353e61301d1a0e26482f43f0dd8
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 markus[datadog]==5.1.0 \
     --hash=sha256:424172efdccc35172b8aadfdcd753412c3ed2b5651c3b3bc9e0b7e7f2e97da52 \
     --hash=sha256:a4ec2d6bb1dcf471638be11a10cb5708de8cc3092ade9cf3b38bb2f651ede33a
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 mozilla-django-oidc==4.0.1 \
     --hash=sha256:04ef58759be69f22cdc402d082480aaebf193466cad385dc9e4f8df2a0b187ca \
     --hash=sha256:4ff8c64069e3e05c539cecf9345e73225a99641a25e13b7a5f933ec897b58918
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 msgpack-python==0.5.6 \
     --hash=sha256:378cc8a6d3545b532dfd149da715abae4fda2a3adb6d74e525d0d5e51f46909b
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 mysqlclient==2.2.6 \
     --hash=sha256:3da70a07753ba6be881f7d75e795e254f6a0c12795778034acc69769b0649d37 \
     --hash=sha256:43c5b30be0675080b9c815f457d73397f0442173e7be83d089b126835e2617ae \
@@ -684,7 +684,7 @@ mysqlclient==2.2.6 \
     --hash=sha256:e940b41d85dfd7b190fa47d52f525f878cfa203d4653bf6a35b271b3c3be125b \
     --hash=sha256:e94a92858203d97fd584bdb6d7ee8c56f2590db8d77fd44215c0dcf5e739bc37 \
     --hash=sha256:f3efb849d6f7ef4b9788a0eda2e896b975e0ebf1d6bf3dcabea63fd698e5b0b5
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 newrelic==10.3.0 \
     --hash=sha256:080e764b50be8522df204d5f8fb26bdfa64945da85fe2786bc3051318fa77188 \
     --hash=sha256:0f587779f03b0dc1131e2067221042ce796551bbb73a361046f25102763d1718 \
@@ -715,18 +715,18 @@ newrelic==10.3.0 \
     --hash=sha256:c2fbdbbb4de1cb305b2c0155639fe74bf6925e54cc014a07176f46fba396cb03 \
     --hash=sha256:e23dfbc55ba7baa3b65d4f2739ba328e15466a4d4767a85fe732082c423b88e0 \
     --hash=sha256:ee4ff34ab06f0df4ba823dd368fb79789bcdabe4ffa3c0b880a53a65f610f852
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 oauthlib==3.2.2 \
     --hash=sha256:8139f29aac13e25d502680e9e19963e83f16838d48a0d71c287fe40e7067fbca \
     --hash=sha256:9859c40929662bec5d64f34d01c99e093149682a3f38915dc0655d5a633dd918
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   requests-oauthlib
 packaging==24.2 \
     --hash=sha256:09abb1bccd265c01f4a3aa3f7a7db064b36514d2cba19a2f694fe6150451a759 \
     --hash=sha256:c228a6dc5e932d346bc5739379109d49e8853dd8223571c7c5b55260edc0b97f
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   django-allow-cidr
     #   pytest
 pluggy==1.5.0 \
@@ -737,19 +737,19 @@ pybrowserid==0.14.0 \
     --hash=sha256:6c227669e87cc25796ae76f6a0ef65025528c8ad82d352679fa9a3e5663a71e3 \
     --hash=sha256:8e237d6a2bc9ead849a4472a84d3e6a9309bec99cf8e10d36213710dda8df8ca
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   pyfxa
 pycparser==2.22 \
     --hash=sha256:491c8be9c040f5390f5bf44a5b07752bd07f56edf992381b05c701439eec10f6 \
     --hash=sha256:c3702b6d3dd8c7abc1afa565d7e63d53a1d0bd86cdc24edd75470f4de499cfcc
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   cffi
 pydantic==2.10.1 \
     --hash=sha256:a4daca2dc0aa429555e0656d6bf94873a7dc5f54ee42b1f5873d666fb3f35560 \
     --hash=sha256:a8d20db84de64cf4a7d59e899c2caf0fe9d660c7cfc482528e7020d7dd189a7e
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   django-ninja
 pydantic-core==2.27.1 \
     --hash=sha256:00e6424f4b26fe82d44577b4c842d7df97c20be6439e8e685d0d715feceb9fb9 \
@@ -853,32 +853,32 @@ pydantic-core==2.27.1 \
     --hash=sha256:f69ed81ab24d5a3bd93861c8c4436f54afdf8e8cc421562b0c7504cf3be58206 \
     --hash=sha256:f82d068a2d6ecfc6e054726080af69a6764a10015467d7d7b9f66d6ed5afa23b
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   pydantic
 pyfxa==0.7.9 \
     --hash=sha256:67af665149ab87318bc8d4bf2216bb7945fb2dcdc5442106cbcd3c7d70559630 \
     --hash=sha256:753b161566aa5fa632a4d273f564a573126560eb2d993bb6660386dd13d2562c
-    # via -r requirements/prod.txt
-pyjwt==2.10.0 \
-    --hash=sha256:543b77207db656de204372350926bed5a86201c4cbff159f623f79c7bb487a15 \
-    --hash=sha256:7628a7eb7938959ac1b26e819a1df0fd3259505627b575e4bad6d08f76db695c
+    # via -r prod.txt
+pyjwt==2.10.1 \
+    --hash=sha256:3cc5772eb20009233caf06e9d8a0577824723b44e6648ee0a2aedb6cf9381953 \
+    --hash=sha256:dcdd193e30abefd5debf142f9adfcdd2b58004e644f25406ffaebd50bd98dacb
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   pyfxa
 pyopenssl==24.2.1 \
     --hash=sha256:4247f0dbe3748d560dcbb2ff3ea01af0f9a1a001ef5f7c4c647956ed8cbf0e95 \
     --hash=sha256:967d5719b12b243588573f39b0c677637145c7a1ffedcd495a487e58177fbb8d
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   josepy
 pysilverpop==0.2.6 \
     --hash=sha256:27d08fd7823ece74a21e70ae9becded12d25c480bcdba9e8bd37e02ecb0f53e1
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 pytest==8.3.3 \
     --hash=sha256:70b98107bd648308a7952b06e6ca9a50bc660be218d53c257cc1fc94fda10181 \
     --hash=sha256:a6853c7375b2663155079443d2e45de913a911a11d669df02a50814944db57b2
     # via
-    #   -r requirements/dev.in
+    #   -r dev.in
     #   pytest-cov
     #   pytest-datadir
     #   pytest-django
@@ -886,36 +886,36 @@ pytest==8.3.3 \
 pytest-cov==6.0.0 \
     --hash=sha256:eee6f1b9e61008bd34975a4d5bab25801eb31898b032dd55addc93e96fcaaa35 \
     --hash=sha256:fde0b595ca248bb8e2d76f020b465f3b107c9632e6a1d1705f17834c89dcadc0
-    # via -r requirements/dev.in
+    # via -r dev.in
 pytest-datadir==1.5.0 \
     --hash=sha256:1617ed92f9afda0c877e4eac91904b5f779d24ba8f5e438752e3ae39d8d2ee3f \
     --hash=sha256:34adf361bcc7b37961bbc1dfa8d25a4829e778bab461703c38a5c50ca9c36dc8
-    # via -r requirements/dev.in
+    # via -r dev.in
 pytest-django==4.9.0 \
     --hash=sha256:1d83692cb39188682dbb419ff0393867e9904094a549a7d38a3154d5731b2b99 \
     --hash=sha256:8bf7bc358c9ae6f6fc51b6cebb190fe20212196e6807121f11bd6a3b03428314
-    # via -r requirements/dev.in
+    # via -r dev.in
 pytest-mock==3.14.0 \
     --hash=sha256:0b72c38033392a5f4621342fe11e9219ac11ec9d375f8e2a0c164539e0d70f6f \
     --hash=sha256:2719255a1efeceadbc056d6bf3df3d1c5015530fb40cf347c0f9afac88410bd0
-    # via -r requirements/dev.in
+    # via -r dev.in
 python-dateutil==2.9.0.post0 \
     --hash=sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3 \
     --hash=sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   botocore
     #   freezegun
     #   rq-scheduler
 python-decouple==3.8 \
     --hash=sha256:ba6e2657d4f376ecc46f77a3a615e058d93ba5e465c01bbe57289bfb7cce680f \
     --hash=sha256:d0d45340815b25f4de59c974b855bb38d03151d81b037d9e3f463b0c9f8cbd66
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 pytz==2024.2 \
     --hash=sha256:2aa355083c50a0f93fa581709deac0c9ad65cca8a9e9beac660adcbd493c798a \
     --hash=sha256:31c7c1817eb7fae7ca4b8c7ee50c72f93aa2dd863de768e1ef4245d426aa0725
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   apscheduler
 pyyaml==6.0.2 \
     --hash=sha256:01179a4a8559ab5de078078f37e5c1a30d76bb88519906844fd7bdea1b7729ff \
@@ -971,18 +971,18 @@ pyyaml==6.0.2 \
     --hash=sha256:efdca5630322a10774e8e98e1af481aad470dd62c3170801852d752aa7a783ba \
     --hash=sha256:f753120cb8181e736c57ef7636e83f31b9c0d1722c516f7e86cf15b7aa57ff12 \
     --hash=sha256:ff3824dc5261f50c9b0dfb3be22b4567a6f938ccce4587b38952d85fd9e9afe4
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 redis==5.2.0 \
     --hash=sha256:0b1087665a771b1ff2e003aa5bdd354f15a70c9e25d5a7dbf9c722c16528a7b0 \
     --hash=sha256:ae174f2bb3b1bf2b09d54bf3e51fbc1469cf6c10aa03e21141f51969801a7897
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   rq
 requests==2.32.3 \
     --hash=sha256:55365417734eb18255590a9ff9eb97e9e1da868d4ccd6402399eaf68af20a760 \
     --hash=sha256:70761cfe03c773ceb22aa2f671b4757976145175cdfca038c02654d061d6dcc6
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   datadog
     #   django-mozilla-product-details
     #   mozilla-django-oidc
@@ -994,23 +994,23 @@ requests==2.32.3 \
 requests-mock==1.12.1 \
     --hash=sha256:b1e37054004cdd5e56c84454cc7df12b25f90f382159087f4b6915aaeef39563 \
     --hash=sha256:e9e12e333b525156e82a3c852f22016b9158220d2f47454de9cae8a77d371401
-    # via -r requirements/dev.in
+    # via -r dev.in
 requests-oauthlib==2.0.0 \
     --hash=sha256:7dd8a5c40426b779b0868c404bdef9768deccf22749cde15852df527e6269b36 \
     --hash=sha256:b3dffaebd884d8cd778494369603a9e7b58d29111bf6b41bdc2dcd87203af4e9
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   pysilverpop
 rq==2.0.0 \
     --hash=sha256:76d2a4a27f8fd5c4cfa200cd442efe3c1fd73525c676af06f07fcc0b81bdb70d \
     --hash=sha256:a3a767876675dcc42683bac1869494c5020ba7fcf5c026d1f6d36a8ab98573a6
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   rq-scheduler
 rq-scheduler==0.14.0 \
     --hash=sha256:2d5a14a1ab217f8693184ebaa1fe03838edcbc70b4f76572721c0b33058cd023 \
     --hash=sha256:d4ec221a3d8c11b3ff55e041f09d9af1e17f3253db737b6b97e86ab20fc3dc0d
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 ruff==0.8.0 \
     --hash=sha256:0e55cce9aa93c5d0d4e3937e47b169035c7e91c8655b0974e61bb79cf398d49c \
     --hash=sha256:295bb4c02d58ff2ef4378a1870c20af30723013f441c9d1637a008baaf928c8b \
@@ -1030,25 +1030,25 @@ ruff==0.8.0 \
     --hash=sha256:eb0d4f250a7711b67ad513fde67e8870109e5ce590a801c3722580fe98c33a99 \
     --hash=sha256:facebdfe5a5af6b1588a1d26d170635ead6892d0e314477e80256ef4a8470cf3 \
     --hash=sha256:fcb1bf2cc6706adae9d79c8d86478677e3bbd4ced796ccad106fd4776d395fea
-    # via -r requirements/dev.in
+    # via -r dev.in
 s3transfer==0.10.4 \
     --hash=sha256:244a76a24355363a68164241438de1b72f8781664920260c48465896b712a41e \
     --hash=sha256:29edc09801743c21eb5ecbc617a152df41d3c287f67b615f73e5f750583666a7
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   boto3
 sentry-processor==0.0.1 \
     --hash=sha256:fd7a30fb57aaf05c01cd04cf7d949c628376b2b55d7a0aaa222efe58a8f122bc
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 sentry-sdk==2.19.0 \
     --hash=sha256:7b0b3b709dee051337244a09a30dbf6e95afe0d34a1f8b430d45e0982a7c125b \
     --hash=sha256:ee4a4d2ae8bfe3cac012dcf3e4607975904c137e1738116549fc3dbbb6ff0e36
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 six==1.16.0 \
     --hash=sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926 \
     --hash=sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   apscheduler
     #   pysilverpop
     #   python-dateutil
@@ -1056,13 +1056,13 @@ sqlparse==0.5.2 \
     --hash=sha256:9e37b35e16d1cc652a2545f0997c1deb23ea28fa1f3eefe609eee3063c3b105f \
     --hash=sha256:e99bc85c78160918c3e1d9230834ab8d80fc06c59d03f8db2618f65f65dda55e
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   django
 typing-extensions==4.12.2 \
     --hash=sha256:04e5ca0351e0f3f85c6853954072df659d0d13fac324d0072316b67d7794700d \
     --hash=sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   dj-database-url
     #   pydantic
     #   pydantic-core
@@ -1070,30 +1070,30 @@ tzlocal==5.2 \
     --hash=sha256:49816ef2fe65ea8ac19d19aa7a1ae0551c834303d5014c6d5a62e4cbda8047b8 \
     --hash=sha256:8d399205578f1a9342816409cc1e46a93ebd5755e39ea2d85334bea911bf0e6e
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   apscheduler
 ua-parser==0.18.0 \
     --hash=sha256:9d94ac3a80bcb0166823956a779186c746b50ea4c9fd9bf30fdb758553c38950 \
     --hash=sha256:db51f1b59bfaa82ed9e2a1d99a54d3e4153dddf99ac1435d51828165422e624e
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   user-agents
 urllib3==2.2.3 \
     --hash=sha256:ca899ca043dcb1bafa3e262d73aa25c465bfb49e0bd9dd5d59f1d0acba2f8fac \
     --hash=sha256:e7d814a81dad81e6caf2ec9fdedb284ecc9c73076b62654547cc64ccdcae26e9
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   botocore
     #   requests
     #   sentry-sdk
 urlwait==1.0 \
     --hash=sha256:a9bf2da792fa6983fa93f6360108e16615066ab0f9cfb7f53e5faee5f5dffaac \
     --hash=sha256:eae2c20001efc915166cac79c04bac0088ad5787ec64b36f27afd2f359953b2b
-    # via -r requirements/dev.in
+    # via -r dev.in
 user-agents==2.2.0 \
     --hash=sha256:a98c4dc72ecbc64812c4534108806fb0a0b3a11ec3fd1eafe807cee5b0a942e7 \
     --hash=sha256:d36d25178db65308d1458c5fa4ab39c9b2619377010130329f3955e7626ead26
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 uv==0.5.4 \
     --hash=sha256:05b45c7eefb178dcdab0d49cd642fb7487377d00727102a8d6d306cc034c0d83 \
     --hash=sha256:2118bb99cbc9787cb5e5cc4a507201e25a3fe88a9f389e8ffb84f242d96038c2 \
@@ -1113,17 +1113,17 @@ uv==0.5.4 \
     --hash=sha256:f40c6c6c3a1b398b56d3a8b28f7b455ac1ce4cbb1469f8d35d3bbc804d83daa4 \
     --hash=sha256:f511faf719b797ef0f14688f1abe20b3fd126209cf58512354d1813249745119 \
     --hash=sha256:f806af0ee451a81099c449c4cff0e813056fdf7dd264f3d3a8fd321b17ff9efc
-    # via -r requirements/dev.in
+    # via -r dev.in
 uwsgi==2.0.28 \
     --hash=sha256:79ca1891ef2df14508ab0471ee8c0eb94bd2d51d03f32f90c4bbe557ab1e99d0
-    # via -r requirements/prod.txt
+    # via -r prod.txt
 webob==1.8.9 \
     --hash=sha256:45e34c58ed0c7e2ecd238ffd34432487ff13d9ad459ddfd77895e67abba7c1f9 \
     --hash=sha256:ad6078e2edb6766d1334ec3dee072ac6a7f95b1e32ce10def8ff7f0f02d56589
     # via
-    #   -r requirements/prod.txt
+    #   -r prod.txt
     #   hawkauthlib
 whitenoise==6.8.2 \
     --hash=sha256:486bd7267a375fa9650b136daaec156ac572971acc8bf99add90817a530dd1d4 \
     --hash=sha256:df12dce147a043d1956d81d288c6f0044147c6d2ab9726e5772ac50fb45d2280
-    # via -r requirements/prod.txt
+    # via -r prod.txt
