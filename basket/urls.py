@@ -1,11 +1,16 @@
+import json
+
 from django.conf import settings
 from django.contrib import admin
+from django.http import HttpResponse
 from django.urls import include, path
 from django.views.generic import TemplateView
 
 from ninja import NinjaAPI
+from ninja.errors import ValidationError
 from watchman import views as watchman_views
 
+from basket import errors
 from basket.news.views import fxa_callback, fxa_start
 
 # NOTE: When adding any new URLs be sure to update `settings.OIDC_EXEMPT_URLS` if needed.
@@ -49,4 +54,21 @@ if settings.UNITTEST:
         [
             path("500/", defaults.server_error),
         ]
+    )
+
+
+# So django-ninja returns a pydantic validation error in a consistent JSON shape.
+@api.exception_handler(ValidationError)
+def validation_errors(request, exc):
+    error = exc.errors[0]
+    return HttpResponse(
+        json.dumps(
+            {
+                "status": "error",
+                "desc": error.get("msg"),
+                "code": errors.BASKET_USAGE_ERROR,
+            }
+        ),
+        status=422,
+        content_type="application/json",
     )

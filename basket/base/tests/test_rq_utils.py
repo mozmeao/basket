@@ -22,6 +22,12 @@ from basket.news.utils import NewsletterException
 
 @pytest.mark.django_db
 class TestRQUtils:
+    def setup_method(self, method):
+        self.queue = get_queue()
+
+    def teardown_method(self, method):
+        self.queue.empty()
+
     @override_settings(RQ_MAX_RETRIES=10)
     def test_rq_exponential_backoff(self):
         """
@@ -80,7 +86,7 @@ class TestRQUtils:
         Test that the get_worker function returns a RQ worker with params we expect.
         """
         worker = get_worker()
-        assert worker.queues == [get_queue()]
+        assert worker.queues == [self.queue]
         assert worker.disable_default_exception_handler is True
         assert worker._exc_handlers == [store_task_exception_handler]
         assert worker.serializer == JSONSerializer
@@ -160,7 +166,6 @@ class TestRQUtils:
         """
         Test that the exception handler creates a FailedTask object.
         """
-        queue = get_queue()
         args = ["arg1"]
         kwargs = {"kwarg1": "kwarg1"}
 
@@ -168,7 +173,7 @@ class TestRQUtils:
             func=print,
             args=args,
             kwargs=kwargs,
-            connection=queue.connection,
+            connection=self.queue.connection,
             id="job1",
             meta={"task_name": "job.failed"},
         )
@@ -196,12 +201,9 @@ class TestRQUtils:
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.isolation_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "failed")
 
-        queue.empty()
-
     @patch("basket.base.rq.sentry_sdk")
     def test_rq_exception_error_ignore(self, mock_sentry_sdk, metricsmock):
-        queue = get_queue()
-        job = Job.create(func=print, meta={"task_name": "job.ignore_error"}, connection=queue.connection)
+        job = Job.create(func=print, meta={"task_name": "job.ignore_error"}, connection=self.queue.connection)
         job.set_status(JobStatus.FAILED)
 
         for error_str in IGNORE_ERROR_MSGS:
@@ -223,15 +225,12 @@ class TestRQUtils:
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.isolation_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
 
-        queue.empty()
-
     @patch("basket.base.rq.sentry_sdk")
     def test_rq_exception_handler_snitch(self, mock_sentry_sdk):
         """
         Test that the exception handler returns early if it's a snitch job.
         """
-        queue = get_queue()
-        job = Job.create(func=print, meta={"task_name": "job.endswith.snitch"}, connection=queue.connection)
+        job = Job.create(func=print, meta={"task_name": "job.endswith.snitch"}, connection=self.queue.connection)
 
         assert FailedTask.objects.count() == 0
 
@@ -242,8 +241,7 @@ class TestRQUtils:
 
     @patch("basket.base.rq.sentry_sdk")
     def test_rq_exception_handler_retry_allowed(self, mock_sentry_sdk, metricsmock):
-        queue = get_queue()
-        job = Job.create(func=print, meta={"task_name": "job.rescheduled"}, connection=queue.connection)
+        job = Job.create(func=print, meta={"task_name": "job.rescheduled"}, connection=self.queue.connection)
         job.retries_left = 1
         job.retry_intervals = [1]
 
@@ -261,5 +259,3 @@ class TestRQUtils:
         metricsmock.assert_incr_once("base.tasks.retried", tags=["task:job.rescheduled"])
         assert mock_sentry_sdk.capture_exception.call_count == 1
         mock_sentry_sdk.isolation_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "retried")
-
-        queue.empty()

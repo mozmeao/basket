@@ -3,13 +3,15 @@ import uuid
 from django.conf import settings
 from django.views.decorators.cache import cache_page, never_cache
 
-from ninja import Router
+from ninja import Form, Router
 from ninja.decorators import decorate_view
+from pydantic import EmailStr
 
 from basket import errors, metrics
+from basket.news import tasks
 from basket.news.auth import AUTHORIZED, FxaBearerToken, HeaderApiKey, QueryApiKey, Unauthorized
 from basket.news.models import Newsletter
-from basket.news.schemas import ErrorSchema, NewsletterSchema, NewslettersSchema, UserSchema
+from basket.news.schemas import ErrorSchema, NewsletterModelSchema, NewslettersSchema, OkSchema, UserSchema
 from basket.news.utils import (
     MSG_EMAIL_AUTH_REQUIRED,
     MSG_EMAIL_OR_TOKEN_REQUIRED,
@@ -17,12 +19,14 @@ from basket.news.utils import (
     MSG_MAINTENANCE_MODE,
     MSG_USER_NOT_FOUND,
     NewsletterException,
+    email_is_blocked,
     get_user_data,
     process_email,
 )
 
+### /api/v1/news URLS
+
 news_router = Router()
-user_router = Router()
 
 
 @news_router.get(
@@ -35,12 +39,50 @@ user_router = Router()
 def list_newsletters(request):
     # Get the newsletters as a dictionary of dictionaries that are
     # easily jsonified
-    result = {}
-    for newsletter in Newsletter.objects.all():
-        newsletter.languages = newsletter.languages.split(",")
-        result[newsletter.slug] = NewsletterSchema.from_orm(newsletter).dict()
+    newsletters = {n.slug: NewsletterModelSchema.from_orm(n).dict() for n in Newsletter.objects.all()}
+    return {"status": "ok", "newsletters": newsletters}
 
-    return {"status": "ok", "newsletters": result}
+
+### /api/v1/users URLS
+
+user_router = Router()
+
+
+@user_router.post(
+    "/recover/",
+    url_name="users.recover",
+    description="Send recovery email",
+    response={
+        200: OkSchema,
+        400: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+    },
+)
+def recover_user(request, email: Form[EmailStr]):
+    if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
+        return _maintenance_error()
+
+    if email_is_blocked(email):
+        # Ignore request, reply ok.
+        return {"status": "ok"}
+
+    try:
+        user_data = get_user_data(email=email, extra_fields=["email_id"])
+    except NewsletterException as exc:
+        return _unknown_error(exc)
+
+    if not user_data:
+        return _unknown_email()
+
+    tasks.send_recovery_message.delay(
+        email,
+        user_data["token"],
+        user_data.get("lang", "en") or "en",
+        user_data.get("email_id"),
+    )
+
+    return {"status": "ok"}
 
 
 @user_router.get(

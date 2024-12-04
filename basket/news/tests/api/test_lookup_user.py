@@ -1,28 +1,24 @@
-import json
 import uuid
 from unittest.mock import Mock, patch
 
 from django.urls import reverse
 
 import pytest
-from requests import Response
-from requests.exceptions import HTTPError
 
 from basket import errors
 from basket.news import models
-from basket.news.backends.ctms import CTMSMultipleContactsError, CTMSNotConfigured
 from basket.news.schemas import ErrorSchema, UserSchema
+from basket.news.tests.api import _TestAPIBase
 from basket.news.utils import (
     MSG_EMAIL_AUTH_REQUIRED,
     MSG_EMAIL_OR_TOKEN_REQUIRED,
     MSG_INVALID_EMAIL,
-    MSG_MAINTENANCE_MODE,
     MSG_USER_NOT_FOUND,
 )
 
 
 @pytest.mark.django_db
-class TestLookupUserAPI:
+class TestLookupUserAPI(_TestAPIBase):
     def setup_method(self, method):
         self.url = reverse("api.v1:users.lookup")
         self.email = "test@example.com"
@@ -61,20 +57,8 @@ class TestLookupUserAPI:
         data.update(kwargs)
         return data
 
-    def validate_schema(self, data, schema=UserSchema):
-        # This will raise an exception if the data doesn't validate against the schema.
-        return schema.model_validate(data)
-
-    def ctms_error(self, status_code, detail, reason):
-        """Return a CTMS error response"""
-        response = Response()
-        response.status_code = status_code
-        response._content = json.dumps({"detail": detail})
-        if reason:
-            response.reason = reason
-        error = HTTPError()
-        error.response = response
-        return error
+    def valid_request(self, client):
+        return client.get(self.url, {"token": self.token})
 
     def test_lookup_user_by_email_authorized_qs(self, client):
         # Test lookup by email with an authorized API key in the query string.
@@ -88,7 +72,7 @@ class TestLookupUserAPI:
                 token=None,
             )
             data = resp.json()
-            self.validate_schema(data)
+            self.validate_schema(data, UserSchema)
             # Spot check some data.
             assert data["email"] == "test@example.com"
             assert data["token"] == self.token
@@ -105,7 +89,7 @@ class TestLookupUserAPI:
                 token=None,
             )
             data = resp.json()
-            self.validate_schema(data)
+            self.validate_schema(data, UserSchema)
             # Spot check some data.
             assert data["email"] == "test@example.com"
             assert data["token"] == self.token
@@ -122,7 +106,7 @@ class TestLookupUserAPI:
                 token=self.token,
             )
             data = resp.json()
-            self.validate_schema(data)
+            self.validate_schema(data, UserSchema)
             # Spot check some data.
             assert data["email"] == "t**t@e*****e.com"
             assert data["token"] == self.token
@@ -139,7 +123,7 @@ class TestLookupUserAPI:
                 token=self.token,
             )
             data = resp.json()
-            self.validate_schema(data)
+            self.validate_schema(data, UserSchema)
             # Spot check some data.
             assert data["email"] == "test@example.com"
             assert data["token"] == self.token
@@ -151,7 +135,7 @@ class TestLookupUserAPI:
             resp = client.get(self.url, {"token": self.token})
             assert resp.status_code == 200
             data = resp.json()
-            self.validate_schema(data)
+            self.validate_schema(data, UserSchema)
             assert data["has_fxa"] is True
 
     def test_lookup_user_with_has_fxa_false(self, client):
@@ -161,7 +145,7 @@ class TestLookupUserAPI:
             resp = client.get(self.url, {"token": self.token})
             assert resp.status_code == 200
             data = resp.json()
-            self.validate_schema(data)
+            self.validate_schema(data, UserSchema)
             assert data["has_fxa"] is False
 
     def test_lookup_email_with_fxa_bearer_token(self, client):
@@ -180,7 +164,7 @@ class TestLookupUserAPI:
                 )
                 assert resp.status_code == 200
                 data = resp.json()
-                self.validate_schema(data)
+                self.validate_schema(data, UserSchema)
                 assert data["email"] == self.email
                 assert data["token"] == self.token
 
@@ -289,78 +273,3 @@ class TestLookupUserAPI:
             assert data["code"] == errors.BASKET_AUTH_ERROR
             assert data["desc"] == MSG_EMAIL_AUTH_REQUIRED
             mock_ctms.get.assert_not_called()
-
-    def test_lookup_user_maintenance_mode(self, client, settings):
-        settings.MAINTENANCE_MODE = True
-        settings.MAINTENANCE_READ_ONLY = False
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            resp = client.get(self.url, {"token": self.token})
-            assert resp.status_code == 400
-            data = resp.json()
-            self.validate_schema(data, ErrorSchema)
-            assert data["status"] == "error"
-            assert data["code"] == errors.BASKET_MAINTENANCE_ERROR
-            assert data["desc"] == MSG_MAINTENANCE_MODE
-            mock_ctms.get.assert_not_called()
-
-    def test_lookup_user_ctms_network_failure(self, client):
-        # Test CTMS network failure returns a 400 error.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.side_effect = self.ctms_error(500, "Network failure", "Server Error")
-            resp = client.get(self.url, {"token": self.token})
-            assert resp.status_code == 400
-            data = resp.json()
-            self.validate_schema(data, ErrorSchema)
-            assert data["status"] == "error"
-            assert data["code"] == errors.BASKET_NETWORK_FAILURE
-            assert data["desc"] == ""
-            mock_ctms.get.assert_called_once_with(
-                email=None,
-                fxa_id=None,
-                token=self.token,
-            )
-
-    def test_lookup_user_ctms_multiple_contacts(self, client):
-        # Test CTMS multiple contacts returns a 400 error.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.side_effect = CTMSMultipleContactsError(
-                "token",
-                self.token,
-                [
-                    {"email": {"email_id": "id_1", "basket_token": self.token}},
-                    {"email": {"email_id": "id_2", "basket_token": self.token}},
-                ],
-            )
-            resp = client.get(self.url, {"token": self.token})
-            assert resp.status_code == 400
-            data = resp.json()
-            self.validate_schema(data, ErrorSchema)
-            assert data["status"] == "error"
-            assert data["code"] == errors.BASKET_NETWORK_FAILURE
-            assert data["desc"] == f"2 contacts returned for token='{self.token}' with email_ids ['id_1', 'id_2']"
-
-    # 500 errors
-
-    def test_lookup_user_ctms_not_configured(self, client):
-        # Test CTMS not configured returns a 500 error.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.side_effect = CTMSNotConfigured()
-            resp = client.get(self.url, {"token": self.token})
-            assert resp.status_code == 500
-            data = resp.json()
-            self.validate_schema(data, ErrorSchema)
-            assert data["status"] == "error"
-            assert data["code"] == errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE
-            assert data["desc"] == "Email service provider auth failure"
-
-    def test_lookup_user_ctms_unauthorized(self, client):
-        # Test CTMS unauthorized returns a 500 error.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.side_effect = self.ctms_error(401, "Unauthorized", "Not authenticated")
-            resp = client.get(self.url, {"token": self.token})
-            assert resp.status_code == 500
-            data = resp.json()
-            self.validate_schema(data, ErrorSchema)
-            assert data["status"] == "error"
-            assert data["code"] == errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE
-            assert data["desc"] == "Email service provider auth failure"
