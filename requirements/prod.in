@@ -1,5 +1,5 @@
 APScheduler==3.10.4
-boto3==1.35.74
+boto3==1.35.78
 contextlib2==21.6.0
 cryptography==44.0.0
 dj-database-url==2.3.0
@@ -25,11 +25,11 @@ pyOpenSSL==24.3.0
 pysilverpop==0.2.6
 python-decouple==3.8
 PyYAML==6.0.2
-redis==5.2.0
+redis==5.2.1
 rq==2.0.0
 rq-scheduler==0.14.0
 sentry-processor==0.0.1
-sentry-sdk==2.19.0
+sentry-sdk==2.19.2
 user-agents==2.2.0
 uwsgi==2.0.28
 whitenoise==6.8.2
