@@ -1,17 +1,38 @@
 import uuid
 from datetime import datetime
 
-from ninja import ModelSchema, Schema
+from ninja import Field, Schema
+from pydantic import EmailStr
 
-from basket.news.models import Newsletter
 
-
-class NewsletterSchema(ModelSchema):
+class NewsletterSchema(Schema):
+    active: bool
+    description: str
+    firefox_confirm: bool
+    indent: bool
+    is_mofo: bool
+    is_waitlist: bool
     languages: list[str]
+    order: int
+    private: bool
+    requires_double_optin: bool
+    show: bool
+    slug: str
+    title: str
+    vendor_id: str
 
-    class Meta:
-        model = Newsletter
-        exclude = ["id"]
+
+class NewsletterModelSchema(NewsletterSchema):
+    # Subclass to easily convert a `Newsletter` model object to the schema.
+    #
+    # This overrides the `languages` to convert from the CSV string to a list using the `Newsletter`
+    # object's `language_list` property.
+    languages: list[str] = Field(alias="language_list")
+
+
+class RecoverUserSchema(Schema):
+    # Used for the `/users/recover/` endpoint's request body validation.
+    email: EmailStr
 
 
 class NewslettersSchema(Schema):
@@ -41,3 +62,7 @@ class ErrorSchema(Schema):
     status: str
     desc: str
     code: int
+
+
+class OkSchema(Schema):
+    status: str
