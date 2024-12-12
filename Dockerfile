@@ -26,7 +26,7 @@ pip install --require-hashes --no-cache-dir -r requirements/dev.txt
 EOT
 
 COPY . /app
-RUN DEBUG=False SECRET_KEY=foo ALLOWED_HOSTS=localhost, DATABASE_URL=sqlite:// ./manage.py collectstatic --noinput
+RUN DEBUG=false SECRET_KEY=foo ALLOWED_HOSTS=localhost DATABASE_URL=sqlite:// ./manage.py collectstatic --noinput
 
 # END BUILDER IMAGE
 
