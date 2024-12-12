@@ -40,15 +40,14 @@ jobs:
         name: checkout-basket-repo
         uses: actions/checkout@v4
         with:
-            path: src
             fetch-depth: 10 # get enough so we have a Git history, but not everything
             fetch-tags: true
             ref: ${{ env.REF_ID }}
 
       - id: sha
         run: |-
-          cd src && echo "LONG_SHA=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-          cd src && echo "SHORT_SHA=$(git rev-parse --short=8 HEAD)" >> $GITHUB_OUTPUT
+          echo "LONG_SHA=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+          echo "SHORT_SHA=$(git rev-parse --short=8 HEAD)" >> $GITHUB_OUTPUT
 
       - id: docker-login
         name: Docker login
@@ -60,7 +59,6 @@ jobs:
       - id: build_and_push_docker_hub_images
         name: Build and push public images to Docker hub
         run: |-
-          cd src
           touch .env
           GIT_COMMIT= docker compose pull db redis web builder
           bin/dc.sh build --no-cache --pull web
