@@ -1,6 +1,5 @@
 #!/bin/bash -ex
 
-urlwait
 python manage.py migrate --noinput
 
 granian \
