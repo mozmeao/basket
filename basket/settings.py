@@ -10,6 +10,7 @@ import dj_database_url
 import django_cache_url
 import markus
 import sentry_sdk
+from corsheaders.defaults import default_headers
 from everett.manager import ChoiceOf, ConfigManager, ConfigurationMissingError, ListOf
 from sentry_processor import DesensitizationProcessor
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -232,8 +233,9 @@ CTMS_URL = config("CTMS_URL", default=default_url)
 CTMS_CLIENT_ID = config("CTMS_CLIENT_ID", default="")
 CTMS_CLIENT_SECRET = config("CTMS_CLIENT_SECRET", default="")
 
-CORS_ORIGIN_ALLOW_ALL = True
-CORS_URLS_REGEX = r"^/(news/|subscribe)"
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_HEADERS = (*default_headers, "x-api-key")
+CORS_URLS_REGEX = r"^/(api/|news/|subscribe)"
 
 # view rate limiting
 RATELIMIT_VIEW = "basket.news.views.ratelimited"

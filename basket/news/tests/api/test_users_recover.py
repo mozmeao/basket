@@ -41,6 +41,18 @@ class TestUsersRecoverAPI(_TestAPIBase):
         data.update(kwargs)
         return data
 
+    def test_preflight(self):
+        resp = self.client.options(
+            self.url,
+            content_type="application/json",
+            HTTP_ORIGIN="https://example.com",
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST",
+        )
+        assert resp.status_code == 200
+        assert resp["Access-Control-Allow-Origin"] == "*"
+        assert "POST" in resp["Access-Control-Allow-Methods"]
+        assert "content-type" in resp["Access-Control-Allow-Headers"]
+
     def test_blocked_email(self):
         with patch("basket.news.tasks.send_recovery_message.delay", autospec=True) as mock_send:
             resp = self.client.post(self.url, {"email": "bad@blocked.com"}, content_type="application/json")
