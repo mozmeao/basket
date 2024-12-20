@@ -61,6 +61,19 @@ class TestLookupUserAPI(_TestAPIBase):
     def valid_request(self):
         return self.client.get(self.url, {"token": self.token})
 
+    def test_preflight(self):
+        resp = self.client.options(
+            self.url,
+            content_type="application/json",
+            HTTP_ORIGIN="https://example.com",
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET",
+        )
+        assert resp.status_code == 200
+        assert resp["Access-Control-Allow-Origin"] == "*"
+        assert "GET" in resp["Access-Control-Allow-Methods"]
+        for header in ("content-type", "x-api-key", "authorization"):
+            assert header in resp["Access-Control-Allow-Headers"]
+
     def test_lookup_user_by_email_authorized_qs(self):
         # Test lookup by email with an authorized API key in the query string.
         with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:

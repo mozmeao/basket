@@ -35,6 +35,18 @@ class TestNewslettersAPI:
             **kwargs,
         )
 
+    def test_preflight(self):
+        resp = self.client.options(
+            self.url,
+            content_type="application/json",
+            HTTP_ORIGIN="https://example.com",
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET",
+        )
+        assert resp.status_code == 200
+        assert resp["Access-Control-Allow-Origin"] == "*"
+        assert "GET" in resp["Access-Control-Allow-Methods"]
+        assert "content-type" in resp["Access-Control-Allow-Headers"]
+
     def test_newsletters(self):
         resp = self.client.get(self.url)
         data = resp.json()
