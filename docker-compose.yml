@@ -2,12 +2,22 @@ services:
   db:
     image: mariadb
     environment:
-      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-      - MYSQL_DATABASE=basket
+      - MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1
+      - MARIADB_DATABASE=basket
+    healthcheck:
+      test: ["CMD", "mariadb", "--user=root", "--execute=SELECT version();"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
 
   redis:
     image: redis
     platform: linux/amd64
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 1s
+      retries: 5
 
   web:
     build:
@@ -16,6 +26,7 @@ services:
         GIT_SHA: ${GIT_COMMIT:-latest}
     image: mozmeao/basket:${GIT_COMMIT_SHORT:-latest}
     platform: linux/amd64
+    init: true
     volumes:
       - .:/app
     env_file:
@@ -24,14 +35,22 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/web/8000"]
+      interval: 3s
+      timeout: 1s
+      retries: 10
     command:
       ./bin/run-dev.sh
 
   worker:
     image: mozmeao/basket:${GIT_COMMIT_SHORT:-latest}
     platform: linux/amd64
+    init: true
     restart: unless-stopped
     volumes:
       - .:/app
@@ -39,8 +58,15 @@ services:
       - docker/envfiles/local.env
       - .env
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "-c", "rq info -R default | grep -q '1 queues'"]
+      interval: 3s
+      timeout: 1s
+      retries: 5
     command:
       ./bin/run-worker.sh
 
@@ -53,8 +79,10 @@ services:
       - docker/envfiles/local.env
       - docker/envfiles/test.env
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command:
       ./bin/run-tests.sh
 
@@ -65,8 +93,10 @@ services:
       - docker/envfiles/local.env
       - docker/envfiles/test.env
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command:
       ./bin/run-tests.sh
 
