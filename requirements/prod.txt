@@ -14,13 +14,13 @@ asgiref==3.8.1 \
     # via
     #   django
     #   django-cors-headers
-boto3==1.35.84 \
-    --hash=sha256:9f9bf72d92f7fdd546b974ffa45fa6715b9af7f5c00463e9d0f6ef9c95efe0c2 \
-    --hash=sha256:c94fc8023caf952f8740a48fc400521bba167f883cfa547d985c05fda7223f7a
+boto3==1.35.86 \
+    --hash=sha256:d61476fdd5a5388503b72c897083310d2329ce088593c4332b571a860be5d155 \
+    --hash=sha256:ed59fb4883da167464a5dfbc96e76d571db75e1a7a27d8e7b790c3008b02fcc7
     # via -r requirements/prod.in
-botocore==1.35.84 \
-    --hash=sha256:b4dc2ac7f54ba959429e1debbd6c7c2fb2349baa1cd63803f0682f0773dbd077 \
-    --hash=sha256:f86754882e04683e2e99a6a23377d0dd7f1fc2b2242844b2381dbe4dcd639301
+botocore==1.35.86 \
+    --hash=sha256:77cb4b445e4f424f956c68c688bd3ad527f4d214d51d67ffc8e245f4476d7de0 \
+    --hash=sha256:951e944eb30284b4593d4da98f70f7b5292ea237e4de0c5a2852946a549b8347
     # via
     #   boto3
     #   s3transfer
@@ -504,6 +504,10 @@ josepy==1.14.0 \
     --hash=sha256:308b3bf9ce825ad4d4bba76372cf19b5dc1c2ce96a9d298f9642975e64bd13dd \
     --hash=sha256:d2b36a30f316269f3242f4c2e45e15890784178af5ec54fa3e49cf9234ee22e0
     # via mozilla-django-oidc
+legacy-cgi==2.6.1 \
+    --hash=sha256:8eacc1522d9f76451337a4b5a0abf494158d39250754b0d1bc19a14c6512af9b \
+    --hash=sha256:f2ada99c747c3d72a473a6aaff6259a61f226b06fe9f3106e495ab83fd8f7a42
+    # via webob
 lxml==5.3.0 \
     --hash=sha256:01220dca0d066d1349bd6a1726856a78f7929f3878f7e2ee83c296c69495309e \
     --hash=sha256:02ced472497b8362c8e902ade23e3300479f4f43e45f4105c85ef43b8db85229 \
