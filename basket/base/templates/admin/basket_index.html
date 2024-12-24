@@ -1,0 +1,11 @@
+{% extends "admin/index.html" %}
+{% load static i18n %}
+
+{% block sidebar %}
+<div id="content-related">
+  <div class="module">
+    <h2>Functions</h2>
+    <a href="{% url 'admin.dsar' %}" class="button">Process DSARs &raquo;</a>
+  </div>
+</div>
+{% endblock %}
