@@ -534,6 +534,7 @@ class CTMSSession:
     get = partialmethod(request, "GET")
     patch = partialmethod(request, "PATCH")
     post = partialmethod(request, "POST")
+    delete = partialmethod(request, "DELETE")
 
 
 class CTMSNoIdsError(CTMSError):
@@ -564,6 +565,23 @@ class CTMSNotFoundByEmailIDError(CTMSError):
 
     def __str__(self):
         return f"Contact not found with email ID {self.email_id!r}"
+
+
+class CTMSNotFoundByEmailError(CTMSError):
+    """
+    A CTMS record was not found by the primary email.
+
+    This replaces a 404 HTTPError when the email is part of the URL.
+    """
+
+    def __init__(self, email):
+        self.email = email
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.email!r})"
+
+    def __str__(self):
+        return f"Contact not found with email {self.email!r}"
 
 
 class CTMSUniqueIDConflictError(CTMSError):
@@ -688,7 +706,7 @@ class CTMSInterface:
         @raises: request.HTTPError, status_code 404, on unknown email_id
         """
         resp = self.session.get(f"/ctms/{email_id}")
-        self._check_response(resp, email_id)
+        self._check_response(resp, email_id=email_id)
         return resp.json()
 
     @time_request
@@ -713,18 +731,33 @@ class CTMSInterface:
         @return: The updated contact data
         """
         resp = self.session.patch(f"/ctms/{email_id}", json=data)
-        self._check_response(resp, email_id)
+        self._check_response(resp, email_id=email_id)
         return resp.json()
 
-    def _check_response(self, response, email_id=None):
+    @time_request
+    def delete_by_email(self, email):
+        """
+        Call DELETE /ctms/{email} to delete the CTMS contact.
+
+        @param email: The CTMS email of the contact
+        @return: The contact identities, if the contact was deleted
+        """
+        resp = self.session.delete(f"/ctms/{email}")
+        self._check_response(resp, email=email)
+        return resp.json()
+
+    def _check_response(self, response, email_id=None, email=None):
         """
         Check a CTMS response, and raise exceptions as needed.
 
         @param response: The response from CTMS
         @param email_id: The email_id, implies a 404 is a CTMSNotFoundByEmailIDError
         """
-        if response.status_code == 404 and email_id:
-            raise CTMSNotFoundByEmailIDError(email_id)
+        if response.status_code == 404:
+            if email_id:
+                raise CTMSNotFoundByEmailIDError(email_id)
+            elif email:
+                raise CTMSNotFoundByEmailError(email)
         if response.status_code == 409:
             body = response.json()
             raise CTMSUniqueIDConflictError(body["detail"])
@@ -924,6 +957,21 @@ class CTMS:
             return self.update(contact, update_data)
         else:
             raise CTMSNotFoundByAltIDError(alt_id_name, alt_id_value)
+
+    def delete(self, email):
+        """
+        Delete contact matching the email
+
+        @param email: The CTMS primary email of the contact
+        @return: email_id if successful
+        @raises: CTMSNotFoundByEmailError
+        """
+        if not self.interface:
+            if self.is_primary:
+                raise CTMSNotConfigured()
+            else:
+                return None
+        return self.interface.delete_by_email(email)
 
 
 def ctms_session():

@@ -4,7 +4,7 @@
 {% block title %}{{ title }} | Basket{% endblock %}
 
 {% block branding %}
-<h1 id="site-name">Basket {{ foo }}</h1>
+<h1 id="site-name"><a href="{% url 'admin:index' %}">Basket</a></h1>
 {% endblock %}
 
 {% block nav-global %}{% endblock %}

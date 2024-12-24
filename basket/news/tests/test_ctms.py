@@ -15,6 +15,7 @@ from basket.news.backends.ctms import (
     CTMSMultipleContactsError,
     CTMSNoIdsError,
     CTMSNotFoundByAltIDError,
+    CTMSNotFoundByEmailError,
     CTMSNotFoundByEmailIDError,
     CTMSSession,
     CTMSUniqueIDConflictError,
@@ -1188,6 +1189,11 @@ class CTMSExceptionTests(TestCase):
         assert repr(exc) == "CTMSNotFoundByEmailIDError('4a6dd742-...')"
         assert str(exc) == "Contact not found with email ID '4a6dd742-...'"
 
+    def test_ctms_not_found_by_email(self):
+        exc = CTMSNotFoundByEmailError("4a6dd742-...")
+        assert repr(exc) == "CTMSNotFoundByEmailError('4a6dd742-...')"
+        assert str(exc) == "Contact not found with email '4a6dd742-...'"
+
     def test_ctms_unique_id_conflict(self):
         detail = "Contact with primary_email, basket_token, mofo_email_id, or fxa_id already exists"
         exc = CTMSUniqueIDConflictError(detail)
@@ -1564,3 +1570,24 @@ class CTMSTests(TestCase):
             "the-token",
             {"email": "test@example.com"},
         )
+
+    def test_delete_by_email_not_found(self):
+        email = "test@example.com"
+        interface = Mock(spec_set=["delete_by_email"])
+        interface.delete_by_email.side_effect = CTMSNotFoundByEmailError(email)
+        ctms = CTMS(interface)
+        with self.assertRaises(CTMSNotFoundByEmailError):
+            ctms.delete(email=email)
+
+    def test_delete_by_email(self):
+        email = "test@example.com"
+        identity = {
+            "email_id": "the-email-id",
+            "primary_email": email,
+        }
+        interface = Mock(spec_set=["delete_by_email"])
+        interface.delete_by_email.return_value = identity
+        ctms = CTMS(interface)
+        resp = ctms.delete(email=email)
+        assert resp == identity
+        interface.delete_by_email.assert_called_once_with(email)
