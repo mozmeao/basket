@@ -2,10 +2,16 @@
 {% load static i18n %}
 
 {% block sidebar %}
-<div id="content-related">
-  <div class="module">
-    <h2>Functions</h2>
-    <a href="{% url 'admin.dsar' %}" class="button">Process DSARs &raquo;</a>
+
+{% if perms.base.dsar_access %}
+  <div id="content-related">
+    <div class="module">
+      <h2>Functions</h2>
+      <a href="{% url 'admin.dsar' %}" class="button">Process DSARs &raquo;</a>
+    </div>
   </div>
-</div>
+{% else %}
+  {{ block.super }}
+{% endif %}
+
 {% endblock %}

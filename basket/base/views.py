@@ -1,4 +1,5 @@
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import permission_required
 from django.shortcuts import render
 
 from basket.base.forms import EmailListForm
@@ -9,6 +10,7 @@ from basket.news.backends.ctms import (
 
 
 @staff_member_required
+@permission_required("base.dsar_access")
 def admin_dsar(request):
     form = EmailListForm()
     output = None
