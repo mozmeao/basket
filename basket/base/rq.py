@@ -55,11 +55,19 @@ def get_redis_connection(url=None, force=False):
     return _REDIS_CONN
 
 
-def get_queue(queue="default"):
+def get_queue(queue=None):
     """
     Get an RQ queue with our chosen parameters.
 
     """
+    if queue is None:
+        if settings.RQ_DEFAULT_QUEUE:
+            queue = settings.RQ_DEFAULT_QUEUE
+        else:
+            queue = "default"
+    else:
+        queue = queue
+
     return Queue(
         queue,
         connection=get_redis_connection(),
@@ -74,7 +82,7 @@ def get_worker(queues=None):
 
     """
     if queues is None:
-        queues = ["default"]
+        queues = [get_queue()]
 
     return SimpleWorker(
         queues,
