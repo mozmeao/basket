@@ -71,9 +71,12 @@ class TestRQUtils:
         # Set back to the "default" for tests that follow since the connection is cached in the module.
         get_redis_connection("redis://redis:6379/2", force=True)
 
+    @override_settings(RQ_DEFAULT_QUEUE="")
     def test_get_queue(self):
         """
-        Test that the get_queue function returns a RQ queue with params we expect.
+        Test that the get_queue function returns a RQ queue with default.
+
+        Note: We set RQ_DEFAULT_QUEUE to an empty string since in tests this is set to "testqueue".
         """
         queue = get_queue()
 
@@ -81,6 +84,29 @@ class TestRQUtils:
         assert queue._is_async is False  # Only during testing.
         assert queue.connection == get_redis_connection()
         assert queue.serializer == JSONSerializer
+
+    @override_settings(RQ_DEFAULT_QUEUE="settings")
+    def test_get_queue_settings(self):
+        """
+        Test that the get_queue function returns a RQ queue if we set the RQ_DEFAULT_QUEUE setting.
+        """
+        queue = get_queue()
+        assert queue.name == "settings"
+
+    @override_settings(RQ_DEFAULT_QUEUE="settings")
+    def test_get_queue_arg_overrides_setting(self):
+        """
+        Test that the get_queue function returns a RQ queue if we pass in a queue name.
+        """
+        queue = get_queue("args")
+        assert queue.name == "args"
+
+    def test_get_queue_unittest(self):
+        """
+        Test that the get_queue function returns the expected queue when running tests.
+        """
+        queue = get_queue()
+        assert queue.name == "testqueue"
 
     def test_get_worker(self):
         """
