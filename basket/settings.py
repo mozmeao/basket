@@ -230,8 +230,8 @@ elif CTMS_ENV == "prod":
 else:
     default_url = ""
 CTMS_URL = config("CTMS_URL", default=default_url)
-CTMS_CLIENT_ID = config("CTMS_CLIENT_ID", default="")
-CTMS_CLIENT_SECRET = config("CTMS_CLIENT_SECRET", default="")
+CTMS_CLIENT_ID = config("CTMS_CLIENT_ID", default="") if not UNITTEST else "test"
+CTMS_CLIENT_SECRET = config("CTMS_CLIENT_SECRET", default="") if not UNITTEST else "test"
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_HEADERS = (*default_headers, "x-api-key")
