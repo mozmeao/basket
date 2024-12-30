@@ -504,6 +504,10 @@ josepy==1.14.0 \
     --hash=sha256:308b3bf9ce825ad4d4bba76372cf19b5dc1c2ce96a9d298f9642975e64bd13dd \
     --hash=sha256:d2b36a30f316269f3242f4c2e45e15890784178af5ec54fa3e49cf9234ee22e0
     # via mozilla-django-oidc
+legacy-cgi==2.6.1 \
+    --hash=sha256:8eacc1522d9f76451337a4b5a0abf494158d39250754b0d1bc19a14c6512af9b \
+    --hash=sha256:f2ada99c747c3d72a473a6aaff6259a61f226b06fe9f3106e495ab83fd8f7a42
+    # via webob
 lxml==5.3.0 \
     --hash=sha256:01220dca0d066d1349bd6a1726856a78f7929f3878f7e2ee83c296c69495309e \
     --hash=sha256:02ced472497b8362c8e902ade23e3300479f4f43e45f4105c85ef43b8db85229 \
@@ -887,9 +891,9 @@ requests-oauthlib==2.0.0 \
     --hash=sha256:7dd8a5c40426b779b0868c404bdef9768deccf22749cde15852df527e6269b36 \
     --hash=sha256:b3dffaebd884d8cd778494369603a9e7b58d29111bf6b41bdc2dcd87203af4e9
     # via pysilverpop
-rq==2.0.0 \
-    --hash=sha256:76d2a4a27f8fd5c4cfa200cd442efe3c1fd73525c676af06f07fcc0b81bdb70d \
-    --hash=sha256:a3a767876675dcc42683bac1869494c5020ba7fcf5c026d1f6d36a8ab98573a6
+rq==2.1.0 \
+    --hash=sha256:3c6892c6ca848e5fb47c1875399a66f13656bf0e123bf725d9aa9a12718e2fdf \
+    --hash=sha256:764585b6cab69ef1412f4aee523347e5aa7ece3ca175c118b1d92223dd8c2826
     # via
     #   -r requirements/prod.in
     #   rq-scheduler
