@@ -9,12 +9,7 @@ class EmailListField(forms.Field):
         if not value:
             return []
 
-        emails = []
-        for email in [v.strip() for v in value.split("\n")]:
-            if email:
-                emails.append(email)
-
-        return emails
+        return [email.strip() for email in value.splitlines() if email.strip()]
 
     def validate(self, value):
         """Check if value consists only of valid emails."""
