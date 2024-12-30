@@ -125,11 +125,11 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        if (DEBUG or UNITTEST)
+        else "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
-if DEBUG:
-    STORAGES["staticfiles"]["BACKEND"] = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 try:
     # Make this unique, and don't share it with anybody.
@@ -448,6 +448,9 @@ FXA_LOGIN_CAMPAIGNS = {
 
 COMMON_VOICE_NEWSLETTER = config("COMMON_VOICE_NEWSLETTER", default="common-voice")
 
+LOGIN_URL = "/admin/"
+LOGIN_REDIRECT_URL = "/admin/"
+
 OIDC_ENABLE = config("OIDC_ENABLE", parser=bool, default="false")
 if OIDC_ENABLE:
     AUTHENTICATION_BACKENDS = ("basket.base.authentication.OIDCModelBackend",)
@@ -458,7 +461,6 @@ if OIDC_ENABLE:
     OIDC_RP_CLIENT_ID = config("OIDC_RP_CLIENT_ID", default="")
     OIDC_RP_CLIENT_SECRET = config("OIDC_RP_CLIENT_SECRET", default="")
     OIDC_CREATE_USER = config("OIDC_CREATE_USER", parser=bool, default="false")
-    LOGIN_REDIRECT_URL = "/admin/"
     OIDC_EXEMPT_URLS = [
         "/",
         "/fxa/",
