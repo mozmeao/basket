@@ -239,6 +239,7 @@ CORS_URLS_REGEX = r"^/(api/|news/|subscribe)"
 
 # view rate limiting
 RATELIMIT_VIEW = "basket.news.views.ratelimited"
+EMAIL_SUBSCRIBE_RATE_LIMIT = config("EMAIL_SUBSCRIBE_RATE_LIMIT", default="4/5m")
 
 # RQ configuration.
 RQ_RESULT_TTL = config("RQ_RESULT_TTL", parser=int, default="0")  # Ignore results.

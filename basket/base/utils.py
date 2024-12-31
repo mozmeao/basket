@@ -1,3 +1,5 @@
+import uuid
+
 from django.conf import settings
 
 
@@ -9,3 +11,13 @@ def email_is_testing(email):
                 return True
 
     return False
+
+
+def is_valid_uuid(value, version=None):
+    try:
+        uuid_obj = uuid.UUID(value)
+        if uuid_obj.version != 4:
+            return False
+        return True
+    except ValueError:
+        return False
