@@ -239,6 +239,7 @@ CORS_URLS_REGEX = r"^/(api/|news/|subscribe)"
 
 # view rate limiting
 RATELIMIT_VIEW = "basket.news.views.ratelimited"
+EMAIL_SUBSCRIBE_RATE_LIMIT = config("EMAIL_SUBSCRIBE_RATE_LIMIT", default="4/5m")
 
 # RQ configuration.
 RQ_RESULT_TTL = config("RQ_RESULT_TTL", parser=int, default="0")  # Ignore results.
@@ -246,6 +247,7 @@ RQ_MAX_RETRY_DELAY = config("RQ_MAX_RETRY_DELAY", parser=int, default=str(34 * 6
 RQ_MAX_RETRIES = 0 if UNITTEST else config("RQ_MAX_RETRIES", parser=int, default="12")
 RQ_EXCEPTION_HANDLERS = ["basket.base.rq.store_task_exception_handler"]
 RQ_IS_ASYNC = False if UNITTEST else config("RQ_IS_ASYNC", parser=bool, default="true")
+RQ_DEFAULT_QUEUE = "testqueue" if UNITTEST else config("RQ_DEFAULT_QUEUE", default="") or None
 
 SNITCH_ID = config("SNITCH_ID", default="")
 

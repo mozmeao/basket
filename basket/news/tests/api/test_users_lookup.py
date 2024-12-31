@@ -8,7 +8,7 @@ import pytest
 from basket import errors
 from basket.news import models
 from basket.news.schemas import ErrorSchema, UserSchema
-from basket.news.tests.api import _TestAPIBase
+from basket.news.tests.api import _TestAPIwCTMSBase
 from basket.news.utils import (
     MSG_EMAIL_AUTH_REQUIRED,
     MSG_EMAIL_OR_TOKEN_REQUIRED,
@@ -18,9 +18,10 @@ from basket.news.utils import (
 
 
 @pytest.mark.django_db
-class TestLookupUserAPI(_TestAPIBase):
+class TestLookupUserAPI(_TestAPIwCTMSBase):
     def setup_method(self, method):
         super().setup_method(method)
+        self.method = "GET"
         self.url = reverse("api.v1:users.lookup")
         self.email = "test@example.com"
         self.token = str(uuid.uuid4())
@@ -60,19 +61,6 @@ class TestLookupUserAPI(_TestAPIBase):
 
     def valid_request(self):
         return self.client.get(self.url, {"token": self.token})
-
-    def test_preflight(self):
-        resp = self.client.options(
-            self.url,
-            content_type="application/json",
-            HTTP_ORIGIN="https://example.com",
-            HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET",
-        )
-        assert resp.status_code == 200
-        assert resp["Access-Control-Allow-Origin"] == "*"
-        assert "GET" in resp["Access-Control-Allow-Methods"]
-        for header in ("content-type", "x-api-key", "authorization"):
-            assert header in resp["Access-Control-Allow-Headers"]
 
     def test_lookup_user_by_email_authorized_qs(self):
         # Test lookup by email with an authorized API key in the query string.
