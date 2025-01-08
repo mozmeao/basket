@@ -7,9 +7,11 @@ from django.views.decorators.cache import cache_page, never_cache
 
 from ninja import NinjaAPI, Router
 from ninja.decorators import decorate_view
-from ninja.errors import ValidationError
+from ninja.errors import Throttled, ValidationError
 
 from basket import errors, metrics
+from basket.base.throttling import TokenThrottle
+from basket.base.utils import is_valid_uuid
 from basket.news import tasks
 from basket.news.auth import AUTHORIZED, FxaBearerToken, HeaderApiKey, QueryApiKey, Unauthorized
 from basket.news.models import Newsletter
@@ -62,6 +64,27 @@ def list_newsletters(request):
 ### /api/v1/users URLS
 
 user_router = Router()
+
+
+@user_router.post(
+    "/confirm/{uuid:token}/",
+    url_name="users.confirm",
+    description="Confirm user",
+    throttle=[TokenThrottle(settings.EMAIL_SUBSCRIBE_RATE_LIMIT)],
+    response={
+        200: OkSchema,
+        400: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+    },
+)
+def confirm_user(request, token: uuid.UUID):
+    if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
+        return _maintenance_error()
+
+    tasks.confirm_user.delay(str(token))
+
+    return {"status": "ok"}
 
 
 @user_router.post(
@@ -231,5 +254,22 @@ def validation_errors(request, exc):
             }
         ),
         status=422,
+        content_type="application/json",
+    )
+
+
+@api.exception_handler(Throttled)
+def throttled_errors(request, exc):
+    dotted_path = ".".join(filter(lambda p: p and not is_valid_uuid(p), request.path.split("/")))
+    metrics.incr("api.throttled", tags=[f"path:{dotted_path}"])
+    return HttpResponse(
+        json.dumps(
+            {
+                "status": "error",
+                "desc": "Rate limit exceeded",
+                "code": errors.BASKET_USAGE_ERROR,
+            }
+        ),
+        status=429,
         content_type="application/json",
     )
