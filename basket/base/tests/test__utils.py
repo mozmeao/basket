@@ -1,9 +1,11 @@
 import inspect
 import json
+import uuid
 
 from django.test.utils import override_settings
 
-from basket.base.utils import email_is_testing
+from basket.base.utils import email_is_testing, is_valid_uuid
+from basket.news.utils import generate_token
 from basket.settings import (
     SENSITIVE_FIELDS_TO_MASK_ENTIRELY,
     SENSITIVE_FIELDS_TO_MASK_PARTIALLY,
@@ -168,3 +170,16 @@ def test_pre_sentry_sanitisation(shared_datadir):
     stringified = json.dumps(output)
 
     assert "blocklist" not in stringified
+
+
+def test_is_valid_uuid():
+    # Valid uuid4
+    assert is_valid_uuid(generate_token())
+    assert is_valid_uuid(str(uuid.uuid4()))
+
+    # Not valid uuid4
+    assert not is_valid_uuid("thedude")
+    assert not is_valid_uuid("abcdef-1234")
+    assert not is_valid_uuid(str(uuid.uuid1()))
+    assert not is_valid_uuid(str(uuid.uuid3(uuid.NAMESPACE_URL, "http://example.com")))
+    assert not is_valid_uuid(str(uuid.uuid5(uuid.NAMESPACE_URL, "http://example.com")))

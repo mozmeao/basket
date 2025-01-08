@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import RequestFactory, TestCase
+from django.test.utils import override_settings
 
 from django_ratelimit.exceptions import Ratelimited
 
@@ -294,10 +295,10 @@ class UpdateUserTaskTests(TestCase, TasksPatcherMixin):
         self.assert_response_ok(response)
         mock_api_key.assert_called_with(request, data["email"])
 
+    @override_settings(EMAIL_SUBSCRIBE_RATE_LIMIT="2/1m")
     def test_rate_limit(self):
         """Should raise Ratelimited if email attempts to sign up for same
         newsletter quickly"""
-        views.EMAIL_SUBSCRIBE_RATE_LIMIT = "2/1m"
         request = self.factory.post("/")
         data = {"email": "a@example.com", "newsletters": "foo,bar"}
         with patch("basket.news.views.newsletter_and_group_slugs") as newsletter_slugs:
@@ -308,10 +309,10 @@ class UpdateUserTaskTests(TestCase, TasksPatcherMixin):
             with self.assertRaises(Ratelimited):
                 views.update_user_task(request, SUBSCRIBE, data, sync=False)
 
+    @override_settings(EMAIL_SUBSCRIBE_RATE_LIMIT="2/1m")
     def test_rate_limit_user_update(self):
         """Should raise Ratelimited if token attempts to update same newsletters
         quickly"""
-        views.EMAIL_SUBSCRIBE_RATE_LIMIT = "2/1m"
         request = self.factory.post("/")
         data = {"token": "a@example.com", "newsletters": "foo,bar"}
         with patch("basket.news.views.newsletter_slugs") as newsletter_slugs:

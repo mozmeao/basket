@@ -55,8 +55,6 @@ from basket.news.utils import (
 )
 
 TOKEN_RE = re.compile(r"^[0-9a-f-]{36}$", flags=re.IGNORECASE)
-# four submissions for a set of newsletters per email address per 5 minutes
-EMAIL_SUBSCRIBE_RATE_LIMIT = getattr(settings, "EMAIL_SUBSCRIBE_RATE_LIMIT", "4/5m")
 
 
 def is_token(word):
@@ -183,7 +181,7 @@ def confirm(request, token):
         request,
         group="basket.news.views.confirm",
         key=lambda x, y: token,
-        rate=EMAIL_SUBSCRIBE_RATE_LIMIT,
+        rate=settings.EMAIL_SUBSCRIBE_RATE_LIMIT,
         increment=True,
     ):
         raise Ratelimited()
@@ -697,7 +695,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
             request,
             group="basket.news.views.update_user_task.subscribe",
             key=lambda x, y: f"{data['newsletters']}-{email}",
-            rate=EMAIL_SUBSCRIBE_RATE_LIMIT,
+            rate=settings.EMAIL_SUBSCRIBE_RATE_LIMIT,
             increment=True,
         ):
             raise Ratelimited()
@@ -708,7 +706,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
             request,
             group="basket.news.views.update_user_task.set",
             key=lambda x, y: f"{data['newsletters']}-{token}",
-            rate=EMAIL_SUBSCRIBE_RATE_LIMIT,
+            rate=settings.EMAIL_SUBSCRIBE_RATE_LIMIT,
             increment=True,
         ):
             raise Ratelimited()

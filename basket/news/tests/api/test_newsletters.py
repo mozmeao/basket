@@ -1,21 +1,21 @@
 from unittest.mock import patch
 
 from django.core.cache import cache
-from django.test import Client
 from django.urls import reverse
 
 import pytest
 
 from basket.news import models
 from basket.news.schemas import NewslettersSchema
+from basket.news.tests.api import _TestAPIBase
 
 
 @pytest.mark.django_db
-class TestNewslettersAPI:
+class TestNewslettersAPI(_TestAPIBase):
     def setup_method(self, method):
-        # These tests don't need the CTMS tests found in the `_TestAPIBase`,
-        # so we just set up a standard Django test client.
-        self.client = Client()
+        super().setup_method(method)
+        self.method = "GET"
+        self.test_maintenance_mode = False
         self.url = reverse("api.v1:news.newsletters")
         self.n1 = self._add_newsletter("test-1", show=True, order=1)
         self.n2 = self._add_newsletter("test-2", order=2)
