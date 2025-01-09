@@ -1164,9 +1164,7 @@ class CTMSExceptionTests(TestCase):
 
         exc = CTMSMultipleContactsError("amo_id", "id1", contacts)
         assert (
-            repr(exc) == "CTMSMultipleContactsError('amo_id', 'id1',"
-            " [{'email': {'email_id': 'email-id-1'}},"
-            " {'email': {'email_id': 'email-id-2'}}])"
+            repr(exc) == "CTMSMultipleContactsError('amo_id', 'id1', [{'email': {'email_id': 'email-id-1'}}, {'email': {'email_id': 'email-id-2'}}])"
         )
         assert str(exc) == "2 contacts returned for amo_id='id1' with email_ids ['email-id-1', 'email-id-2']"
 
