@@ -70,8 +70,8 @@ if REDIS_URL:
     REDIS_URL = REDIS_URL.rstrip("/0")
     # Use Redis for cache and rq.
     # Note: We save the URL in the environment so `config` can pull from it below.
-    os.environ["CACHE_URL"] = f'{REDIS_URL}/{config("REDIS_CACHE_DB", default="1")}'
-    RQ_URL = f'{REDIS_URL}/{config("REDIS_RQ_DB", default="2")}'
+    os.environ["CACHE_URL"] = f"{REDIS_URL}/{config('REDIS_CACHE_DB', default='1')}"
+    RQ_URL = f"{REDIS_URL}/{config('REDIS_RQ_DB', default='2')}"
 
 CACHES = {
     "default": config("CACHE_URL", parser=django_cache_url.parse, default="locmem://"),
