@@ -21,13 +21,13 @@ asgiref==3.8.1 \
     #   -r requirements/prod.txt
     #   django
     #   django-cors-headers
-boto3==1.35.95 \
-    --hash=sha256:c81223488607457dacb7829ee0c99803c664593b34a2b0f86c71d421e7c3469a \
-    --hash=sha256:d5671226819f6a78e31b1f37bd60f194afb8203254a543d06bdfb76de7d79236
+boto3==1.35.98 \
+    --hash=sha256:4b6274b4fe9d7113f978abea66a1f20c8a397c268c9d1b2a6c96b14a256da4a5 \
+    --hash=sha256:d0224e1499d7189b47aa7f469d96522d98df6f5702fccb20a95a436582ebcd9d
     # via -r requirements/prod.txt
-botocore==1.35.95 \
-    --hash=sha256:a672406f748ad6a5b2fb7ea0d8394539eb4fda5332fc5373467d232c4bb27b12 \
-    --hash=sha256:b03d2d7cc58a16aa96a7e8f21941b766e98abc6ea74f61a63de7dc26c03641d3
+botocore==1.35.98 \
+    --hash=sha256:4f1c0b687488663a774ad3a5e81a5f94fae1bcada2364cfdc48482c4dbf794d5 \
+    --hash=sha256:d11742b3824bdeac3c89eeeaf5132351af41823bbcef8fc15e95c8250b1de09c
     # via
     #   -r requirements/prod.txt
     #   boto3
@@ -586,6 +586,12 @@ josepy==1.14.0 \
     # via
     #   -r requirements/prod.txt
     #   mozilla-django-oidc
+legacy-cgi==2.6.1 \
+    --hash=sha256:8eacc1522d9f76451337a4b5a0abf494158d39250754b0d1bc19a14c6512af9b \
+    --hash=sha256:f2ada99c747c3d72a473a6aaff6259a61f226b06fe9f3106e495ab83fd8f7a42
+    # via
+    #   -r requirements/prod.txt
+    #   webob
 lxml==5.3.0 \
     --hash=sha256:01220dca0d066d1349bd6a1726856a78f7929f3878f7e2ee83c296c69495309e \
     --hash=sha256:02ced472497b8362c8e902ade23e3300479f4f43e45f4105c85ef43b8db85229 \
@@ -1087,7 +1093,6 @@ typing-extensions==4.12.2 \
     --hash=sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8
     # via
     #   -r requirements/prod.txt
-    #   anyio
     #   dj-database-url
     #   pydantic
     #   pydantic-core
