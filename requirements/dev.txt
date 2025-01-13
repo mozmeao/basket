@@ -601,6 +601,12 @@ josepy==1.14.0 \
     # via
     #   -r requirements/prod.txt
     #   mozilla-django-oidc
+legacy-cgi==2.6.1 \
+    --hash=sha256:8eacc1522d9f76451337a4b5a0abf494158d39250754b0d1bc19a14c6512af9b \
+    --hash=sha256:f2ada99c747c3d72a473a6aaff6259a61f226b06fe9f3106e495ab83fd8f7a42
+    # via
+    #   -r requirements/prod.txt
+    #   webob
 lxml==5.3.0 \
     --hash=sha256:01220dca0d066d1349bd6a1726856a78f7929f3878f7e2ee83c296c69495309e \
     --hash=sha256:02ced472497b8362c8e902ade23e3300479f4f43e45f4105c85ef43b8db85229 \
@@ -752,15 +758,15 @@ mozilla-django-oidc==4.0.1 \
 msgpack-python==0.5.6 \
     --hash=sha256:378cc8a6d3545b532dfd149da715abae4fda2a3adb6d74e525d0d5e51f46909b
     # via -r requirements/prod.txt
-mysqlclient==2.2.6 \
-    --hash=sha256:3da70a07753ba6be881f7d75e795e254f6a0c12795778034acc69769b0649d37 \
-    --hash=sha256:43c5b30be0675080b9c815f457d73397f0442173e7be83d089b126835e2617ae \
-    --hash=sha256:794857bce4f9a1903a99786dd29ad7887f45a870b3d11585b8c51c4a753c4174 \
-    --hash=sha256:b0a5cddf1d3488b254605041070086cac743401d876a659a72d706a0d89c8ebb \
-    --hash=sha256:c0b46d9b78b461dbb62482089ca8040fa916595b1b30f831ebbd1b0a82b43d53 \
-    --hash=sha256:e940b41d85dfd7b190fa47d52f525f878cfa203d4653bf6a35b271b3c3be125b \
-    --hash=sha256:e94a92858203d97fd584bdb6d7ee8c56f2590db8d77fd44215c0dcf5e739bc37 \
-    --hash=sha256:f3efb849d6f7ef4b9788a0eda2e896b975e0ebf1d6bf3dcabea63fd698e5b0b5
+mysqlclient==2.2.7 \
+    --hash=sha256:199dab53a224357dd0cb4d78ca0e54018f9cee9bf9ec68d72db50e0a23569076 \
+    --hash=sha256:201a6faa301011dd07bca6b651fe5aaa546d7c9a5426835a06c3172e1056a3c5 \
+    --hash=sha256:24ae22b59416d5fcce7e99c9d37548350b4565baac82f95e149cac6ce4163845 \
+    --hash=sha256:2e3c11f7625029d7276ca506f8960a7fd3c5a0a0122c9e7404e6a8fe961b3d22 \
+    --hash=sha256:4b4c0200890837fc64014cc938ef2273252ab544c1b12a6c1d674c23943f3f2e \
+    --hash=sha256:92af368ed9c9144737af569c86d3b6c74a012a6f6b792eb868384787b52bb585 \
+    --hash=sha256:977e35244fe6ef44124e9a1c2d1554728a7b76695598e4b92b37dc2130503069 \
+    --hash=sha256:a22d99d26baf4af68ebef430e3131bb5a9b722b79a9fcfac6d9bbf8a88800687
     # via -r requirements/prod.txt
 oauthlib==3.2.2 \
     --hash=sha256:8139f29aac13e25d502680e9e19963e83f16838d48a0d71c287fe40e7067fbca \
@@ -1102,7 +1108,6 @@ typing-extensions==4.12.2 \
     --hash=sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8
     # via
     #   -r requirements/prod.txt
-    #   anyio
     #   dj-database-url
     #   pydantic
     #   pydantic-core
