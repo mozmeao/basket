@@ -10,7 +10,7 @@ django-mozilla-product-details==1.0.3
 django-ninja==1.3.0
 django-ratelimit==4.1.0
 django-watchman==1.3.0
-django==4.2.17
+django==4.2.18
 email-validator==2.2.0
 everett==3.4.0
 granian==1.7.4
