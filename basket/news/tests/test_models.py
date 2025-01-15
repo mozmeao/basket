@@ -3,6 +3,9 @@ from unittest.mock import patch
 from django.test import TestCase
 from django.test.utils import override_settings
 
+import pytest
+
+from basket.base.utils import is_valid_uuid
 from basket.news import models
 
 
@@ -80,7 +83,8 @@ class FailedTaskTest(TestCase):
         assert mock_enqueue.call_args.kwargs["retry"].intervals == [60, 90]
 
 
-class NewsletterTest:
+@pytest.mark.django_db
+class TestNewsletter:
     def test_newsletter_strips_languages(self):
         n = models.Newsletter.objects.create(
             slug="slug",
@@ -89,3 +93,45 @@ class NewsletterTest:
         )
         obj = models.Newsletter.objects.get(id=n.id)
         assert obj.languages == "en,fr,de"
+
+
+@pytest.mark.django_db
+class TestAPIUser:
+    def _add_api_user(self, name=None):
+        name = name or "The Dude"
+        return models.APIUser.objects.create(name=name)
+
+    def test_api_user(self):
+        user = self._add_api_user()
+        assert str(user) == f"{user.name} ({user.api_key})"
+        assert user.api_key is not None
+        assert is_valid_uuid(user.api_key)
+        assert user.enabled is True
+        assert user.created is not None
+        assert user.last_accessed is None
+
+    def test_api_user_generate_key_unique(self):
+        user1 = self._add_api_user()
+        user2 = self._add_api_user()
+        assert user1.api_key != user2.api_key
+
+    def test_api_is_valid(self, metricsmock):
+        user = self._add_api_user()
+        assert user.last_accessed is None
+        assert models.APIUser.is_valid(user.api_key) is True
+        metricsmock.assert_incr_once("api.key.is_valid", tags=["value:true"])
+        # Test `is_valid` also updates `last_accessed`.
+        user.refresh_from_db()
+        assert user.last_accessed is not None
+
+    def test_api_is_valid_disabled(self, metricsmock):
+        user = self._add_api_user()
+        user.enabled = False
+        user.save()
+        assert models.APIUser.is_valid(user.api_key) is False
+        metricsmock.assert_incr_once("api.key.is_valid", tags=["value:false"])
+        assert user.last_accessed is None
+
+    def test_api_is_valid_invalid(self, metricsmock):
+        assert models.APIUser.is_valid("invalid") is False
+        metricsmock.assert_incr_once("api.key.is_valid", tags=["value:false"])
