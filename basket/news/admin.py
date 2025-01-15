@@ -55,7 +55,8 @@ class NewsletterGroupAdmin(admin.ModelAdmin):
 
 @admin.register(APIUser)
 class APIUserAdmin(admin.ModelAdmin):
-    list_display = ("name", "enabled")
+    list_display = ("name", "enabled", "created", "last_accessed")
+    readonly_fields = ("api_key", "created", "last_accessed")
 
 
 @admin.register(Newsletter)

@@ -6,6 +6,7 @@ from django.utils.timezone import now
 
 import sentry_sdk
 
+from basket import metrics
 from basket.base.rq import get_enqueue_kwargs, get_queue
 from basket.news.fields import LocaleField
 
@@ -140,6 +141,8 @@ class APIUser(models.Model):
     name = models.CharField(max_length=256, help_text="Descriptive name of this user")
     api_key = models.CharField(max_length=40, default=get_uuid, db_index=True)
     enabled = models.BooleanField(default=True)
+    created = models.DateTimeField(auto_now_add=True)
+    last_accessed = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "API User"
@@ -148,8 +151,28 @@ class APIUser(models.Model):
         return f"{self.name} ({self.api_key})"
 
     @classmethod
-    def is_valid(cls, api_key):
-        return cls.objects.filter(api_key=api_key, enabled=True).exists()
+    def is_valid(cls, api_key: str) -> bool:
+        """
+        Checks if the API key is valid and enabled.
+
+        Updates the `last_accessed` field if the key is valid.
+
+        Returns:
+            bool: True if the API key is valid and enabled, False otherwise.
+
+        """
+        try:
+            obj = cls.objects.get(api_key=api_key)
+            if obj.enabled:
+                obj.last_accessed = now()
+                obj.save(update_fields=["last_accessed"])
+                metrics.incr("api.key.is_valid", tags=["value:true"])
+                return True
+        except APIUser.DoesNotExist:
+            pass
+
+        metrics.incr("api.key.is_valid", tags=["value:false"])
+        return False
 
 
 def _is_query_dict(arg):
