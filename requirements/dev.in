@@ -7,5 +7,5 @@ pytest-mock==3.14.0
 pytest==8.3.4
 requests-mock==1.12.1
 ruff==0.9.1
-uv==0.5.18
+uv==0.5.20
 watchfiles==1.0.4  # required for `granian --reload`
