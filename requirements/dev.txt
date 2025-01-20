@@ -21,13 +21,13 @@ asgiref==3.8.1 \
     #   -r requirements/prod.txt
     #   django
     #   django-cors-headers
-boto3==1.35.99 \
-    --hash=sha256:83e560faaec38a956dfb3d62e05e1703ee50432b45b788c09e25107c5058bd71 \
-    --hash=sha256:e0abd794a7a591d90558e92e29a9f8837d25ece8e3c120e530526fe27eba5fca
+boto3==1.36.2 \
+    --hash=sha256:76cfc9a705be46e8d22607efacc8d688c064f923d785a01c00b28e9a96425d1a \
+    --hash=sha256:fde1c29996b77274a60b7bc9f741525afa6267bb1716eb644a764fb7c124a0d2
     # via -r requirements/prod.txt
-botocore==1.35.99 \
-    --hash=sha256:1eab44e969c39c5f3d9a3104a0836c24715579a455f12b3979a31d7cde51b3c3 \
-    --hash=sha256:b22d27b6b617fc2d7342090d6129000af2efd20174215948c0d7ae2da0fab445
+botocore==1.36.2 \
+    --hash=sha256:a1fe6610983f0214b0c7655fe6990b6a731746baf305b182976fc7b568fc3cb0 \
+    --hash=sha256:bc3b7e3b573a48af2bd7116b80fe24f9a335b0b67314dcb2697a327d009abf29
     # via
     #   -r requirements/prod.txt
     #   boto3
@@ -586,6 +586,12 @@ josepy==1.14.0 \
     # via
     #   -r requirements/prod.txt
     #   mozilla-django-oidc
+legacy-cgi==2.6.2 \
+    --hash=sha256:9952471ceb304043b104c22d00b4f333cac27a6abe446d8a528fc437cf13c85f \
+    --hash=sha256:a7b83afb1baf6ebeb56522537c5943ef9813cf933f6715e88a803f7edbce0bff
+    # via
+    #   -r requirements/prod.txt
+    #   webob
 lxml==5.3.0 \
     --hash=sha256:01220dca0d066d1349bd6a1726856a78f7929f3878f7e2ee83c296c69495309e \
     --hash=sha256:02ced472497b8362c8e902ade23e3300479f4f43e45f4105c85ef43b8db85229 \
@@ -1052,9 +1058,9 @@ ruff==0.9.1 \
     --hash=sha256:f0c8b149e9c7353cace7d698e1656ffcf1e36e50f8ea3b5d5f7f87ff9986a7ca \
     --hash=sha256:fd2b25ecaf907d6458fa842675382c8597b3c746a2dde6717fe3415425df0c17
     # via -r requirements/dev.in
-s3transfer==0.10.4 \
-    --hash=sha256:244a76a24355363a68164241438de1b72f8781664920260c48465896b712a41e \
-    --hash=sha256:29edc09801743c21eb5ecbc617a152df41d3c287f67b615f73e5f750583666a7
+s3transfer==0.11.1 \
+    --hash=sha256:3f25c900a367c8b7f7d8f9c34edc87e300bde424f779dc9f0a8ae4f9df9264f6 \
+    --hash=sha256:8fa0aa48177be1f3425176dfe1ab85dcd3d962df603c3dbfc585e6bf857ef0ff
     # via
     #   -r requirements/prod.txt
     #   boto3
@@ -1087,11 +1093,9 @@ typing-extensions==4.12.2 \
     --hash=sha256:1a7ead55c7e559dd4dee8856e3a88b41225abfe1ce8df57b7c13915fe121ffb8
     # via
     #   -r requirements/prod.txt
-    #   anyio
     #   dj-database-url
     #   pydantic
     #   pydantic-core
-    #   pyopenssl
 tzlocal==5.2 \
     --hash=sha256:49816ef2fe65ea8ac19d19aa7a1ae0551c834303d5014c6d5a62e4cbda8047b8 \
     --hash=sha256:8d399205578f1a9342816409cc1e46a93ebd5755e39ea2d85334bea911bf0e6e
