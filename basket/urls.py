@@ -5,7 +5,6 @@ from django.views.generic import TemplateView
 
 from watchman import views as watchman_views
 
-from basket.base.views import admin_dsar
 from basket.news.api import api, news_router, user_router
 from basket.news.views import fxa_callback, fxa_start
 
@@ -31,8 +30,6 @@ if settings.OIDC_ENABLE:
 admin.autodiscover()
 urlpatterns.extend(
     [
-        path("admin/doc/", include("django.contrib.admindocs.urls")),
-        path("admin/dsar/", admin_dsar, name="admin.dsar"),
         path("admin/", admin.site.urls),
     ],
 )
