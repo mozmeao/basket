@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from django.conf import settings
 from django.contrib.auth.models import Permission, User
@@ -11,11 +11,12 @@ from basket.base.forms import EmailListForm
 from basket.news.backends.ctms import CTMSNotFoundByEmailError
 
 
-@pytest.mark.django_db
-class TestAdminDSARView:
+class DSARViewTestBase:
+    url_name = None
+
     def setup_method(self, method):
         self.client = Client()
-        self.url = reverse("admin:dsar.delete")
+        self.url = reverse(self.url_name)
 
     def _create_admin_user(self, with_perm=True):
         user = User.objects.create_user(username="admin", password="password")
@@ -40,6 +41,11 @@ class TestAdminDSARView:
         response = self.client.get(self.url)
         assert response.status_code == 302
         assert response.url.startswith(settings.LOGIN_URL)
+
+
+@pytest.mark.django_db
+class TestAdminDSARDeleteView(DSARViewTestBase):
+    url_name = "admin:dsar.delete"
 
     def test_get(self):
         self._create_admin_user()
@@ -97,5 +103,85 @@ class TestAdminDSARView:
 
         assert response.status_code == 200
         assert not mock_ctms.delete.called
+        assert response.context["dsar_output"] is None
+        assert response.context["dsar_form"].errors == {"emails": ["Invalid email: invalid@email"]}
+
+
+@pytest.mark.django_db
+class TestAdminDSARUnsubView(DSARViewTestBase):
+    url_name = "admin:dsar.unsubscribe"
+    update_data = {
+        "email": {
+            "has_opted_out_of_email": True,
+        },
+        "newsletters": "UNSUBSCRIBE",
+        "waitlists": "UNSUBSCRIBE",
+    }
+
+    def test_get(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        response = self.client.get(self.url)
+        assert response.status_code == 200
+        assert isinstance(response.context["dsar_form"], EmailListForm)
+        assert response.context["dsar_output"] is None
+
+    def test_post_valid_emails(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.ctms", spec_set=["get", "interface"]) as mock_ctms:
+            mock_ctms.get.side_effect = [
+                {"email_id": "123", "fxa_id": "", "mofo_contact_id": ""},
+                {"email_id": "456", "fxa_id": "string", "mofo_contact_id": ""},
+                {"email_id": "789", "fxa_id": "string", "mofo_contact_id": "string"},
+            ]
+            response = self.client.post(self.url, {"emails": "test1@example.com\ntest2@example.com\ntest3@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        assert mock_ctms.get.call_count == 3
+        mock_ctms.interface.patch_by_email_id.assert_has_calls(
+            [
+                call("123", self.update_data),
+                call("456", self.update_data),
+                call("789", self.update_data),
+            ]
+        )
+        assert "UNSUBSCRIBED test1@example.com (ctms id: 123)." in response.context["dsar_output"]
+        assert "UNSUBSCRIBED test2@example.com (ctms id: 456)." in response.context["dsar_output"]
+        assert "UNSUBSCRIBED test3@example.com (ctms id: 789)." in response.context["dsar_output"]
+
+    def test_post_valid_email(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.ctms", spec_set=["get", "interface"]) as mock_ctms:
+            mock_ctms.get.return_value = {"email_id": "123", "fxa_id": "", "mofo_contact_id": ""}
+            response = self.client.post(self.url, {"emails": "test@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        assert mock_ctms.get.called
+        mock_ctms.interface.patch_by_email_id.assert_called_with("123", self.update_data)
+        assert "UNSUBSCRIBED test@example.com (ctms id: 123)." in response.context["dsar_output"]
+
+    def test_post_unknown_ctms_user(self, mocker):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.ctms", spec_set=["get", "interface"]) as mock_ctms:
+            mock_ctms.get.return_value = None
+            response = self.client.post(self.url, {"emails": "unknown@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        assert mock_ctms.get.called
+        assert not mock_ctms.interface.patch_by_email_id.called
+        assert "unknown@example.com not found in CTMS" in response.context["dsar_output"]
+
+    def test_post_invalid_email(self, mocker):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.ctms", spec_set=["get", "interface"]) as mock_ctms:
+            response = self.client.post(self.url, {"emails": "invalid@email"}, follow=True)
+
+        assert response.status_code == 200
+        assert not mock_ctms.get.called
+        assert not mock_ctms.interface.patch_by_email_id.called
         assert response.context["dsar_output"] is None
         assert response.context["dsar_form"].errors == {"emails": ["Invalid email: invalid@email"]}
