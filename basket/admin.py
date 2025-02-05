@@ -7,6 +7,7 @@ from django.utils.decorators import method_decorator
 from basket.base.forms import EmailListForm
 from basket.news.backends.ctms import (
     CTMSNotFoundByEmailError,
+    CTMSNotFoundByEmailIDError,
     ctms,
 )
 
@@ -18,6 +19,7 @@ class BasketAdminSite(admin.AdminSite):
         admin_urls = super().get_urls()
         custom_urls = [
             path("dsar/delete/", self.admin_view(self.dsar_delete_view), name="dsar.delete"),
+            path("dsar/unsubscribe/", self.admin_view(self.dsar_unsub_view), name="dsar.unsubscribe"),
         ]
         # very important that custom_urls are first
         return custom_urls + admin_urls
@@ -25,6 +27,14 @@ class BasketAdminSite(admin.AdminSite):
     def get_app_list(self, request, app_label=None):
         # checks if the user has permission to see DSAR in the list
         has_perms = request.user.has_perm("base.dsar_access")
+        model_perms = (
+            {
+                "add": has_perms,
+                "change": has_perms,
+                "delete": has_perms,
+                "view": has_perms,
+            },
+        )
         app_list = super().get_app_list(request, app_label=app_label)
         app_list += [
             {
@@ -37,17 +47,68 @@ class BasketAdminSite(admin.AdminSite):
                         "object_name": "dsardelete",
                         "admin_url": "/admin/dsar/delete/",
                         "view_only": True,
-                        "perms": {
-                            "add": has_perms,
-                            "change": has_perms,
-                            "delete": has_perms,
-                            "view": has_perms,
-                        },
-                    }
+                        "perms": model_perms,
+                    },
+                    {
+                        "name": "DSAR Unsubscribe",
+                        "object_name": "dsarunsubscribe",
+                        "admin_url": "/admin/dsar/unsubscribe/",
+                        "view_only": True,
+                        "perms": model_perms,
+                    },
                 ],
             }
         ]
         return app_list
+
+    @method_decorator(permission_required("base.dsar_access"))
+    def dsar_unsub_view(self, request):
+        form = EmailListForm()
+        output = None
+
+        if request.method == "POST":
+            form = EmailListForm(request.POST)
+            if form.is_valid():
+                emails = form.cleaned_data["emails"]
+                output = []
+                # sets global optout and removes all newsletter
+                # and waitlist subscriptions
+                update_data = {
+                    "email": {
+                        "has_opted_out_of_email": True,
+                    },
+                    "newsletters": "UNSUBSCRIBE",
+                    "waitlists": "UNSUBSCRIBE",
+                }
+
+                # Process the emails.
+                for email in emails:
+                    contact = ctms.get(email=email)
+                    if contact:
+                        email_id = contact["email_id"]
+                        try:
+                            ctms.interface.patch_by_email_id(email_id, update_data)
+                        except CTMSNotFoundByEmailIDError:
+                            # should never reach here, but best to catch it anyway
+                            output.append(f"{email} not found in CTMS")
+                        else:
+                            output.append(f"UNSUBSCRIBED {email} (ctms id: {email_id}).")
+                    else:
+                        output.append(f"{email} not found in CTMS")
+
+                output = "\n".join(output)
+
+                # Reset the form
+                form = EmailListForm()
+
+        context = {
+            "title": "DSAR: Unsubscribe CTMS Users by Email Address",
+            "dsar_form": form,
+            "dsar_output": output,
+        }
+        # adds default django admin context so sidebar shows etc.
+        context.update(self.each_context(request))
+        return render(request, "admin/dsar.html", context)
 
     @method_decorator(permission_required("base.dsar_access"))
     def dsar_delete_view(self, request):
