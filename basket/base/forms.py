@@ -30,3 +30,7 @@ class EmailListForm(forms.Form):
         required=True,
         help_text="Enter one email per line",
     )
+
+
+class EmailForm(forms.Form):
+    email = forms.EmailField()

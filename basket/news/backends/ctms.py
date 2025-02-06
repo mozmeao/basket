@@ -675,7 +675,7 @@ class CTMSInterface:
         if not ids:
             raise CTMSNoIdsError(self.all_ids)
         resp = self.session.get("/ctms", params=ids)
-        self._check_response(resp)
+        self._check_response(resp, email=primary_email, email_id=email_id)
         return resp.json()
 
     @time_request
