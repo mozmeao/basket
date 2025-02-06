@@ -1,15 +1,36 @@
+import json
+
 from django.contrib import admin
 from django.contrib.auth.decorators import permission_required
 from django.shortcuts import render
 from django.urls import path
 from django.utils.decorators import method_decorator
 
-from basket.base.forms import EmailListForm
+from basket.base.forms import EmailForm, EmailListForm
 from basket.news.backends.ctms import (
     CTMSNotFoundByEmailError,
     CTMSNotFoundByEmailIDError,
     ctms,
 )
+from basket.news.newsletters import newsletter_obj
+
+
+def get_newsletter_names(ctms_contact):
+    names = []
+    newsletters = ctms_contact["newsletters"]
+    for nl in newsletters:
+        if not nl["subscribed"]:
+            continue
+
+        nl_slug = nl["name"]
+        nl_obj = newsletter_obj(nl_slug)
+        if nl_obj:
+            nl_name = nl_obj.title
+        else:
+            nl_name = ""
+        names.append(f"{nl_name} (id: {nl_slug})")
+
+    return names
 
 
 class BasketAdminSite(admin.AdminSite):
@@ -20,6 +41,7 @@ class BasketAdminSite(admin.AdminSite):
         custom_urls = [
             path("dsar/delete/", self.admin_view(self.dsar_delete_view), name="dsar.delete"),
             path("dsar/unsubscribe/", self.admin_view(self.dsar_unsub_view), name="dsar.unsubscribe"),
+            path("dsar/info/", self.admin_view(self.dsar_info_view), name="dsar.info"),
         ]
         # very important that custom_urls are first
         return custom_urls + admin_urls
@@ -56,10 +78,44 @@ class BasketAdminSite(admin.AdminSite):
                         "view_only": True,
                         "perms": model_perms,
                     },
+                    {
+                        "name": "DSAR Get Info",
+                        "object_name": "dsargetingo",
+                        "admin_url": "/admin/dsar/info/",
+                        "view_only": True,
+                        "perms": model_perms,
+                    },
                 ],
             }
         ]
         return app_list
+
+    @method_decorator(permission_required("base.dsar_access"))
+    def dsar_info_view(self, request):
+        form = EmailForm()
+        context = {
+            "title": "DSAR: Fetch CTMS User Info by Email Address",
+        }
+        if request.method == "POST":
+            form = EmailForm(request.POST)
+            if form.is_valid():
+                email = form.cleaned_data["email"]
+                try:
+                    contact = ctms.interface.get_by_alternate_id(primary_email=email)
+                except CTMSNotFoundByEmailError:
+                    contact = None
+                else:
+                    contact = contact[0]
+                    context["dsar_contact_pretty"] = json.dumps(contact, indent=2, sort_keys=True)
+                    context["newsletter_names"] = get_newsletter_names(contact)
+
+                context["dsar_contact"] = contact
+                context["dsar_submitted"] = True
+
+        context["dsar_form"] = form
+        # adds default django admin context so sidebar shows etc.
+        context.update(self.each_context(request))
+        return render(request, "admin/dsar-info.html", context)
 
     @method_decorator(permission_required("base.dsar_access"))
     def dsar_unsub_view(self, request):
@@ -76,6 +132,7 @@ class BasketAdminSite(admin.AdminSite):
                 update_data = {
                     "email": {
                         "has_opted_out_of_email": True,
+                        "unsubscribe_reason": "User requested global unsubscribe",
                     },
                     "newsletters": "UNSUBSCRIBE",
                     "waitlists": "UNSUBSCRIBE",

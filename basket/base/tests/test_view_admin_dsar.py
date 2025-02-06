@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from unittest.mock import call, patch
 
 from django.conf import settings
@@ -7,8 +9,10 @@ from django.urls import reverse
 
 import pytest
 
-from basket.base.forms import EmailListForm
+from basket.base.forms import EmailForm, EmailListForm
 from basket.news.backends.ctms import CTMSNotFoundByEmailError
+
+TEST_DATA_DIR = Path(__file__).resolve().parent.joinpath("data")
 
 
 class DSARViewTestBase:
@@ -108,11 +112,66 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
 
 
 @pytest.mark.django_db
+class TestAdminDSARInfoView(DSARViewTestBase):
+    url_name = "admin:dsar.info"
+    user_data_file = "example_ctms_user_data.json"
+
+    def _get_test_data(self):
+        with TEST_DATA_DIR.joinpath(self.user_data_file).open() as fp:
+            data = json.load(fp)
+
+        return data
+
+    def test_get(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        response = self.client.get(self.url)
+        assert response.status_code == 200
+        assert isinstance(response.context["dsar_form"], EmailForm)
+        assert "dsar_contact" not in response.context
+
+    def test_post_valid_email(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        user_data = self._get_test_data()
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            mock_ctms.interface.get_by_alternate_id.return_value = user_data
+            response = self.client.post(self.url, {"email": "test@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        mock_ctms.interface.get_by_alternate_id.assert_called_with(primary_email="test@example.com")
+        assert response.context["dsar_contact"]["email"]["basket_token"] == "0723e863-cff2-4f74-b492-82b861732d19"
+
+    def test_post_unknown_ctms_user(self, mocker):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            mock_ctms.interface.get_by_alternate_id.side_effect = CTMSNotFoundByEmailError("unknown@example.com")
+            response = self.client.post(self.url, {"email": "unknown@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        assert mock_ctms.interface.get_by_alternate_id.called
+        assert b"User not found in CTMS" in response.content
+
+    def test_post_invalid_email(self, mocker):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            response = self.client.post(self.url, {"email": "invalid@email"}, follow=True)
+
+        assert response.status_code == 200
+        assert not mock_ctms.interface.get_by_alternate_id.called
+        assert "dsar_contact" not in response.context
+        assert response.context["dsar_form"].errors == {"email": ["Enter a valid email address."]}
+
+
+@pytest.mark.django_db
 class TestAdminDSARUnsubView(DSARViewTestBase):
     url_name = "admin:dsar.unsubscribe"
     update_data = {
         "email": {
             "has_opted_out_of_email": True,
+            "unsubscribe_reason": "User requested global unsubscribe",
         },
         "newsletters": "UNSUBSCRIBE",
         "waitlists": "UNSUBSCRIBE",

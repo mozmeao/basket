@@ -1,0 +1,95 @@
+[{
+  "amo": {
+    "add_on_ids": null,
+    "create_timestamp": null,
+    "display_name": null,
+    "email_opt_in": false,
+    "language": null,
+    "last_login": null,
+    "location": null,
+    "profile_url": null,
+    "update_timestamp": null,
+    "user": false,
+    "user_id": null,
+    "username": null
+  },
+  "email": {
+    "basket_token": "0723e863-cff2-4f74-b492-82b861732d19",
+    "create_timestamp": "2024-12-16T16:04:01.891445+00:00",
+    "double_opt_in": true,
+    "email_format": "H",
+    "email_id": "de3333f2-15e9-4d3d-8644-d60dbb103aef",
+    "email_lang": "en",
+    "first_name": null,
+    "has_opted_out_of_email": false,
+    "last_name": null,
+    "mailing_country": "de",
+    "primary_email": "testing-de-firefox-form@restmail.net",
+    "sfdc_id": null,
+    "unsubscribe_reason": null,
+    "update_timestamp": "2025-02-05T21:51:10.970982+00:00"
+  },
+  "fxa": {
+    "account_deleted": false,
+    "created_date": null,
+    "first_service": null,
+    "fxa_id": null,
+    "lang": null,
+    "primary_email": null
+  },
+  "mofo": {
+    "mofo_contact_id": null,
+    "mofo_email_id": null,
+    "mofo_relevant": true
+  },
+  "newsletters": [
+    {
+      "create_timestamp": "2025-02-05T21:51:10.960533+00:00",
+      "format": "H",
+      "lang": "en",
+      "name": "common-voice",
+      "source": "https://www.mozilla.org/en-US/newsletter/existing/",
+      "subscribed": true,
+      "unsub_reason": null,
+      "update_timestamp": "2025-02-05T21:51:10.960533+00:00"
+    },
+    {
+      "create_timestamp": "2024-12-16T16:04:01.891445+00:00",
+      "format": "H",
+      "lang": "en",
+      "name": "mozilla-and-you",
+      "source": "https://www.mozilla.org/en-US/newsletter/existing/",
+      "subscribed": false,
+      "unsub_reason": null,
+      "update_timestamp": "2025-02-05T19:23:20.512775+00:00"
+    },
+    {
+      "create_timestamp": "2024-12-16T16:04:01.891445+00:00",
+      "format": "H",
+      "lang": "en",
+      "name": "mozilla-foundation",
+      "source": "https://www.mozilla.org/en-US/newsletter/existing/",
+      "subscribed": true,
+      "unsub_reason": null,
+      "update_timestamp": "2025-02-05T21:51:10.960533+00:00"
+    },
+    {
+      "create_timestamp": "2025-02-05T19:22:46.995050+00:00",
+      "format": "H",
+      "lang": "en",
+      "name": "test-pilot",
+      "source": "https://www.mozilla.org/en-US/newsletter/existing/",
+      "subscribed": true,
+      "unsub_reason": null,
+      "update_timestamp": "2025-02-05T21:51:10.960533+00:00"
+    }
+  ],
+  "relay_waitlist": {
+    "geo": null
+  },
+  "vpn_waitlist": {
+    "geo": null,
+    "platform": null
+  },
+  "waitlists": []
+}]
