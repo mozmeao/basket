@@ -233,6 +233,8 @@ CTMS_URL = config("CTMS_URL", default=default_url)
 CTMS_CLIENT_ID = config("CTMS_CLIENT_ID", default="") if not UNITTEST else "test"
 CTMS_CLIENT_SECRET = config("CTMS_CLIENT_SECRET", default="") if not UNITTEST else "test"
 
+EMAIL_PREF_CNTR_URL = "https://www.mozilla.org/newsletter/existing"
+
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_HEADERS = (*default_headers, "x-api-key")
 CORS_URLS_REGEX = r"^/(api/|news/|subscribe)"
