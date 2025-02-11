@@ -146,7 +146,20 @@ class TestAdminDSARInfoView(DSARViewTestBase):
         self._create_admin_user()
         self._login_admin_user()
         with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            # it may throw this error
             mock_ctms.interface.get_by_alternate_id.side_effect = CTMSNotFoundByEmailError("unknown@example.com")
+            response = self.client.post(self.url, {"email": "unknown@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        assert mock_ctms.interface.get_by_alternate_id.called
+        assert b"User not found in CTMS" in response.content
+
+    def test_post_unknown_ctms_user_empty_list(self, mocker):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            # it may also return an empty list
+            mock_ctms.interface.get_by_alternate_id.return_value = []
             response = self.client.post(self.url, {"email": "unknown@example.com"}, follow=True)
 
         assert response.status_code == 200

@@ -105,9 +105,13 @@ class BasketAdminSite(admin.AdminSite):
                 except CTMSNotFoundByEmailError:
                     contact = None
                 else:
-                    contact = contact[0]
-                    context["dsar_contact_pretty"] = json.dumps(contact, indent=2, sort_keys=True)
-                    context["newsletter_names"] = get_newsletter_names(contact)
+                    # response could be 200 with an empty list
+                    if contact:
+                        contact = contact[0]
+                        context["dsar_contact_pretty"] = json.dumps(contact, indent=2, sort_keys=True)
+                        context["newsletter_names"] = get_newsletter_names(contact)
+                    else:
+                        contact = None
 
                 context["dsar_contact"] = contact
                 context["dsar_submitted"] = True
