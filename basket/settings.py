@@ -233,8 +233,6 @@ CTMS_URL = config("CTMS_URL", default=default_url)
 CTMS_CLIENT_ID = config("CTMS_CLIENT_ID", default="") if not UNITTEST else "test"
 CTMS_CLIENT_SECRET = config("CTMS_CLIENT_SECRET", default="") if not UNITTEST else "test"
 
-EMAIL_PREF_CNTR_URL = "https://www.mozilla.org/newsletter/existing"
-
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_HEADERS = (*default_headers, "x-api-key")
 CORS_URLS_REGEX = r"^/(api/|news/|subscribe)"
@@ -440,6 +438,7 @@ FXA_OAUTH_TOKEN_TTL = config("FXA_OAUTH_TOKEN_TTL", parser=int, default="300")  
 FXA_EMAIL_PREFS_DOMAIN = config("FXA_EMAIL_PREFS_DOMAIN", default="www.mozilla.org")
 FXA_REGISTER_NEWSLETTER = config("FXA_REGISTER_NEWSLETTER", default="firefox-accounts-journey")
 FXA_REGISTER_SOURCE_URL = config("FXA_REGISTER_SOURCE_URL", default="https://accounts.firefox.com/")
+FXA_EMAIL_PREFS_URL = f"https://{FXA_EMAIL_PREFS_DOMAIN}/newsletter/existing"
 # TODO move this to the DB
 FXA_LOGIN_CAMPAIGNS = {
     "fxa-embedded-form-moz": "mozilla-welcome",
