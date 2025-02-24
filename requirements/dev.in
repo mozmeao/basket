@@ -1,11 +1,11 @@
 -r prod.txt
 
 pytest-cov==6.0.0
-pytest-datadir==1.5.0
-pytest-django==4.9.0
+pytest-datadir==1.6.1
+pytest-django==4.10.0
 pytest-mock==3.14.0
 pytest==8.3.4
 requests-mock==1.12.1
-ruff==0.9.1
-uv==0.5.18
+ruff==0.9.7
+uv==0.6.2
 watchfiles==1.0.4  # required for `granian --reload`
