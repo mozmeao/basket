@@ -325,7 +325,7 @@ def to_vendor(data, existing_data=None):
             # Process newsletters after gathering all newsletter keys
             newsletters = value
             if not isinstance(newsletters, dict):
-                newsletters = {slug: True for slug in newsletters}
+                newsletters = dict.fromkeys(newsletters, True)
         elif name == "amo_deleted":
             amo_deleted = bool(value)
         elif name not in DISCARD_BASKET_NAMES:

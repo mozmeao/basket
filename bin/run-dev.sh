@@ -8,7 +8,7 @@ granian \
     --port "8000" \
     --no-ws \
     --workers "1" \
-    --threads "1" \
+    --blocking-threads "1" \
     --log-level "${GRANIAN_LOG_LEVEL:-debug}" \
     --access-log \
     --reload \
