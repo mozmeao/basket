@@ -33,8 +33,7 @@ class _TestAPIBase:
         resp = self.client.options(
             self.url,
             content_type="application/json",
-            HTTP_ORIGIN="https://example.com",
-            HTTP_ACCESS_CONTROL_REQUEST_METHOD=self.method,
+            headers={"origin": "https://example.com", "access-control-request-method": self.method},
         )
         assert resp.status_code == 200
         assert resp["Access-Control-Allow-Origin"] == "*"
