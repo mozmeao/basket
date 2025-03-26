@@ -2,7 +2,7 @@
 
 echo "$GIT_SHA" > static/revision.txt
 
-# Granian recommends containerized apps use the defaults of workers=1, threads=1.
+# Granian recommends containerized apps use the defaults of workers=1, blocking-threads=1.
 # The backgpressure defaults to backlog (1024) / workers (1), but should be adjusted to match the
 # number of database connections when configured for databases.
 
