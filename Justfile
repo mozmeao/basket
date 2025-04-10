@@ -73,12 +73,12 @@ clean:
 
 # identify stale Python requirements that need upgrading
 @check-requirements: _docker-pull
-    {{ DC }} run --rm test ./bin/check-pinned-requirements.py
+    {{ DC }} run --rm test uv pip list --outdated
 
 # regenerate requirements *.txt files based on *.in files
 @compile-requirements: _docker-pull
-    {{ DC }} run --rm compile-requirements
+    {{ DC }} run --rm test uv lock --upgrade
 
 # install Python dependencies for local development
 @install-local-python-deps:
-    pip install -r requirements/dev.txt
+    uv sync

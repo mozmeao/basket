@@ -13,6 +13,7 @@
 .make.*
 .noseids
 .vscode/
+.uv-cache
 /media/img/uploads
 /static
 Dockerfile.jenkins

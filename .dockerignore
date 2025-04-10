@@ -1,3 +1,39 @@
+# VCS and local tooling
 .git
+.gitignore
+.dockerignore
+.just*
+.ruff_cache
+
+# Virtual envs
+.venv
 .env
-*.db
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor/IDE files
+.vscode/
+*.swp
+
+# Test artifacts
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/
+.mypy_cache/
+*.log
+
+# Dependency artifacts (lockfile is fine, but avoid local wheels or site-packages)
+dist/
+build/
+*.egg-info/
+
+# Secrets or local config
+.env.local
+.env.*.local

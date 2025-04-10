@@ -1,37 +1,91 @@
-[tool.ruff]
-line-length = 150
-indent-width = 4
-target-version = 'py312'
-extend-exclude = ["docs"]
-
-[tool.ruff.lint]
-# Set what ruff should check for.
-# See https://docs.astral.sh//ruff/rules/ for a list of rules.
-select = [
-  "A", # flake8-builtin errors
-  "B", # bugbear errors
-  "C4", # flake8-comprehensions errors
-  "DJ", # flake8-django errors
-  "E", # pycodestyle errors
-  "F", # pyflakes errors
-  "I", # import sorting
-  "Q", # flake8-quotes errors
-  "T20", # flake8-print errors
-  "UP", # py-upgrade
-  "W", # pycodestyle warnings
+[project]
+name = "basket"
+version = "1.0"
+requires-python = "==3.12.*"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
 ]
 
-[tool.ruff.lint.per-file-ignores]
+dependencies = [
+  "apscheduler~=3.11",
+  "boto3~=1.37",
+  "contextlib2~=21.6",
+  "cryptography~=44.0",
+  "dj-database-url~=2.3",
+  "django~=5.2",
+  "django-allow-cidr~=0.7",
+  "django-cache-url~=3.4",
+  "django-cors-headers~=4.7",
+  "django-mozilla-product-details~=1.0",
+  "django-ninja~=1.3",
+  "django-ratelimit~=4.1",
+  "django-watchman~=1.3",
+  "email-validator~=2.2",
+  "everett~=3.4",
+  "granian~=2.2",
+  "hiredis~=3.1",
+  "ipaddress~=1.0",
+  "lxml~=5.3",
+  "markus[datadog]~=5.1",
+  "mozilla-django-oidc~=4.0",
+  "msgpack-python~=0.5",
+  "mysqlclient~=2.2",
+  "pyfxa~=0.7",
+  "pyopenssl~=25.0",
+  "pysilverpop~=0.2",
+  "pyyaml~=6.0",
+  "redis~=5.2",
+  "rq~=2.2",
+  "rq-scheduler~=0.14",
+  "sentry-processor~=0.0",
+  "sentry-sdk~=2.24",
+  "user-agents~=2.2",
+  "whitenoise~=6.9",
+]
+
+[dependency-groups]
+dev = [
+  "pytest~=8.3",
+  "pytest-cov~=6.0",
+  "pytest-datadir~=1.6",
+  "pytest-django~=4.10",
+  "pytest-mock~=3.14",
+  "requests-mock~=1.12",
+  "ruff~=0.11",
+  "uv~=0.6",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 150
+indent-width = 4
+extend-exclude = [ "docs" ]
+
+# Set what ruff should check for.
+# See https://docs.astral.sh//ruff/rules/ for a list of rules.
+lint.select = [
+  "A",   # flake8-builtin errors
+  "B",   # bugbear errors
+  "C4",  # flake8-comprehensions errors
+  "DJ",  # flake8-django errors
+  "E",   # pycodestyle errors
+  "F",   # pyflakes errors
+  "I",   # import sorting
+  "Q",   # flake8-quotes errors
+  "T20", # flake8-print errors
+  "UP",  # py-upgrade
+  "W",   # pycodestyle warnings
+]
 # T201: `print()` statements in management commands are allowed.
-"basket/news/management/commands/*" = ["T201"]
-
-[tool.ruff.lint.isort]
-known-first-party = ["basket"]
-section-order = ["future", "standard-library", "django", "third-party", "first-party", "local-folder"]
-
-[tool.ruff.lint.isort.sections]
-django = ["django"]
+lint.per-file-ignores."basket/news/management/commands/*" = [ "T201" ]
+lint.isort.known-first-party = [ "basket" ]
+lint.isort.section-order = [ "future", "standard-library", "django", "third-party", "first-party", "local-folder" ]
+lint.isort.sections.django = [ "django" ]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "basket.settings"
 addopts = "-ra --ignore=vendor"
+
+[tool.uv]
+package = false

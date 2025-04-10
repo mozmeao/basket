@@ -29,6 +29,7 @@ services:
     init: true
     volumes:
       - .:/app
+      - .uv-cache:/app/.cache/uv
     env_file:
       - docker/envfiles/local.env
       - .env
@@ -106,11 +107,3 @@ services:
       target: builder
     image: mozmeao/basket:builder-${GIT_COMMIT_SHORT:-latest}
     platform: linux/amd64
-
-  compile-requirements:
-    image: mozmeao/basket:builder-${GIT_COMMIT_SHORT:-latest}
-    platform: linux/amd64
-    command:
-      ./bin/compile-requirements.sh
-    volumes:
-      - .:/app
