@@ -249,5 +249,3 @@ The following URLs are available (assuming "/news" is app url):
     language.
 
     If the email provided is not known, a 404 status is returned.
-
-
