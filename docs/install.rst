@@ -13,6 +13,7 @@ Requirements
 
 * Docker
 * Docker-compose
+* Astral's uv - for package management
 
 You can install Docker CE for your platform at https://docker.com.
 
