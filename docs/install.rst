@@ -101,4 +101,3 @@ Ideally, do this in a virtual environment (eg a `venv` or `virtualenv`)
 .. code-block:: bash
 
     $ just install-local-python-deps
-

@@ -121,5 +121,3 @@ jobs:
              docker pull mozmeao/basket:${{ needs.build_and_publish_public_images.outputs.short_sha }}
              docker tag mozmeao/basket:${{ needs.build_and_publish_public_images.outputs.short_sha }} ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY}}/${{ env.IMAGE }}:${{ env.TAG }}
              docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GAR_REPOSITORY}}/${{ env.IMAGE }}:${{ env.TAG }}
-
-

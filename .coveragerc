@@ -7,4 +7,3 @@ omit =
   basket/base/tests/*
   basket/news/migrations/*
   basket/news/tests/*
-
