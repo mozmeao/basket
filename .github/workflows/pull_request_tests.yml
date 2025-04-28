@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: "3.12"  # matches current Python in production
+          python-version: "3.13"  # matches current Python in production
       - name: "Run Python tests (on Docker)"
         run: |
             bin/dc.sh build --pull web

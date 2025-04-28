@@ -1,5 +1,5 @@
 # BUILDER IMAGE
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.13-slim-bookworm AS builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -18,12 +18,7 @@ WORKDIR /app
 
 # Install Python dependencies
 COPY requirements/* /app/requirements/
-# The setuptools install is needed for pyfxa (currently v0.7.7) which calls `pkg_resources`,
-# and Python 3.12 no longer adds setuptools by default to the venv.
-RUN <<EOT
-pip install -U setuptools
-pip install --require-hashes --no-cache-dir -r requirements/dev.txt
-EOT
+RUN pip install --require-hashes --no-cache-dir -r requirements/dev.txt
 
 COPY . /app
 RUN DEBUG=false SECRET_KEY=foo ALLOWED_HOSTS=localhost DATABASE_URL=sqlite:// ./manage.py collectstatic --noinput
@@ -31,7 +26,7 @@ RUN DEBUG=false SECRET_KEY=foo ALLOWED_HOSTS=localhost DATABASE_URL=sqlite:// ./
 # END BUILDER IMAGE
 
 # FINAL IMAGE
-FROM python:3.12-slim-bookworm
+FROM python:3.13-slim-bookworm
 
 # Set environment variables
 ARG GIT_SHA=latest
