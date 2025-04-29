@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.test.utils import override_settings
 
 import pytest
+from freezegun import freeze_time
 
 from basket.base.rq import get_worker
 from basket.base.tests.tasks import empty_job
@@ -10,16 +11,15 @@ from basket.news.models import QueuedTask
 
 
 @pytest.mark.django_db
+@freeze_time("2023-01-02 12:34:56.123456")
 class TestDecorator:
     @override_settings(RQ_RESULT_TTL=0)
     @override_settings(RQ_MAX_RETRIES=0)
     @patch("basket.base.rq.Callback")
     @patch("basket.base.rq.get_queue")
     @patch("basket.base.rq.Queue")
-    @patch("basket.base.rq.time")
     def test_rq_task(
         self,
-        mock_time,
         mock_get_queue,
         mock_queue,
         mock_callback,
@@ -27,7 +27,6 @@ class TestDecorator:
         """
         Test that the decorator passes the correct arguments to the RQ job.
         """
-        mock_time.return_value = 123456789
         mock_get_queue.return_value = mock_queue
 
         empty_job.delay("arg1")
@@ -38,7 +37,7 @@ class TestDecorator:
             kwargs={},
             meta={
                 "task_name": f"{empty_job.__module__}.{empty_job.__qualname__}",
-                "start_time": 123456789,
+                "start_time": 1672662896.123456,
             },
             retry=None,  # Retry logic is tested above, so no need to test it here.
             result_ttl=0,

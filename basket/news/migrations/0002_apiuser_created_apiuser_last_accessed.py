@@ -3,6 +3,7 @@
 import datetime
 
 from django.db import migrations, models
+from django.utils import timezone
 
 
 class Migration(migrations.Migration):
@@ -14,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="apiuser",
             name="created",
-            field=models.DateTimeField(auto_now_add=True, default=datetime.datetime(2025, 1, 1, 0, 0)),
+            field=models.DateTimeField(auto_now_add=True, default=timezone.make_aware(datetime.datetime(2025, 1, 1, 0, 0))),
             preserve_default=False,
         ),
         migrations.AddField(

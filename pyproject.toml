@@ -1,7 +1,7 @@
 [tool.ruff]
 line-length = 150
 indent-width = 4
-target-version = 'py312'
+target-version = 'py313'
 extend-exclude = ["docs"]
 
 [tool.ruff.lint]
