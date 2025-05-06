@@ -48,21 +48,24 @@ class BasketAdminSite(admin.AdminSite):
 
     def get_app_list(self, request, app_label=None):
         # checks if the user has permission to see DSAR in the list
+        app_list = super().get_app_list(request, app_label=app_label)
         has_perms = request.user.has_perm("base.dsar_access")
+        if not has_perms:
+            return app_list
+
         model_perms = (
             {
-                "add": has_perms,
-                "change": has_perms,
-                "delete": has_perms,
-                "view": has_perms,
+                "add": True,
+                "change": True,
+                "delete": True,
+                "view": True,
             },
         )
-        app_list = super().get_app_list(request, app_label=app_label)
         app_list += [
             {
                 "name": "DSAR Admin",
                 "app_label": "DSAR Admin",
-                "has_module_perms": has_perms,
+                "has_module_perms": True,
                 "models": [
                     {
                         "name": "DSAR Delete",
