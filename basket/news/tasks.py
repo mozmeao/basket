@@ -32,6 +32,7 @@ from basket.news.utils import (
 )
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 
 
 def fxa_source_url(metrics):
@@ -281,7 +282,8 @@ def upsert_contact(api_call_type, data, user_data):
         if settings.MAINTENANCE_MODE:
             ctms_add_or_update.delay(update_data)
         else:
-            new_user = ctms.add(update_data)
+            braze.track_user(data["email"], None, {"email_id": token})
+            new_user = {"email": data["email"], "email_id": token}
 
         if send_confirm and settings.SEND_CONFIRM_MESSAGES:
             send_confirm_message.delay(
