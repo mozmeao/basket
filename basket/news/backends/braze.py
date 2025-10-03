@@ -164,7 +164,7 @@ class BrazeClient:
 
         return self._request(BrazeEndpoint.USERS_TRACK, data)
 
-    def export_users(self, email):
+    def export_users(self, email, fields_to_export=None):
         """
         Export user profile by identifier.
 
@@ -177,6 +177,9 @@ class BrazeClient:
             "user_aliases": [{"alias_name": email, "alias_label": "email"}],
             "email_address": email,
         }
+
+        if fields_to_export:
+            data["fields_to_export"] = fields_to_export
 
         return self._request(BrazeEndpoint.USERS_EXPORT_IDS, data)
 

@@ -141,10 +141,11 @@ def test_braze_export_users(braze_client):
     expected = {
         "user_aliases": [{"alias_name": email, "alias_label": "email"}],
         "email_address": email,
+        "fields_to_export": ["external_id"],
     }
     with requests_mock.mock() as m:
         m.register_uri("POST", "http://test.com/users/export/ids", json={})
-        braze_client.export_users(email)
+        braze_client.export_users(email, ["external_id"])
         assert m.last_request.json() == expected
 
 
