@@ -170,6 +170,15 @@ def test_braze_send_campaign(braze_client):
         assert m.last_request.json() == expected
 
 
+def test_braze_delete_users(braze_client):
+    braze_ids = ["abc123"]
+    expected = {"braze_ids": braze_ids}
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/delete", json={})
+        braze_client.delete_users(braze_ids)
+        assert m.last_request.json() == expected
+
+
 def test_braze_exception_400(braze_client):
     with requests_mock.mock() as m:
         m.register_uri("POST", "http://test.com/users/track", status_code=400, json={})

@@ -42,6 +42,7 @@ class BrazeEndpoint(Enum):
     CAMPAIGNS_TRIGGER_SEND = "/campaigns/trigger/send"
     USERS_EXPORT_IDS = "/users/export/ids"
     USERS_TRACK = "/users/track"
+    USERS_DELETE = "/users/delete"
 
 
 class BrazeClient:
@@ -182,6 +183,18 @@ class BrazeClient:
             data["fields_to_export"] = fields_to_export
 
         return self._request(BrazeEndpoint.USERS_EXPORT_IDS, data)
+
+    def delete_users(self, braze_ids):
+        """
+        Delete user profile by braze ids.
+
+        https://www.braze.com/docs/api/endpoints/user_data/post_user_delete/
+
+        """
+
+        data = {"braze_ids": braze_ids}
+
+        return self._request(BrazeEndpoint.USERS_DELETE, data)
 
     def send_campaign(self, email, campaign_id):
         """
