@@ -141,10 +141,11 @@ def test_braze_export_users(braze_client):
     expected = {
         "user_aliases": [{"alias_name": email, "alias_label": "email"}],
         "email_address": email,
+        "fields_to_export": ["external_id"],
     }
     with requests_mock.mock() as m:
         m.register_uri("POST", "http://test.com/users/export/ids", json={})
-        braze_client.export_users(email)
+        braze_client.export_users(email, ["external_id"])
         assert m.last_request.json() == expected
 
 
@@ -166,6 +167,15 @@ def test_braze_send_campaign(braze_client):
     with requests_mock.mock() as m:
         m.register_uri("POST", "http://test.com/campaigns/trigger/send", json={})
         braze_client.send_campaign(email, campaign_id)
+        assert m.last_request.json() == expected
+
+
+def test_braze_delete_users(braze_client):
+    braze_ids = ["abc123"]
+    expected = {"braze_ids": braze_ids}
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/delete", json={})
+        braze_client.delete_users(braze_ids)
         assert m.last_request.json() == expected
 
 

@@ -220,6 +220,8 @@ BRAZE_MESSAGE_ID_MAP = {
     "firefox-mobile-welcome": "download-firefox-mobile",
 }
 
+BRAZE_DELETE_USER_ENABLE = config("BRAZE_DELETE_USER_ENABLE", parser=bool, default="false")
+
 # Mozilla CTMS
 CTMS_ENV = config("CTMS_ENV", default="").lower()
 CTMS_ENABLED = config("CTMS_ENABLED", parser=bool, default="false")

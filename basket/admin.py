@@ -1,18 +1,25 @@
 import json
+import logging
 
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.decorators import permission_required
 from django.shortcuts import render
 from django.urls import path
 from django.utils.decorators import method_decorator
 
+import sentry_sdk
+
 from basket.base.forms import EmailForm, EmailListForm
+from basket.news.backends.braze import braze
 from basket.news.backends.ctms import (
     CTMSNotFoundByEmailError,
     CTMSNotFoundByEmailIDError,
     ctms,
 )
 from basket.news.newsletters import newsletter_obj
+
+log = logging.getLogger(__name__)
 
 
 def get_newsletter_names(ctms_contact):
@@ -200,6 +207,20 @@ class BasketAdminSite(admin.AdminSite):
                             if contact["mofo_contact_id"]:
                                 msg += " mofo: YES."
                             output.append(msg)
+
+                    if settings.BRAZE_DELETE_USER_ENABLE:
+                        try:
+                            # Fetch braze_ids instead of external_ids so we also delete
+                            # alias-only profiles.
+                            response = braze.export_users(email, ["braze_id"])
+                            if response and response.get("users"):
+                                braze_ids = [user["braze_id"] for user in response["users"]]
+                                braze.delete_users(braze_ids)
+                                msg = f"DELETED {email} (braze ids: {', '.join(braze_ids)})."
+                                output.append(msg)
+                        except Exception as e:
+                            sentry_sdk.capture_exception()
+                            log.error(f"Braze user deletion error: {e}")
 
                 output = "\n".join(output)
 
