@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from urllib.parse import urlencode
@@ -43,6 +44,8 @@ from basket.news.utils import (
     get_best_language,
     get_best_request_lang,
     get_best_supported_lang,
+    get_braze_user,
+    get_braze_user_data,
     get_fxa_clients,
     get_user,
     get_user_data,
@@ -53,6 +56,8 @@ from basket.news.utils import (
     parse_newsletters_csv,
     process_email,
 )
+
+log = logging.getLogger(__name__)
 
 TOKEN_RE = re.compile(r"^[0-9a-f-]{36}$", flags=re.IGNORECASE)
 
@@ -136,41 +141,55 @@ def fxa_callback(request):
 
     email = user_profile.get("email")
     uid = user_profile.get("uid")
-    try:
-        user_data = get_user_data(email=email, fxa_id=uid)
-    except Exception:
-        metrics.incr("news.views.fxa_callback", tags=["status:error", "error:user_data"])
-        sentry_sdk.capture_exception()
-        return HttpResponseRedirect(error_url)
 
-    if user_data:
-        token = user_data["token"]
-    else:
-        new_user_data = {
-            "email": email,
-            "optin": True,
-            "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
-            "source_url": f"{settings.FXA_REGISTER_SOURCE_URL}?utm_source=basket-fxa-oauth",
-        }
-        locale = user_profile.get("locale")
-        if locale:
-            new_user_data["fxa_lang"] = locale
-            lang = get_best_language(get_accept_languages(locale))
-            if lang not in newsletter_languages():
-                lang = "other"
-
-            new_user_data["lang"] = lang
-
+    def handler(get_user_data_fn, upsert_contact_fn, email, uid, extra_metrics_tags=[]):
         try:
-            token = tasks.upsert_contact(SUBSCRIBE, new_user_data, None)[0]
+            user_data = get_user_data_fn(email=email, fxa_id=uid)
         except Exception:
-            metrics.incr("news.views.fxa_callback", tags=["status:error", "error:upsert_contact"])
+            metrics.incr("news.views.fxa_callback", tags=["status:error", "error:user_data", *extra_metrics_tags])
             sentry_sdk.capture_exception()
             return HttpResponseRedirect(error_url)
 
-    metrics.incr("news.views.fxa_callback", tags=["status:success"])
-    redirect_to = f"https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/existing/{token}/?fxa=1"
-    return HttpResponseRedirect(redirect_to)
+        if user_data:
+            token = user_data["token"]
+        else:
+            new_user_data = {
+                "email": email,
+                "optin": True,
+                "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
+                "source_url": f"{settings.FXA_REGISTER_SOURCE_URL}?utm_source=basket-fxa-oauth",
+            }
+            locale = user_profile.get("locale")
+            if locale:
+                new_user_data["fxa_lang"] = locale
+                lang = get_best_language(get_accept_languages(locale))
+                if lang not in newsletter_languages():
+                    lang = "other"
+
+                new_user_data["lang"] = lang
+
+            try:
+                token = upsert_contact_fn(SUBSCRIBE, new_user_data, None)[0]
+            except Exception:
+                metrics.incr("news.views.fxa_callback", tags=["status:error", "error:upsert_contact", *extra_metrics_tags])
+                sentry_sdk.capture_exception()
+                return HttpResponseRedirect(error_url)
+
+        metrics.incr("news.views.fxa_callback", tags=["status:success", *extra_metrics_tags])
+        redirect_to = f"https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/existing/{token}/?fxa=1"
+        return HttpResponseRedirect(redirect_to)
+
+    if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+        try:
+            handler(get_braze_user_data, tasks.upsert_braze_contact, email, uid, ["backend:braze"])
+        except Exception:
+            sentry_sdk.capture_exception()
+
+        return handler(get_user_data, tasks.upsert_contact, email, uid, ["backend:ctms"])
+    elif settings.BRAZE_ONLY_WRITE_ENABLE:
+        return handler(get_braze_user_data, tasks.upsert_braze_contact, email, uid, ["backend:braze"])
+    else:
+        return handler(get_user_data, tasks.upsert_contact, email, uid, ["backend:ctms"])
 
 
 @require_POST
