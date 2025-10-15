@@ -242,7 +242,31 @@ def confirm(request, token):
         increment=True,
     ):
         raise Ratelimited()
-    tasks.confirm_user.delay(token)
+
+    if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+        tasks.confirm_user.delay(
+            token,
+            use_braze_backend=True,
+            extra_metrics_tags=["backend:braze"],
+        )
+        tasks.confirm_user.delay(
+            token,
+            use_braze_backend=False,
+            extra_metrics_tags=["backend:ctms"],
+        )
+    elif settings.BRAZE_ONLY_WRITE_ENABLE:
+        tasks.confirm_user.delay(
+            token,
+            use_braze_backend=True,
+            extra_metrics_tags=["backend:braze"],
+        )
+    else:
+        tasks.confirm_user.delay(
+            token,
+            use_braze_backend=False,
+            extra_metrics_tags=["backend:ctms"],
+        )
+
     return HttpResponseJSON({"status": "ok"})
 
 
