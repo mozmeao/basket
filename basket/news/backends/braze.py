@@ -45,7 +45,7 @@ class BrazeEndpoint(Enum):
     USERS_DELETE = "/users/delete"
 
 
-class BrazeClient:
+class BrazeInterface:
     def __init__(self, base_url, api_key):
         urlbits = urlparse(base_url)
         if not urlbits.scheme or not urlbits.netloc:
@@ -219,4 +219,38 @@ class BrazeClient:
         return self._request(BrazeEndpoint.CAMPAIGNS_TRIGGER_SEND, data)
 
 
-braze = BrazeClient(settings.BRAZE_BASE_API_URL, settings.BRAZE_API_KEY)
+class Braze:
+    """Basket interface to Braze"""
+
+    def __init__(self, interface):
+        self.interface = interface
+
+    def get(
+        self,
+        email_id=None,
+        token=None,
+        email=None,
+        fxa_id=None,
+    ):
+        raise NotImplementedError
+
+    def add(self, data):
+        raise NotImplementedError
+
+    def update(self, existing_data, update_data):
+        raise NotImplementedError
+
+    def update_by_fxa_id(self, fxa_id, update_data):
+        raise NotImplementedError
+
+    def delete(self, email):
+        raise NotImplementedError
+
+    def from_vendor(self):
+        raise NotImplementedError
+
+    def to_vendor(self):
+        raise NotImplementedError
+
+
+braze = Braze(BrazeInterface(settings.BRAZE_BASE_API_URL, settings.BRAZE_API_KEY))
