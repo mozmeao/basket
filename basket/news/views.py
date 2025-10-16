@@ -39,6 +39,7 @@ from basket.news.utils import (
     HttpResponseJSON,
     NewsletterException,
     email_is_blocked,
+    generate_token,
     get_accept_languages,
     get_best_language,
     get_best_request_lang,
@@ -136,41 +137,103 @@ def fxa_callback(request):
 
     email = user_profile.get("email")
     uid = user_profile.get("uid")
-    try:
-        user_data = get_user_data(email=email, fxa_id=uid)
-    except Exception:
-        metrics.incr("news.views.fxa_callback", tags=["status:error", "error:user_data"])
-        sentry_sdk.capture_exception()
-        return HttpResponseRedirect(error_url)
 
-    if user_data:
-        token = user_data["token"]
-    else:
-        new_user_data = {
-            "email": email,
-            "optin": True,
-            "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
-            "source_url": f"{settings.FXA_REGISTER_SOURCE_URL}?utm_source=basket-fxa-oauth",
-        }
-        locale = user_profile.get("locale")
-        if locale:
-            new_user_data["fxa_lang"] = locale
-            lang = get_best_language(get_accept_languages(locale))
-            if lang not in newsletter_languages():
-                lang = "other"
-
-            new_user_data["lang"] = lang
+    def handler(
+        email,
+        uid,
+        use_braze_backend=False,
+        should_send_tx_messages=True,
+        extra_metrics_tags=None,
+        pre_generated_token=None,
+    ):
+        if extra_metrics_tags is None:
+            extra_metrics_tags = []
 
         try:
-            token = tasks.upsert_contact(SUBSCRIBE, new_user_data, None)[0]
+            user_data = get_user_data(
+                email=email,
+                fxa_id=uid,
+                use_braze_backend=use_braze_backend,
+            )
         except Exception:
-            metrics.incr("news.views.fxa_callback", tags=["status:error", "error:upsert_contact"])
+            metrics.incr("news.views.fxa_callback", tags=["status:error", "error:user_data", *extra_metrics_tags])
             sentry_sdk.capture_exception()
             return HttpResponseRedirect(error_url)
 
-    metrics.incr("news.views.fxa_callback", tags=["status:success"])
-    redirect_to = f"https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/existing/{token}/?fxa=1"
-    return HttpResponseRedirect(redirect_to)
+        if user_data:
+            token = user_data["token"]
+        else:
+            new_user_data = {
+                "email": email,
+                "optin": True,
+                "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
+                "source_url": f"{settings.FXA_REGISTER_SOURCE_URL}?utm_source=basket-fxa-oauth",
+            }
+            locale = user_profile.get("locale")
+            if locale:
+                new_user_data["fxa_lang"] = locale
+                lang = get_best_language(get_accept_languages(locale))
+                if lang not in newsletter_languages():
+                    lang = "other"
+
+                new_user_data["lang"] = lang
+
+            try:
+                token = tasks.upsert_contact(
+                    SUBSCRIBE,
+                    new_user_data,
+                    None,
+                    use_braze_backend=use_braze_backend,
+                    should_send_tx_messages=should_send_tx_messages,
+                    pre_generated_token=pre_generated_token,
+                )[0]
+            except Exception:
+                metrics.incr("news.views.fxa_callback", tags=["status:error", "error:upsert_contact", *extra_metrics_tags])
+                sentry_sdk.capture_exception()
+                return HttpResponseRedirect(error_url)
+
+        metrics.incr("news.views.fxa_callback", tags=["status:success", *extra_metrics_tags])
+        redirect_to = f"https://{settings.FXA_EMAIL_PREFS_DOMAIN}/newsletter/existing/{token}/?fxa=1"
+        return HttpResponseRedirect(redirect_to)
+
+    if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+        pre_generated_token = generate_token()
+        try:
+            handler(
+                email,
+                uid,
+                use_braze_backend=True,
+                should_send_tx_messages=False,
+                extra_metrics_tags=["backend:braze"],
+                pre_generated_token=pre_generated_token,
+            )
+        except Exception:
+            sentry_sdk.capture_exception()
+
+        return handler(
+            email,
+            uid,
+            use_braze_backend=False,
+            should_send_tx_messages=True,
+            extra_metrics_tags=["backend:ctms"],
+            pre_generated_token=pre_generated_token,
+        )
+    elif settings.BRAZE_ONLY_WRITE_ENABLE:
+        return handler(
+            email,
+            uid,
+            use_braze_backend=True,
+            should_send_tx_messages=True,
+            extra_metrics_tags=["backend:braze"],
+        )
+    else:
+        return handler(
+            email,
+            uid,
+            use_braze_backend=False,
+            should_send_tx_messages=True,
+            extra_metrics_tags=["backend:ctms"],
+        )
 
 
 @require_POST
@@ -185,7 +248,31 @@ def confirm(request, token):
         increment=True,
     ):
         raise Ratelimited()
-    tasks.confirm_user.delay(token)
+
+    if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+        tasks.confirm_user.delay(
+            token,
+            use_braze_backend=True,
+            extra_metrics_tags=["backend:braze"],
+        )
+        tasks.confirm_user.delay(
+            token,
+            use_braze_backend=False,
+            extra_metrics_tags=["backend:ctms"],
+        )
+    elif settings.BRAZE_ONLY_WRITE_ENABLE:
+        tasks.confirm_user.delay(
+            token,
+            use_braze_backend=True,
+            extra_metrics_tags=["backend:braze"],
+        )
+    else:
+        tasks.confirm_user.delay(
+            token,
+            use_braze_backend=False,
+            extra_metrics_tags=["backend:ctms"],
+        )
+
     return HttpResponseJSON({"status": "ok"})
 
 
@@ -289,71 +376,147 @@ def subscribe(request):
     email = data.pop("email", None)
     token = data.pop("token", None)
 
-    if not (email or token):
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "email or token is required",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            401,
-        )
+    def handler(
+        email,
+        token,
+        use_braze_backend=False,
+        should_send_tx_messages=True,
+        rate_limit_increment=True,
+        extra_metrics_tags=None,
+        pre_generated_token=None,
+        pre_generated_email_id=None,
+    ):
+        if extra_metrics_tags is None:
+            extra_metrics_tags = []
 
-    # If we don't have an email, we must have a token after the above check.
-    if not email:
-        # Validate we have a UUID token.
-        if not is_token(token):
-            return invalid_token_response()
-        # Get the user's email from the token.
-        try:
-            user_data = get_user_data(token=token)
-            if user_data:
-                email = user_data.get("email")
-        except NewsletterException as e:
-            return newsletter_exception_response(e)
-
-    email = process_email(email)
-    if not email:
-        return invalid_token_response() if token else invalid_email_response()
-    data["email"] = email
-
-    if email_is_blocked(email):
-        metrics.incr("news.views.subscribe", tags=["info:email_blocked"])
-        # don't let on there's a problem
-        return HttpResponseJSON({"status": "ok"})
-
-    optin = data.pop("optin", "N").upper() == "Y"
-    sync = data.pop("sync", "N").upper() == "Y"
-
-    authorized = False
-    if optin or sync:
-        if is_authorized(request, email):
-            authorized = True
-
-    if optin and not authorized:
-        # for backward compat we just ignore the optin if
-        # no valid API key is sent.
-        optin = False
-
-    if sync:
-        if not authorized:
+        if not (email or token):
             return HttpResponseJSON(
                 {
                     "status": "error",
-                    "desc": "Using subscribe with sync=Y, you need to pass a valid `api-key` or FxA OAuth Authorization.",
-                    "code": errors.BASKET_AUTH_ERROR,
+                    "desc": "email or token is required",
+                    "code": errors.BASKET_USAGE_ERROR,
                 },
                 401,
             )
 
-    # NOTE this is not a typo; Referrer is misspelled in the HTTP spec
-    # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
-    if not data.get("source_url") and request.headers.get("Referer"):
-        # try to get it from referrer
-        metrics.incr("news.views.subscribe", tags=["info:use_referrer"])
-        data["source_url"] = request.headers["referer"]
+        # If we don't have an email, we must have a token after the above check.
+        if not email:
+            # Validate we have a UUID token.
+            if not is_token(token):
+                return invalid_token_response()
+            # Get the user's email from the token.
+            try:
+                user_data = get_user_data(token=token, use_braze_backend=use_braze_backend)
+                if user_data:
+                    email = user_data.get("email")
+            except NewsletterException as e:
+                return newsletter_exception_response(e)
 
-    return update_user_task(request, SUBSCRIBE, data=data, optin=optin, sync=sync)
+        email = process_email(email)
+        if not email:
+            return invalid_token_response() if token else invalid_email_response()
+        data["email"] = email
+
+        if email_is_blocked(email):
+            metrics.incr("news.views.subscribe", tags=["info:email_blocked", *extra_metrics_tags])
+            # don't let on there's a problem
+            return HttpResponseJSON({"status": "ok"})
+
+        optin = data.pop("optin", "N").upper() == "Y"
+        sync = data.pop("sync", "N").upper() == "Y"
+
+        authorized = False
+        if optin or sync:
+            if is_authorized(request, email):
+                authorized = True
+
+        if optin and not authorized:
+            # for backward compat we just ignore the optin if
+            # no valid API key is sent.
+            optin = False
+
+        if sync:
+            if not authorized:
+                return HttpResponseJSON(
+                    {
+                        "status": "error",
+                        "desc": "Using subscribe with sync=Y, you need to pass a valid `api-key` or FxA OAuth Authorization.",
+                        "code": errors.BASKET_AUTH_ERROR,
+                    },
+                    401,
+                )
+
+        # NOTE this is not a typo; Referrer is misspelled in the HTTP spec
+        # https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.36
+        if not data.get("source_url") and request.headers.get("Referer"):
+            # try to get it from referrer
+            metrics.incr("news.views.subscribe", tags=["info:use_referrer", *extra_metrics_tags])
+            data["source_url"] = request.headers["referer"]
+
+        return update_user_task(
+            request,
+            SUBSCRIBE,
+            data=data,
+            optin=optin,
+            sync=sync,
+            use_braze_backend=use_braze_backend,
+            should_send_tx_messages=should_send_tx_messages,
+            rate_limit_increment=rate_limit_increment,
+            extra_metrics_tags=extra_metrics_tags,
+            pre_generated_token=pre_generated_token,
+            pre_generated_email_id=pre_generated_email_id,
+        )
+
+    # We are doing parallel writes and want the token/email_id
+    # to be same in both CTMS and Braze so we eagerly generate them now.
+    pre_generated_token = generate_token()
+    pre_generated_email_id = generate_token()
+
+    if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+        try:
+            handler(
+                email,
+                token,
+                use_braze_backend=True,
+                should_send_tx_messages=False,
+                rate_limit_increment=False,
+                extra_metrics_tags=["backend:braze"],
+                pre_generated_token=pre_generated_token,
+                pre_generated_email_id=pre_generated_email_id,
+            )
+        except Exception:
+            sentry_sdk.capture_exception()
+
+        return handler(
+            email,
+            token,
+            use_braze_backend=False,
+            should_send_tx_messages=True,
+            rate_limit_increment=True,
+            extra_metrics_tags=["backend:ctms"],
+            pre_generated_token=pre_generated_token,
+            pre_generated_email_id=pre_generated_email_id,
+        )
+    elif settings.BRAZE_ONLY_WRITE_ENABLE:
+        return handler(
+            email,
+            token,
+            use_braze_backend=True,
+            should_send_tx_messages=True,
+            rate_limit_increment=True,
+            extra_metrics_tags=["backend:braze"],
+            # After the external_id migration we can stop passing in email_id here.
+            pre_generated_email_id=pre_generated_email_id,
+        )
+    else:
+        return handler(
+            email,
+            token,
+            use_braze_backend=False,
+            should_send_tx_messages=True,
+            rate_limit_increment=True,
+            extra_metrics_tags=["backend:ctms"],
+        )
 
 
 def invalid_email_response():
@@ -387,7 +550,49 @@ def unsubscribe(request, token):
         data["optout"] = True
         data["newsletters"] = ",".join(newsletter_slugs())
 
-    return update_user_task(request, UNSUBSCRIBE, data)
+    if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+        try:
+            update_user_task(
+                request,
+                UNSUBSCRIBE,
+                data,
+                use_braze_backend=True,
+                should_send_tx_messages=False,
+                rate_limit_increment=False,
+                extra_metrics_tags=["backend:braze"],
+            )
+        except Exception:
+            sentry_sdk.capture_exception()
+
+        return update_user_task(
+            request,
+            UNSUBSCRIBE,
+            data,
+            use_braze_backend=False,
+            should_send_tx_messages=True,
+            rate_limit_increment=True,
+            extra_metrics_tags=["backend:ctms"],
+        )
+    elif settings.BRAZE_ONLY_WRITE_ENABLE:
+        return update_user_task(
+            request,
+            UNSUBSCRIBE,
+            data,
+            use_braze_backend=True,
+            should_send_tx_messages=True,
+            rate_limit_increment=True,
+            extra_metrics_tags=["backend:braze"],
+        )
+    else:
+        return update_user_task(
+            request,
+            UNSUBSCRIBE,
+            data,
+            use_braze_backend=False,
+            should_send_tx_messages=True,
+            rate_limit_increment=True,
+            extra_metrics_tags=["backend:ctms"],
+        )
 
 
 @require_POST
@@ -399,7 +604,13 @@ def user_meta(request, token):
     if form.is_valid():
         # don't send empty values
         data = {k: v for k, v in form.cleaned_data.items() if v}
-        tasks.update_user_meta.delay(token, data)
+        if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+            tasks.update_user_meta.delay(token, data, use_braze_backend=True)
+            tasks.update_user_meta.delay(token, data, use_braze_backend=False)
+        elif settings.BRAZE_ONLY_WRITE_ENABLE:
+            tasks.update_user_meta.delay(token, data, use_braze_backend=True)
+        else:
+            tasks.update_user_meta.delay(token, data, use_braze_backend=False)
         return HttpResponseJSON({"status": "ok"})
 
     return HttpResponseJSON(
@@ -425,10 +636,61 @@ def user(request, token):
                 return invalid_email_response()
 
             data["email"] = email
-        return update_user_task(request, SET, data)
+        if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+            pre_generated_token = generate_token()
+            update_user_task(
+                request,
+                SET,
+                data,
+                use_braze_backend=True,
+                should_send_tx_messages=False,
+                rate_limit_increment=False,
+                extra_metrics_tags=["backend:braze"],
+                pre_generated_token=pre_generated_token,
+            )
+            return update_user_task(
+                request,
+                SET,
+                data,
+                use_braze_backend=False,
+                should_send_tx_messages=True,
+                rate_limit_increment=True,
+                extra_metrics_tags=["backend:ctms"],
+                pre_generated_token=pre_generated_token,
+            )
+        elif settings.BRAZE_ONLY_WRITE_ENABLE:
+            return update_user_task(
+                request,
+                SET,
+                data,
+                use_braze_backend=True,
+                should_send_tx_messages=True,
+                rate_limit_increment=True,
+                extra_metrics_tags=["backend:braze"],
+            )
+        else:
+            return update_user_task(
+                request,
+                SET,
+                data,
+                use_braze_backend=False,
+                should_send_tx_messages=True,
+                rate_limit_increment=True,
+                extra_metrics_tags=["backend:ctms"],
+            )
 
     masked = not has_valid_api_key(request)
-    return get_user(token, masked=masked)
+
+    if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
+        try:
+            return get_user(token, masked=masked, use_braze_backend=True)
+        except Exception:
+            sentry_sdk.capture_exception()
+            return get_user(token, masked=masked, use_braze_backend=False)
+    elif settings.BRAZE_ONLY_READ_ENABLE:
+        return get_user(token, masked=masked, use_braze_backend=True)
+    else:
+        return get_user(token, masked=masked, use_braze_backend=False)
 
 
 @require_POST
@@ -452,7 +714,32 @@ def send_recovery_message(request):
         return HttpResponseJSON({"status": "ok"})
 
     try:
-        user_data = get_user_data(email=email, extra_fields=["email_id"])
+        if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
+            try:
+                user_data = get_user_data(
+                    email=email,
+                    extra_fields=["email_id"],
+                    use_braze_backend=True,
+                )
+            except Exception:
+                sentry_sdk.capture_exception()
+                user_data = get_user_data(
+                    email=email,
+                    extra_fields=["email_id"],
+                    use_braze_backend=False,
+                )
+        elif settings.BRAZE_ONLY_READ_ENABLE:
+            user_data = get_user_data(
+                email=email,
+                extra_fields=["email_id"],
+                use_braze_backend=True,
+            )
+        else:
+            user_data = get_user_data(
+                email=email,
+                extra_fields=["email_id"],
+                use_braze_backend=False,
+            )
     except NewsletterException as e:
         return newsletter_exception_response(e)
 
@@ -475,6 +762,7 @@ def send_recovery_message(request):
 # Custom update methods
 
 
+# TODO confirm if this endpoint is still needed.
 @csrf_exempt
 def custom_unsub_reason(request):
     """Update the reason field for the user, which logs why the user
@@ -589,7 +877,36 @@ def lookup_user(request):
             return invalid_email_response()
 
     try:
-        user_data = get_user_data(token=token, email=email, masked=not authorized)
+        if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
+            try:
+                user_data = get_user_data(
+                    token=token,
+                    email=email,
+                    masked=not authorized,
+                    use_braze_backend=True,
+                )
+            except Exception:
+                sentry_sdk.capture_exception()
+                user_data = get_user_data(
+                    token=token,
+                    email=email,
+                    masked=not authorized,
+                    use_braze_backend=False,
+                )
+        elif settings.BRAZE_ONLY_READ_ENABLE:
+            user_data = get_user_data(
+                token=token,
+                email=email,
+                masked=not authorized,
+                use_braze_backend=True,
+            )
+        else:
+            user_data = get_user_data(
+                token=token,
+                email=email,
+                masked=not authorized,
+                use_braze_backend=False,
+            )
     except NewsletterException as e:
         return newsletter_exception_response(e)
 
@@ -616,12 +933,27 @@ def list_newsletters(request):
     return render(request, "news/newsletters.html", {"newsletters": active_newsletters})
 
 
-def update_user_task(request, api_call_type, data=None, optin=False, sync=False):
+def update_user_task(
+    request,
+    api_call_type,
+    data=None,
+    optin=False,
+    sync=False,
+    use_braze_backend=False,
+    should_send_tx_messages=True,
+    rate_limit_increment=True,
+    extra_metrics_tags=None,
+    pre_generated_token=None,
+    pre_generated_email_id=None,
+):
     """Call the update_user task async with the right parameters.
 
     If sync==True, be sure to include the token in the response.
     Otherwise, basket can just do everything in the background.
     """
+    if extra_metrics_tags is None:
+        extra_metrics_tags = []
+
     data = data or request.POST.dict()
 
     newsletters = parse_newsletters_csv(data.get("newsletters"))
@@ -696,7 +1028,7 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
             group="basket.news.views.update_user_task.subscribe",
             key=lambda x, y: f"{data['newsletters']}-{email}",
             rate=settings.EMAIL_SUBSCRIBE_RATE_LIMIT,
-            increment=True,
+            increment=rate_limit_increment,
         ):
             raise Ratelimited()
 
@@ -707,15 +1039,22 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
             group="basket.news.views.update_user_task.set",
             key=lambda x, y: f"{data['newsletters']}-{token}",
             rate=settings.EMAIL_SUBSCRIBE_RATE_LIMIT,
-            increment=True,
+            increment=rate_limit_increment,
         ):
             raise Ratelimited()
 
     if sync:
-        metrics.incr("news.views.subscribe.sync")
+        metrics.incr("news.views.subscribe.sync", tags=extra_metrics_tags)
         if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
             # save what we can
-            tasks.upsert_user.delay(api_call_type, data)
+            tasks.upsert_user.delay(
+                api_call_type,
+                data,
+                use_braze_backend=use_braze_backend,
+                should_send_tx_messages=should_send_tx_messages,
+                pre_generated_token=pre_generated_token,
+                pre_generated_email_id=pre_generated_email_id,
+            )
             # have to error since we can't return a token
             return HttpResponseJSON(
                 {
@@ -727,7 +1066,12 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
             )
 
         try:
-            user_data = get_user_data(email=email, token=token, extra_fields=["email_id"])
+            user_data = get_user_data(
+                email=email,
+                token=token,
+                extra_fields=["email_id"],
+                use_braze_backend=use_braze_backend,
+            )
         except NewsletterException as e:
             return newsletter_exception_response(e)
 
@@ -743,8 +1087,23 @@ def update_user_task(request, api_call_type, data=None, optin=False, sync=False)
                     400,
                 )
 
-        token, created = tasks.upsert_contact(api_call_type, data, user_data)
+        token, created = tasks.upsert_contact(
+            api_call_type,
+            data,
+            user_data,
+            use_braze_backend=use_braze_backend,
+            should_send_tx_messages=should_send_tx_messages,
+            pre_generated_token=pre_generated_token,
+            pre_generated_email_id=pre_generated_email_id,
+        )
         return HttpResponseJSON({"status": "ok", "token": token, "created": created})
     else:
-        tasks.upsert_user.delay(api_call_type, data)
+        tasks.upsert_user.delay(
+            api_call_type,
+            data,
+            use_braze_backend=use_braze_backend,
+            should_send_tx_messages=should_send_tx_messages,
+            pre_generated_token=pre_generated_token,
+            pre_generated_email_id=pre_generated_email_id,
+        )
         return HttpResponseJSON({"status": "ok"})
