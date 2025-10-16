@@ -468,7 +468,7 @@ def subscribe(request):
         )
 
     # We are doing parallel writes and want the token/email_id
-    # to be same so we eagerly generate them now.
+    # to be same in both CTMS and Braze so we eagerly generate them now.
     pre_generated_token = generate_token()
     pre_generated_email_id = generate_token()
 
