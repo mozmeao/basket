@@ -8,8 +8,6 @@ from django.utils import timezone
 
 import requests
 
-from basket.news.newsletters import vendor_id_to_slug
-
 
 # Braze errors: https://www.braze.com/docs/api/errors/
 class BrazeBadRequestError(Exception):
@@ -45,6 +43,7 @@ class BrazeEndpoint(Enum):
     USERS_EXPORT_IDS = "/users/export/ids"
     USERS_TRACK = "/users/track"
     USERS_DELETE = "/users/delete"
+    SUBSCRIPTION_USER_STATUS = "/subscription/user/status"
 
 
 class BrazeInterface:
@@ -60,7 +59,7 @@ class BrazeInterface:
 
         self.active = bool(self.api_key)
 
-    def _request(self, endpoint, data=None):
+    def _request(self, endpoint, data=None, method="POST", params=None):
         """
         Make a request to the Braze API.
 
@@ -88,10 +87,14 @@ class BrazeInterface:
 
         try:
             if settings.DEBUG:
-                print(f"POST {url}")  # noqa: T201
+                print(f"{method} {url}")  # noqa: T201
                 print(f"Headers: {headers}")  # noqa: T201
+                print(params)  # noqa: T201
                 print(json.dumps(data, indent=2))  # noqa: T201
-            response = requests.post(url, headers=headers, data=json.dumps(data))
+            if method == "GET":
+                response = requests.get(url, headers=headers, params=params, data=json.dumps(data))
+            else:
+                response = requests.post(url, headers=headers, data=json.dumps(data))
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as exc:
@@ -167,7 +170,7 @@ class BrazeInterface:
 
         return self._request(BrazeEndpoint.USERS_TRACK, data)
 
-    def export_users(self, email, fields_to_export=None):
+    def export_users(self, email, fields_to_export=None, external_id=None):
         """
         Export user profile by identifier.
 
@@ -180,6 +183,9 @@ class BrazeInterface:
             "user_aliases": [{"alias_name": email, "alias_label": "email"}],
             "email_address": email,
         }
+
+        if external_id:
+            data["external_ids"] = [external_id]
 
         if fields_to_export:
             data["fields_to_export"] = fields_to_export
@@ -220,6 +226,17 @@ class BrazeInterface:
 
         return self._request(BrazeEndpoint.CAMPAIGNS_TRIGGER_SEND, data)
 
+    def get_user_subscriptions(self, external_id, email):
+        """
+        Get user's subscription groups and their status.
+
+        https://www.braze.com/docs/api/endpoints/subscription_groups/get_list_user_subscription_groups/
+
+        """
+        params = {"external_id": external_id, "email": email}
+
+        return self._request(BrazeEndpoint.SUBSCRIPTION_USER_STATUS, None, "GET", params)
+
 
 class Braze:
     """Basket interface to Braze"""
@@ -234,7 +251,32 @@ class Braze:
         email=None,
         fxa_id=None,
     ):
-        raise NotImplementedError
+        user_response = self.interface.export_users(
+            email,
+            [
+                "braze_id",
+                "country",
+                "created_at",
+                "custom_attributes",
+                "email",
+                "email_subscribe",
+                "external_id",
+                "first_name",
+                "language",
+                "last_name",
+            ],
+            token,
+        )
+
+        if user_response["users"]:
+            user_data = user_response["users"][0]
+
+            subscription_response = self.interface.get_user_subscriptions(user_data["external_id"], email)
+            subscriptions = subscription_response.get("users", [{}])[0].get("subscription_groups", [])
+
+            return self.from_vendor(user_data, subscriptions)
+
+        return None
 
     def add(self, data):
         raise NotImplementedError
@@ -261,10 +303,8 @@ class Braze:
         newsletters_v1 = custom_attributes.get("newsletters_v1", [])
         waitlists_v1 = custom_attributes.get("waitlists_v1", [])
 
-        braze_subscription_ids = [
-            subscription["subscription_group_id"] for subscription in subscription_groups if subscription["subscription_status"] == "subscribed"
-        ]
-        newsletters = [vendor_id_to_slug(vendor_id) for vendor_id in braze_subscription_ids]
+        # TODO: query basket for vendor_id and slug instead
+        newsletters = [subscription["name"] for subscription in subscription_groups if subscription["status"] == "Subscribed"]
 
         basket_user_data = {
             "email": braze_user_data["email"],
