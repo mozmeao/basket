@@ -8,6 +8,8 @@ from django.utils import timezone
 
 import requests
 
+from basket.news.newsletters import vendor_id_to_slug
+
 
 # Braze errors: https://www.braze.com/docs/api/errors/
 class BrazeBadRequestError(Exception):
@@ -246,8 +248,54 @@ class Braze:
     def delete(self, email):
         raise NotImplementedError
 
-    def from_vendor(self):
-        raise NotImplementedError
+    def from_vendor(self, braze_user_data, subscription_groups):
+        """
+        Converts Braze-formatted data to Basket-formatted data
+        """
+        custom_attributes = braze_user_data.get("custom_attributes", {})
+
+        user_attributes = custom_attributes.get("user_attributes_v1", [{}])[0]
+        newsletters_v1 = custom_attributes.get("newsletters_v1", [])
+        waitlists_v1 = custom_attributes.get("waitlists_v1", [])
+
+        braze_subscription_ids = [
+            subscription["subscription_group_id"] for subscription in subscription_groups if subscription["subscription_status"] == "subscribed"
+        ]
+        newsletters = [vendor_id_to_slug(vendor_id) for vendor_id in braze_subscription_ids]
+
+        basket_user_data = {
+            "email": braze_user_data["email"],
+            "email_id": braze_user_data["external_id"],
+            "id": braze_user_data["braze_id"],
+            "first_name": braze_user_data.get("first_name"),
+            "last_name": braze_user_data.get("last_name"),
+            "country": braze_user_data.get("country") or user_attributes.get("mailing_country"),
+            "lang": braze_user_data.get("language") or user_attributes.get("email_lang", "en"),
+            "newsletters": newsletters,
+            "newsletters_v1": newsletters_v1,  # We need to record newsletters_v1 here so we can continue to update it in Braze after CTMS is removed
+            "created_date": user_attributes.get("created_at"),
+            "last_modified_date": user_attributes.get("updated_at"),
+            "optin": braze_user_data.get("email_subscribe") == "opted_in",
+            "optout": braze_user_data.get("email_subscribe") == "unsubscribed",
+            "token": user_attributes.get("basket_token") or braze_user_data["external_id"],
+            # missing fxa fields: fxa_deleted, fxa_id, fxa_lang, fxa_primary_email, fxa_service
+        }
+
+        if user_attributes.get(["has_fxa"]) == "true" and user_attributes.get(["fxa_created_at"]):
+            basket_user_data["fxa_create_date"] = user_attributes["fxa_created_at"]
+
+        if waitlists_v1:
+            for waitlist in waitlists_v1:
+                # Legacy waitlist format. For backward compatibility.
+                # This logic was ported over from the CTMS from_vendor method.
+                name = waitlist.get(["waitlist_name"])
+                if name == "guardian-vpn-waitlist":
+                    basket_user_data["fpn_country"] = waitlist.get(["waitlist_geo"])
+                    basket_user_data["fpn_platform"] = waitlist.get["waitlist_platform"]
+                if name.startswith("relay") and name.endswith("-waitlist"):
+                    basket_user_data["relay_country"] = waitlist.get(["waitlist_geo"])
+
+        return basket_user_data
 
     def to_vendor(self):
         raise NotImplementedError
