@@ -155,11 +155,6 @@ def slug_to_vendor_id(slug):
     return _newsletters()["by_name"][slug].vendor_id
 
 
-def vendor_id_to_slug(vendor_id):
-    """Given a newsletter's vendor_id, return its slug"""
-    return _newsletters()["by_vendor_id"][vendor_id].slug
-
-
 def newsletter_fields():
     """Get a list of all the newsletter backend-specific fields"""
     return list(_newsletters()["by_vendor_id"].keys())
