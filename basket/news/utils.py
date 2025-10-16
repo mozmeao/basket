@@ -21,6 +21,7 @@ from email_validator import EmailNotValidError, validate_email
 
 # Get error codes from basket-client so users see the same definitions
 from basket import errors, metrics
+from basket.news.backends.braze import braze
 from basket.news.backends.common import NewsletterException
 from basket.news.backends.ctms import (
     CTMSError,
@@ -238,6 +239,7 @@ def get_user_data(
     fxa_id=None,
     extra_fields=None,
     masked=False,
+    use_braze_backend=False,
 ):
     """
     Return a dictionary of the user's data.
@@ -283,13 +285,21 @@ def get_user_data(
     if extra_fields is None:
         extra_fields = []
 
-    ctms_user = None
+    backend_user = None
     try:
-        ctms_user = ctms.get(
-            token=token,
-            email=email,
-            fxa_id=fxa_id,
-        )
+        if use_braze_backend:
+            backend_user = braze.get(
+                token=token,
+                email=email,
+                fxa_id=fxa_id,
+            )
+        else:
+            backend_user = ctms.get(
+                token=token,
+                email=email,
+                fxa_id=fxa_id,
+            )
+    # TODO: handle analogous Braze errors here
     except CTMSNotFoundByAltIDError:
         return None
     except requests.exceptions.HTTPError as exc:
@@ -318,14 +328,14 @@ def get_user_data(
             status_code=400,
         ) from exc
 
-    if not ctms_user:
+    if not backend_user:
         return None
 
     # Only return fields in `ALLOWED_USER_FIELDS` or in the `extra_fields` arg.
     allowed = set(ALLOWED_USER_FIELDS + extra_fields)
-    user = {fn: ctms_user[fn] for fn in allowed if fn in ctms_user}
+    user = {fn: backend_user[fn] for fn in allowed if fn in backend_user}
 
-    user["has_fxa"] = bool(ctms_user.get("fxa_id"))
+    user["has_fxa"] = bool(backend_user.get("fxa_id"))
 
     if masked:
         # mask all emails
@@ -337,7 +347,7 @@ def get_user_data(
     return user
 
 
-def get_user(token=None, email=None, masked=True):
+def get_user(token=None, email=None, masked=True, use_braze_backend=False):
     if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
         # can't return user data during maintenance
         return HttpResponseJSON(
@@ -350,7 +360,12 @@ def get_user(token=None, email=None, masked=True):
         )
 
     try:
-        user_data = get_user_data(token, email, masked=masked)
+        user_data = get_user_data(
+            token,
+            email,
+            masked=masked,
+            use_braze_backend=use_braze_backend,
+        )
         status_code = 200
     except NewsletterException as e:
         return newsletter_exception_response(e)
