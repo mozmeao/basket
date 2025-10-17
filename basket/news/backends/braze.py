@@ -8,6 +8,8 @@ from django.utils import timezone
 
 import requests
 
+from basket.news.newsletters import vendor_id_to_slug
+
 
 # Braze errors: https://www.braze.com/docs/api/errors/
 class BrazeBadRequestError(Exception):
@@ -300,8 +302,8 @@ class Braze:
 
         user_attributes = braze_user_data.get("custom_attributes", {}).get("user_attributes_v1", [{}])[0]
 
-        # TODO: query basket for vendor_id and slug instead
-        newsletters = [subscription["name"] for subscription in subscription_groups if subscription["status"] == "Subscribed"]
+        subscription_ids = [subscription["id"] for subscription in subscription_groups if subscription["status"] == "Subscribed"]
+        newsletter_slugs = list(filter(None, map(vendor_id_to_slug, subscription_ids)))
 
         basket_user_data = {
             "email": braze_user_data["email"],
@@ -311,7 +313,7 @@ class Braze:
             "last_name": braze_user_data.get("last_name"),
             "country": braze_user_data.get("country") or user_attributes.get("mailing_country"),
             "lang": braze_user_data.get("language") or user_attributes.get("email_lang", "en"),
-            "newsletters": newsletters,
+            "newsletters": newsletter_slugs,
             "created_date": user_attributes.get("created_at"),
             "last_modified_date": user_attributes.get("updated_at"),
             "optin": braze_user_data.get("email_subscribe") == "opted_in",
