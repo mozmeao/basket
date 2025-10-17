@@ -9,6 +9,7 @@ from django.utils import timezone
 import requests
 
 from basket.base.utils import is_valid_uuid
+from basket.news.backends.ctms import process_country, process_lang
 from basket.news.newsletters import slug_to_vendor_id, vendor_id_to_slug
 
 
@@ -330,8 +331,8 @@ class Braze:
     def to_vendor(self, basket_user_data, update_data, update_existing_only=True, events=None):
         now = timezone.now().isoformat()
 
-        country = update_data.get("country") or basket_user_data.get("country")  # todo process
-        language = update_data.get("lang") or basket_user_data.get("lang", "en")  # todo process
+        country = process_country(update_data.get("country") or basket_user_data.get("country"))
+        language = process_lang(update_data.get("lang") or basket_user_data.get("lang"))
         optin = update_data["optin"] if "optin" in update_data else basket_user_data.get("optin")
         optout = update_data["optout"] if "optout" in update_data else basket_user_data.get("optout")
         email_id = update_data.get("email_id") or basket_user_data.get("email_id")
