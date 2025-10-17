@@ -91,7 +91,7 @@ class BrazeInterface:
             if settings.DEBUG:
                 print(f"{method} {url}")  # noqa: T201
                 print(f"Headers: {headers}")  # noqa: T201
-                print(params)  # noqa: T201
+                print(f"Params: {params}")  # noqa: T201
                 print(json.dumps(data, indent=2))  # noqa: T201
             if method == "GET":
                 response = requests.get(url, headers=headers, params=params, data=json.dumps(data))
