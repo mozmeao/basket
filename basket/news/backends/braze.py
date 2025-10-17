@@ -317,11 +317,12 @@ class Braze:
             "optin": braze_user_data.get("email_subscribe") == "opted_in",
             "optout": braze_user_data.get("email_subscribe") == "unsubscribed",
             "token": user_attributes.get("basket_token"),
-            # missing fxa fields: fxa_deleted, fxa_id, fxa_lang, fxa_primary_email, fxa_service
+            "fxa_service": user_attributes.get("fxa_first_service"),
+            "fxa_lang": user_attributes.get("fxa_lang"),
+            "fxa_primary_email": user_attributes.get("fxa_primary_email"),
+            "fxa_create_date": user_attributes.get("fxa_created_at") if user_attributes.get("has_fxa") else None,
+            # TODO: missing field: fxa_id
         }
-
-        if user_attributes.get("has_fxa") and user_attributes.get("fxa_created_at"):
-            basket_user_data["fxa_create_date"] = user_attributes["fxa_created_at"]
 
         return basket_user_data
 
