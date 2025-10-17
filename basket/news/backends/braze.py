@@ -278,8 +278,6 @@ class Braze:
 
             return self.from_vendor(user_data, subscriptions)
 
-        return None
-
     def add(self, data):
         raise NotImplementedError
 
