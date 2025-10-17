@@ -320,7 +320,7 @@ class Braze:
             # missing fxa fields: fxa_deleted, fxa_id, fxa_lang, fxa_primary_email, fxa_service
         }
 
-        if user_attributes.get("has_fxa") == "true" and user_attributes.get("fxa_created_at"):
+        if user_attributes.get("has_fxa") and user_attributes.get("fxa_created_at"):
             basket_user_data["fxa_create_date"] = user_attributes["fxa_created_at"]
 
         return basket_user_data
