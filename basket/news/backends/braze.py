@@ -8,7 +8,8 @@ from django.utils import timezone
 
 import requests
 
-from basket.news.newsletters import vendor_id_to_slug
+from basket.base.utils import is_valid_uuid
+from basket.news.newsletters import slug_to_vendor_id, vendor_id_to_slug
 
 
 # Braze errors: https://www.braze.com/docs/api/errors/
@@ -305,7 +306,7 @@ class Braze:
 
         basket_user_data = {
             "email": braze_user_data["email"],
-            "email_id": braze_user_data["external_id"],
+            "email_id": braze_user_data["external_id"],  # TODO: conditional on migration status config (could be basket token instead)
             "id": braze_user_data["braze_id"],
             "first_name": braze_user_data.get("first_name"),
             "last_name": braze_user_data.get("last_name"),
@@ -326,8 +327,64 @@ class Braze:
 
         return basket_user_data
 
-    def to_vendor(self):
-        raise NotImplementedError
+    def to_vendor(self, basket_user_data, update_data, update_existing_only=True, events=None):
+        now = timezone.now().isoformat()
+
+        country = update_data.get("country") or basket_user_data.get("country")  # todo process
+        language = update_data.get("lang") or basket_user_data.get("lang", "en")  # todo process
+        optin = update_data["optin"] if "optin" in update_data else basket_user_data.get("optin")
+        optout = update_data["optout"] if "optout" in update_data else basket_user_data.get("optout")
+        email_id = update_data.get("email_id") or basket_user_data.get("email_id")
+        token = update_data.get("token") or basket_user_data.get("token")
+
+        subscription_groups = []
+        if isinstance(update_data.get("newsletters"), dict):
+            for slug, is_subscribed in update_data["newsletters"].items():
+                vendor_id = slug_to_vendor_id(slug)
+                if is_valid_uuid(vendor_id):
+                    subscription_groups.append(
+                        {
+                            "subscription_group_id": vendor_id,
+                            "subscription_state": "subscribed" if is_subscribed else "unsubscribed",
+                        }
+                    )
+
+        braze_data = {
+            "attributes": [
+                {
+                    "external_id": email_id,  # TODO: conditional on migration status config (could be basket token instead)
+                    "email": basket_user_data.get("email"),
+                    "first_name": basket_user_data.get("first_name"),
+                    "last_name": basket_user_data.get("last_name"),
+                    "country": country,
+                    "language": language,
+                    "update_timestamp": now,
+                    "_update_existing_only": update_existing_only,
+                    "email_subscribe": "opted_in" if optin else "unsubscribed" if optout else "subscribed",
+                    "subscription_groups": subscription_groups,
+                    "user_attributes_v1": [
+                        {
+                            "basket_token": token,
+                            "created_at": {"$time": basket_user_data.get("created_date", now)},
+                            "email_lang": language,
+                            "mailing_country": country,
+                            "updated_at": {"$time": now},
+                            "has_fxa": bool(basket_user_data.get("fxa_create_date")),
+                            "fxa_created_at": basket_user_data.get("fxa_create_date"),
+                            "fxa_first_service": basket_user_data.get("fxa_service"),
+                            "fxa_lang": basket_user_data.get("fxa_lang"),
+                            "fxa_primary_email": basket_user_data.get("fxa_primary_email"),
+                            # TODO: missing field: fxa_id
+                        }
+                    ],
+                }
+            ]
+        }
+
+        if events:
+            braze_data["events"] = events
+
+        return braze_data
 
 
 braze = Braze(BrazeInterface(settings.BRAZE_BASE_API_URL, settings.BRAZE_API_KEY))
