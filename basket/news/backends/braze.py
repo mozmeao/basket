@@ -241,6 +241,13 @@ class BrazeInterface:
 
         return self._request(BrazeEndpoint.SUBSCRIPTION_USER_STATUS, None, "GET", params)
 
+    def save_user(self, braze_user_data):
+        """
+        Creates a new user or updates attributes for an existing user in Braze.
+        https://www.braze.com/docs/api/endpoints/user_data/post_user_track/
+        """
+        return self._request(BrazeEndpoint.USERS_TRACK, braze_user_data)
+
 
 class Braze:
     """Basket interface to Braze"""
@@ -281,7 +288,14 @@ class Braze:
             return self.from_vendor(user_data, subscriptions)
 
     def add(self, data):
-        raise NotImplementedError
+        custom_attributes = {"_update_existing_only": False}
+
+        # If we don't have an `email_id`, we need to submit the user alias.
+        if not data.get("email_id"):
+            custom_attributes["user_alias"] = {"alias_name": data.email, "alias_label": "email"}
+
+        braze_user_data = self.to_vendor(None, data, custom_attributes)
+        self.interface.save_user(braze_user_data)
 
     def update(self, existing_data, update_data):
         raise NotImplementedError
@@ -328,15 +342,12 @@ class Braze:
 
         return basket_user_data
 
-    def to_vendor(self, basket_user_data, update_data, update_existing_only=True, events=None):
-        now = timezone.now().isoformat()
+    def to_vendor(self, basket_user_data=None, update_data=None, custom_attributes=None, events=None):
+        updated_user_data = (basket_user_data or {}) | (update_data or {})
 
-        country = process_country(update_data.get("country") or basket_user_data.get("country"))
-        language = process_lang(update_data.get("lang") or basket_user_data.get("lang"))
-        optin = update_data["optin"] if "optin" in update_data else basket_user_data.get("optin")
-        optout = update_data["optout"] if "optout" in update_data else basket_user_data.get("optout")
-        email_id = update_data.get("email_id") or basket_user_data.get("email_id")
-        token = update_data.get("token") or basket_user_data.get("token")
+        now = timezone.now().isoformat()
+        country = process_country(updated_user_data.get("country"))
+        language = process_lang(updated_user_data.get("lang"))
 
         subscription_groups = []
         if isinstance(update_data.get("newsletters"), dict):
@@ -353,32 +364,37 @@ class Braze:
         braze_data = {
             "attributes": [
                 {
-                    "external_id": email_id,  # TODO: conditional on migration status config (could be basket token instead)
-                    "email": basket_user_data.get("email"),
-                    "first_name": basket_user_data.get("first_name"),
-                    "last_name": basket_user_data.get("last_name"),
+                    "external_id": updated_user_data.get("email_id"),  # TODO: conditional on migration status config (could be basket token instead)
+                    "email": updated_user_data.get("email"),
+                    "first_name": updated_user_data.get("first_name"),
+                    "last_name": updated_user_data.get("last_name"),
                     "country": country,
                     "language": language,
                     "update_timestamp": now,
-                    "_update_existing_only": update_existing_only,
-                    "email_subscribe": "opted_in" if optin else "unsubscribed" if optout else "subscribed",
+                    "_update_existing_only": True,
+                    "email_subscribe": "opted_in"
+                    if updated_user_data.get("optin")
+                    else "unsubscribed"
+                    if updated_user_data.get("optout")
+                    else "subscribed",
                     "subscription_groups": subscription_groups,
                     "user_attributes_v1": [
                         {
-                            "basket_token": token,
-                            "created_at": {"$time": basket_user_data.get("created_date", now)},
+                            "basket_token": updated_user_data.get("token"),
+                            "created_at": {"$time": updated_user_data.get("created_date", now)},
                             "email_lang": language,
                             "mailing_country": country,
                             "updated_at": {"$time": now},
-                            "has_fxa": bool(basket_user_data.get("fxa_create_date")),
-                            "fxa_created_at": basket_user_data.get("fxa_create_date"),
-                            "fxa_first_service": basket_user_data.get("fxa_service"),
-                            "fxa_lang": basket_user_data.get("fxa_lang"),
-                            "fxa_primary_email": basket_user_data.get("fxa_primary_email"),
+                            "has_fxa": bool(updated_user_data.get("fxa_create_date")),
+                            "fxa_created_at": updated_user_data.get("fxa_create_date"),
+                            "fxa_first_service": updated_user_data.get("fxa_service"),
+                            "fxa_lang": updated_user_data.get("fxa_lang"),
+                            "fxa_primary_email": updated_user_data.get("fxa_primary_email"),
                             # TODO: missing field: fxa_id
                         }
                     ],
                 }
+                | (custom_attributes or {})
             ]
         }
 
