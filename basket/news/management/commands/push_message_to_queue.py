@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     def add_arguments(self, parser):
-        parser.add_argument("-m", "--message", type=str, default="{}", help="JSON message to process")
+        parser.add_argument("-b", "--body", type=str, default="{}", help="JSON body to process")
         parser.add_argument(
             "-e",
             "--event",
@@ -36,10 +36,8 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        message = options.get("message")
+        message = options.get("body")
         event = options.get("event")
-
-        print(event)
 
         sqs = boto3.resource(
             "sqs",
@@ -51,4 +49,4 @@ class Command(BaseCommand):
 
         queue = sqs.Queue(settings.FXA_EVENTS_QUEUE_URL)
 
-        queue.send_message(MessageBody=json.dumps({"event": event, "Message": message}))
+        queue.send_message(MessageBody=json.dumps({"Message": json.dumps({"event": event, "message": message})}))
