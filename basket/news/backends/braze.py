@@ -43,6 +43,7 @@ class BrazeEndpoint(Enum):
     USERS_EXPORT_IDS = "/users/export/ids"
     USERS_TRACK = "/users/track"
     USERS_DELETE = "/users/delete"
+    USERS_MIGRATE_EXTERNAL_ID = "/users/external_ids/rename"
 
 
 class BrazeClient:
@@ -217,6 +218,43 @@ class BrazeClient:
         }
 
         return self._request(BrazeEndpoint.CAMPAIGNS_TRIGGER_SEND, data)
+
+    def migrate_external_id(self, migrations):
+        """
+        Migrate a user's external_id to a new value. 50 rename objects per request is the hard Braze limit.
+
+        If the migrations list has more than 50 objects, method will send multiple requests, each with <=50 objects.
+
+        https://www.braze.com/docs/api/endpoints/user_data/external_id_migration/post_external_ids_rename/#prerequisites
+
+        """
+
+        if not (isinstance(migrations, list) and all(isinstance(item, dict) for item in migrations)):
+            raise BrazeClientError("migrations must be a list of dictionaries")
+
+        results = []
+        errors = []
+
+        for i in range(0, len(migrations), 50):
+            chunk = migrations[i : i + 50]
+            rename_request = {"external_id_renames": chunk}
+            rename_response = self._request(BrazeEndpoint.USERS_MIGRATE_EXTERNAL_ID, rename_request)
+
+            external_ids = rename_response.get("external_ids", [])
+            rename_errors = rename_response.get("rename_errors", [])
+
+            if not external_ids:
+                raise BrazeNotFoundError("No external_ids found for migration.")
+
+            results.extend(external_ids)
+            errors.extend(rename_errors)
+
+        return {
+            "braze_collected_response": {
+                "external_ids": results,
+                "rename_errors": errors,
+            }
+        }
 
 
 braze = BrazeClient(settings.BRAZE_BASE_API_URL, settings.BRAZE_API_KEY)

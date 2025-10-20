@@ -14,6 +14,25 @@ def braze_client():
     return braze.BrazeClient("http://test.com", "test_api_key")
 
 
+def test_migrate_external_id_success(braze_client):
+    migrations = [
+        {"current_external_id": "old_id_1", "new_external_id": "new_id_1"},
+        {"current_external_id": "old_id_2", "new_external_id": "new_id_2"},
+    ]
+    mock_response = {
+        "external_ids": ["new_id_1", "new_id_2"],
+        "rename_errors": [],
+    }
+    with mock.patch.object(braze.BrazeClient, "_request", return_value=mock_response):
+        result = braze_client.migrate_external_id(migrations)
+        assert result == {
+            "braze_collected_response": {
+                "external_ids": ["new_id_1", "new_id_2"],
+                "rename_errors": [],
+            }
+        }
+
+
 def test_braze_client_no_api_key():
     with pytest.warns(UserWarning, match="Braze API key is not configured"):
         braze_client = braze.BrazeClient("http://test.com", "")
