@@ -367,7 +367,8 @@ class Braze:
         return basket_user_data
 
     def to_vendor(self, basket_user_data=None, update_data=None, custom_attributes=None, events=None):
-        updated_user_data = (basket_user_data or {}) | (update_data or {})
+        existing_user_data = basket_user_data or {}
+        updated_user_data = existing_user_data | (update_data or {})
 
         now = timezone.now().isoformat()
         country = process_country(updated_user_data.get("country"))
@@ -385,42 +386,41 @@ class Braze:
                         }
                     )
 
-        braze_data = {
-            "attributes": [
+        user_attributes = {
+            "external_id": updated_user_data.get("email_id"),  # TODO: conditional on migration status config (could be basket token instead)
+            "email": updated_user_data.get("email"),
+            "update_timestamp": now,
+            "_update_existing_only": True,
+            "email_subscribe": "opted_in" if updated_user_data.get("optin") else "unsubscribed" if updated_user_data.get("optout") else "subscribed",
+            "subscription_groups": subscription_groups,
+            "user_attributes_v1": [
                 {
-                    "external_id": updated_user_data.get("email_id"),  # TODO: conditional on migration status config (could be basket token instead)
-                    "email": updated_user_data.get("email"),
-                    "first_name": updated_user_data.get("first_name"),
-                    "last_name": updated_user_data.get("last_name"),
-                    "country": country,
-                    "language": language,
-                    "update_timestamp": now,
-                    "_update_existing_only": True,
-                    "email_subscribe": "opted_in"
-                    if updated_user_data.get("optin")
-                    else "unsubscribed"
-                    if updated_user_data.get("optout")
-                    else "subscribed",
-                    "subscription_groups": subscription_groups,
-                    "user_attributes_v1": [
-                        {
-                            "basket_token": updated_user_data.get("token"),
-                            "created_at": {"$time": updated_user_data.get("created_date", now)},
-                            "email_lang": language,
-                            "mailing_country": country,
-                            "updated_at": {"$time": now},
-                            "has_fxa": bool(updated_user_data.get("fxa_create_date")),
-                            "fxa_created_at": updated_user_data.get("fxa_create_date"),
-                            "fxa_first_service": updated_user_data.get("fxa_service"),
-                            "fxa_lang": updated_user_data.get("fxa_lang"),
-                            "fxa_primary_email": updated_user_data.get("fxa_primary_email"),
-                            # TODO: missing field: fxa_id
-                        }
-                    ],
+                    "basket_token": updated_user_data.get("token"),
+                    "created_at": {"$time": updated_user_data.get("created_date", now)},
+                    "email_lang": language,
+                    "mailing_country": country,
+                    "updated_at": {"$time": now},
+                    "has_fxa": bool(updated_user_data.get("fxa_create_date")),
+                    "fxa_created_at": updated_user_data.get("fxa_create_date"),
+                    "fxa_first_service": updated_user_data.get("fxa_service"),
+                    "fxa_lang": updated_user_data.get("fxa_lang"),
+                    "fxa_primary_email": updated_user_data.get("fxa_primary_email"),
+                    # TODO: missing field: fxa_id
                 }
-                | (custom_attributes or {})
-            ]
+            ],
         }
+
+        # Country, language, first and last name are billable data points. Only update them when necessary.
+        if country != existing_user_data.get("country"):
+            user_attributes["country"] = country
+        if language != existing_user_data.get("language"):
+            user_attributes["language"] = language
+        if (first_name := updated_user_data.get("first_name")) != existing_user_data.get("first_name"):
+            user_attributes["first_name"] = first_name
+        if (last_name := updated_user_data.get("last_name")) != existing_user_data.get("last_name"):
+            user_attributes["last_name"] = last_name
+
+        braze_data = {"attributes": [user_attributes | (custom_attributes or {})]}
 
         if events:
             braze_data["events"] = events
