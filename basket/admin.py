@@ -11,7 +11,7 @@ from django.utils.decorators import method_decorator
 import sentry_sdk
 
 from basket.base.forms import EmailForm, EmailListForm
-from basket.news.backends.braze import braze
+from basket.news.backends.braze import BrazeUserNotFoundByEmailError, braze
 from basket.news.backends.ctms import (
     CTMSNotFoundByEmailError,
     CTMSNotFoundByEmailIDError,
@@ -192,35 +192,42 @@ class BasketAdminSite(admin.AdminSite):
                 emails = form.cleaned_data["emails"]
                 output = []
 
-                # Process the emails.
-                for email in emails:
-                    try:
-                        data = ctms.delete(email)
-                    except CTMSNotFoundByEmailError:
-                        output.append(f"{email} not found in CTMS")
-                    else:
-                        for contact in data:
-                            email_id = contact["email_id"]
-                            msg = f"DELETED {email} (ctms id: {email_id})."
-                            if contact["fxa_id"]:
-                                msg += " fxa: YES."
-                            if contact["mofo_contact_id"]:
-                                msg += " mofo: YES."
-                            output.append(msg)
-
-                    if settings.BRAZE_DELETE_USER_ENABLE:
+                def handler(emails, use_braze_backend=False):
+                    # Process the emails.
+                    for email in emails:
                         try:
-                            # Fetch braze_ids instead of external_ids so we also delete
-                            # alias-only profiles.
-                            response = braze.export_users(email, ["braze_id"])
-                            if response and response.get("users"):
-                                braze_ids = [user["braze_id"] for user in response["users"]]
-                                braze.delete_users(braze_ids)
-                                msg = f"DELETED {email} (braze ids: {', '.join(braze_ids)})."
+                            if use_braze_backend:
+                                data = braze.delete(email)
+                            else:
+                                data = ctms.delete(email)
+                        except CTMSNotFoundByEmailError:
+                            output.append(f"{email} not found in CTMS")
+                        except BrazeUserNotFoundByEmailError:
+                            output.append(f"{email} not found in Braze")
+                        else:
+                            for contact in data:
+                                email_id = contact["email_id"]
+                                if use_braze_backend:
+                                    msg = f"DELETED {email} from Braze (external_id: {email_id})."
+                                else:
+                                    msg = f"DELETED {email} from CTMS (ctms id: {email_id})."
+                                if contact.get("fxa_id"):
+                                    msg += " fxa: YES."
+                                if contact.get("mofo_contact_id"):
+                                    msg += " mofo: YES."
                                 output.append(msg)
-                        except Exception as e:
-                            sentry_sdk.capture_exception()
-                            log.error(f"Braze user deletion error: {e}")
+
+                if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+                    try:
+                        handler(emails, use_braze_backend=True)
+                    except Exception:
+                        sentry_sdk.capture_exception()
+
+                    handler(emails, use_braze_backend=False)
+                elif settings.BRAZE_ONLY_WRITE_ENABLE:
+                    handler(emails, use_braze_backend=True)
+                else:
+                    handler(emails, use_braze_backend=False)
 
                 output = "\n".join(output)
 

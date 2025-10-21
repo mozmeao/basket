@@ -38,6 +38,10 @@ class BrazeInternalServerError(Exception):
     pass  # 500 error (Braze server error)
 
 
+class BrazeUserNotFoundByEmailError(Exception):
+    pass
+
+
 class BrazeClientError(Exception):
     pass  # any other error
 
@@ -196,15 +200,22 @@ class BrazeInterface:
 
         return self._request(BrazeEndpoint.USERS_EXPORT_IDS, data)
 
-    def delete_users(self, braze_ids):
+    def delete_user(self, email):
         """
-        Delete user profile by braze ids.
+        Delete user profile by email.
 
         https://www.braze.com/docs/api/endpoints/user_data/post_user_delete/
 
         """
 
-        data = {"braze_ids": braze_ids}
+        data = {
+            "email_addresses": [
+                {
+                    "email": email,
+                    "prioritization": ["most_recently_updated"],
+                },
+            ]
+        }
 
         return self._request(BrazeEndpoint.USERS_DELETE, data)
 
@@ -307,7 +318,20 @@ class Braze:
         raise NotImplementedError
 
     def delete(self, email):
-        raise NotImplementedError
+        """
+        Delete the user matching the email
+
+        @param email: The email of the user
+        @return: deleted user data if successful
+        @raises: BrazeUserNotFoundByEmailError
+        """
+        data = self.get(email=email)
+        if not data:
+            raise BrazeUserNotFoundByEmailError
+
+        self.interface.delete_user(email)
+        # return in list to match CTMS.delete
+        return [data]
 
     def from_vendor(self, braze_user_data, subscription_groups):
         """
