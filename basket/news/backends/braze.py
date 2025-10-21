@@ -8,6 +8,10 @@ from django.utils import timezone
 
 import requests
 
+from basket.base.utils import is_valid_uuid
+from basket.news.backends.ctms import process_country, process_lang
+from basket.news.newsletters import slug_to_vendor_id, vendor_id_to_slug
+
 
 # Braze errors: https://www.braze.com/docs/api/errors/
 class BrazeBadRequestError(Exception):
@@ -43,6 +47,7 @@ class BrazeEndpoint(Enum):
     USERS_EXPORT_IDS = "/users/export/ids"
     USERS_TRACK = "/users/track"
     USERS_DELETE = "/users/delete"
+    SUBSCRIPTION_USER_STATUS = "/subscription/user/status"
 
 
 class BrazeInterface:
@@ -58,7 +63,7 @@ class BrazeInterface:
 
         self.active = bool(self.api_key)
 
-    def _request(self, endpoint, data=None):
+    def _request(self, endpoint, data=None, method="POST", params=None):
         """
         Make a request to the Braze API.
 
@@ -86,10 +91,14 @@ class BrazeInterface:
 
         try:
             if settings.DEBUG:
-                print(f"POST {url}")  # noqa: T201
+                print(f"{method} {url}")  # noqa: T201
                 print(f"Headers: {headers}")  # noqa: T201
+                print(f"Params: {params}")  # noqa: T201
                 print(json.dumps(data, indent=2))  # noqa: T201
-            response = requests.post(url, headers=headers, data=json.dumps(data))
+            if method == "GET":
+                response = requests.get(url, headers=headers, params=params, data=json.dumps(data))
+            else:
+                response = requests.post(url, headers=headers, data=json.dumps(data))
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as exc:
@@ -165,7 +174,7 @@ class BrazeInterface:
 
         return self._request(BrazeEndpoint.USERS_TRACK, data)
 
-    def export_users(self, email, fields_to_export=None):
+    def export_users(self, email, fields_to_export=None, external_id=None):
         """
         Export user profile by identifier.
 
@@ -178,6 +187,9 @@ class BrazeInterface:
             "user_aliases": [{"alias_name": email, "alias_label": "email"}],
             "email_address": email,
         }
+
+        if external_id:
+            data["external_ids"] = [external_id]
 
         if fields_to_export:
             data["fields_to_export"] = fields_to_export
@@ -218,6 +230,24 @@ class BrazeInterface:
 
         return self._request(BrazeEndpoint.CAMPAIGNS_TRIGGER_SEND, data)
 
+    def get_user_subscriptions(self, external_id, email):
+        """
+        Get user's subscription groups and their status.
+
+        https://www.braze.com/docs/api/endpoints/subscription_groups/get_list_user_subscription_groups/
+
+        """
+        params = {"external_id": external_id, "email": email}
+
+        return self._request(BrazeEndpoint.SUBSCRIPTION_USER_STATUS, None, "GET", params)
+
+    def save_user(self, braze_user_data):
+        """
+        Creates a new user or updates attributes for an existing user in Braze.
+        https://www.braze.com/docs/api/endpoints/user_data/post_user_track/
+        """
+        return self._request(BrazeEndpoint.USERS_TRACK, braze_user_data)
+
 
 class Braze:
     """Basket interface to Braze"""
@@ -232,10 +262,40 @@ class Braze:
         email=None,
         fxa_id=None,
     ):
-        raise NotImplementedError
+        user_response = self.interface.export_users(
+            email,
+            [
+                "braze_id",
+                "country",
+                "created_at",
+                "custom_attributes",
+                "email",
+                "email_subscribe",
+                "external_id",
+                "first_name",
+                "language",
+                "last_name",
+            ],
+            token,
+        )
+
+        if user_response["users"]:
+            user_data = user_response["users"][0]
+
+            subscription_response = self.interface.get_user_subscriptions(user_data["external_id"], email)
+            subscriptions = subscription_response.get("users", [{}])[0].get("subscription_groups", [])
+
+            return self.from_vendor(user_data, subscriptions)
 
     def add(self, data):
-        raise NotImplementedError
+        custom_attributes = {"_update_existing_only": False}
+
+        # If we don't have an `email_id`, we need to submit the user alias.
+        if not data.get("email_id"):
+            custom_attributes["user_alias"] = {"alias_name": data.email, "alias_label": "email"}
+
+        braze_user_data = self.to_vendor(None, data, custom_attributes)
+        self.interface.save_user(braze_user_data)
 
     def update(self, existing_data, update_data):
         raise NotImplementedError
@@ -249,11 +309,99 @@ class Braze:
     def delete(self, email):
         raise NotImplementedError
 
-    def from_vendor(self):
-        raise NotImplementedError
+    def from_vendor(self, braze_user_data, subscription_groups):
+        """
+        Converts Braze-formatted data to Basket-formatted data
+        """
 
-    def to_vendor(self):
-        raise NotImplementedError
+        user_attributes = braze_user_data.get("custom_attributes", {}).get("user_attributes_v1", [{}])[0]
+
+        subscription_ids = [subscription["id"] for subscription in subscription_groups if subscription["status"] == "Subscribed"]
+        newsletter_slugs = list(filter(None, map(vendor_id_to_slug, subscription_ids)))
+
+        basket_user_data = {
+            "email": braze_user_data["email"],
+            "email_id": braze_user_data["external_id"],  # TODO: conditional on migration status config (could be basket token instead)
+            "id": braze_user_data["braze_id"],
+            "first_name": braze_user_data.get("first_name"),
+            "last_name": braze_user_data.get("last_name"),
+            "country": braze_user_data.get("country") or user_attributes.get("mailing_country"),
+            "lang": braze_user_data.get("language") or user_attributes.get("email_lang", "en"),
+            "newsletters": newsletter_slugs,
+            "created_date": user_attributes.get("created_at"),
+            "last_modified_date": user_attributes.get("updated_at"),
+            "optin": braze_user_data.get("email_subscribe") == "opted_in",
+            "optout": braze_user_data.get("email_subscribe") == "unsubscribed",
+            "token": user_attributes.get("basket_token"),
+            "fxa_service": user_attributes.get("fxa_first_service"),
+            "fxa_lang": user_attributes.get("fxa_lang"),
+            "fxa_primary_email": user_attributes.get("fxa_primary_email"),
+            "fxa_create_date": user_attributes.get("fxa_created_at") if user_attributes.get("has_fxa") else None,
+            # TODO: missing field: fxa_id
+        }
+
+        return basket_user_data
+
+    def to_vendor(self, basket_user_data=None, update_data=None, custom_attributes=None, events=None):
+        updated_user_data = (basket_user_data or {}) | (update_data or {})
+
+        now = timezone.now().isoformat()
+        country = process_country(updated_user_data.get("country"))
+        language = process_lang(updated_user_data.get("lang"))
+
+        subscription_groups = []
+        if isinstance(update_data.get("newsletters"), dict):
+            for slug, is_subscribed in update_data["newsletters"].items():
+                vendor_id = slug_to_vendor_id(slug)
+                if is_valid_uuid(vendor_id):
+                    subscription_groups.append(
+                        {
+                            "subscription_group_id": vendor_id,
+                            "subscription_state": "subscribed" if is_subscribed else "unsubscribed",
+                        }
+                    )
+
+        braze_data = {
+            "attributes": [
+                {
+                    "external_id": updated_user_data.get("email_id"),  # TODO: conditional on migration status config (could be basket token instead)
+                    "email": updated_user_data.get("email"),
+                    "first_name": updated_user_data.get("first_name"),
+                    "last_name": updated_user_data.get("last_name"),
+                    "country": country,
+                    "language": language,
+                    "update_timestamp": now,
+                    "_update_existing_only": True,
+                    "email_subscribe": "opted_in"
+                    if updated_user_data.get("optin")
+                    else "unsubscribed"
+                    if updated_user_data.get("optout")
+                    else "subscribed",
+                    "subscription_groups": subscription_groups,
+                    "user_attributes_v1": [
+                        {
+                            "basket_token": updated_user_data.get("token"),
+                            "created_at": {"$time": updated_user_data.get("created_date", now)},
+                            "email_lang": language,
+                            "mailing_country": country,
+                            "updated_at": {"$time": now},
+                            "has_fxa": bool(updated_user_data.get("fxa_create_date")),
+                            "fxa_created_at": updated_user_data.get("fxa_create_date"),
+                            "fxa_first_service": updated_user_data.get("fxa_service"),
+                            "fxa_lang": updated_user_data.get("fxa_lang"),
+                            "fxa_primary_email": updated_user_data.get("fxa_primary_email"),
+                            # TODO: missing field: fxa_id
+                        }
+                    ],
+                }
+                | (custom_attributes or {})
+            ]
+        }
+
+        if events:
+            braze_data["events"] = events
+
+        return braze_data
 
 
 braze = Braze(BrazeInterface(settings.BRAZE_BASE_API_URL, settings.BRAZE_API_KEY))

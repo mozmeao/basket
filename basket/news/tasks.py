@@ -302,7 +302,7 @@ def upsert_contact(
     if user_data is None:
         # no user found. create new one.
         token = update_data["token"] = pre_generated_token or generate_token()
-        update_data["email_id"] = update_data["email_id"] or pre_generated_email_id
+        update_data["email_id"] = update_data.get("email_id") or pre_generated_email_id
 
         if settings.MAINTENANCE_MODE:
             if use_braze_backend:
