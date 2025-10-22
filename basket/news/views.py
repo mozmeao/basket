@@ -215,7 +215,6 @@ def fxa_callback(request):
             uid,
             use_braze_backend=False,
             should_send_tx_messages=True,
-            extra_metrics_tags=["backend:ctms"],
             pre_generated_token=pre_generated_token,
         )
     elif settings.BRAZE_ONLY_WRITE_ENABLE:
@@ -232,7 +231,6 @@ def fxa_callback(request):
             uid,
             use_braze_backend=False,
             should_send_tx_messages=True,
-            extra_metrics_tags=["backend:ctms"],
         )
 
 
@@ -258,7 +256,6 @@ def confirm(request, token):
         tasks.confirm_user.delay(
             token,
             use_braze_backend=False,
-            extra_metrics_tags=["backend:ctms"],
         )
     elif settings.BRAZE_ONLY_WRITE_ENABLE:
         tasks.confirm_user.delay(
@@ -270,7 +267,6 @@ def confirm(request, token):
         tasks.confirm_user.delay(
             token,
             use_braze_backend=False,
-            extra_metrics_tags=["backend:ctms"],
         )
 
     return HttpResponseJSON({"status": "ok"})
@@ -493,7 +489,6 @@ def subscribe(request):
             use_braze_backend=False,
             should_send_tx_messages=True,
             rate_limit_increment=True,
-            extra_metrics_tags=["backend:ctms"],
             pre_generated_token=pre_generated_token,
             pre_generated_email_id=pre_generated_email_id,
         )
@@ -515,7 +510,6 @@ def subscribe(request):
             use_braze_backend=False,
             should_send_tx_messages=True,
             rate_limit_increment=True,
-            extra_metrics_tags=["backend:ctms"],
         )
 
 
@@ -571,7 +565,6 @@ def unsubscribe(request, token):
             use_braze_backend=False,
             should_send_tx_messages=True,
             rate_limit_increment=True,
-            extra_metrics_tags=["backend:ctms"],
         )
     elif settings.BRAZE_ONLY_WRITE_ENABLE:
         return update_user_task(
@@ -591,7 +584,6 @@ def unsubscribe(request, token):
             use_braze_backend=False,
             should_send_tx_messages=True,
             rate_limit_increment=True,
-            extra_metrics_tags=["backend:ctms"],
         )
 
 
@@ -655,7 +647,6 @@ def user(request, token):
                 use_braze_backend=False,
                 should_send_tx_messages=True,
                 rate_limit_increment=True,
-                extra_metrics_tags=["backend:ctms"],
                 pre_generated_token=pre_generated_token,
             )
         elif settings.BRAZE_ONLY_WRITE_ENABLE:
@@ -676,7 +667,6 @@ def user(request, token):
                 use_braze_backend=False,
                 should_send_tx_messages=True,
                 rate_limit_increment=True,
-                extra_metrics_tags=["backend:ctms"],
             )
 
     masked = not has_valid_api_key(request)

@@ -51,6 +51,7 @@ class UpsertUserTests(TestCase):
             "first_name": "The",
             "last_name": "Dude",
             "email": self.email,
+            "email_id": None,
         }
         upsert_user(SUBSCRIBE, data)
         update_data = data.copy()
@@ -261,6 +262,7 @@ class UpsertUserTests(TestCase):
             "lang": "en",
             "newsletters": "slug",
             "email": self.email,
+            "email_id": None,
         }
         upsert_user(SUBSCRIBE, data)
         update_data = data.copy()
@@ -289,6 +291,7 @@ class UpsertUserTests(TestCase):
             "lang": "en",
             "newsletters": "slug",
             "email": self.email,
+            "email_id": None,
         }
         upsert_user(SUBSCRIBE, data)
         update_data = data.copy()
@@ -326,6 +329,7 @@ class UpsertUserTests(TestCase):
             "lang": "en",
             "newsletters": "slug,slug2",
             "email": self.email,
+            "email_id": None,
         }
         upsert_user(SUBSCRIBE, data)
         update_data = data.copy()
@@ -361,6 +365,7 @@ class UpsertUserTests(TestCase):
             "lang": "en",
             "newsletters": "slug",
             "email": self.email,
+            "email_id": None,
         }
         upsert_user(SUBSCRIBE, data)
         update_data = data.copy()
@@ -494,6 +499,7 @@ class UpsertUserTests(TestCase):
             "lang": "en",
             "newsletters": "slug",
             "email": self.email,
+            "email_id": None,
         }
         upsert_user(SUBSCRIBE, data)
         update_data = data.copy()
@@ -527,6 +533,7 @@ class UpsertUserTests(TestCase):
             "lang": "en",
             "newsletters": "mozilla-foundation",
             "email": self.email,
+            "email_id": None,
         }
         upsert_user(SUBSCRIBE, data)
         update_data = data.copy()
