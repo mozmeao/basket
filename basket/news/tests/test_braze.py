@@ -11,24 +11,24 @@ from basket.news.backends import braze
 
 @pytest.fixture
 def braze_client():
-    return braze.BrazeClient("http://test.com", "test_api_key")
+    return braze.BrazeInterface("http://test.com", "test_api_key")
 
 
 def test_braze_client_no_api_key():
     with pytest.warns(UserWarning, match="Braze API key is not configured"):
-        braze_client = braze.BrazeClient("http://test.com", "")
+        braze_client = braze.BrazeInterface("http://test.com", "")
     assert braze_client.active is False
     assert braze_client.track_user("test@test.com") is None
 
 
 def test_braze_client_no_base_url():
     with pytest.raises(ValueError):
-        braze.BrazeClient("", "test_api_key")
+        braze.BrazeInterface("", "test_api_key")
 
 
 def test_braze_client_invalid_base_url():
     with pytest.raises(ValueError):
-        braze.BrazeClient("test.com", "test_api_key")
+        braze.BrazeInterface("test.com", "test_api_key")
 
 
 def test_braze_client_headers(braze_client):
@@ -170,12 +170,19 @@ def test_braze_send_campaign(braze_client):
         assert m.last_request.json() == expected
 
 
-def test_braze_delete_users(braze_client):
-    braze_ids = ["abc123"]
-    expected = {"braze_ids": braze_ids}
+def test_braze_delete_user(braze_client):
+    email = "test@example.com"
+    expected = {
+        "email_addresses": [
+            {
+                "email": email,
+                "prioritization": ["most_recently_updated"],
+            },
+        ]
+    }
     with requests_mock.mock() as m:
         m.register_uri("POST", "http://test.com/users/delete", json={})
-        braze_client.delete_users(braze_ids)
+        braze_client.delete_user(email)
         assert m.last_request.json() == expected
 
 
