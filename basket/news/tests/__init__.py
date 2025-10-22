@@ -1,5 +1,5 @@
 import functools
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from markus.testing import MetricsMock
 
@@ -27,11 +27,11 @@ class TasksPatcherMixin:
         self.addCleanup(patcher.stop)
 
 
-def assert_called_with_subset(mock_method, *expected_args, **expected_kwargs):
+def assert_called_with_subset(self, *expected_args, **expected_kwargs):
     """Assert that mock was called with at least the specified args/kwargs"""
-    assert mock_method.called, f"{mock_method} was not called"
+    assert self.called, f"{self} was not called"
 
-    actual_args, actual_kwargs = mock_method.call_args
+    actual_args, actual_kwargs = self.call_args
 
     # Check positional args
     if len(expected_args) > len(actual_args):
@@ -47,3 +47,6 @@ def assert_called_with_subset(mock_method, *expected_args, **expected_kwargs):
             raise AssertionError(f"Expected keyword arg '{key}' not found")
         if actual_kwargs[key] != expected_value:
             raise AssertionError(f"Kwarg '{key}': expected {expected_value}, got {actual_kwargs[key]}")
+
+
+Mock.assert_called_with_subset = assert_called_with_subset

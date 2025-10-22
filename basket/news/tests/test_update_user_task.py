@@ -9,7 +9,7 @@ from django_ratelimit.exceptions import Ratelimited
 
 from basket import errors
 from basket.news import views
-from basket.news.tests import TasksPatcherMixin, assert_called_with_subset
+from basket.news.tests import TasksPatcherMixin
 from basket.news.utils import SET, SUBSCRIBE, UNSUBSCRIBE
 
 
@@ -61,7 +61,7 @@ class UpdateUserTaskTests(TestCase, TasksPatcherMixin):
 
         response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
-        assert_called_with_subset(self.upsert_user.delay, SUBSCRIBE, after_data)
+        self.upsert_user.delay.assert_called_with_subset(SUBSCRIBE, after_data)
 
     @patch("basket.news.utils.get_best_language")
     @patch("basket.news.utils.newsletter_languages")
@@ -75,7 +75,7 @@ class UpdateUserTaskTests(TestCase, TasksPatcherMixin):
 
         response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
-        assert_called_with_subset(self.upsert_user.delay, SUBSCRIBE, after_data)
+        self.upsert_user.delay.assert_called_with_subset(SUBSCRIBE, after_data)
 
     @patch("basket.news.utils.get_best_language")
     @patch("basket.news.utils.newsletter_languages")
@@ -92,7 +92,7 @@ class UpdateUserTaskTests(TestCase, TasksPatcherMixin):
         response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
         # basically asserts that the data['lang'] value wasn't changed.
-        assert_called_with_subset(self.upsert_user.delay, SUBSCRIBE, data)
+        self.upsert_user.delay.assert_called_with_subset(SUBSCRIBE, data)
 
     @patch("basket.news.utils.get_best_language")
     @patch("basket.news.utils.newsletter_languages")
@@ -110,7 +110,7 @@ class UpdateUserTaskTests(TestCase, TasksPatcherMixin):
         response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
         # basically asserts that the data['lang'] value wasn't changed.
-        assert_called_with_subset(self.upsert_user.delay, SUBSCRIBE, after_data)
+        self.upsert_user.delay.assert_called_with_subset(SUBSCRIBE, after_data)
 
     def test_missing_email(self):
         """
@@ -131,7 +131,7 @@ class UpdateUserTaskTests(TestCase, TasksPatcherMixin):
 
         response = views.update_user_task(request, SUBSCRIBE, data, sync=False)
         self.assert_response_ok(response)
-        assert_called_with_subset(self.upsert_user.delay, SUBSCRIBE, data)
+        self.upsert_user.delay.assert_called_with_subset(SUBSCRIBE, data)
         self.assertFalse(self.upsert_contact.called)
 
     def test_success_with_valid_newsletters(self):
@@ -180,7 +180,7 @@ class UpdateUserTaskTests(TestCase, TasksPatcherMixin):
         response = views.update_user_task(request, SUBSCRIBE, sync=False)
 
         self.assert_response_ok(response)
-        assert_called_with_subset(self.upsert_user.delay, SUBSCRIBE, data)
+        self.upsert_user.delay.assert_called_with_subset(SUBSCRIBE, data)
 
     @patch("basket.news.views.get_user_data")
     def test_success_with_sync(self, gud_mock):
@@ -196,7 +196,7 @@ class UpdateUserTaskTests(TestCase, TasksPatcherMixin):
         response = views.update_user_task(request, SUBSCRIBE, data, sync=True)
 
         self.assert_response_ok(response, token="mytoken", created=True)
-        assert_called_with_subset(self.upsert_contact, SUBSCRIBE, data, gud_mock.return_value)
+        self.upsert_contact.assert_called_with_subset(SUBSCRIBE, data, gud_mock.return_value)
 
     @patch("basket.news.views.newsletter_slugs")
     @patch("basket.news.views.newsletter_private_slugs")
@@ -217,7 +217,7 @@ class UpdateUserTaskTests(TestCase, TasksPatcherMixin):
         response = views.update_user_task(request, UNSUBSCRIBE, data)
 
         self.assert_response_ok(response)
-        assert_called_with_subset(self.upsert_user.delay, UNSUBSCRIBE, data)
+        self.upsert_user.delay.assert_called_with_subset(UNSUBSCRIBE, data)
         mock_api_key.assert_not_called()
 
     @patch("basket.news.views.newsletter_and_group_slugs")
