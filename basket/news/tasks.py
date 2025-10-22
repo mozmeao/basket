@@ -375,7 +375,10 @@ def upsert_contact(
 
 @rq_task
 def braze_add_or_update(update_data, user_data=None):
-    raise NotImplementedError
+    if user_data is None:
+        braze.add(update_data)
+    else:
+        braze.update(user_data, update_data)
 
 
 @rq_task
