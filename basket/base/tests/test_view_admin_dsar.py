@@ -72,9 +72,9 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
 
         assert response.status_code == 200
         assert mock_ctms.delete.call_count == 3
-        assert "DELETED test1@example.com (ctms id: 123)." in response.context["dsar_output"]
-        assert "DELETED test2@example.com (ctms id: 456). fxa: YES." in response.context["dsar_output"]
-        assert "DELETED test3@example.com (ctms id: 789). fxa: YES. mofo: YES." in response.context["dsar_output"]
+        assert "DELETED test1@example.com from CTMS (ctms id: 123)." in response.context["dsar_output"]
+        assert "DELETED test2@example.com from CTMS (ctms id: 456). fxa: YES." in response.context["dsar_output"]
+        assert "DELETED test3@example.com from CTMS (ctms id: 789). fxa: YES. mofo: YES." in response.context["dsar_output"]
 
     def test_post_valid_email(self):
         self._create_admin_user()
@@ -85,7 +85,7 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
 
         assert response.status_code == 200
         assert mock_ctms.delete.called
-        assert "DELETED test@example.com (ctms id: 123)." in response.context["dsar_output"]
+        assert "DELETED test@example.com from CTMS (ctms id: 123)." in response.context["dsar_output"]
 
     def test_post_unknown_ctms_user(self, mocker):
         self._create_admin_user()
