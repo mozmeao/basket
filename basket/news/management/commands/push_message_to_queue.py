@@ -36,7 +36,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        message = options.get("body")
+        message = json.loads(options.get("body"))
         event = options.get("event")
 
         sqs = boto3.resource(
@@ -49,4 +49,4 @@ class Command(BaseCommand):
 
         queue = sqs.Queue(settings.FXA_EVENTS_QUEUE_URL)
 
-        queue.send_message(MessageBody=json.dumps({"Message": json.dumps({"event": event, "message": message})}))
+        queue.send_message(MessageBody=json.dumps({"Message": json.dumps({"event": event, **message})}))
