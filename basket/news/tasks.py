@@ -276,6 +276,10 @@ def upsert_contact(api_call_type, data, user_data):
                     update_data["mofo_relevant"] = True
 
     if user_data is None:
+        if api_call_type != SUBSCRIBE:
+            # Doesn't make sense to create a new user for UNSUBSCRIBE or SET
+            return None, False
+
         # no user found. create new one.
         token = update_data["token"] = generate_token()
         if settings.MAINTENANCE_MODE:
