@@ -221,6 +221,10 @@ def upsert_contact(api_call_type, data, user_data):
     newsletters = parse_newsletters_csv(data.get("newsletters"))
     cur_newsletters = user_data and user_data.get("newsletters")
 
+    if user_data and data.get("token") and user_data.get("token") != data["token"]:
+        # We were passed a token but it doesn't match the user.
+        return None, None
+
     if api_call_type == SUBSCRIBE:
         newsletters_set = set(newsletters)
 
@@ -276,6 +280,10 @@ def upsert_contact(api_call_type, data, user_data):
                     update_data["mofo_relevant"] = True
 
     if user_data is None:
+        if api_call_type != SUBSCRIBE:
+            # Doesn't make sense to create a new user for UNSUBSCRIBE or SET
+            return None, False
+
         # no user found. create new one.
         token = update_data["token"] = generate_token()
         if settings.MAINTENANCE_MODE:
