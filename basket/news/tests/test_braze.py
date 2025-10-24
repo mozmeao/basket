@@ -149,6 +149,28 @@ def test_braze_export_users(braze_client):
         assert m.last_request.json() == expected
 
 
+def test_get_user_subscriptions(braze_client):
+    email = "test@test.com"
+    external_id = ("fed654",)
+    params = {
+        "email": [email],
+        "external_id": ["fed654"],
+    }
+    with requests_mock.mock() as m:
+        m.register_uri("GET", "http://test.com/subscription/user/status", json={})
+        braze_client.get_user_subscriptions(external_id, email)
+        assert m.last_request.qs == params
+
+
+def test_braze_save_user(braze_client):
+    data = {"email": "test@test.com", "first_name": "foo", "last_name": "bar"}
+    expected = data
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/track", json={})
+        braze_client.save_user(data)
+        assert m.last_request.json() == expected
+
+
 def test_braze_send_campaign(braze_client):
     email = "test@test.com"
     campaign_id = "test_campaign_id"
