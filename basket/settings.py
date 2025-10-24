@@ -224,6 +224,7 @@ BRAZE_PARALLEL_WRITE_ENABLE = config("BRAZE_PARALLEL_WRITE_ENABLE", parser=bool,
 BRAZE_ONLY_WRITE_ENABLE = config("BRAZE_ONLY_WRITE_ENABLE", parser=bool, default="false")
 BRAZE_READ_WITH_FALLBACK_ENABLE = config("BRAZE_READ_WITH_FALLBACK_ENABLE", parser=bool, default="false")
 BRAZE_ONLY_READ_ENABLE = config("BRAZE_ONLY_READ_ENABLE", parser=bool, default="false")
+BRAZE_TOKEN_MIGRATION_COMPLETE = config("BRAZE_TOKEN_MIGRATION_COMPLETE", parser=bool, default="false")
 
 # Mozilla CTMS
 CTMS_ENV = config("CTMS_ENV", default="").lower()
