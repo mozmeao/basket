@@ -57,7 +57,7 @@ class Command(BaseCommand):
             chunk = migrations[i : i + chunk_size]
             braze_chunk = self.strip_for_braze(chunk)
             try:
-                braze.migrate_external_id(braze_chunk)
+                braze.interface.migrate_external_id(braze_chunk)
                 time.sleep(0.07)
             except Exception as e:
                 failure = {
