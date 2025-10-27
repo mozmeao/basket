@@ -550,3 +550,28 @@ def test_braze_get(self, braze_client):
             "GET", "http://test.com/subscription/user/status", json={"users": [{"subscription_groups": mock_braze_user_subscription_groups}]}
         )
         assert braze_instance.get(email=email) == mock_basket_user_data
+
+        api_requests = m.request_history
+        assert api_requests[0].url == "http://test.com/users/export/ids"
+        assert api_requests[0].json() == {
+            "email_address": email,
+            "fields_to_export": [
+                "braze_id",
+                "country",
+                "created_at",
+                "custom_attributes",
+                "email",
+                "email_subscribe",
+                "external_id",
+                "first_name",
+                "language",
+                "last_name",
+            ],
+            "user_aliases": [
+                {
+                    "alias_label": "email",
+                    "alias_name": email,
+                },
+            ],
+        }
+        assert api_requests[1].url == "http://test.com/subscription/user/status?external_id=123&email=test%40example.com"
