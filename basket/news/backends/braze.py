@@ -341,7 +341,7 @@ class Braze:
 
         user_attributes = braze_user_data.get("custom_attributes", {}).get("user_attributes_v1", [{}])[0]
 
-        subscription_ids = [subscription["id"] for subscription in subscription_groups if subscription["status"] == "Subscribed"]
+        subscription_ids = [subscription["id"] for subscription in (subscription_groups or []) if subscription["status"] == "Subscribed"]
         newsletter_slugs = list(filter(None, map(vendor_id_to_slug, subscription_ids)))
 
         basket_user_data = {
