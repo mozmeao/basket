@@ -376,7 +376,7 @@ class Braze:
         language = process_lang(updated_user_data.get("lang"))
 
         subscription_groups = []
-        if isinstance(update_data.get("newsletters"), dict):
+        if update_data and isinstance(update_data.get("newsletters"), dict):
             for slug, is_subscribed in update_data["newsletters"].items():
                 vendor_id = slug_to_vendor_id(slug)
                 if is_valid_uuid(vendor_id):
