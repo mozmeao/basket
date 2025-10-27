@@ -65,7 +65,7 @@ def fxa_email_changed(data, use_braze_backend=False):
         # FxA record not found, try email
         user_data = get_user_data(email=email, extra_fields=["id", "email_id"], use_braze_backend=use_braze_backend)
         if user_data:
-            if use_braze_backend:
+            if use_braze_backend and settings.BRAZE_FXA_MIGRATION_COMPLETE:
                 braze.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
             else:
                 ctms.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
@@ -97,7 +97,7 @@ def fxa_direct_update_contact(fxa_id, data, use_braze_backend=False):
     Ignore if contact with FxA ID can't be found
     """
     try:
-        if use_braze_backend:
+        if use_braze_backend and settings.BRAZE_FXA_MIGRATION_COMPLETE:
             braze.update_by_alt_id("fxa_id", fxa_id, data, use_braze_backend)
         else:
             ctms.update_by_alt_id("fxa_id", fxa_id, data)
