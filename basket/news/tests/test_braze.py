@@ -330,7 +330,7 @@ mock_newsletters = {
     return_value=mock_newsletters,
 )
 def test_from_vendor(braze_client):
-    braze_instance = Braze(braze_client())
+    braze_instance = Braze(braze_client)
 
     assert braze_instance.from_vendor(mock_braze_user_data, mock_braze_user_subscription_groups) == mock_basket_user_data
 
@@ -344,7 +344,7 @@ def test_from_vendor(braze_client):
     return_value=["en"],
 )
 def test_to_vendor_with_user_data_and_no_updates(self, braze_client):
-    braze_instance = Braze(braze_client())
+    braze_instance = Braze(braze_client)
     dt = timezone.now()
     expected = {
         "attributes": [
@@ -389,7 +389,7 @@ def test_to_vendor_with_user_data_and_no_updates(self, braze_client):
     return_value=["en"],
 )
 def test_to_vendor_with_updates_and_no_user_data(self, braze_client):
-    braze_instance = Braze(braze_client())
+    braze_instance = Braze(braze_client)
     dt = timezone.now()
     update_data = {"newsletters": {"bar-news": True}, "email": "test@example.com", "token": "abc", "email_id": "123"}
     expected = {
@@ -437,7 +437,7 @@ def test_to_vendor_with_updates_and_no_user_data(self, braze_client):
     return_value=["en"],
 )
 def test_to_vendor_with_both_user_data_and_updates(self, braze_client):
-    braze_instance = Braze(braze_client())
+    braze_instance = Braze(braze_client)
     dt = timezone.now()
     update_data = {"newsletters": {"bar-news": True, "foo-news": False}, "first_name": "Foo", "country": "CA", "optin": False}
     expected = {
@@ -488,7 +488,7 @@ def test_to_vendor_with_both_user_data_and_updates(self, braze_client):
     return_value=["en"],
 )
 def test_to_vendor_with_custom_attributes_and_events(self, braze_client):
-    braze_instance = Braze(braze_client())
+    braze_instance = Braze(braze_client)
     dt = timezone.now()
     events = [
         {
@@ -535,3 +535,18 @@ def test_to_vendor_with_custom_attributes_and_events(self, braze_client):
             )
             == expected
         )
+
+
+@mock.patch(
+    "basket.news.newsletters._newsletters",
+    return_value=mock_newsletters,
+)
+def test_braze_get(self, braze_client):
+    email = mock_braze_user_data["email"]
+    braze_instance = Braze(braze_client)
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/export/ids", json={"users": [mock_braze_user_data]})
+        m.register_uri(
+            "GET", "http://test.com/subscription/user/status", json={"users": [{"subscription_groups": mock_braze_user_subscription_groups}]}
+        )
+        assert braze_instance.get(email=email) == mock_basket_user_data
