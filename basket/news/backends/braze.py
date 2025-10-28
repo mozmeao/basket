@@ -303,7 +303,7 @@ class Braze:
 
         # If we don't have an `email_id`, we need to submit the user alias.
         if not data.get("email_id"):
-            custom_attributes["user_alias"] = {"alias_name": data.email, "alias_label": "email"}
+            custom_attributes["user_alias"] = {"alias_name": data["email"], "alias_label": "email"}
 
         braze_user_data = self.to_vendor(None, data, custom_attributes)
         self.interface.save_user(braze_user_data)
