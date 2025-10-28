@@ -585,16 +585,18 @@ def test_braze_add(mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     new_user = {
         "email": "test@example.com",
+        "email_id": "123",
+        "basket_token": "abc",
         "newsletters": {"foo-news": True},
         "country": "US",
     }
     with requests_mock.mock() as m:
         m.register_uri("POST", "http://test.com/users/track", json={})
+        expected = {"email": {"email_id": new_user["email_id"]}}
         with freeze_time():
-            braze_instance.add(new_user)
-            assert m.last_request.json() == braze_instance.to_vendor(
-                None, new_user, {"_update_existing_only": False, "user_alias": {"alias_name": new_user["email"], "alias_label": "email"}}
-            )
+            response = braze_instance.add(new_user)
+            assert response == expected
+            assert m.last_request.json() == braze_instance.to_vendor(None, new_user, {"_update_existing_only": False})
 
 
 @mock.patch(
