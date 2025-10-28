@@ -307,6 +307,7 @@ class Braze:
 
         braze_user_data = self.to_vendor(None, data, custom_attributes)
         self.interface.save_user(braze_user_data)
+        return {"email": {"email_id": data.get("email_id")}}
 
     def update(self, existing_data, update_data):
         braze_user_data = self.to_vendor(existing_data, update_data)
