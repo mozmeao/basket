@@ -613,5 +613,5 @@ def test_braze_update(mock_newsletter_languages, mock_newsletters, braze_client)
     with requests_mock.mock() as m:
         m.register_uri("POST", "http://test.com/users/track", json={})
         with freeze_time():
-            braze_instance.update(mock_basket_user_data | {"lang": None}, update_data)
-            assert m.last_request.json() == braze_instance.to_vendor(mock_basket_user_data | {"lang": None}, update_data)
+            braze_instance.update(mock_basket_user_data, update_data)
+            assert m.last_request.json() == braze_instance.to_vendor(mock_basket_user_data, update_data)
