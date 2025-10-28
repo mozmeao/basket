@@ -327,13 +327,14 @@ class Braze:
         @return: deleted user data if successful
         @raises: BrazeUserNotFoundByEmailError
         """
-        data = self.get(email=email)
-        if not data:
+        data = self.interface.export_users(email=email, fields_to_export=["external_id"])
+        if not data["users"]:
             raise BrazeUserNotFoundByEmailError
 
+        email_id = data["users"][0].get("external_id")
         self.interface.delete_user(email)
-        # return in list to match CTMS.delete
-        return [data]
+        # return in list of email_id to match CTMS.delete
+        return [{"email_id": email_id}]
 
     def from_vendor(self, braze_user_data, subscription_groups):
         """
