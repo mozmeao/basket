@@ -343,7 +343,7 @@ def test_from_vendor(braze_client):
     "basket.news.newsletters.newsletter_languages",
     return_value=["en"],
 )
-def test_to_vendor_with_user_data_and_no_updates(self, braze_client):
+def test_to_vendor_with_user_data_and_no_updates(mock_newsletter_languages, mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     dt = timezone.now()
     expected = {
@@ -388,7 +388,7 @@ def test_to_vendor_with_user_data_and_no_updates(self, braze_client):
     "basket.news.newsletters.newsletter_languages",
     return_value=["en"],
 )
-def test_to_vendor_with_updates_and_no_user_data(self, braze_client):
+def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     dt = timezone.now()
     update_data = {"newsletters": {"bar-news": True}, "email": "test@example.com", "token": "abc", "email_id": "123"}
@@ -436,7 +436,7 @@ def test_to_vendor_with_updates_and_no_user_data(self, braze_client):
     "basket.news.newsletters.newsletter_languages",
     return_value=["en"],
 )
-def test_to_vendor_with_both_user_data_and_updates(self, braze_client):
+def test_to_vendor_with_both_user_data_and_updates(mock_newsletter_languages, mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     dt = timezone.now()
     update_data = {"newsletters": {"bar-news": True, "foo-news": False}, "first_name": "Foo", "country": "CA", "optin": False}
@@ -487,7 +487,7 @@ def test_to_vendor_with_both_user_data_and_updates(self, braze_client):
     "basket.news.newsletters.newsletter_languages",
     return_value=["en"],
 )
-def test_to_vendor_with_custom_attributes_and_events(self, braze_client):
+def test_to_vendor_with_custom_attributes_and_events(mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     dt = timezone.now()
     events = [
@@ -541,7 +541,7 @@ def test_to_vendor_with_custom_attributes_and_events(self, braze_client):
     "basket.news.newsletters._newsletters",
     return_value=mock_newsletters,
 )
-def test_braze_get(self, braze_client):
+def test_braze_get(mock_newsletters, braze_client):
     email = mock_braze_user_data["email"]
     braze_instance = Braze(braze_client)
     with requests_mock.mock() as m:
@@ -575,3 +575,41 @@ def test_braze_get(self, braze_client):
             ],
         }
         assert api_requests[1].url == "http://test.com/subscription/user/status?external_id=123&email=test%40example.com"
+
+
+@mock.patch(
+    "basket.news.newsletters._newsletters",
+    return_value=mock_newsletters,
+)
+def test_braze_add(mock_newsletters, braze_client):
+    braze_instance = Braze(braze_client)
+    new_user = {
+        "email": "test@example.com",
+        "newsletters": {"foo-news": True},
+        "country": "US",
+    }
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/track", json={})
+        with freeze_time():
+            braze_instance.add(new_user)
+            assert m.last_request.json() == braze_instance.to_vendor(
+                None, new_user, {"_update_existing_only": False, "user_alias": {"alias_name": new_user["email"], "alias_label": "email"}}
+            )
+
+
+@mock.patch(
+    "basket.news.newsletters._newsletters",
+    return_value=mock_newsletters,
+)
+@mock.patch(
+    "basket.news.newsletters.newsletter_languages",
+    return_value=["en"],
+)
+def test_braze_update(mock_newsletter_languages, mock_newsletters, braze_client):
+    braze_instance = Braze(braze_client)
+    update_data = {"country": "CA"}
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/track", json={})
+        with freeze_time():
+            braze_instance.update(mock_basket_user_data | {"lang": None}, update_data)
+            assert m.last_request.json() == braze_instance.to_vendor(mock_basket_user_data | {"lang": None}, update_data)
