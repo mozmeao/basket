@@ -615,3 +615,18 @@ def test_braze_update(mock_newsletter_languages, mock_newsletters, braze_client)
         with freeze_time():
             braze_instance.update(mock_basket_user_data, update_data)
             assert m.last_request.json() == braze_instance.to_vendor(mock_basket_user_data, update_data)
+
+
+def test_braze_delete(braze_client):
+    braze_instance = Braze(braze_client)
+    email = mock_braze_user_data["email"]
+    expected = [{"email_id": mock_braze_user_data["external_id"]}]
+
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/export/ids", json={"users": [{"external_id": mock_braze_user_data["external_id"]}]})
+        m.register_uri("POST", "http://test.com/users/delete", json={})
+        response = braze_instance.delete(email)
+        api_requests = m.request_history
+        assert api_requests[0].url == "http://test.com/users/export/ids"
+        assert api_requests[1].url == "http://test.com/users/delete"
+        assert response == expected
