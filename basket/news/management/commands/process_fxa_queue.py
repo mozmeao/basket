@@ -101,7 +101,13 @@ class Command(BaseCommand):
                         continue
 
                     try:
-                        FXA_EVENT_TYPES[event_type].delay(event)
+                        if settings.BRAZE.PARALLEL_WRITE_ENABLE:
+                            FXA_EVENT_TYPES[event_type].delay(event, True)
+                            FXA_EVENT_TYPES[event_type].delay(event)
+                        elif settings.BRAZE_ONLY_WRITE_ENABLE:
+                            FXA_EVENT_TYPES[event_type].delay(event, True)
+                        else:
+                            FXA_EVENT_TYPES[event_type].delay(event)
                     except Exception:
                         # something's wrong with the queue. try again.
                         metrics.incr("fxa.events.message", tags=["info:queue_error", f"event:{event_type}"])
