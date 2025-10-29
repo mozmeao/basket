@@ -298,6 +298,7 @@ mock_basket_user_data = {
     "fxa_lang": "en",
     "fxa_primary_email": "test2@example.com",
     "fxa_create_date": "2022-01-02",
+    "fxa_id": "fxa_123",
 }
 
 mock_braze_user_data = {
@@ -309,6 +310,7 @@ mock_braze_user_data = {
     "country": "US",
     "language": "en",
     "email_subscribe": "opted_in",
+    "user_aliases": [{"alias_name": "fxa_123", "alias_label": "fxa_id"}],
     "custom_attributes": {
         "user_attributes_v1": [
             {
@@ -322,6 +324,7 @@ mock_braze_user_data = {
                 "fxa_primary_email": "test2@example.com",
                 "fxa_created_at": "2022-01-02",
                 "has_fxa": True,
+                "fxa_id": "fxa_123",
             }
         ]
     },
@@ -390,6 +393,7 @@ def test_to_vendor_with_user_data_and_no_updates(mock_newsletter_languages, mock
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
+                        "fxa_id": "fxa_123",
                     }
                 ],
             }
@@ -414,7 +418,7 @@ def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock
     expected = {
         "attributes": [
             {
-                "_update_existing_only": True,
+                "_update_existing_only": False,
                 "email": "test@example.com",
                 "external_id": "123",
                 "email_subscribe": "subscribed",
@@ -438,6 +442,7 @@ def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
+                        "fxa_id": None,
                     }
                 ],
             }
@@ -489,6 +494,7 @@ def test_to_vendor_with_both_user_data_and_updates(mock_newsletter_languages, mo
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
+                        "fxa_id": "fxa_123",
                     }
                 ],
             }
@@ -506,7 +512,7 @@ def test_to_vendor_with_both_user_data_and_updates(mock_newsletter_languages, mo
     "basket.news.newsletters.newsletter_languages",
     return_value=["en"],
 )
-def test_to_vendor_with_custom_attributes_and_events(mock_newsletters, braze_client):
+def test_to_vendor_with_events(mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     dt = timezone.now()
     events = [
@@ -519,7 +525,7 @@ def test_to_vendor_with_custom_attributes_and_events(mock_newsletters, braze_cli
     expected = {
         "attributes": [
             {
-                "_update_existing_only": False,
+                "_update_existing_only": True,
                 "email": "test@example.com",
                 "external_id": "123",
                 "email_subscribe": "opted_in",
@@ -541,6 +547,7 @@ def test_to_vendor_with_custom_attributes_and_events(mock_newsletters, braze_cli
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
+                        "fxa_id": "fxa_123",
                     }
                 ],
             }
@@ -548,12 +555,7 @@ def test_to_vendor_with_custom_attributes_and_events(mock_newsletters, braze_cli
         "events": events,
     }
     with freeze_time(dt):
-        assert (
-            braze_instance.to_vendor(
-                basket_user_data=mock_basket_user_data, update_data=None, custom_attributes={"_update_existing_only": False}, events=events
-            )
-            == expected
-        )
+        assert braze_instance.to_vendor(basket_user_data=mock_basket_user_data, update_data=None, events=events) == expected
 
 
 @mock.patch(
@@ -585,6 +587,7 @@ def test_braze_get(mock_newsletters, braze_client):
                 "first_name",
                 "language",
                 "last_name",
+                "user_aliases",
             ],
             "user_aliases": [
                 {
@@ -615,7 +618,7 @@ def test_braze_add(mock_newsletters, braze_client):
         with freeze_time():
             response = braze_instance.add(new_user)
             assert response == expected
-            assert m.last_request.json() == braze_instance.to_vendor(None, new_user, {"_update_existing_only": False})
+            assert m.last_request.json() == braze_instance.to_vendor(None, new_user)
 
 
 @mock.patch(
