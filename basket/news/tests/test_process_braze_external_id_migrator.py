@@ -48,7 +48,7 @@ def test_successful_migration(mock_storage_client, mock_braze, sample_df):
     mock_client.bucket.return_value = mock_bucket
     mock_storage_client.return_value = mock_client
 
-    mock_braze.migrate_external_id.return_value = {"braze_collected_response": {"external_ids": ["id1", "id2"], "rename_errors": []}}
+    mock_braze.interface.migrate_external_id.return_value = {"braze_collected_response": {"external_ids": ["id1", "id2"], "rename_errors": []}}
 
     cmd = Command()
     cmd.stdout = mock.Mock()
@@ -59,7 +59,7 @@ def test_successful_migration(mock_storage_client, mock_braze, sample_df):
         {"current_external_id": "id1", "new_external_id": "token1"},
         {"current_external_id": "id2", "new_external_id": "token2"},
     ]
-    mock_braze.migrate_external_id.assert_called_once_with(expected_chunk)
+    mock_braze.interface.migrate_external_id.assert_called_once_with(expected_chunk)
 
 
 def test_file_not_found(mock_storage_client, mock_braze):
@@ -89,7 +89,7 @@ def test_migration_failure(mock_storage_client, mock_braze, sample_df):
     mock_client.bucket.return_value = mock_bucket
     mock_storage_client.return_value = mock_client
 
-    mock_braze.migrate_external_id.side_effect = Exception("fail!")
+    mock_braze.interface.migrate_external_id.side_effect = Exception("fail!")
     cmd = Command()
     cmd.stdout = mock.Mock()
     cmd.style = mock.Mock()
@@ -124,7 +124,7 @@ def test_start_timestamp_filtering(mock_storage_client, mock_braze):
         project="proj", bucket="bucket", prefix="prefix", file_name="file.parquet", start_timestamp="2024-01-01T00:00:00", chunk_size=2
     )
     expected_chunk = [{"current_external_id": "id2", "new_external_id": "token2"}]
-    mock_braze.migrate_external_id.assert_called_once_with(expected_chunk)
+    mock_braze.interface.migrate_external_id.assert_called_once_with(expected_chunk)
 
 
 def test_empty_parquet_file(mock_storage_client, mock_braze):
@@ -143,7 +143,7 @@ def test_empty_parquet_file(mock_storage_client, mock_braze):
     cmd.process_and_migrate_parquet_file(
         project="proj", bucket="bucket", prefix="prefix", file_name="file.parquet", start_timestamp=None, chunk_size=2
     )
-    mock_braze.migrate_external_id.assert_not_called()
+    mock_braze.interface.migrate_external_id.assert_not_called()
 
 
 def test_chunking_behavior(mock_storage_client, mock_braze):
@@ -163,7 +163,7 @@ def test_chunking_behavior(mock_storage_client, mock_braze):
         project="proj", bucket="bucket", prefix="prefix", file_name="file.parquet", start_timestamp=None, chunk_size=2
     )
     # Should be called 3 times: 2, 2, 1
-    assert mock_braze.migrate_external_id.call_count == 3
+    assert mock_braze.interface.migrate_external_id.call_count == 3
     all_calls = [call.args[0] for call in mock_braze.migrate_external_id.call_args_list]
     assert all(len(chunk) <= 2 for chunk in all_calls)
 

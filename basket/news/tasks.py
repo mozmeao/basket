@@ -428,7 +428,7 @@ def ctms_add_or_update(update_data, user_data=None):
 @rq_task
 def send_tx_message(email, message_id, language, user_data=None):
     metrics.incr("news.tasks.send_tx_message", tags=[f"message_id:{message_id}", f"language:{language}"])
-    braze.track_user(email, event=f"send-{message_id}-{language}", user_data=user_data)
+    braze.interface.track_user(email, event=f"send-{message_id}-{language}", user_data=user_data)
 
 
 def send_tx_messages(email, lang, message_ids):
