@@ -334,6 +334,7 @@ class Braze:
         email_id = data["users"][0].get("external_id")
         self.interface.delete_user(email)
         # return in list of email_id to match CTMS.delete
+        # TODO also return fxa_id once it's added as an alias
         return [{"email_id": email_id}]
 
     def from_vendor(self, braze_user_data, subscription_groups):
