@@ -339,8 +339,7 @@ class Braze:
             return self.from_vendor(user_data, subscriptions)
 
     def add(self, data):
-        custom_attributes = {"_update_existing_only": False}
-        braze_user_data = self.to_vendor(None, data, custom_attributes)
+        braze_user_data = self.to_vendor(None, data)
         self.interface.save_user(braze_user_data)
         return {"email": {"email_id": data.get("email_id")}}
 
@@ -410,7 +409,7 @@ class Braze:
 
         return basket_user_data
 
-    def to_vendor(self, basket_user_data=None, update_data=None, custom_attributes=None, events=None):
+    def to_vendor(self, basket_user_data=None, update_data=None, events=None):
         existing_user_data = basket_user_data or {}
         updated_user_data = existing_user_data | (update_data or {})
 
@@ -434,7 +433,7 @@ class Braze:
             "external_id": updated_user_data.get("email_id"),  # TODO: conditional on migration status config (could be basket token instead)
             "email": updated_user_data.get("email"),
             "update_timestamp": now,
-            "_update_existing_only": True,
+            "_update_existing_only": bool(existing_user_data),
             "email_subscribe": "opted_in" if updated_user_data.get("optin") else "unsubscribed" if updated_user_data.get("optout") else "subscribed",
             "subscription_groups": subscription_groups,
             "user_attributes_v1": [
@@ -464,7 +463,7 @@ class Braze:
         if (last_name := updated_user_data.get("last_name")) != existing_user_data.get("last_name"):
             user_attributes["last_name"] = last_name
 
-        braze_data = {"attributes": [user_attributes | (custom_attributes or {})]}
+        braze_data = {"attributes": [user_attributes]}
 
         if events:
             braze_data["events"] = events
