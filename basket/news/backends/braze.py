@@ -381,7 +381,7 @@ class Braze:
 
         user_attributes = braze_user_data.get("custom_attributes", {}).get("user_attributes_v1", [{}])[0]
         user_aliases = braze_user_data.get("user_aliases", [])
-        fxa_id = next((user_alias for user_alias in user_aliases if user_alias.get("alias_label") == "fxa_id"), None)
+        fxa_id = next((user_alias["alias_name"] for user_alias in user_aliases if user_alias.get("alias_label") == "fxa_id"), None)
 
         subscription_ids = [subscription["id"] for subscription in (subscription_groups or []) if subscription["status"] == "Subscribed"]
         newsletter_slugs = list(filter(None, map(vendor_id_to_slug, subscription_ids)))
