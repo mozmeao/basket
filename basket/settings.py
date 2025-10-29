@@ -427,7 +427,7 @@ FXA_EVENTS_QUEUE_REGION = config("FXA_EVENTS_QUEUE_REGION", default="")
 FXA_EVENTS_QUEUE_URL = config("FXA_EVENTS_QUEUE_URL", default="")
 FXA_EVENTS_QUEUE_WAIT_TIME = config("FXA_EVENTS_QUEUE_WAIT_TIME", parser=int, default="10")
 FXA_EVENTS_SNITCH_ID = config("FXA_EVENTS_SNITCH_ID", default="")
-FXA_EVENTS_ENDPOINT_URL = config("FXA_EVENTS_ENDPOINT_URL", default="")
+FXA_EVENTS_ENDPOINT_URL = config("FXA_EVENTS_ENDPOINT_URL", default=None)
 
 # stage or production
 # https://github.com/mozilla/PyFxA/blob/main/fxa/constants.py

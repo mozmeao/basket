@@ -1,27 +1,9 @@
 import json
-import logging
 
 from django.conf import settings
 from django.core.management import BaseCommand
 
 import boto3
-
-from basket.news.tasks import (
-    fxa_delete,
-    fxa_email_changed,
-    fxa_login,
-    fxa_newsletters_update,
-    fxa_verified,
-)
-
-FXA_EVENT_TYPES = {
-    "delete": fxa_delete,
-    "login": fxa_login,
-    "newsletters-update": fxa_newsletters_update,
-    "primaryEmailChanged": fxa_email_changed,
-    "verified": fxa_verified,
-}
-log = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
