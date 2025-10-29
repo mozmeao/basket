@@ -325,6 +325,7 @@ class Braze:
                 "first_name",
                 "language",
                 "last_name",
+                "user_aliases",
             ],
             token,
         )
@@ -339,11 +340,6 @@ class Braze:
 
     def add(self, data):
         custom_attributes = {"_update_existing_only": False}
-
-        # If we don't have an `email_id`, we need to submit the user alias.
-        if not data.get("email_id"):
-            custom_attributes["user_alias"] = {"alias_name": data["email"], "alias_label": "email"}
-
         braze_user_data = self.to_vendor(None, data, custom_attributes)
         self.interface.save_user(braze_user_data)
         return {"email": {"email_id": data.get("email_id")}}
@@ -385,6 +381,8 @@ class Braze:
         """
 
         user_attributes = braze_user_data.get("custom_attributes", {}).get("user_attributes_v1", [{}])[0]
+        user_aliases = braze_user_data.get("user_aliases", [])
+        fxa_id = next((user_alias for user_alias in user_aliases if user_alias.get("alias_label") == "fxa_id"), None)
 
         subscription_ids = [subscription["id"] for subscription in (subscription_groups or []) if subscription["status"] == "Subscribed"]
         newsletter_slugs = list(filter(None, map(vendor_id_to_slug, subscription_ids)))
@@ -407,7 +405,7 @@ class Braze:
             "fxa_lang": user_attributes.get("fxa_lang"),
             "fxa_primary_email": user_attributes.get("fxa_primary_email"),
             "fxa_create_date": user_attributes.get("fxa_created_at") if user_attributes.get("has_fxa") else None,
-            # TODO: missing field: fxa_id
+            "fxa_id": fxa_id,
         }
 
         return basket_user_data
@@ -451,7 +449,7 @@ class Braze:
                     "fxa_first_service": updated_user_data.get("fxa_service"),
                     "fxa_lang": updated_user_data.get("fxa_lang"),
                     "fxa_primary_email": updated_user_data.get("fxa_primary_email"),
-                    # TODO: missing field: fxa_id
+                    "fxa_id": updated_user_data.get("fxa_id"),
                 }
             ],
         }
