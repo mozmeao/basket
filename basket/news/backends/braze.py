@@ -342,10 +342,11 @@ class Braze:
 
         # If we don't have an `email_id`, we need to submit the user alias.
         if not data.get("email_id"):
-            custom_attributes["user_alias"] = {"alias_name": data.email, "alias_label": "email"}
+            custom_attributes["user_alias"] = {"alias_name": data["email"], "alias_label": "email"}
 
         braze_user_data = self.to_vendor(None, data, custom_attributes)
         self.interface.save_user(braze_user_data)
+        return {"email": {"email_id": data.get("email_id")}}
 
     def update(self, existing_data, update_data):
         braze_user_data = self.to_vendor(existing_data, update_data)
@@ -365,13 +366,15 @@ class Braze:
         @return: deleted user data if successful
         @raises: BrazeUserNotFoundByEmailError
         """
-        data = self.get(email=email)
-        if not data:
+        data = self.interface.export_users(email=email, fields_to_export=["external_id"])
+        if not data["users"]:
             raise BrazeUserNotFoundByEmailError
 
+        email_id = data["users"][0].get("external_id")
         self.interface.delete_user(email)
-        # return in list to match CTMS.delete
-        return [data]
+        # return in list of email_id to match CTMS.delete
+        # TODO also return fxa_id once it's added as an alias
+        return [{"email_id": email_id}]
 
     def from_vendor(self, braze_user_data, subscription_groups):
         """
@@ -380,7 +383,7 @@ class Braze:
 
         user_attributes = braze_user_data.get("custom_attributes", {}).get("user_attributes_v1", [{}])[0]
 
-        subscription_ids = [subscription["id"] for subscription in subscription_groups if subscription["status"] == "Subscribed"]
+        subscription_ids = [subscription["id"] for subscription in (subscription_groups or []) if subscription["status"] == "Subscribed"]
         newsletter_slugs = list(filter(None, map(vendor_id_to_slug, subscription_ids)))
 
         basket_user_data = {
@@ -415,7 +418,7 @@ class Braze:
         language = process_lang(updated_user_data.get("lang"))
 
         subscription_groups = []
-        if isinstance(update_data.get("newsletters"), dict):
+        if update_data and isinstance(update_data.get("newsletters"), dict):
             for slug, is_subscribed in update_data["newsletters"].items():
                 vendor_id = slug_to_vendor_id(slug)
                 if is_valid_uuid(vendor_id):
