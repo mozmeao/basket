@@ -55,6 +55,7 @@ class Command(BaseCommand):
             region_name=settings.FXA_EVENTS_QUEUE_REGION,
             aws_access_key_id=settings.FXA_EVENTS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.FXA_EVENTS_SECRET_ACCESS_KEY,
+            endpoint_url=settings.FXA_EVENTS_ENDPOINT_URL,
         )
         queue = sqs.Queue(settings.FXA_EVENTS_QUEUE_URL)
 
