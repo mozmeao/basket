@@ -310,7 +310,7 @@ mock_braze_user_data = {
 
 mock_braze_user_subscription_groups = [
     {"id": "234c9b4a-1785-4cd5-b839-5dbc134982eb", "status": "Subscribed"},
-    {"id": "78fe6671-9f94-48bd-aaf3-7e873536c3e6", "status": "Not Subscribed"},
+    {"id": "78fe6671-9f94-48bd-aaf3-7e873536c3e6", "status": "Unsubscribed"},
 ]
 
 mock_newsletters = {
