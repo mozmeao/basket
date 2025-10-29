@@ -357,24 +357,8 @@ def common_voice_goals(request):
 @require_POST
 @csrf_exempt
 def subscribe(request):
-    data = request.POST.dict()
-    newsletters = data.get("newsletters", None)
-    if not newsletters:
-        return HttpResponseJSON(
-            {
-                "status": "error",
-                "desc": "newsletters is missing",
-                "code": errors.BASKET_USAGE_ERROR,
-            },
-            400,
-        )
-
-    email = data.pop("email", None)
-    token = data.pop("token", None)
-
     def handler(
-        email,
-        token,
+        request,
         use_braze_backend=False,
         should_send_tx_messages=True,
         rate_limit_increment=True,
@@ -382,6 +366,21 @@ def subscribe(request):
         pre_generated_token=None,
         pre_generated_email_id=None,
     ):
+        data = request.POST.dict()
+        newsletters = data.get("newsletters", None)
+        if not newsletters:
+            return HttpResponseJSON(
+                {
+                    "status": "error",
+                    "desc": "newsletters is missing",
+                    "code": errors.BASKET_USAGE_ERROR,
+                },
+                400,
+            )
+
+        email = data.pop("email", None)
+        token = data.pop("token", None)
+
         if extra_metrics_tags is None:
             extra_metrics_tags = []
 
@@ -471,8 +470,7 @@ def subscribe(request):
     if settings.BRAZE_PARALLEL_WRITE_ENABLE:
         try:
             handler(
-                email,
-                token,
+                request,
                 use_braze_backend=True,
                 should_send_tx_messages=False,
                 rate_limit_increment=False,
@@ -484,8 +482,7 @@ def subscribe(request):
             sentry_sdk.capture_exception()
 
         return handler(
-            email,
-            token,
+            request,
             use_braze_backend=False,
             should_send_tx_messages=True,
             rate_limit_increment=True,
@@ -494,8 +491,7 @@ def subscribe(request):
         )
     elif settings.BRAZE_ONLY_WRITE_ENABLE:
         return handler(
-            email,
-            token,
+            request,
             use_braze_backend=True,
             should_send_tx_messages=True,
             rate_limit_increment=True,
@@ -505,8 +501,7 @@ def subscribe(request):
         )
     else:
         return handler(
-            email,
-            token,
+            request,
             use_braze_backend=False,
             should_send_tx_messages=True,
             rate_limit_increment=True,
