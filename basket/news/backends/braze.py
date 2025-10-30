@@ -360,17 +360,18 @@ class Braze:
         external_id = braze_user_data["external_id"]
         self.interface.save_user(braze_user_data)
 
-        if data.get("fxa_id"):
+        if external_id and data.get("fxa_id"):
             self.interface.add_fxa_id_alias(external_id, data["fxa_id"])
 
         return {"email": {"email_id": external_id}}
 
     def update(self, existing_data, update_data):
         braze_user_data = self.to_vendor(existing_data, update_data)
+        external_id = braze_user_data["external_id"]
         self.interface.save_user(braze_user_data)
 
-        if update_data.get("fxa_id") and existing_data.get("fxa_id") != update_data["fxa_id"]:
-            self.interface.add_fxa_id_alias(braze_user_data.get("external_id"), update_data["fxa_id"])
+        if external_id and update_data.get("fxa_id") and existing_data.get("fxa_id") != update_data["fxa_id"]:
+            self.interface.add_fxa_id_alias(external_id, update_data["fxa_id"])
 
     def update_by_fxa_id(self, fxa_id, update_data):
         existing_user = self.get(fxa_id=fxa_id)
