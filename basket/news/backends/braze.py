@@ -361,6 +361,9 @@ class Braze:
         braze_user_data = self.to_vendor(existing_data, update_data)
         self.interface.save_user(braze_user_data)
 
+        if update_data.get("fxa_id") and existing_data.get("fxa_id") != update_data["fxa_id"]:
+            self.interface.add_fxa_id_alias(braze_user_data.get("external_id"), update_data["fxa_id"])
+
     def update_by_alt_id(self, alt_id_name, alt_id_value, update_data):
         raise NotImplementedError
 
