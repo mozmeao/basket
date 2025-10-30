@@ -180,7 +180,7 @@ class BrazeInterface:
 
         return self._request(BrazeEndpoint.USERS_TRACK, data)
 
-    def export_users(self, email, fields_to_export=None, external_id=None):
+    def export_users(self, email, fields_to_export=None, external_id=None, fxa_id=None):
         """
         Export user profile by identifier.
 
@@ -199,6 +199,9 @@ class BrazeInterface:
 
         if fields_to_export:
             data["fields_to_export"] = fields_to_export
+
+        if fxa_id:
+            data["user_aliases"].append({"alias_name": fxa_id, "alias_label": "fxa_id"})
 
         return self._request(BrazeEndpoint.USERS_EXPORT_IDS, data)
 
@@ -337,6 +340,7 @@ class Braze:
                 "user_aliases",
             ],
             token,
+            fxa_id,
         )
 
         if user_response["users"]:
