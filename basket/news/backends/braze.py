@@ -481,7 +481,7 @@ class Braze:
         # Country, language, first and last name are billable data points. Only update them when necessary.
         if country != process_country(existing_user_data.get("country") or None):
             user_attributes["country"] = country
-        if language != process_lang(existing_user_data.get("language") or None):
+        if not existing_user_data or language != process_lang(existing_user_data.get("language") or None):
             user_attributes["language"] = language
         if (first_name := updated_user_data.get("first_name")) != existing_user_data.get("first_name"):
             user_attributes["first_name"] = first_name
