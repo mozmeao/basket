@@ -8,7 +8,7 @@ from basket import metrics
 from basket.base.decorators import rq_task
 from basket.base.exceptions import BasketError
 from basket.base.utils import email_is_testing
-from basket.news.backends.braze import braze
+from basket.news.backends.braze import BrazeUserNotFoundByFxaIdError, braze
 from basket.news.backends.ctms import (
     CTMSNotFoundByAltIDError,
     CTMSUniqueIDConflictError,
@@ -97,10 +97,10 @@ def fxa_direct_update_contact(fxa_id, data, use_braze_backend=False):
     """
     try:
         if use_braze_backend:
-            braze.update_by_alt_id("fxa_id", fxa_id, data, use_braze_backend)
+            braze.update_by_fxa_id(fxa_id, data)
         else:
             ctms.update_by_alt_id("fxa_id", fxa_id, data)
-    except CTMSNotFoundByAltIDError:
+    except (CTMSNotFoundByAltIDError, BrazeUserNotFoundByFxaIdError):
         # No associated record found, skip this update.
         pass
 

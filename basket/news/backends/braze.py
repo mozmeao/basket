@@ -42,6 +42,10 @@ class BrazeUserNotFoundByEmailError(Exception):
     pass
 
 
+class BrazeUserNotFoundByFxaIdError(Exception):
+    pass
+
+
 class BrazeClientError(Exception):
     pass  # any other error
 
@@ -368,11 +372,11 @@ class Braze:
         if update_data.get("fxa_id") and existing_data.get("fxa_id") != update_data["fxa_id"]:
             self.interface.add_fxa_id_alias(braze_user_data.get("external_id"), update_data["fxa_id"])
 
-    def update_by_alt_id(self, alt_id_name, alt_id_value, update_data):
-        raise NotImplementedError
-
     def update_by_fxa_id(self, fxa_id, update_data):
-        raise NotImplementedError
+        existing_user = self.get(fxa_id=fxa_id)
+        if not existing_user:
+            raise BrazeUserNotFoundByFxaIdError
+        self.update(existing_user, update_data)
 
     def delete(self, email):
         """
