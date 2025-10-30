@@ -193,10 +193,7 @@ class BrazeInterface:
         If alias is not found, returns empty "users" list.
 
         """
-        data = {
-            "user_aliases": [{"alias_name": email, "alias_label": "email"}],
-            "email_address": email,
-        }
+        data = {"email_address": email, "user_aliases": []}
 
         if external_id:
             data["external_ids"] = [external_id]
@@ -206,6 +203,9 @@ class BrazeInterface:
 
         if fxa_id:
             data["user_aliases"].append({"alias_name": fxa_id, "alias_label": "fxa_id"})
+
+        if email:
+            (data["user_aliases"].append({"alias_name": email, "alias_label": "email"}),)
 
         return self._request(BrazeEndpoint.USERS_EXPORT_IDS, data)
 
@@ -392,7 +392,9 @@ class Braze:
             raise BrazeUserNotFoundByEmailError
 
         email_id = data["users"][0].get("external_id")
-        fxa_id = self.get_fxa_id_from_aliases(data["users"][0].get("user_aliases"))
+        user_aliases = data["users"][0].get("user_aliases", [])
+        fxa_id = next((user_alias["alias_name"] for user_alias in user_aliases if user_alias.get("alias_label") == "fxa_id"), None)
+
         self.interface.delete_user(email)
         # return in list of {email_id, fxa_id} to match CTMS.delete
         return [{"email_id": email_id, "fxa_id": fxa_id}]
@@ -403,9 +405,10 @@ class Braze:
         """
 
         user_attributes = braze_user_data.get("custom_attributes", {}).get("user_attributes_v1", [{}])[0]
-
+        user_aliases = braze_user_data.get("user_aliases", [])
         subscription_ids = [subscription["id"] for subscription in (subscription_groups or []) if subscription["status"] == "Subscribed"]
         newsletter_slugs = list(filter(None, map(vendor_id_to_slug, subscription_ids)))
+        fxa_id = next((user_alias["alias_name"] for user_alias in user_aliases if user_alias.get("alias_label") == "fxa_id"), None)
 
         basket_user_data = {
             "email": braze_user_data["email"],
@@ -426,7 +429,7 @@ class Braze:
             "fxa_primary_email": user_attributes.get("fxa_primary_email"),
             "fxa_create_date": user_attributes.get("fxa_created_at") if user_attributes.get("has_fxa") else None,
             "has_fxa": user_attributes.get("has_fxa"),
-            "fxa_id": self.get_fxa_id_from_aliases(braze_user_data.get("user_aliases")),
+            "fxa_id": fxa_id,
         }
 
         return basket_user_data
@@ -494,10 +497,6 @@ class Braze:
             braze_data["events"] = events
 
         return braze_data
-
-    def get_fxa_id_from_aliases(user_aliases):
-        if user_aliases:
-            return next((user_alias["alias_name"] for user_alias in user_aliases if user_alias.get("alias_label") == "fxa_id"), None)
 
 
 braze = Braze(BrazeInterface(settings.BRAZE_BASE_API_URL, settings.BRAZE_API_KEY))
