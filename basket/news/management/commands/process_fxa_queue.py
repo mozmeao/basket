@@ -101,7 +101,7 @@ class Command(BaseCommand):
                         continue
 
                     try:
-                        if settings.BRAZE.PARALLEL_WRITE_ENABLE:
+                        if settings.BRAZE_PARALLEL_WRITE_ENABLE:
                             FXA_EVENT_TYPES[event_type].delay(event, True)
                             FXA_EVENT_TYPES[event_type].delay(event)
                         elif settings.BRAZE_ONLY_WRITE_ENABLE:
