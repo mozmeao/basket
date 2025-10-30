@@ -80,7 +80,6 @@ def fxa_email_changed(data, use_braze_backend=False):
             backend_data = data.copy()
             contact = None
             if use_braze_backend:
-                # This doesn't return the user??? What do we do here?
                 contact = braze.add(backend_data)
             else:
                 contact = ctms.add(backend_data)
