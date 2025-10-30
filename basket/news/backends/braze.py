@@ -374,9 +374,6 @@ class Braze:
     def update_by_fxa_id(self, fxa_id, update_data):
         raise NotImplementedError
 
-    def update_by_token(self, token, update_data):
-        raise NotImplementedError
-
     def delete(self, email):
         """
         Delete the user matching the email

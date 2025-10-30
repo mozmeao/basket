@@ -191,8 +191,8 @@ def fxa_login(data, use_braze_backend=False):
 @rq_task
 def update_user_meta(token, data, use_braze_backend=False):
     """Update a user's metadata, not newsletters"""
-    if use_braze_backend:
-        braze.update_by_token(token, data)
+    if use_braze_backend and settings.BRAZE_ONLY_WRITE_ENABLE:
+        braze.update({"email_id": token}, data)
     else:
         try:
             ctms.update_by_alt_id("token", token, data)
