@@ -357,7 +357,7 @@ class Braze:
 
     def add(self, data):
         braze_user_data = self.to_vendor(None, data)
-        external_id = braze_user_data["external_id"]
+        external_id = braze_user_data["attributes"][0]["external_id"]
         self.interface.save_user(braze_user_data)
 
         if external_id and data.get("fxa_id"):
@@ -367,7 +367,7 @@ class Braze:
 
     def update(self, existing_data, update_data):
         braze_user_data = self.to_vendor(existing_data, update_data)
-        external_id = braze_user_data["external_id"]
+        external_id = braze_user_data["attributes"][0]["external_id"]
         self.interface.save_user(braze_user_data)
 
         if external_id and update_data.get("fxa_id") and existing_data.get("fxa_id") != update_data["fxa_id"]:
