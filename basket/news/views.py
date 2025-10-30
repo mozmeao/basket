@@ -496,8 +496,6 @@ def subscribe(request):
             should_send_tx_messages=True,
             rate_limit_increment=True,
             extra_metrics_tags=["backend:braze"],
-            # After the external_id migration we can stop passing in email_id here.
-            pre_generated_email_id=pre_generated_email_id,
         )
     else:
         return handler(
