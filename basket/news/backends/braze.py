@@ -430,8 +430,8 @@ class Braze:
         updated_user_data = existing_user_data | (update_data or {})
 
         now = timezone.now().isoformat()
-        country = process_country(updated_user_data.get("country"))
-        language = process_lang(updated_user_data.get("lang"))
+        country = process_country(updated_user_data.get("country") or None)
+        language = process_lang(updated_user_data.get("lang") or None)
 
         external_id = (
             updated_user_data.get("token") if not existing_user_data and settings.BRAZE_ONLY_WRITE_ENABLE else updated_user_data.get("email_id")
@@ -473,9 +473,9 @@ class Braze:
         }
 
         # Country, language, first and last name are billable data points. Only update them when necessary.
-        if country != process_country(existing_user_data.get("country")):
+        if country != process_country(existing_user_data.get("country") or None):
             user_attributes["country"] = country
-        if language != process_lang(existing_user_data.get("language")):
+        if language != process_lang(existing_user_data.get("language") or None):
             user_attributes["language"] = language
         if (first_name := updated_user_data.get("first_name")) != existing_user_data.get("first_name"):
             user_attributes["first_name"] = first_name
