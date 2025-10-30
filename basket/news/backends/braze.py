@@ -53,6 +53,7 @@ class BrazeEndpoint(Enum):
     USERS_DELETE = "/users/delete"
     SUBSCRIPTION_USER_STATUS = "/subscription/user/status"
     USERS_MIGRATE_EXTERNAL_ID = "/users/external_ids/rename"
+    USERS_ADD_ALIAS = "/users/alias/new"
 
 
 class BrazeInterface:
@@ -261,6 +262,14 @@ class BrazeInterface:
         """
         return self._request(BrazeEndpoint.USERS_TRACK, braze_user_data)
 
+    def add_fxa_id_alias(self, external_id, fxa_id):
+        """
+        Adds the fxa_id user alias to an existing user in Braze.
+        https://www.braze.com/docs/api/endpoints/user_data/post_user_alias
+        """
+        data = {"user_aliases": [{"alias_name": fxa_id, "alias_label": "fxa_id", "external_id": external_id}]}
+        return self._request(BrazeEndpoint.USERS_ADD_ALIAS, data)
+
     def migrate_external_id(self, migrations):
         """
         Migrate a user's external_id to a new value. 50 rename objects per request is the hard Braze limit.
@@ -340,8 +349,13 @@ class Braze:
 
     def add(self, data):
         braze_user_data = self.to_vendor(None, data)
+        external_id = braze_user_data["external_id"]
         self.interface.save_user(braze_user_data)
-        return {"email": {"email_id": data.get("email_id")}}
+
+        if data.get("fxa_id"):
+            self.interface.add_fxa_id_alias(external_id, data["fxa_id"])
+
+        return {"email": {"email_id": external_id}}
 
     def update(self, existing_data, update_data):
         braze_user_data = self.to_vendor(existing_data, update_data)
@@ -388,7 +402,7 @@ class Braze:
 
         basket_user_data = {
             "email": braze_user_data["email"],
-            "email_id": braze_user_data["external_id"],  # TODO: conditional on migration status config (could be basket token instead)
+            "email_id": braze_user_data["external_id"],
             "id": braze_user_data["braze_id"],
             "first_name": braze_user_data.get("first_name"),
             "last_name": braze_user_data.get("last_name"),
@@ -417,6 +431,10 @@ class Braze:
         country = process_country(updated_user_data.get("country"))
         language = process_lang(updated_user_data.get("lang"))
 
+        external_id = (
+            updated_user_data.get("token") if not existing_user_data and settings.BRAZE_ONLY_WRITE_ENABLE else updated_user_data.get("email_id")
+        )
+
         subscription_groups = []
         if update_data and isinstance(update_data.get("newsletters"), dict):
             for slug, is_subscribed in update_data["newsletters"].items():
@@ -430,7 +448,7 @@ class Braze:
                     )
 
         user_attributes = {
-            "external_id": updated_user_data.get("email_id"),  # TODO: conditional on migration status config (could be basket token instead)
+            "external_id": external_id,
             "email": updated_user_data.get("email"),
             "update_timestamp": now,
             "_update_existing_only": bool(existing_user_data),
