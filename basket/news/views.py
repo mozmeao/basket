@@ -145,6 +145,7 @@ def fxa_callback(request):
         should_send_tx_messages=True,
         extra_metrics_tags=None,
         pre_generated_token=None,
+        pre_generated_email_id=None,
     ):
         if extra_metrics_tags is None:
             extra_metrics_tags = []
@@ -186,6 +187,7 @@ def fxa_callback(request):
                     use_braze_backend=use_braze_backend,
                     should_send_tx_messages=should_send_tx_messages,
                     pre_generated_token=pre_generated_token,
+                    pre_generated_email_id=pre_generated_email_id,
                 )[0]
             except Exception:
                 metrics.incr("news.views.fxa_callback", tags=["status:error", "error:upsert_contact", *extra_metrics_tags])
@@ -198,6 +200,7 @@ def fxa_callback(request):
 
     if settings.BRAZE_PARALLEL_WRITE_ENABLE:
         pre_generated_token = generate_token()
+        pre_generated_email_id = generate_token()
         try:
             handler(
                 email,
@@ -206,6 +209,7 @@ def fxa_callback(request):
                 should_send_tx_messages=False,
                 extra_metrics_tags=["backend:braze"],
                 pre_generated_token=pre_generated_token,
+                pre_generated_email_id=pre_generated_email_id,
             )
         except Exception:
             sentry_sdk.capture_exception()
@@ -216,6 +220,7 @@ def fxa_callback(request):
             use_braze_backend=False,
             should_send_tx_messages=True,
             pre_generated_token=pre_generated_token,
+            pre_generated_email_id=pre_generated_email_id,
         )
     elif settings.BRAZE_ONLY_WRITE_ENABLE:
         return handler(
