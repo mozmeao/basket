@@ -78,12 +78,14 @@ def fxa_email_changed(
         else:
             # No matching record for Email or FxA ID. Create one.
             data = {
-                "email_id": pre_generated_email_id,
                 "email": email,
                 "token": pre_generated_token or generate_token(),
                 "fxa_id": fxa_id,
                 "fxa_primary_email": email,
             }
+            if pre_generated_email_id:
+                data["email_id"] = pre_generated_email_id
+
             backend_data = data.copy()
             contact = None
             if use_braze_backend:
@@ -368,7 +370,9 @@ def upsert_contact(
 
         # no user found. create new one.
         token = update_data["token"] = pre_generated_token or generate_token()
-        update_data["email_id"] = update_data.get("email_id") or pre_generated_email_id or generate_token()
+
+        if pre_generated_email_id:
+            update_data["email_id"] = pre_generated_email_id
 
         if settings.MAINTENANCE_MODE:
             if use_braze_backend:
