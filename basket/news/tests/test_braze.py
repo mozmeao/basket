@@ -299,6 +299,7 @@ mock_basket_user_data = {
     "fxa_primary_email": "test2@example.com",
     "fxa_create_date": "2022-01-02",
     "fxa_id": "fxa_123",
+    "has_fxa": True,
 }
 
 mock_braze_user_data = {
@@ -393,7 +394,6 @@ def test_to_vendor_with_user_data_and_no_updates(mock_newsletter_languages, mock
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
-                        "fxa_id": "fxa_123",
                     }
                 ],
             }
@@ -421,6 +421,7 @@ def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock
                 "_update_existing_only": False,
                 "email": "test@example.com",
                 "external_id": "123",
+                "language": "en",
                 "email_subscribe": "subscribed",
                 "subscription_groups": [
                     {"subscription_group_id": "78fe6671-9f94-48bd-aaf3-7e873536c3e6", "subscription_state": "subscribed"},
@@ -442,7 +443,6 @@ def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
-                        "fxa_id": None,
                     }
                 ],
             }
@@ -494,7 +494,6 @@ def test_to_vendor_with_both_user_data_and_updates(mock_newsletter_languages, mo
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
-                        "fxa_id": "fxa_123",
                     }
                 ],
             }
@@ -547,7 +546,6 @@ def test_to_vendor_with_events(mock_newsletters, braze_client):
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
-                        "fxa_id": "fxa_123",
                     }
                 ],
             }
@@ -642,7 +640,7 @@ def test_braze_update(mock_newsletter_languages, mock_newsletters, braze_client)
 def test_braze_delete(braze_client):
     braze_instance = Braze(braze_client)
     email = mock_braze_user_data["email"]
-    expected = [{"email_id": mock_braze_user_data["external_id"]}]
+    expected = [{"email_id": mock_braze_user_data["external_id"], "fxa_id": None}]
 
     with requests_mock.mock() as m:
         m.register_uri("POST", "http://test.com/users/export/ids", json={"users": [{"external_id": mock_braze_user_data["external_id"]}]})
