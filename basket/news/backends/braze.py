@@ -444,6 +444,7 @@ class Braze:
             "fxa_create_date": user_attributes.get("fxa_created_at") if user_attributes.get("has_fxa") else None,
             "has_fxa": user_attributes.get("has_fxa"),
             "fxa_id": fxa_id,
+            "fxa_deleted": user_attributes.get("fxa_deleted"),
         }
 
         return basket_user_data
@@ -494,6 +495,7 @@ class Braze:
                     "fxa_first_service": updated_user_data.get("fxa_service"),
                     "fxa_lang": updated_user_data.get("fxa_lang"),
                     "fxa_primary_email": updated_user_data.get("fxa_primary_email"),
+                    "fxa_deleted": updated_user_data.get("fxa_deleted"),
                 }
             ],
         }

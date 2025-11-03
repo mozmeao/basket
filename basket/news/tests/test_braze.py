@@ -301,6 +301,7 @@ mock_basket_user_data = {
     "fxa_create_date": "2022-01-02",
     "fxa_id": "fxa_123",
     "has_fxa": True,
+    "fxa_deleted": None,
 }
 
 mock_braze_user_data = {
@@ -327,6 +328,7 @@ mock_braze_user_data = {
                 "fxa_created_at": "2022-01-02",
                 "has_fxa": True,
                 "fxa_id": "fxa_123",
+                "fxa_deleted": None,
             }
         ]
     },
@@ -391,6 +393,7 @@ def test_to_vendor_with_user_data_and_no_updates(mock_newsletter_languages, mock
                         "fxa_lang": "en",
                         "fxa_primary_email": "test2@example.com",
                         "fxa_created_at": "2022-01-02",
+                        "fxa_deleted": None,
                         "has_fxa": True,
                         "updated_at": {
                             "$time": dt.isoformat(),
@@ -441,6 +444,7 @@ def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock
                         "fxa_primary_email": None,
                         "fxa_created_at": None,
                         "has_fxa": False,
+                        "fxa_deleted": None,
                         "mailing_country": None,
                         "updated_at": {
                             "$time": dt.isoformat(),
@@ -491,6 +495,7 @@ def test_to_vendor_with_updates_and_no_user_data_in_braze_only_write(mock_newsle
                         "fxa_primary_email": None,
                         "fxa_created_at": None,
                         "has_fxa": False,
+                        "fxa_deleted": None,
                         "mailing_country": None,
                         "updated_at": {
                             "$time": dt.isoformat(),
@@ -553,6 +558,7 @@ def test_to_vendor_with_both_user_data_and_updates(mock_newsletter_languages, mo
                         "fxa_primary_email": "test2@example.com",
                         "fxa_created_at": "2022-01-02",
                         "has_fxa": True,
+                        "fxa_deleted": None,
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
@@ -604,6 +610,7 @@ def test_to_vendor_with_events(mock_newsletters, braze_client):
                         "fxa_lang": "en",
                         "fxa_primary_email": "test2@example.com",
                         "fxa_created_at": "2022-01-02",
+                        "fxa_deleted": None,
                         "has_fxa": True,
                         "updated_at": {
                             "$time": dt.isoformat(),
