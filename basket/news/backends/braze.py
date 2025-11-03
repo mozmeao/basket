@@ -2,7 +2,6 @@ import json
 import warnings
 from enum import Enum
 from urllib.parse import urljoin, urlparse, urlunparse
-from uuid import uuid4
 
 from django.conf import settings
 from django.utils import timezone
@@ -361,7 +360,7 @@ class Braze:
 
     def add(self, data):
         braze_user_data = self.to_vendor(None, data)
-        external_id = braze_user_data["attributes"][0]["external_id"] or str(uuid4())
+        external_id = braze_user_data["attributes"][0]["external_id"]
         self.interface.save_user(braze_user_data)
 
         if external_id and data.get("fxa_id"):
