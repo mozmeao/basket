@@ -2,7 +2,6 @@ import json
 import warnings
 from enum import Enum
 from urllib.parse import urljoin, urlparse, urlunparse
-from uuid import uuid4
 
 from django.conf import settings
 from django.utils import timezone
