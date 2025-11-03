@@ -361,14 +361,14 @@ class Braze:
 
     def add(self, data):
         braze_user_data = self.to_vendor(None, data)
-        external_id = braze_user_data["attributes"][0]["external_id"] or str(uuid4())
+        external_id = braze_user_data["attributes"][0]["external_id"]
         self.interface.save_user(braze_user_data)
 
-        if external_id and data.get("fxa_id"):
+        if data.get("fxa_id"):
             self.interface.add_fxa_id_alias(external_id, data["fxa_id"])
 
         token = data.get("token")
-        if external_id and token and settings.BRAZE_PARALLEL_WRITE_ENABLE:
+        if token and settings.BRAZE_PARALLEL_WRITE_ENABLE:
             self.interface.migrate_external_id(
                 [
                     {
@@ -460,6 +460,9 @@ class Braze:
         external_id = (
             updated_user_data.get("token") if not existing_user_data and settings.BRAZE_ONLY_WRITE_ENABLE else updated_user_data.get("email_id")
         )
+
+        if not external_id and not existing_user_data:
+            external_id = str(uuid4())
 
         subscription_groups = []
         if update_data and isinstance(update_data.get("newsletters"), dict):
