@@ -8,7 +8,6 @@ from django.utils import timezone
 
 import requests
 
-from basket.base.exceptions import BasketError
 from basket.base.utils import is_valid_uuid
 from basket.news.backends.ctms import process_country, process_lang
 from basket.news.newsletters import slug_to_vendor_id, vendor_id_to_slug
@@ -462,7 +461,7 @@ class Braze:
         )
 
         if not external_id:
-            raise BasketError("Missing Braze external_id")
+            raise ValueError("Missing Braze external_id")
 
         subscription_groups = []
         if update_data and isinstance(update_data.get("newsletters"), dict):
