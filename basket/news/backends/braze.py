@@ -367,6 +367,17 @@ class Braze:
         if external_id and data.get("fxa_id"):
             self.interface.add_fxa_id_alias(external_id, data["fxa_id"])
 
+        token = data.get("token")
+        if external_id and token and settings.BRAZE_PARALLEL_WRITE_ENABLE:
+            self.interface.migrate_external_id(
+                [
+                    {
+                        "current_external_id": external_id,
+                        "new_external_id": token,
+                    }
+                ]
+            )
+
         return {"email": {"email_id": external_id}}
 
     def update(self, existing_data, update_data):

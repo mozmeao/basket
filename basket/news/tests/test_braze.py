@@ -1,6 +1,7 @@
 from collections import namedtuple
 from unittest import mock
 
+from django.test.utils import override_settings
 from django.utils import timezone
 
 import pytest
@@ -617,6 +618,37 @@ def test_braze_add(mock_newsletters, braze_client):
             response = braze_instance.add(new_user)
             assert response == expected
             assert m.last_request.json() == braze_instance.to_vendor(None, new_user)
+
+
+@override_settings(BRAZE_PARALLEL_WRITE_ENABLE=True)
+@mock.patch(
+    "basket.news.newsletters._newsletters",
+    return_value=mock_newsletters,
+)
+def test_braze_add_migrates_external_id(mock_newsletters, braze_client):
+    braze_instance = Braze(braze_client)
+    new_user = {
+        "email": "test@example.com",
+        "email_id": "123",
+        "token": "abc",
+        "newsletters": {"foo-news": True},
+        "country": "US",
+    }
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/track", json={})
+        m.register_uri(
+            "POST",
+            "http://test.com/users/external_ids/rename",
+            json={
+                "message": "success",
+                "external_ids": ["abc"],
+            },
+        )
+        braze_instance.add(new_user)
+
+        # Assert the rename endpoint was called
+        rename_calls = [call for call in m.request_history if call.url == "http://test.com/users/external_ids/rename"]
+        assert len(rename_calls) == 1
 
 
 @mock.patch(
