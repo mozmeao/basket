@@ -105,7 +105,6 @@ class Command(BaseCommand):
                         if settings.BRAZE_PARALLEL_WRITE_ENABLE:
                             pre_generated_token = generate_token()
                             pre_generated_email_id = generate_token()
-                            print(pre_generated_email_id)
                             FXA_EVENT_TYPES[event_type].delay(
                                 event,
                                 use_braze_backend=True,
