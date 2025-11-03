@@ -8,6 +8,7 @@ from django.utils import timezone
 
 import requests
 
+from basket.base.exceptions import BasketError
 from basket.base.utils import is_valid_uuid
 from basket.news.backends.ctms import process_country, process_lang
 from basket.news.newsletters import slug_to_vendor_id, vendor_id_to_slug
@@ -384,7 +385,7 @@ class Braze:
         external_id = braze_user_data["attributes"][0]["external_id"]
         self.interface.save_user(braze_user_data)
 
-        if external_id and update_data.get("fxa_id") and existing_data.get("fxa_id") != update_data["fxa_id"]:
+        if update_data.get("fxa_id") and existing_data.get("fxa_id") != update_data["fxa_id"]:
             self.interface.add_fxa_id_alias(external_id, update_data["fxa_id"])
 
     def update_by_fxa_id(self, fxa_id, update_data):
@@ -460,8 +461,8 @@ class Braze:
             updated_user_data.get("token") if not existing_user_data and settings.BRAZE_ONLY_WRITE_ENABLE else updated_user_data.get("email_id")
         )
 
-        if not external_id and not existing_user_data:
-            external_id = str(uuid4())
+        if not external_id:
+            raise BasketError("Missing Braze external_id")
 
         subscription_groups = []
         if update_data and isinstance(update_data.get("newsletters"), dict):
