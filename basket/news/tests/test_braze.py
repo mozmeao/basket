@@ -230,6 +230,17 @@ def test_braze_delete_user(braze_client):
         assert m.last_request.json() == expected
 
 
+def test_braze_add_fxa_id_alias(braze_client):
+    external_id = "abc"
+    fxa_id = "123"
+    expected = {"user_aliases": [{"alias_name": fxa_id, "alias_label": "fxa_id", "external_id": external_id}]}
+
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "/users/alias/new", json={})
+        braze_client.add_fxa_id_alias(external_id, fxa_id)
+        assert m.last_request.json() == expected
+
+
 def test_braze_exception_400(braze_client):
     with requests_mock.mock() as m:
         m.register_uri("POST", "http://test.com/users/track", status_code=400, json={})
