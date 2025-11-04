@@ -363,11 +363,11 @@ class Braze:
         external_id = braze_user_data["attributes"][0]["external_id"]
         self.interface.save_user(braze_user_data)
 
-        if external_id and data.get("fxa_id"):
+        if data.get("fxa_id"):
             self.interface.add_fxa_id_alias(external_id, data["fxa_id"])
 
         token = data.get("token")
-        if external_id and token and settings.BRAZE_PARALLEL_WRITE_ENABLE:
+        if token and settings.BRAZE_PARALLEL_WRITE_ENABLE:
             self.interface.migrate_external_id(
                 [
                     {
@@ -384,7 +384,7 @@ class Braze:
         external_id = braze_user_data["attributes"][0]["external_id"]
         self.interface.save_user(braze_user_data)
 
-        if external_id and update_data.get("fxa_id") and existing_data.get("fxa_id") != update_data["fxa_id"]:
+        if update_data.get("fxa_id") and existing_data.get("fxa_id") != update_data["fxa_id"]:
             self.interface.add_fxa_id_alias(external_id, update_data["fxa_id"])
 
     def update_by_fxa_id(self, fxa_id, update_data):
@@ -444,6 +444,7 @@ class Braze:
             "fxa_create_date": user_attributes.get("fxa_created_at") if user_attributes.get("has_fxa") else None,
             "has_fxa": user_attributes.get("has_fxa"),
             "fxa_id": fxa_id,
+            "fxa_deleted": user_attributes.get("fxa_deleted"),
         }
 
         return basket_user_data
@@ -459,6 +460,9 @@ class Braze:
         external_id = (
             updated_user_data.get("token") if not existing_user_data and settings.BRAZE_ONLY_WRITE_ENABLE else updated_user_data.get("email_id")
         )
+
+        if not external_id:
+            raise ValueError("Missing Braze external_id")
 
         subscription_groups = []
         if update_data and isinstance(update_data.get("newsletters"), dict):
@@ -491,6 +495,7 @@ class Braze:
                     "fxa_first_service": updated_user_data.get("fxa_service"),
                     "fxa_lang": updated_user_data.get("fxa_lang"),
                     "fxa_primary_email": updated_user_data.get("fxa_primary_email"),
+                    "fxa_deleted": updated_user_data.get("fxa_deleted"),
                 }
             ],
         }
