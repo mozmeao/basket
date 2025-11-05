@@ -376,6 +376,7 @@ class Braze:
                     }
                 ]
             )
+            external_id = token
 
         return {"email": {"email_id": external_id}}
 
