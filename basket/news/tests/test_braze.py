@@ -338,7 +338,6 @@ mock_braze_user_data = {
                 "fxa_primary_email": "test2@example.com",
                 "fxa_created_at": "2022-01-02",
                 "has_fxa": True,
-                "fxa_id": "fxa_123",
                 "fxa_deleted": None,
             }
         ]
@@ -403,7 +402,7 @@ def test_to_vendor_with_user_data_and_no_updates(mock_newsletter_languages, mock
                         "fxa_first_service": "test",
                         "fxa_lang": "en",
                         "fxa_primary_email": "test2@example.com",
-                        "fxa_created_at": "2022-01-02",
+                        "fxa_created_at": {"$time": "2022-01-02"},
                         "fxa_deleted": None,
                         "has_fxa": True,
                         "updated_at": {
@@ -567,7 +566,9 @@ def test_to_vendor_with_both_user_data_and_updates(mock_newsletter_languages, mo
                         "fxa_first_service": "test",
                         "fxa_lang": "en",
                         "fxa_primary_email": "test2@example.com",
-                        "fxa_created_at": "2022-01-02",
+                        "fxa_created_at": {
+                            "$time": "2022-01-02",
+                        },
                         "has_fxa": True,
                         "fxa_deleted": None,
                         "updated_at": {
@@ -620,7 +621,7 @@ def test_to_vendor_with_events(mock_newsletters, braze_client):
                         "fxa_first_service": "test",
                         "fxa_lang": "en",
                         "fxa_primary_email": "test2@example.com",
-                        "fxa_created_at": "2022-01-02",
+                        "fxa_created_at": {"$time": "2022-01-02"},
                         "fxa_deleted": None,
                         "has_fxa": True,
                         "updated_at": {
