@@ -673,6 +673,7 @@ def test_braze_get(mock_newsletters, braze_client):
         assert api_requests[1].url == "http://test.com/subscription/user/status?external_id=123&email=test%40example.com"
 
 
+@override_settings(BRAZE_PARALLEL_WRITE_ENABLE=False)
 @override_settings(BRAZE_ONLY_WRITE_ENABLE=False)
 @mock.patch(
     "basket.news.newsletters._newsletters",
@@ -696,6 +697,7 @@ def test_braze_add(mock_newsletters, braze_client):
             assert m.last_request.json() == braze_instance.to_vendor(None, new_user)
 
 
+@override_settings(BRAZE_PARALLEL_WRITE_ENABLE=False)
 @override_settings(BRAZE_ONLY_WRITE_ENABLE=False)
 @mock.patch(
     "basket.news.newsletters._newsletters",
