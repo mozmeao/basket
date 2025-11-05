@@ -335,7 +335,7 @@ def get_user_data(
     allowed = set(ALLOWED_USER_FIELDS + extra_fields)
     user = {fn: backend_user[fn] for fn in allowed if fn in backend_user}
 
-    user["has_fxa"] = bool(backend_user.get("fxa_id"))
+    user["has_fxa"] = backend_user.get("has_fxa", False) if use_braze_backend else bool(backend_user.get("fxa_id"))
 
     if masked:
         # mask all emails
