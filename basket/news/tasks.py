@@ -8,7 +8,7 @@ from basket import metrics
 from basket.base.decorators import rq_task
 from basket.base.exceptions import BasketError
 from basket.base.utils import email_is_testing
-from basket.news.backends.braze import braze
+from basket.news.backends.braze import BrazeUserNotFoundByFxaIdError, braze
 from basket.news.backends.ctms import (
     CTMSNotFoundByAltIDError,
     CTMSUniqueIDConflictError,
@@ -44,7 +44,13 @@ def fxa_source_url(metrics):
 
 
 @rq_task
-def fxa_email_changed(data):
+def fxa_email_changed(
+    data,
+    use_braze_backend=False,
+    pre_generated_token=None,
+    pre_generated_email_id=None,
+    **kwargs,
+):
     ts = data["ts"]
     fxa_id = data["uid"]
     email = data["email"]
@@ -55,24 +61,37 @@ def fxa_email_changed(data):
         return
 
     # Update CTMS
-    user_data = get_user_data(fxa_id=fxa_id, extra_fields=["id", "email_id"])
+    user_data = get_user_data(fxa_id=fxa_id, extra_fields=["id", "email_id"], use_braze_backend=use_braze_backend)
     if user_data:
-        ctms.update(user_data, {"fxa_primary_email": email})
+        if use_braze_backend:
+            braze.update(user_data, {"fxa_primary_email": email})
+        else:
+            ctms.update(user_data, {"fxa_primary_email": email})
     else:
         # FxA record not found, try email
-        user_data = get_user_data(email=email, extra_fields=["id", "email_id"])
+        user_data = get_user_data(email=email, extra_fields=["id", "email_id"], use_braze_backend=use_braze_backend)
         if user_data:
-            ctms.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
+            if use_braze_backend:
+                braze.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
+            else:
+                ctms.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
         else:
             # No matching record for Email or FxA ID. Create one.
             data = {
                 "email": email,
-                "token": generate_token(),
+                "token": pre_generated_token or generate_token(),
                 "fxa_id": fxa_id,
                 "fxa_primary_email": email,
             }
-            ctms_data = data.copy()
-            contact = ctms.add(ctms_data)
+            if pre_generated_email_id:
+                data["email_id"] = pre_generated_email_id
+
+            backend_data = data.copy()
+            contact = None
+            if use_braze_backend:
+                contact = braze.add(backend_data)
+            else:
+                contact = ctms.add(backend_data)
             if contact:
                 data["email_id"] = contact["email"]["email_id"]
             metrics.incr("news.tasks.fxa_email_changed.user_not_found")
@@ -80,25 +99,34 @@ def fxa_email_changed(data):
     cache.set(cache_key, ts, 7200)  # 2 hr
 
 
-def fxa_direct_update_contact(fxa_id, data):
+def fxa_direct_update_contact(fxa_id, data, use_braze_backend=False):
     """Set some small data for a contact with an FxA ID
 
     Ignore if contact with FxA ID can't be found
     """
     try:
-        ctms.update_by_alt_id("fxa_id", fxa_id, data)
-    except CTMSNotFoundByAltIDError:
+        if use_braze_backend:
+            braze.update_by_fxa_id(fxa_id, data)
+        else:
+            ctms.update_by_alt_id("fxa_id", fxa_id, data)
+    except (CTMSNotFoundByAltIDError, BrazeUserNotFoundByFxaIdError):
         # No associated record found, skip this update.
         pass
 
 
 @rq_task
-def fxa_delete(data):
-    fxa_direct_update_contact(data["uid"], {"fxa_deleted": True})
+def fxa_delete(data, use_braze_backend=False, **kwargs):
+    fxa_direct_update_contact(data["uid"], {"fxa_deleted": True}, use_braze_backend)
 
 
 @rq_task
-def fxa_verified(data):
+def fxa_verified(
+    data,
+    use_braze_backend=False,
+    should_send_tx_messages=True,
+    pre_generated_token=None,
+    pre_generated_email_id=None,
+):
     """Add new FxA users"""
     # if we're not using the sandbox ignore testing domains
     if email_is_testing(data["email"]):
@@ -129,16 +157,30 @@ def fxa_verified(data):
     newsletters.append(settings.FXA_REGISTER_NEWSLETTER)
     new_data["newsletters"] = newsletters
 
-    user_data = get_fxa_user_data(fxa_id, email)
+    user_data = get_fxa_user_data(fxa_id, email, use_braze_backend)
     # don't overwrite the user's language if already set
     if not (user_data and user_data.get("lang")):
         new_data["lang"] = lang
 
-    upsert_contact(SUBSCRIBE, new_data, user_data)
+    upsert_contact(
+        SUBSCRIBE,
+        new_data,
+        user_data,
+        use_braze_backend=use_braze_backend,
+        should_send_tx_messages=should_send_tx_messages,
+        pre_generated_token=pre_generated_token,
+        pre_generated_email_id=pre_generated_email_id,
+    )
 
 
 @rq_task
-def fxa_newsletters_update(data):
+def fxa_newsletters_update(
+    data,
+    use_braze_backend=False,
+    should_send_tx_messages=True,
+    pre_generated_token=None,
+    pre_generated_email_id=None,
+):
     email = data["email"]
     fxa_id = data["uid"]
     new_data = {
@@ -150,11 +192,25 @@ def fxa_newsletters_update(data):
         "fxa_id": fxa_id,
         "optin": True,
     }
-    upsert_contact(SUBSCRIBE, new_data, get_fxa_user_data(fxa_id, email))
+    upsert_contact(
+        SUBSCRIBE,
+        new_data,
+        get_fxa_user_data(fxa_id, email),
+        use_braze_backend=use_braze_backend,
+        should_send_tx_messages=should_send_tx_messages,
+        pre_generated_token=pre_generated_token,
+        pre_generated_email_id=pre_generated_email_id,
+    )
 
 
 @rq_task
-def fxa_login(data):
+def fxa_login(
+    data,
+    use_braze_backend=False,
+    should_send_tx_messages=True,
+    pre_generated_token=None,
+    pre_generated_email_id=None,
+):
     email = data["email"]
     # if we're not using the sandbox ignore testing domains
     if email_is_testing(email):
@@ -171,14 +227,18 @@ def fxa_login(data):
                 "source_url": fxa_source_url(metrics_context),
                 "country": data.get("countryCode", ""),
             },
+            use_braze_backend=use_braze_backend,
+            should_send_tx_messages=should_send_tx_messages,
+            pre_generated_token=pre_generated_token,
+            pre_generated_email_id=pre_generated_email_id,
         )
 
 
 @rq_task
 def update_user_meta(token, data, use_braze_backend=False):
     """Update a user's metadata, not newsletters"""
-    if use_braze_backend:
-        braze.update_by_token(token, data)
+    if use_braze_backend and settings.BRAZE_ONLY_WRITE_ENABLE:
+        braze.update({"email_id": token}, data)
     else:
         try:
             ctms.update_by_alt_id("token", token, data)
@@ -310,7 +370,9 @@ def upsert_contact(
 
         # no user found. create new one.
         token = update_data["token"] = pre_generated_token or generate_token()
-        update_data["email_id"] = update_data.get("email_id") or pre_generated_email_id
+
+        if pre_generated_email_id:
+            update_data["email_id"] = pre_generated_email_id
 
         if settings.MAINTENANCE_MODE:
             if use_braze_backend:
@@ -519,7 +581,7 @@ def record_common_voice_update(data):
         ctms.add(new_data)
 
 
-def get_fxa_user_data(fxa_id, email):
+def get_fxa_user_data(fxa_id, email, use_braze_backend=False):
     """
     Return a user data dict, just like `get_user_data` below, but ensure we have
     a good FxA contact
@@ -532,15 +594,18 @@ def get_fxa_user_data(fxa_id, email):
     """
     user_data = None
     # try getting user data with the fxa_id first
-    user_data_fxa = get_user_data(fxa_id=fxa_id, extra_fields=["id", "email_id"])
+    user_data_fxa = get_user_data(fxa_id=fxa_id, extra_fields=["id", "email_id"], use_braze_backend=use_braze_backend)
     if user_data_fxa:
         user_data = user_data_fxa
         # If email doesn't match, update FxA primary email field with the new email.
         if user_data_fxa["email"] != email:
-            ctms.update(user_data_fxa, {"fxa_primary_email": email})
+            if use_braze_backend:
+                braze.update(user_data_fxa, {"fxa_primary_email": email})
+            else:
+                ctms.update(user_data_fxa, {"fxa_primary_email": email})
 
     # if we still don't have user data try again with email this time
     if not user_data:
-        user_data = get_user_data(email=email, extra_fields=["id", "email_id"])
+        user_data = get_user_data(email=email, extra_fields=["id", "email_id"], use_braze_backend=use_braze_backend)
 
     return user_data

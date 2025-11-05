@@ -145,6 +145,7 @@ def fxa_callback(request):
         should_send_tx_messages=True,
         extra_metrics_tags=None,
         pre_generated_token=None,
+        pre_generated_email_id=None,
     ):
         if extra_metrics_tags is None:
             extra_metrics_tags = []
@@ -186,6 +187,7 @@ def fxa_callback(request):
                     use_braze_backend=use_braze_backend,
                     should_send_tx_messages=should_send_tx_messages,
                     pre_generated_token=pre_generated_token,
+                    pre_generated_email_id=pre_generated_email_id,
                 )[0]
             except Exception:
                 metrics.incr("news.views.fxa_callback", tags=["status:error", "error:upsert_contact", *extra_metrics_tags])
@@ -198,6 +200,7 @@ def fxa_callback(request):
 
     if settings.BRAZE_PARALLEL_WRITE_ENABLE:
         pre_generated_token = generate_token()
+        pre_generated_email_id = generate_token()
         try:
             handler(
                 email,
@@ -206,6 +209,7 @@ def fxa_callback(request):
                 should_send_tx_messages=False,
                 extra_metrics_tags=["backend:braze"],
                 pre_generated_token=pre_generated_token,
+                pre_generated_email_id=pre_generated_email_id,
             )
         except Exception:
             sentry_sdk.capture_exception()
@@ -216,6 +220,7 @@ def fxa_callback(request):
             use_braze_backend=False,
             should_send_tx_messages=True,
             pre_generated_token=pre_generated_token,
+            pre_generated_email_id=pre_generated_email_id,
         )
     elif settings.BRAZE_ONLY_WRITE_ENABLE:
         return handler(
@@ -496,8 +501,6 @@ def subscribe(request):
             should_send_tx_messages=True,
             rate_limit_increment=True,
             extra_metrics_tags=["backend:braze"],
-            # After the external_id migration we can stop passing in email_id here.
-            pre_generated_email_id=pre_generated_email_id,
         )
     else:
         return handler(
@@ -668,7 +671,12 @@ def user(request, token):
 
     if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
         try:
-            return get_user(token, masked=masked, use_braze_backend=True)
+            response = get_user(token, masked=masked, use_braze_backend=True)
+            # If token migration isn't complete we might only find the user
+            # in CTMS when looking up by token.
+            if response.status_code == 404:
+                return get_user(token, masked=masked, use_braze_backend=False)
+            return response
         except Exception:
             sentry_sdk.capture_exception()
             return get_user(token, masked=masked, use_braze_backend=False)
@@ -870,6 +878,15 @@ def lookup_user(request):
                     masked=not authorized,
                     use_braze_backend=True,
                 )
+                # If token migration isn't complete we might only find the user
+                # in CTMS when looking up by token.
+                if not user_data:
+                    user_data = get_user_data(
+                        token=token,
+                        email=email,
+                        masked=not authorized,
+                        use_braze_backend=False,
+                    )
             except Exception:
                 sentry_sdk.capture_exception()
                 user_data = get_user_data(
