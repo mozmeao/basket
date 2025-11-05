@@ -701,6 +701,30 @@ def test_braze_add(mock_newsletters, braze_client):
             assert m.last_request.json() == braze_instance.to_vendor(None, new_user)
 
 
+@override_settings(BRAZE_ONLY_WRITE_ENABLE=False)
+@mock.patch(
+    "basket.news.newsletters._newsletters",
+    return_value=mock_newsletters,
+)
+def test_braze_add_with_fxa_id(mock_newsletters, braze_client):
+    braze_instance = Braze(braze_client)
+    fxa_id = "fxa123"
+    new_user = {"email": "test@example.com", "email_id": "123", "token": "abc", "newsletters": {"foo-news": True}, "country": "US", "fxa_id": fxa_id}
+
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/track", json={})
+        m.register_uri("POST", "/users/alias/new", json={})
+        expected = {"email": {"email_id": new_user["email_id"]}}
+        with freeze_time():
+            response = braze_instance.add(new_user)
+            api_requests = m.request_history
+            assert response == expected
+            assert api_requests[0].url == "http://test.com/users/track"
+            assert api_requests[0].json() == braze_instance.to_vendor(None, new_user)
+            assert api_requests[1].url == "http://test.com/users/alias/new"
+            assert api_requests[1].json() == {"user_aliases": [{"alias_name": fxa_id, "alias_label": "fxa_id", "external_id": "123"}]}
+
+
 @override_settings(BRAZE_PARALLEL_WRITE_ENABLE=True)
 @mock.patch(
     "basket.news.newsletters._newsletters",
@@ -748,6 +772,31 @@ def test_braze_update(mock_newsletter_languages, mock_newsletters, braze_client)
         with freeze_time():
             braze_instance.update(mock_basket_user_data, update_data)
             assert m.last_request.json() == braze_instance.to_vendor(mock_basket_user_data, update_data)
+
+
+@mock.patch(
+    "basket.news.newsletters._newsletters",
+    return_value=mock_newsletters,
+)
+@mock.patch(
+    "basket.news.newsletters.newsletter_languages",
+    return_value=["en"],
+)
+def test_braze_update_with_fxa_id_change(mock_newsletter_languages, mock_newsletters, braze_client):
+    braze_instance = Braze(braze_client)
+    update_data = {"country": "CA", "fxa_id": "new_fxa_id"}
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/track", json={})
+        m.register_uri("POST", "/users/alias/new", json={})
+        with freeze_time():
+            braze_instance.update(mock_basket_user_data, update_data)
+            api_requests = m.request_history
+            assert api_requests[0].url == "http://test.com/users/track"
+            assert api_requests[0].json() == braze_instance.to_vendor(mock_basket_user_data, update_data)
+            assert api_requests[1].url == "http://test.com/users/alias/new"
+            assert api_requests[1].json() == {
+                "user_aliases": [{"alias_name": "new_fxa_id", "alias_label": "fxa_id", "external_id": mock_basket_user_data["email_id"]}]
+            }
 
 
 def test_braze_delete(braze_client):
