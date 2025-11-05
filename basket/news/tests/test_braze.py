@@ -540,7 +540,7 @@ def test_to_vendor_throws_exception_for_missing_external_id(braze_client):
 def test_to_vendor_with_both_user_data_and_updates(mock_newsletter_languages, mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     dt = timezone.now()
-    update_data = {"newsletters": {"bar-news": True, "foo-news": False}, "first_name": "Foo", "country": "CA", "optin": False}
+    update_data = {"newsletters": {"bar-news": True, "foo-news": False}, "first_name": "Foo", "country": "CA", "optin": False, "fxa_deleted": True}
     expected = {
         "attributes": [
             {
@@ -570,7 +570,7 @@ def test_to_vendor_with_both_user_data_and_updates(mock_newsletter_languages, mo
                             "$time": "2022-01-02",
                         },
                         "has_fxa": True,
-                        "fxa_deleted": None,
+                        "fxa_deleted": True,
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
