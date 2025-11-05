@@ -376,6 +376,7 @@ class Braze:
                     }
                 ]
             )
+            external_id = token
 
         return {"email": {"email_id": external_id}}
 
@@ -491,7 +492,7 @@ class Braze:
                     "mailing_country": country,
                     "updated_at": {"$time": now},
                     "has_fxa": bool(updated_user_data.get("fxa_id")) or updated_user_data.get("has_fxa", False),
-                    "fxa_created_at": updated_user_data.get("fxa_create_date"),
+                    "fxa_created_at": {"$time": fxa_create_date} if (fxa_create_date := updated_user_data.get("fxa_create_date")) else None,
                     "fxa_first_service": updated_user_data.get("fxa_service"),
                     "fxa_lang": updated_user_data.get("fxa_lang"),
                     "fxa_primary_email": updated_user_data.get("fxa_primary_email"),
