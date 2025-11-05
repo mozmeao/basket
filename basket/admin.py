@@ -152,20 +152,39 @@ class BasketAdminSite(admin.AdminSite):
                     "waitlists": "UNSUBSCRIBE",
                 }
 
-                # Process the emails.
-                for email in emails:
-                    contact = ctms.get(email=email)
-                    if contact:
-                        email_id = contact["email_id"]
-                        try:
-                            ctms.interface.patch_by_email_id(email_id, update_data)
-                        except CTMSNotFoundByEmailIDError:
-                            # should never reach here, but best to catch it anyway
-                            output.append(f"{email} not found in CTMS")
+                def handler(emails, use_braze_backend=False):
+                    # Process the emails.
+                    for email in emails:
+                        if use_braze_backend:
+                            contact = braze.get(email=email)
                         else:
-                            output.append(f"UNSUBSCRIBED {email} (ctms id: {email_id}).")
-                    else:
-                        output.append(f"{email} not found in CTMS")
+                            contact = ctms.get(email=email)
+                        if contact:
+                            email_id = contact["email_id"]
+                            try:
+                                if use_braze_backend:
+                                    braze.update(contact, {"optout": True})
+                                else:
+                                    ctms.interface.patch_by_email_id(email_id, update_data)
+                            except CTMSNotFoundByEmailIDError:
+                                # should never reach here, but best to catch it anyway
+                                output.append(f"{email} not found in CTMS")
+                            else:
+                                output.append(f"UNSUBSCRIBED {email} ({'Braze external id:' if use_braze_backend else 'ctms id:'} {email_id}).")
+                        else:
+                            output.append(f"{email} not found in {'Braze' if use_braze_backend else 'CTMS'}")
+
+                if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+                    try:
+                        handler(emails, use_braze_backend=True)
+                    except Exception:
+                        sentry_sdk.capture_exception()
+
+                    handler(emails, use_braze_backend=False)
+                elif settings.BRAZE_ONLY_WRITE_ENABLE:
+                    handler(emails, use_braze_backend=True)
+                else:
+                    handler(emails, use_braze_backend=False)
 
                 output = "\n".join(output)
 
