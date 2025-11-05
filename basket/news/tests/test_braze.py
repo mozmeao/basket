@@ -161,7 +161,7 @@ def test_braze_track_user_with_event_and_token_and_email_id(braze_client):
 def test_braze_export_users(braze_client):
     email = "test@test.com"
     expected = {
-        "user_aliases": [{"alias_name": email, "alias_label": "email"}],
+        "user_aliases": [],
         "email_address": email,
         "fields_to_export": ["external_id"],
     }
@@ -668,12 +668,7 @@ def test_braze_get(mock_newsletters, braze_client):
                 "last_name",
                 "user_aliases",
             ],
-            "user_aliases": [
-                {
-                    "alias_label": "email",
-                    "alias_name": email,
-                },
-            ],
+            "user_aliases": [],
         }
         assert api_requests[1].url == "http://test.com/subscription/user/status?external_id=123&email=test%40example.com"
 

@@ -204,9 +204,6 @@ class BrazeInterface:
         if fxa_id:
             data["user_aliases"].append({"alias_name": fxa_id, "alias_label": "fxa_id"})
 
-        if email:
-            (data["user_aliases"].append({"alias_name": email, "alias_label": "email"}),)
-
         return self._request(BrazeEndpoint.USERS_EXPORT_IDS, data)
 
     def delete_user(self, email):
