@@ -73,49 +73,49 @@
         <table>
             <tr>
                 <th>Primary Email</th>
-                <td>{{ dsar_contact.email.primary_email }}</td>
+                <td>{{ dsar_contact.email }}</td>
             </tr>
             <tr>
                 <th>Basket Token</th>
-                <td><a href="{{ settings.FXA_EMAIL_PREFS_URL }}/{{ dsar_contact.email.basket_token }}/" target="_blank" title="Open the user's Email Preferences">{{ dsar_contact.email.basket_token }}</a></td>
+                <td><a href="{{ settings.FXA_EMAIL_PREFS_URL }}/{{ dsar_contact.token }}/" target="_blank" title="Open the user's Email Preferences">{{ dsar_contact.token }}</a></td>
             </tr>
-            {% if dsar_contact.email.first_name %}
+            {% if dsar_contact.first_name or dsar_contact.last_name %}
             <tr>
                 <th>Name</th>
-                <td>{{ dsar_contact.email.first_name }} {{ dsar_contact.email.last_name }}</td>
+                <td>{% if dsar_contact.first_name %}{{ dsar_contact.first_name }}{% endif %}{% if dsar_contact.last_name %} {{ dsar_contact.last_name }}{% endif %}</td>
             </tr>
             {% endif %}
             <tr>
                 <th>Language</th>
-                <td>{{ dsar_contact.email.email_lang }}</td>
+                <td>{{ dsar_contact.lang }}</td>
             </tr>
-            {% if dsar_contact.email.mailing_country %}
+            {% if dsar_contact.country %}
             <tr>
                 <th>Country</th>
-                <td>{{ dsar_contact.email.mailing_country }}</td>
+                <td>{{ dsar_contact.country }}</td>
             </tr>
             {% endif %}
             <tr>
                 <th>FxA ID</th>
-                <td>{{ dsar_contact.fxa.fxa_id }}</td>
+                <td>{{ dsar_contact.fxa_id }}</td>
             </tr>
-            {% if dsar_contact.fxa.primary_email %}
+            {% if dsar_contact.fxa_primary_email %}
             <tr>
                 <th>FxA Primary Email</th>
-                <td>{{ dsar_contact.fxa.primary_email }}</td>
+                <td>{{ dsar_contact.fxa_primary_email }}</td>
             </tr>
             {% endif %}
             <tr>
                 <th>MoFo Relevant?</th>
-                <td>{{ dsar_contact.mofo.mofo_relevant|yesno }}</td>
+                <td>{{ dsar_contact.mofo_relevant|yesno }}</td>
             </tr>
             <tr>
                 <th>Double Opt In?</th>
-                <td>{{ dsar_contact.email.double_opt_in|yesno }}</td>
+                <td>{{ dsar_contact.optin|yesno }}</td>
             </tr>
             <tr>
                 <th>Opt Out of All Email?</th>
-                <td>{{ dsar_contact.email.has_opted_out_of_email|yesno }}</td>
+                <td>{{ dsar_contact.optout|yesno }}</td>
             </tr>
             <tr>
                 <th>Subscriptions</th>
@@ -141,7 +141,7 @@
         <pre id="text-content" class="output-text">{{ dsar_contact_pretty }}</pre>
       {% elif dsar_submitted %}
         <h2>Not Found:</h2>
-        <pre id="text-content" class="output-text">User not found in CTMS</pre>
+        <pre id="text-content" class="output-text">User not found in {{ vendor }}</pre>
       {% endif %}
     </div>
   </div>

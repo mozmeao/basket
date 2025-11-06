@@ -12,31 +12,21 @@ import sentry_sdk
 
 from basket.base.forms import EmailForm, EmailListForm
 from basket.news.backends.braze import BrazeUserNotFoundByEmailError, braze
-from basket.news.backends.ctms import (
-    CTMSNotFoundByEmailError,
-    CTMSNotFoundByEmailIDError,
-    ctms,
-)
-from basket.news.newsletters import newsletter_obj
+from basket.news.backends.ctms import CTMSNotFoundByEmailError, CTMSNotFoundByEmailIDError, ctms, from_vendor
+from basket.news.newsletters import slug_to_vendor_id
 
 log = logging.getLogger(__name__)
 
 
-def get_newsletter_names(ctms_contact):
+def get_newsletter_names(contact):
     names = []
-    newsletters = ctms_contact["newsletters"]
-    for nl in newsletters:
-        if not nl["subscribed"]:
-            continue
-
-        nl_slug = nl["name"]
-        nl_obj = newsletter_obj(nl_slug)
-        if nl_obj:
-            nl_name = nl_obj.title
-        else:
-            nl_name = ""
-        names.append(f"{nl_name} (id: {nl_slug})")
-
+    newsletters = contact["newsletters"]
+    for newsletter_slug in newsletters:
+        try:
+            newsletter_id = slug_to_vendor_id(newsletter_slug)
+            names.append(f"{newsletter_slug} (id: {newsletter_id})")
+        except KeyError:
+            pass
     return names
 
 
@@ -110,21 +100,43 @@ class BasketAdminSite(admin.AdminSite):
             form = EmailForm(request.POST)
             if form.is_valid():
                 email = form.cleaned_data["email"]
-                try:
-                    contact = ctms.interface.get_by_alternate_id(primary_email=email)
-                except CTMSNotFoundByEmailError:
-                    contact = None
-                else:
-                    # response could be 200 with an empty list
-                    if contact:
-                        contact = contact[0]
-                        context["dsar_contact_pretty"] = json.dumps(contact, indent=2, sort_keys=True)
-                        context["newsletter_names"] = get_newsletter_names(contact)
-                    else:
-                        contact = None
 
-                context["dsar_contact"] = contact
-                context["dsar_submitted"] = True
+                def handler(email, use_braze_backend=False):
+                    try:
+                        if use_braze_backend:
+                            contact = braze.get(email=email)
+                        else:
+                            contact = ctms.interface.get_by_alternate_id(primary_email=email)
+                    except CTMSNotFoundByEmailError:
+                        contact = None
+                    else:
+                        # response could be 200 with an empty list
+                        if contact:
+                            if use_braze_backend:
+                                context["dsar_contact_pretty"] = json.dumps(contact, indent=2, sort_keys=True)
+                            else:
+                                raw_contact = contact[0]
+                                contact = from_vendor(raw_contact)
+                                context["dsar_contact_pretty"] = json.dumps(raw_contact, indent=2, sort_keys=True)
+
+                            context["newsletter_names"] = get_newsletter_names(contact)
+                        else:
+                            contact = None
+
+                    context["dsar_contact"] = contact
+                    context["dsar_submitted"] = True
+                    context["vendor"] = "Braze" if use_braze_backend else "CTMS"
+
+                if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
+                    try:
+                        handler(email, use_braze_backend=True)
+                    except Exception:
+                        sentry_sdk.capture_exception()
+                        handler(email, use_braze_backend=False)
+                elif settings.BRAZE_ONLY_READ_ENABLE:
+                    handler(email, use_braze_backend=True)
+                else:
+                    handler(email, use_braze_backend=False)
 
         context["dsar_form"] = form
         # adds default django admin context so sidebar shows etc.

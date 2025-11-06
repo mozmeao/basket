@@ -197,7 +197,7 @@ class TestAdminDSARInfoView(DSARViewTestBase):
 
         assert response.status_code == 200
         mock_ctms.interface.get_by_alternate_id.assert_called_with(primary_email="test@example.com")
-        assert response.context["dsar_contact"]["email"]["basket_token"] == "0723e863-cff2-4f74-b492-82b861732d19"
+        assert response.context["dsar_contact"]["token"] == "0723e863-cff2-4f74-b492-82b861732d19"
 
     def test_post_valid_email_braze(self):
         self._create_admin_user()
@@ -209,7 +209,7 @@ class TestAdminDSARInfoView(DSARViewTestBase):
 
         assert response.status_code == 200
         mock_ctms.interface.get_by_alternate_id.assert_called_with(primary_email="test@example.com")
-        assert response.context["dsar_contact"]["email"]["basket_token"] == "0723e863-cff2-4f74-b492-82b861732d19"
+        assert response.context["dsar_contact"]["token"] == "0723e863-cff2-4f74-b492-82b861732d19"
 
     def test_post_unknown_ctms_user(self, mocker):
         self._create_admin_user()
