@@ -1,4 +1,5 @@
 import json
+import sys
 import time
 
 from django.core.management.base import BaseCommand, CommandError
@@ -55,9 +56,19 @@ class Command(BaseCommand):
 
         for i in range(0, len(migrations), chunk_size):
             chunk = migrations[i : i + chunk_size]
-            braze_chunk = self.strip_for_braze(chunk)
+            braze_fxa_alias_chunk = self.strip_for_braze_fxa_alias(chunk)
+            braze_migration_chunk = self.strip_for_braze_migration(chunk)
             try:
-                braze.interface.migrate_external_id(braze_chunk)
+                if braze_fxa_alias_chunk:
+                    braze.interface.add_aliases(braze_fxa_alias_chunk)
+
+                migrate_response = braze.interface.migrate_external_id(braze_migration_chunk)
+
+                if not migrate_response["braze_collected_response"]["external_ids"]:
+                    # If no external_ids are migrated we assume we are done.
+                    self.stdout.write(self.style.SUCCESS(f"Migration complete. Ended on email_id {chunk[-1]['current_external_id']}."))
+                    sys.exit(0)
+
                 time.sleep(0.07)
             except Exception as e:
                 failure = {
@@ -69,13 +80,24 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(json.dumps(failure, indent=2)))
                 raise CommandError("Migration failed. Process terminated error.") from None
 
-    def strip_for_braze(self, chunk):
+    def strip_for_braze_migration(self, chunk):
         return [
             {
                 "current_external_id": item["current_external_id"],
                 "new_external_id": item["new_external_id"],
             }
             for item in chunk
+        ]
+
+    def strip_for_braze_fxa_alias(self, chunk):
+        return [
+            {
+                "external_id": item["current_external_id"],
+                "alias_name": "fxa_id",
+                "alias_label": item["fxa_id"],
+            }
+            for item in chunk
+            if item.get("fxa_id")
         ]
 
     def mask(self, external_id):
@@ -92,6 +114,7 @@ class Command(BaseCommand):
                 "current_external_id": row.email_id,
                 "new_external_id": row.basket_token,
                 "create_timestamp": getattr(row, "create_timestamp", ""),
+                "fxa_id": getattr(row, "fxa_id", ""),
             }
             for row in df.itertuples(index=False)
         ]
