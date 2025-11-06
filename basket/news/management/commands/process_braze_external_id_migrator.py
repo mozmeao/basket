@@ -69,7 +69,7 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.SUCCESS(f"Migration complete. Ended on email_id {chunk[-1]['current_external_id']}."))
                     sys.exit(0)
 
-                time.sleep(0.07)
+                time.sleep(0.035)
             except Exception as e:
                 failure = {
                     "current_external_id": self.mask(chunk[0]["current_external_id"]),
