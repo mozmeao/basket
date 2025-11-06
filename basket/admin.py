@@ -104,7 +104,7 @@ class BasketAdminSite(admin.AdminSite):
     def dsar_info_view(self, request):
         form = EmailForm()
         context = {
-            "title": "DSAR: Fetch CTMS User Info by Email Address",
+            "title": "DSAR: Fetch User Info by Email Address",
         }
         if request.method == "POST":
             form = EmailForm(request.POST)
@@ -192,7 +192,7 @@ class BasketAdminSite(admin.AdminSite):
                 form = EmailListForm()
 
         context = {
-            "title": "DSAR: Unsubscribe CTMS Users by Email Address",
+            "title": "DSAR: Unsubscribe Users by Email Address",
             "dsar_form": form,
             "dsar_output": output,
         }
@@ -254,7 +254,7 @@ class BasketAdminSite(admin.AdminSite):
                 form = EmailListForm()
 
         context = {
-            "title": "DSAR: Delete CTMS Data by Email Address",
+            "title": "DSAR: Delete Data by Email Address",
             "dsar_form": form,
             "dsar_output": output,
         }
