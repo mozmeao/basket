@@ -5,7 +5,6 @@ from unittest.mock import call, patch
 from django.conf import settings
 from django.contrib.auth.models import Permission, User
 from django.test import Client
-from django.test.utils import override_settings
 from django.urls import reverse
 
 import pytest
@@ -60,8 +59,6 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
         assert isinstance(response.context["dsar_form"], EmailListForm)
         assert response.context["dsar_output"] is None
 
-    @override_settings(BRAZE_PARALLEL_WRITE_ENABLE=False)
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=False)
     def test_post_valid_emails(self):
         self._create_admin_user()
         self._login_admin_user()
@@ -79,8 +76,6 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
         assert "DELETED test2@example.com from CTMS (ctms id: 456). fxa: YES." in response.context["dsar_output"]
         assert "DELETED test3@example.com from CTMS (ctms id: 789). fxa: YES. mofo: YES." in response.context["dsar_output"]
 
-    @override_settings(BRAZE_PARALLEL_WRITE_ENABLE=False)
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=False)
     def test_post_valid_email(self):
         self._create_admin_user()
         self._login_admin_user()
@@ -92,8 +87,6 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
         assert mock_ctms.delete.called
         assert "DELETED test@example.com from CTMS (ctms id: 123)." in response.context["dsar_output"]
 
-    @override_settings(BRAZE_PARALLEL_WRITE_ENABLE=False)
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=False)
     def test_post_unknown_ctms_user(self, mocker):
         self._create_admin_user()
         self._login_admin_user()
@@ -205,8 +198,6 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         assert isinstance(response.context["dsar_form"], EmailListForm)
         assert response.context["dsar_output"] is None
 
-    @override_settings(BRAZE_PARALLEL_WRITE_ENABLE=False)
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=False)
     def test_post_valid_emails(self):
         self._create_admin_user()
         self._login_admin_user()
@@ -231,8 +222,6 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         assert "UNSUBSCRIBED test2@example.com (ctms id: 456)." in response.context["dsar_output"]
         assert "UNSUBSCRIBED test3@example.com (ctms id: 789)." in response.context["dsar_output"]
 
-    @override_settings(BRAZE_PARALLEL_WRITE_ENABLE=False)
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=False)
     def test_post_valid_email(self):
         self._create_admin_user()
         self._login_admin_user()
@@ -245,8 +234,6 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         mock_ctms.interface.patch_by_email_id.assert_called_with("123", self.update_data)
         assert "UNSUBSCRIBED test@example.com (ctms id: 123)." in response.context["dsar_output"]
 
-    @override_settings(BRAZE_PARALLEL_WRITE_ENABLE=False)
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=False)
     def test_post_unknown_ctms_user(self, mocker):
         self._create_admin_user()
         self._login_admin_user()
