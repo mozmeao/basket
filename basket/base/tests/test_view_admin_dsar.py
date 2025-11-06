@@ -5,11 +5,13 @@ from unittest.mock import call, patch
 from django.conf import settings
 from django.contrib.auth.models import Permission, User
 from django.test import Client
+from django.test.utils import override_settings
 from django.urls import reverse
 
 import pytest
 
 from basket.base.forms import EmailForm, EmailListForm
+from basket.news.backends.braze import BrazeUserNotFoundByEmailError
 from basket.news.backends.ctms import CTMSNotFoundByEmailError
 
 TEST_DATA_DIR = Path(__file__).resolve().parent.joinpath("data")
@@ -59,7 +61,7 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
         assert isinstance(response.context["dsar_form"], EmailListForm)
         assert response.context["dsar_output"] is None
 
-    def test_post_valid_emails(self):
+    def test_post_valid_emails_ctms(self):
         self._create_admin_user()
         self._login_admin_user()
         with patch("basket.admin.ctms", spec_set=["delete"]) as mock_ctms:
@@ -76,7 +78,25 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
         assert "DELETED test2@example.com from CTMS (ctms id: 456). fxa: YES." in response.context["dsar_output"]
         assert "DELETED test3@example.com from CTMS (ctms id: 789). fxa: YES. mofo: YES." in response.context["dsar_output"]
 
-    def test_post_valid_email(self):
+    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
+    def test_post_valid_emails_braze(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.braze", spec_set=["delete"]) as mock_braze:
+            mock_braze.delete.side_effect = [
+                [{"email_id": "123", "fxa_id": "", "mofo_contact_id": ""}],
+                [{"email_id": "456", "fxa_id": "string", "mofo_contact_id": ""}],
+                [{"email_id": "789", "fxa_id": "string", "mofo_contact_id": "string"}],
+            ]
+            response = self.client.post(self.url, {"emails": "test1@example.com\ntest2@example.com\ntest3@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        assert mock_braze.delete.call_count == 3
+        assert "DELETED test1@example.com from Braze (external_id: 123)." in response.context["dsar_output"]
+        assert "DELETED test2@example.com from Braze (external_id: 456). fxa: YES." in response.context["dsar_output"]
+        assert "DELETED test3@example.com from Braze (external_id: 789). fxa: YES. mofo: YES." in response.context["dsar_output"]
+
+    def test_post_valid_email_ctms(self):
         self._create_admin_user()
         self._login_admin_user()
         with patch("basket.admin.ctms", spec_set=["delete"]) as mock_ctms:
@@ -86,6 +106,18 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
         assert response.status_code == 200
         assert mock_ctms.delete.called
         assert "DELETED test@example.com from CTMS (ctms id: 123)." in response.context["dsar_output"]
+
+    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
+    def test_post_valid_email_braze(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.braze", spec_set=["delete"]) as mock_braze:
+            mock_braze.delete.return_value = [{"email_id": "123", "fxa_id": "", "mofo_contact_id": ""}]
+            response = self.client.post(self.url, {"emails": "test@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        assert mock_braze.delete.called
+        assert "DELETED test@example.com from Braze (external_id: 123)." in response.context["dsar_output"]
 
     def test_post_unknown_ctms_user(self, mocker):
         self._create_admin_user()
@@ -98,7 +130,19 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
         assert mock_ctms.delete.called
         assert "unknown@example.com not found in CTMS" in response.context["dsar_output"]
 
-    def test_post_invalid_email(self, mocker):
+    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
+    def test_post_unknown_braze_user(self, mocker):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.braze", spec_set=["delete"]) as mock_braze:
+            mock_braze.delete.side_effect = BrazeUserNotFoundByEmailError("unknown@example.com")
+            response = self.client.post(self.url, {"emails": "unknown@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        assert mock_braze.delete.called
+        assert "unknown@example.com not found in Braze" in response.context["dsar_output"]
+
+    def test_post_invalid_email_ctms(self, mocker):
         self._create_admin_user()
         self._login_admin_user()
         with patch("basket.admin.ctms", spec_set=["delete"]) as mock_ctms:
@@ -107,6 +151,18 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
 
         assert response.status_code == 200
         assert not mock_ctms.delete.called
+        assert response.context["dsar_output"] is None
+        assert response.context["dsar_form"].errors == {"emails": ["Invalid email: invalid@email"]}
+
+    def test_post_invalid_email_braze(self, mocker):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.braze", spec_set=["delete"]) as mock_braze:
+            mock_braze.delete.side_effect = BrazeUserNotFoundByEmailError
+            response = self.client.post(self.url, {"emails": "invalid@email"}, follow=True)
+
+        assert response.status_code == 200
+        assert not mock_braze.delete.called
         assert response.context["dsar_output"] is None
         assert response.context["dsar_form"].errors == {"emails": ["Invalid email: invalid@email"]}
 
