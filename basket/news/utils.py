@@ -299,7 +299,6 @@ def get_user_data(
                 email=email,
                 fxa_id=fxa_id,
             )
-    # TODO: handle analogous Braze errors here
     except CTMSNotFoundByAltIDError:
         return None
     except requests.exceptions.HTTPError as exc:
