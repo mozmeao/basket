@@ -154,6 +154,7 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
         assert response.context["dsar_output"] is None
         assert response.context["dsar_form"].errors == {"emails": ["Invalid email: invalid@email"]}
 
+    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
     def test_post_invalid_email_braze(self, mocker):
         self._create_admin_user()
         self._login_admin_user()
@@ -186,7 +187,19 @@ class TestAdminDSARInfoView(DSARViewTestBase):
         assert isinstance(response.context["dsar_form"], EmailForm)
         assert "dsar_contact" not in response.context
 
-    def test_post_valid_email(self):
+    def test_post_valid_email_ctms(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        user_data = self._get_test_data()
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            mock_ctms.interface.get_by_alternate_id.return_value = user_data
+            response = self.client.post(self.url, {"email": "test@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        mock_ctms.interface.get_by_alternate_id.assert_called_with(primary_email="test@example.com")
+        assert response.context["dsar_contact"]["email"]["basket_token"] == "0723e863-cff2-4f74-b492-82b861732d19"
+
+    def test_post_valid_email_braze(self):
         self._create_admin_user()
         self._login_admin_user()
         user_data = self._get_test_data()
@@ -254,7 +267,7 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         assert isinstance(response.context["dsar_form"], EmailListForm)
         assert response.context["dsar_output"] is None
 
-    def test_post_valid_emails(self):
+    def test_post_valid_emails_ctms(self):
         self._create_admin_user()
         self._login_admin_user()
         with patch("basket.admin.ctms", spec_set=["get", "interface"]) as mock_ctms:
@@ -278,7 +291,27 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         assert "UNSUBSCRIBED test2@example.com (ctms id: 456)." in response.context["dsar_output"]
         assert "UNSUBSCRIBED test3@example.com (ctms id: 789)." in response.context["dsar_output"]
 
-    def test_post_valid_email(self):
+    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
+    def test_post_valid_emails_braze(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.braze", spec_set=["get", "update"]) as mock_braze:
+            mock_users = [
+                {"email_id": "123", "fxa_id": "", "mofo_contact_id": ""},
+                {"email_id": "456", "fxa_id": "string", "mofo_contact_id": ""},
+                {"email_id": "789", "fxa_id": "string", "mofo_contact_id": "string"},
+            ]
+            mock_braze.get.side_effect = mock_users
+            response = self.client.post(self.url, {"emails": "test1@example.com\ntest2@example.com\ntest3@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        assert mock_braze.get.call_count == 3
+        mock_braze.update.assert_has_calls([call(user, {"optout": True}) for user in mock_users])
+        assert "UNSUBSCRIBED test1@example.com (Braze external id: 123)." in response.context["dsar_output"]
+        assert "UNSUBSCRIBED test2@example.com (Braze external id: 456)." in response.context["dsar_output"]
+        assert "UNSUBSCRIBED test3@example.com (Braze external id: 789)." in response.context["dsar_output"]
+
+    def test_post_valid_email_ctms(self):
         self._create_admin_user()
         self._login_admin_user()
         with patch("basket.admin.ctms", spec_set=["get", "interface"]) as mock_ctms:
@@ -289,6 +322,19 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         assert mock_ctms.get.called
         mock_ctms.interface.patch_by_email_id.assert_called_with("123", self.update_data)
         assert "UNSUBSCRIBED test@example.com (ctms id: 123)." in response.context["dsar_output"]
+
+    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
+    def test_post_valid_email_braze(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.braze", spec_set=["get", "update"]) as mock_braze:
+            mock_braze.get.return_value = {"email_id": "123", "fxa_id": "", "mofo_contact_id": ""}
+            response = self.client.post(self.url, {"emails": "test@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        assert mock_braze.get.called
+        mock_braze.update.assert_called_with({"email_id": "123", "fxa_id": "", "mofo_contact_id": ""}, {"optout": True})
+        assert "UNSUBSCRIBED test@example.com (Braze external id: 123)." in response.context["dsar_output"]
 
     def test_post_unknown_ctms_user(self, mocker):
         self._create_admin_user()
@@ -302,7 +348,20 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         assert not mock_ctms.interface.patch_by_email_id.called
         assert "unknown@example.com not found in CTMS" in response.context["dsar_output"]
 
-    def test_post_invalid_email(self, mocker):
+    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
+    def test_post_unknown_braze_user(self, mocker):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.braze", spec_set=["get", "update"]) as mock_braze:
+            mock_braze.get.return_value = None
+            response = self.client.post(self.url, {"emails": "unknown@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        assert mock_braze.get.called
+        assert not mock_braze.update.called
+        assert "unknown@example.com not found in Braze" in response.context["dsar_output"]
+
+    def test_post_invalid_email_ctms(self, mocker):
         self._create_admin_user()
         self._login_admin_user()
         with patch("basket.admin.ctms", spec_set=["get", "interface"]) as mock_ctms:
@@ -311,5 +370,18 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         assert response.status_code == 200
         assert not mock_ctms.get.called
         assert not mock_ctms.interface.patch_by_email_id.called
+        assert response.context["dsar_output"] is None
+        assert response.context["dsar_form"].errors == {"emails": ["Invalid email: invalid@email"]}
+
+    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
+    def test_post_invalid_email_braze(self, mocker):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.ctms", spec_set=["get", "update"]) as mock_braze:
+            response = self.client.post(self.url, {"emails": "invalid@email"}, follow=True)
+
+        assert response.status_code == 200
+        assert not mock_braze.get.called
+        assert not mock_braze.update.called
         assert response.context["dsar_output"] is None
         assert response.context["dsar_form"].errors == {"emails": ["Invalid email: invalid@email"]}
