@@ -274,6 +274,22 @@ class BrazeInterface:
         data = {"user_aliases": [{"alias_name": fxa_id, "alias_label": "fxa_id", "external_id": external_id}]}
         return self._request(BrazeEndpoint.USERS_ADD_ALIAS, data)
 
+    def add_aliases(self, alias_operations):
+        """
+        @param alias_operations: List of user alias objects (schema below)
+
+        {
+            "external_id" : (optional, string),
+            "alias_name" : (required, string),
+            "alias_label" : (required, string)
+        }
+
+        Add up to 50 user aliases in Braze.
+        https://www.braze.com/docs/api/endpoints/user_data/post_user_alias
+        """
+        data = {"user_aliases": alias_operations}
+        return self._request(BrazeEndpoint.USERS_ADD_ALIAS, data)
+
     def migrate_external_id(self, migrations):
         """
         Migrate a user's external_id to a new value. 50 rename objects per request is the hard Braze limit.
@@ -297,9 +313,6 @@ class BrazeInterface:
 
             external_ids = rename_response.get("external_ids", [])
             rename_errors = rename_response.get("rename_errors", [])
-
-            if not external_ids:
-                raise BrazeNotFoundError("No external_ids found for migration.")
 
             results.extend(external_ids)
             errors.extend(rename_errors)

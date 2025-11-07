@@ -19,6 +19,16 @@ def sample_df():
     )
 
 
+@pytest.fixture
+def sample_df_with_fxa():
+    return pd.DataFrame(
+        [
+            {"email_id": "id1", "basket_token": "token1", "fxa_id": "fxa1", "create_timestamp": "2024-01-01T00:00:00"},
+            {"email_id": "id2", "basket_token": "token2", "fxa_id": "fxa2", "create_timestamp": "2024-02-01T00:00:00"},
+        ]
+    )
+
+
 def parquet_bytes(df):
     buf = io.BytesIO()
     df.to_parquet(buf, index=False)
@@ -60,6 +70,33 @@ def test_successful_migration(mock_storage_client, mock_braze, sample_df):
         {"current_external_id": "id2", "new_external_id": "token2"},
     ]
     mock_braze.interface.migrate_external_id.assert_called_once_with(expected_chunk)
+    # No fxa_ids in chunk so no calls should be made to add_aliases
+    mock_braze.interface.add_aliases.assert_not_called()
+
+
+def test_successful_migration_with_fxa(mock_storage_client, mock_braze, sample_df_with_fxa):
+    mock_blob = mock.Mock()
+    mock_blob.exists.return_value = True
+    mock_blob.download_as_bytes.return_value = parquet_bytes(sample_df_with_fxa)
+    mock_bucket = mock.Mock()
+    mock_bucket.blob.return_value = mock_blob
+    mock_client = mock.Mock()
+    mock_client.bucket.return_value = mock_bucket
+    mock_storage_client.return_value = mock_client
+
+    mock_braze.interface.migrate_external_id.return_value = {"braze_collected_response": {"external_ids": ["id1", "id2"], "rename_errors": []}}
+
+    cmd = Command()
+    cmd.stdout = mock.Mock()
+    cmd.process_and_migrate_parquet_file(
+        project="proj", bucket="bucket", prefix="prefix", file_name="file.parquet", start_timestamp=None, chunk_size=2
+    )
+    expected_chunk = [
+        {"current_external_id": "id1", "new_external_id": "token1"},
+        {"current_external_id": "id2", "new_external_id": "token2"},
+    ]
+    mock_braze.interface.migrate_external_id.assert_called_once_with(expected_chunk)
+    mock_braze.interface.add_aliases.assert_called_once()
 
 
 def test_file_not_found(mock_storage_client, mock_braze):
