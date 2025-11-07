@@ -101,10 +101,14 @@ class BasketAdminSite(admin.AdminSite):
             if form.is_valid():
                 email = form.cleaned_data["email"]
 
-                def handler(email, use_braze_backend=False):
+                def handler(email, use_braze_backend=False, fallback_to_ctms=False):
+                    context["vendor"] = "Braze" if use_braze_backend else "CTMS"
                     try:
                         if use_braze_backend:
                             contact = braze.get(email=email)
+                            if not contact and fallback_to_ctms:
+                                context["vendor"] = "CTMS"
+                                contact = ctms.interface.get_by_alternate_id(primary_email=email)
                         else:
                             contact = ctms.interface.get_by_alternate_id(primary_email=email)
                     except CTMSNotFoundByEmailError:
@@ -112,7 +116,7 @@ class BasketAdminSite(admin.AdminSite):
                     else:
                         # response could be 200 with an empty list
                         if contact:
-                            if use_braze_backend:
+                            if context["vendor"] == "Braze":
                                 context["dsar_contact_pretty"] = json.dumps(contact, indent=2, sort_keys=True)
                             else:
                                 raw_contact = contact[0]
@@ -123,13 +127,15 @@ class BasketAdminSite(admin.AdminSite):
                         else:
                             contact = None
 
+                    if not contact and fallback_to_ctms:
+                        context["vendor"] = "CTMS and Braze"
+
                     context["dsar_contact"] = contact
                     context["dsar_submitted"] = True
-                    context["vendor"] = "Braze" if use_braze_backend else "CTMS"
 
                 if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
                     try:
-                        handler(email, use_braze_backend=True)
+                        handler(email, use_braze_backend=True, fallback_to_ctms=True)
                     except Exception:
                         sentry_sdk.capture_exception()
                         handler(email, use_braze_backend=False)

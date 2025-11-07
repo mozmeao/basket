@@ -197,6 +197,7 @@ class TestAdminDSARInfoView(DSARViewTestBase):
 
         assert response.status_code == 200
         mock_ctms.interface.get_by_alternate_id.assert_called_with(primary_email="test@example.com")
+        assert b"User Info (from CTMS)" in response.content
         assert response.context["dsar_contact"]["token"] == "0723e863-cff2-4f74-b492-82b861732d19"
 
     @override_settings(BRAZE_ONLY_READ_ENABLE=True)
@@ -210,6 +211,7 @@ class TestAdminDSARInfoView(DSARViewTestBase):
 
             assert response.status_code == 200
             mock_braze.get.assert_called_with(email="test@example.com")
+        assert b"User Info (from Braze)" in response.content
         assert response.context["dsar_contact"]["token"] == mock_user_data["token"]
 
     def test_post_unknown_ctms_user(self, mocker):
@@ -218,6 +220,18 @@ class TestAdminDSARInfoView(DSARViewTestBase):
         with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
             # it may throw this error
             mock_ctms.interface.get_by_alternate_id.side_effect = CTMSNotFoundByEmailError("unknown@example.com")
+            response = self.client.post(self.url, {"email": "unknown@example.com"}, follow=True)
+
+        assert response.status_code == 200
+        assert mock_ctms.interface.get_by_alternate_id.called
+        assert b"User not found in CTMS" in response.content
+
+    def test_post_unknown_ctms_user_empty_list(self, mocker):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            # it may also return an empty list
+            mock_ctms.interface.get_by_alternate_id.return_value = []
             response = self.client.post(self.url, {"email": "unknown@example.com"}, follow=True)
 
         assert response.status_code == 200
@@ -237,17 +251,36 @@ class TestAdminDSARInfoView(DSARViewTestBase):
         assert mock_braze.get.called
         assert b"User not found in Braze" in response.content
 
-    def test_post_unknown_ctms_user_empty_list(self, mocker):
+    @override_settings(BRAZE_READ_WITH_FALLBACK_ENABLE=True)
+    def test_post_unknown_braze_user_found_in_ctms_fallback(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        user_data = self._get_test_data()
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            with patch("basket.admin.braze", spec_set=["get"]) as mock_braze:
+                mock_braze.get.return_value = None
+                mock_ctms.interface.get_by_alternate_id.return_value = user_data
+                response = self.client.post(self.url, {"email": "test@example.com"}, follow=True)
+            assert response.status_code == 200
+            mock_braze.get.assert_called_with(email="test@example.com")
+            mock_ctms.interface.get_by_alternate_id.assert_called_with(primary_email="test@example.com")
+            assert b"User Info (from CTMS)" in response.content
+            assert response.context["dsar_contact"]["token"] == "0723e863-cff2-4f74-b492-82b861732d19"
+
+    @override_settings(BRAZE_READ_WITH_FALLBACK_ENABLE=True)
+    def test_post_unknown_braze_not_found_in_ctms_fallback(self, mocker):
         self._create_admin_user()
         self._login_admin_user()
         with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
-            # it may also return an empty list
-            mock_ctms.interface.get_by_alternate_id.return_value = []
-            response = self.client.post(self.url, {"email": "unknown@example.com"}, follow=True)
+            with patch("basket.admin.braze", spec_set=["get"]) as mock_braze:
+                mock_braze.get.return_value = None
+                mock_ctms.interface.get_by_alternate_id.side_effect = CTMSNotFoundByEmailError("unknown@example.com")
+                response = self.client.post(self.url, {"email": "unknown@example.com"}, follow=True)
 
-        assert response.status_code == 200
-        assert mock_ctms.interface.get_by_alternate_id.called
-        assert b"User not found in CTMS" in response.content
+            assert response.status_code == 200
+            assert mock_braze.get.called
+            assert mock_ctms.interface.get_by_alternate_id.called
+            assert b"User not found in CTMS and Braze" in response.content
 
     def test_post_invalid_email_ctms(self, mocker):
         self._create_admin_user()
