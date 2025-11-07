@@ -443,6 +443,7 @@ class Braze:
             "has_fxa": user_attributes.get("has_fxa"),
             "fxa_id": fxa_id,
             "fxa_deleted": user_attributes.get("fxa_deleted"),
+            "unsub_reason": user_attributes.get("unsub_reason"),
         }
 
         return basket_user_data
