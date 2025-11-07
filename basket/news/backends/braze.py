@@ -494,6 +494,7 @@ class Braze:
                     "fxa_lang": updated_user_data.get("fxa_lang"),
                     "fxa_primary_email": updated_user_data.get("fxa_primary_email"),
                     "fxa_deleted": updated_user_data.get("fxa_deleted"),
+                    "unsub_reason": updated_user_data.get("unsub_reason"),
                 }
             ],
         }
