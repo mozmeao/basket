@@ -774,8 +774,10 @@ def custom_unsub_reason(request):
     if settings.BRAZE_PARALLEL_WRITE_ENABLE:
         tasks.update_custom_unsub.delay(request.POST["token"], request.POST["reason"], True)
         tasks.update_custom_unsub.delay(request.POST["token"], request.POST["reason"], False)
-    if settings.BRAZE_ONLY_WRITE_ENABLE:
+    elif settings.BRAZE_ONLY_WRITE_ENABLE:
         tasks.update_custom_unsub.delay(request.POST["token"], request.POST["reason"], True)
+    else:
+        tasks.update_custom_unsub.delay(request.POST["token"], request.POST["reason"], False)
     return HttpResponseJSON({"status": "ok"})
 
 

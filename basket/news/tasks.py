@@ -545,8 +545,8 @@ def confirm_user(token, use_braze_backend=False, extra_metrics_tags=None):
 @rq_task
 def update_custom_unsub(token, reason, use_braze_backend=False):
     """Record a user's custom unsubscribe reason."""
-    user_data = get_user_data(token=token, extra_fields=["email_id"], use_braze_backend=use_braze_backend)
     if use_braze_backend:
+        user_data = get_user_data(token=token, extra_fields=["email_id"], use_braze_backend=use_braze_backend)
         braze.update(user_data, {"unsub_reason": reason})
     else:
         try:
