@@ -313,6 +313,7 @@ mock_basket_user_data = {
     "fxa_id": "fxa_123",
     "has_fxa": True,
     "fxa_deleted": None,
+    "unsub_reason": "unsub",
 }
 
 mock_braze_user_data = {
@@ -339,6 +340,7 @@ mock_braze_user_data = {
                 "fxa_created_at": "2022-01-02",
                 "has_fxa": True,
                 "fxa_deleted": None,
+                "unsub_reason": "unsub",
             }
         ]
     },
@@ -408,6 +410,7 @@ def test_to_vendor_with_user_data_and_no_updates(mock_newsletter_languages, mock
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
+                        "unsub_reason": "unsub",
                     }
                 ],
             }
@@ -428,7 +431,7 @@ def test_to_vendor_with_user_data_and_no_updates(mock_newsletter_languages, mock
 def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     dt = timezone.now()
-    update_data = {"newsletters": {"bar-news": True}, "email": "test@example.com", "token": "abc", "email_id": "123"}
+    update_data = {"newsletters": {"bar-news": True}, "email": "test@example.com", "token": "abc", "email_id": "123", "unsub_reason": "unsub"}
     expected = {
         "attributes": [
             {
@@ -458,6 +461,7 @@ def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
+                        "unsub_reason": "unsub",
                     }
                 ],
             }
@@ -479,7 +483,7 @@ def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock
 def test_to_vendor_with_updates_and_no_user_data_in_braze_only_write(mock_newsletter_languages, mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     dt = timezone.now()
-    update_data = {"newsletters": {"bar-news": True}, "email": "test@example.com", "token": "abc", "email_id": "123"}
+    update_data = {"newsletters": {"bar-news": True}, "email": "test@example.com", "token": "abc", "email_id": "123", "unsub_reason": "unsub"}
     expected = {
         "attributes": [
             {
@@ -509,6 +513,7 @@ def test_to_vendor_with_updates_and_no_user_data_in_braze_only_write(mock_newsle
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
+                        "unsub_reason": "unsub",
                     }
                 ],
             }
@@ -539,7 +544,14 @@ def test_to_vendor_throws_exception_for_missing_external_id(braze_client):
 def test_to_vendor_with_both_user_data_and_updates(mock_newsletter_languages, mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     dt = timezone.now()
-    update_data = {"newsletters": {"bar-news": True, "foo-news": False}, "first_name": "Foo", "country": "CA", "optin": False, "fxa_deleted": True}
+    update_data = {
+        "newsletters": {"bar-news": True, "foo-news": False},
+        "first_name": "Foo",
+        "country": "CA",
+        "optin": False,
+        "fxa_deleted": True,
+        "unsub_reason": "unsub",
+    }
     expected = {
         "attributes": [
             {
@@ -573,6 +585,7 @@ def test_to_vendor_with_both_user_data_and_updates(mock_newsletter_languages, mo
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
+                        "unsub_reason": "unsub",
                     }
                 ],
             }
@@ -626,6 +639,7 @@ def test_to_vendor_with_events(mock_newsletters, braze_client):
                         "updated_at": {
                             "$time": dt.isoformat(),
                         },
+                        "unsub_reason": "unsub",
                     }
                 ],
             }

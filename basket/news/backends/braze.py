@@ -456,6 +456,7 @@ class Braze:
             "has_fxa": user_attributes.get("has_fxa"),
             "fxa_id": fxa_id,
             "fxa_deleted": user_attributes.get("fxa_deleted"),
+            "unsub_reason": user_attributes.get("unsub_reason"),
         }
 
         return basket_user_data
@@ -507,6 +508,7 @@ class Braze:
                     "fxa_lang": updated_user_data.get("fxa_lang"),
                     "fxa_primary_email": updated_user_data.get("fxa_primary_email"),
                     "fxa_deleted": updated_user_data.get("fxa_deleted"),
+                    "unsub_reason": updated_user_data.get("unsub_reason"),
                 }
             ],
         }
