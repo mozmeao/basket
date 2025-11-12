@@ -223,4 +223,4 @@ def test_rate_limit_sleep_between_chunks(mock_sleep, sample_df, mock_storage_cli
     )
 
     assert mock_sleep.call_count == 2
-    mock_sleep.assert_called_with(0.07)
+    mock_sleep.assert_called_with(0.035)

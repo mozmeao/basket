@@ -1,4 +1,5 @@
 import json
+import logging
 import warnings
 from enum import Enum
 from urllib.parse import urljoin, urlparse, urlunparse
@@ -9,8 +10,10 @@ from django.utils import timezone
 import requests
 
 from basket.base.utils import is_valid_uuid
-from basket.news.backends.ctms import process_country, process_lang
+from basket.news.backends.ctms import ctms, process_country, process_lang
 from basket.news.newsletters import slug_to_vendor_id, vendor_id_to_slug
+
+log = logging.getLogger(__name__)
 
 
 # Braze errors: https://www.braze.com/docs/api/errors/
@@ -43,6 +46,10 @@ class BrazeUserNotFoundByEmailError(Exception):
 
 
 class BrazeUserNotFoundByFxaIdError(Exception):
+    pass
+
+
+class BrazeUserNotFoundByTokenError(Exception):
     pass
 
 
@@ -338,6 +345,18 @@ class Braze:
         email=None,
         fxa_id=None,
     ):
+        # If we only have a token or fxa_id and the Braze migrations for them haven't been
+        # completed we won't be able to look up the user. We add a temporary shim here which
+        # will fetch the email from CTMS. This shim can be disabled/removed after the migrations
+        # are complete.
+        if not email and settings.BRAZE_CTMS_SHIM_ENABLE:
+            try:
+                ctms_response = ctms.get(token=token, fxa_id=fxa_id)
+                if ctms_response:
+                    email = ctms_response.get("email")
+            except Exception:
+                log.warn("Unable to fetch email from CTMS in braze.get shim")
+
         user_response = self.interface.export_users(
             email,
             [
@@ -402,6 +421,12 @@ class Braze:
         existing_user = self.get(fxa_id=fxa_id)
         if not existing_user:
             raise BrazeUserNotFoundByFxaIdError
+        self.update(existing_user, update_data)
+
+    def update_by_token(self, token, update_data):
+        existing_user = self.get(token=token)
+        if not existing_user:
+            raise BrazeUserNotFoundByTokenError
         self.update(existing_user, update_data)
 
     def delete(self, email):

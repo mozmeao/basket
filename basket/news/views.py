@@ -755,7 +755,6 @@ def send_recovery_message(request):
 # Custom update methods
 
 
-# TODO confirm if this endpoint is still needed.
 @csrf_exempt
 def custom_unsub_reason(request):
     """Update the reason field for the user, which logs why the user
