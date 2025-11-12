@@ -214,15 +214,6 @@ def lookup_user(request, email: str | None = None, token: uuid.UUID | None = Non
                     masked=masked,
                     use_braze_backend=True,
                 )
-                # If token migration isn't complete we might only find the user
-                # in CTMS when looking up by token.
-                if not user_data:
-                    user_data = get_user_data(
-                        email=email,
-                        token=token,
-                        masked=masked,
-                        use_braze_backend=False,
-                    )
             except Exception:
                 sentry_sdk.capture_exception()
                 user_data = get_user_data(
