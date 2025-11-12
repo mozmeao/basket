@@ -902,3 +902,44 @@ def test_braze_update_by_fxa_id_user_not_found(braze_client):
         with pytest.raises(braze.BrazeUserNotFoundByFxaIdError):
             braze_instance.update_by_fxa_id(fxa_id, update_data)
             assert m.last_request.url == "http://test.com/users/export/ids"
+
+
+@mock.patch(
+    "basket.news.newsletters._newsletters",
+    return_value=mock_newsletters,
+)
+@mock.patch(
+    "basket.news.newsletters.newsletter_languages",
+    return_value=["en"],
+)
+def test_braze_update_by_token_for_existing_user(mock_newsletter_languages, mock_newsletters, braze_client):
+    braze_instance = Braze(braze_client)
+    token = mock_basket_user_data["token"]
+    update_data = {"first_name": "Edmund"}
+
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/export/ids", json={"users": [mock_braze_user_data]})
+        m.register_uri(
+            "GET",
+            "http://test.com/subscription/user/status?external_id=123",
+            json={"users": [{"subscription_groups": mock_braze_user_subscription_groups}]},
+        )
+        m.register_uri("POST", "http://test.com/users/track", json={})
+        with freeze_time():
+            braze_instance.update_by_token(token, update_data)
+            api_requests = m.request_history
+            assert api_requests[0].url == "http://test.com/users/export/ids"
+            assert api_requests[1].url == "http://test.com/subscription/user/status?external_id=123"
+            assert api_requests[2].url == "http://test.com/users/track"
+            assert api_requests[2].json() == braze_instance.to_vendor(mock_basket_user_data, update_data)
+
+
+def test_braze_update_by_token_user_not_found(braze_client):
+    braze_instance = Braze(braze_client)
+    token = "000_none"
+    update_data = {"first_name": "Edmund"}
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/export/ids", json={"users": []})
+        with pytest.raises(braze.BrazeUserNotFoundByTokenError):
+            braze_instance.update_by_token(token, update_data)
+            assert m.last_request.url == "http://test.com/users/export/ids"

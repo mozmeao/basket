@@ -237,8 +237,8 @@ def fxa_login(
 @rq_task
 def update_user_meta(token, data, use_braze_backend=False):
     """Update a user's metadata, not newsletters"""
-    if use_braze_backend and settings.BRAZE_ONLY_WRITE_ENABLE:
-        braze.update({"email_id": token}, data)
+    if use_braze_backend:
+        braze.update_by_token(token, data)
     else:
         try:
             ctms.update_by_alt_id("token", token, data)
@@ -546,8 +546,7 @@ def confirm_user(token, use_braze_backend=False, extra_metrics_tags=None):
 def update_custom_unsub(token, reason, use_braze_backend=False):
     """Record a user's custom unsubscribe reason."""
     if use_braze_backend:
-        user_data = get_user_data(token=token, extra_fields=["email_id"], use_braze_backend=use_braze_backend)
-        braze.update(user_data, {"unsub_reason": reason})
+        braze.update_by_token(token, {"unsub_reason": reason})
     else:
         try:
             ctms.update_by_alt_id("token", token, {"reason": reason})
