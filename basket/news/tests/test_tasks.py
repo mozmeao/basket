@@ -576,14 +576,14 @@ class TestFxaDelete(TestCase):
         )
 
 
-@patch("basket.news.tasks.braze")
+@patch("basket.news.tasks.braze_tx")
 def test_send_tx_message(mock_braze, metricsmock):
     send_tx_message("test@example.com", "download-foo", "en-US")
     mock_braze.interface.track_user.assert_called_once_with("test@example.com", event="send-download-foo-en-US", user_data=None)
     metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
 
 
-@patch("basket.news.tasks.braze")
+@patch("basket.news.tasks.braze_tx")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
 def test_send_tx_messages(mock_model, mock_braze, metricsmock):
     """Test multipe message IDs, but only one is a transactional message."""
@@ -594,7 +594,7 @@ def test_send_tx_messages(mock_model, mock_braze, metricsmock):
 
 
 @override_settings(BRAZE_MESSAGE_ID_MAP={"download-zzz": "download-foo"})
-@patch("basket.news.tasks.braze")
+@patch("basket.news.tasks.braze_tx")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
 def test_send_tx_messages_with_map(mock_model, mock_braze, metricsmock):
     """Test multipe message IDs, but only one is a transactional message."""
@@ -604,7 +604,7 @@ def test_send_tx_messages_with_map(mock_model, mock_braze, metricsmock):
     metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
 
 
-@patch("basket.news.tasks.braze")
+@patch("basket.news.tasks.braze_tx")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
 def test_send_confirm_message(mock_get_message, mock_braze, metricsmock):
     mock_get_message.return_value = BrazeTxEmailMessage(message_id="newsletter-confirm-fx", language="en-US")
@@ -615,7 +615,7 @@ def test_send_confirm_message(mock_get_message, mock_braze, metricsmock):
     metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
 
 
-@patch("basket.news.tasks.braze")
+@patch("basket.news.tasks.braze_tx")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
 def test_send_recovery_message(mock_get_message, mock_braze, metricsmock):
     mock_get_message.return_value = BrazeTxEmailMessage(message_id="newsletter-confirm-fx", language="en-US")

@@ -8,7 +8,7 @@ from basket import metrics
 from basket.base.decorators import rq_task
 from basket.base.exceptions import BasketError
 from basket.base.utils import email_is_testing
-from basket.news.backends.braze import BrazeUserNotFoundByFxaIdError, braze
+from basket.news.backends.braze import BrazeUserNotFoundByFxaIdError, braze, braze_tx
 from basket.news.backends.ctms import (
     CTMSNotFoundByAltIDError,
     CTMSUniqueIDConflictError,
@@ -475,7 +475,7 @@ def ctms_add_or_update(update_data, user_data=None):
 @rq_task
 def send_tx_message(email, message_id, language, user_data=None):
     metrics.incr("news.tasks.send_tx_message", tags=[f"message_id:{message_id}", f"language:{language}"])
-    braze.interface.track_user(email, event=f"send-{message_id}-{language}", user_data=user_data)
+    braze_tx.interface.track_user(email, event=f"send-{message_id}-{language}", user_data=user_data)
 
 
 def send_tx_messages(email, lang, message_ids):
