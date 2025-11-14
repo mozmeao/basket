@@ -348,11 +348,11 @@ class Braze:
         """
         Get a user using the first ID provided.
 
-        @param email_id: CTMS email ID
+        @param email_id: external ID from Braze
         @param token: basket_token
         @param email: email address
         @param fxa_id: external ID from FxA
-        @return: dict, or None if disabled
+        @return: dict, or None if not found
         """
 
         # If we only have a token or fxa_id and the Braze migrations for them haven't been
