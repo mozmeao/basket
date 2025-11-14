@@ -136,8 +136,8 @@ class BasketAdminSite(admin.AdminSite):
                 if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
                     try:
                         handler(email, use_braze_backend=True, fallback_to_ctms=True)
-                    except Exception:
-                        sentry_sdk.capture_exception()
+                    except Exception as e:
+                        sentry_sdk.capture_exception(e)
                         handler(email, use_braze_backend=False)
                 elif settings.BRAZE_ONLY_READ_ENABLE:
                     handler(email, use_braze_backend=True)
@@ -195,8 +195,8 @@ class BasketAdminSite(admin.AdminSite):
                 if settings.BRAZE_PARALLEL_WRITE_ENABLE:
                     try:
                         handler(emails, use_braze_backend=True)
-                    except Exception:
-                        sentry_sdk.capture_exception()
+                    except Exception as e:
+                        sentry_sdk.capture_exception(e)
 
                     handler(emails, use_braze_backend=False)
                 elif settings.BRAZE_ONLY_WRITE_ENABLE:
@@ -257,8 +257,8 @@ class BasketAdminSite(admin.AdminSite):
                 if settings.BRAZE_PARALLEL_WRITE_ENABLE:
                     try:
                         handler(emails, use_braze_backend=True)
-                    except Exception:
-                        sentry_sdk.capture_exception()
+                    except Exception as e:
+                        sentry_sdk.capture_exception(e)
 
                     handler(emails, use_braze_backend=False)
                 elif settings.BRAZE_ONLY_WRITE_ENABLE:

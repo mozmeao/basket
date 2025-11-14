@@ -130,9 +130,9 @@ def fxa_callback(request):
     try:
         access_token = fxa_oauth.trade_code(code, ttl=settings.FXA_OAUTH_TOKEN_TTL)["access_token"]
         user_profile = fxa_profile.get_profile(access_token)
-    except Exception:
+    except Exception as e:
         metrics.incr("news.views.fxa_callback", tags=["status:error", "error:fxa_comm"])
-        sentry_sdk.capture_exception()
+        sentry_sdk.capture_exception(e)
         return HttpResponseRedirect(error_url)
 
     email = user_profile.get("email")
@@ -156,9 +156,9 @@ def fxa_callback(request):
                 fxa_id=uid,
                 use_braze_backend=use_braze_backend,
             )
-        except Exception:
+        except Exception as e:
             metrics.incr("news.views.fxa_callback", tags=["status:error", "error:user_data", *extra_metrics_tags])
-            sentry_sdk.capture_exception()
+            sentry_sdk.capture_exception(e)
             return HttpResponseRedirect(error_url)
 
         if user_data:
@@ -189,9 +189,9 @@ def fxa_callback(request):
                     pre_generated_token=pre_generated_token,
                     pre_generated_email_id=pre_generated_email_id,
                 )[0]
-            except Exception:
+            except Exception as e:
                 metrics.incr("news.views.fxa_callback", tags=["status:error", "error:upsert_contact", *extra_metrics_tags])
-                sentry_sdk.capture_exception()
+                sentry_sdk.capture_exception(e)
                 return HttpResponseRedirect(error_url)
 
         metrics.incr("news.views.fxa_callback", tags=["status:success", *extra_metrics_tags])
@@ -211,8 +211,8 @@ def fxa_callback(request):
                 pre_generated_token=pre_generated_token,
                 pre_generated_email_id=pre_generated_email_id,
             )
-        except Exception:
-            sentry_sdk.capture_exception()
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
 
         return handler(
             email,
@@ -483,8 +483,8 @@ def subscribe(request):
                 pre_generated_token=pre_generated_token,
                 pre_generated_email_id=pre_generated_email_id,
             )
-        except Exception:
-            sentry_sdk.capture_exception()
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
 
         return handler(
             request,
@@ -553,8 +553,8 @@ def unsubscribe(request, token):
                 rate_limit_increment=False,
                 extra_metrics_tags=["backend:braze"],
             )
-        except Exception:
-            sentry_sdk.capture_exception()
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
 
         return update_user_task(
             request,
@@ -672,8 +672,8 @@ def user(request, token):
     if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
         try:
             return get_user(token, masked=masked, use_braze_backend=True)
-        except Exception:
-            sentry_sdk.capture_exception()
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
             return get_user(token, masked=masked, use_braze_backend=False)
     elif settings.BRAZE_ONLY_READ_ENABLE:
         return get_user(token, masked=masked, use_braze_backend=True)
@@ -709,8 +709,8 @@ def send_recovery_message(request):
                     extra_fields=["email_id"],
                     use_braze_backend=True,
                 )
-            except Exception:
-                sentry_sdk.capture_exception()
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
                 user_data = get_user_data(
                     email=email,
                     extra_fields=["email_id"],
@@ -894,8 +894,8 @@ def lookup_user(request):
                     masked=not authorized,
                     use_braze_backend=True,
                 )
-            except Exception:
-                sentry_sdk.capture_exception()
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
                 user_data = get_user_data(
                     token=token,
                     email=email,

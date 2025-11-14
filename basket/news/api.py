@@ -135,8 +135,8 @@ def recover_user(request, body: RecoverUserSchema):
                     extra_fields=["email_id"],
                     use_braze_backend=True,
                 )
-            except Exception:
-                sentry_sdk.capture_exception()
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
                 user_data = get_user_data(
                     email=body.email,
                     extra_fields=["email_id"],
@@ -214,8 +214,8 @@ def lookup_user(request, email: str | None = None, token: uuid.UUID | None = Non
                     masked=masked,
                     use_braze_backend=True,
                 )
-            except Exception:
-                sentry_sdk.capture_exception()
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
                 user_data = get_user_data(
                     email=email,
                     token=token,
