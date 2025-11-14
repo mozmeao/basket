@@ -345,6 +345,16 @@ class Braze:
         email=None,
         fxa_id=None,
     ):
+        """
+        Get a user using the first ID provided.
+
+        @param email_id: CTMS email ID
+        @param token: basket_token
+        @param email: email address
+        @param fxa_id: external ID from FxA
+        @return: dict, or None if disabled
+        """
+
         # If we only have a token or fxa_id and the Braze migrations for them haven't been
         # completed we won't be able to look up the user. We add a temporary shim here which
         # will fetch the email from CTMS. This shim can be disabled/removed after the migrations
@@ -388,6 +398,11 @@ class Braze:
             return self.from_vendor(user_data, subscriptions)
 
     def add(self, data):
+        """
+        Create a user record.
+
+        @param data: user data to add as a new user.
+        """
         braze_user_data = self.to_vendor(None, data)
         external_id = braze_user_data["attributes"][0]["external_id"]
         self.interface.save_user(braze_user_data)
@@ -410,6 +425,12 @@ class Braze:
         return {"email": {"email_id": external_id}}
 
     def update(self, existing_data, update_data):
+        """
+        Update data in an existing user record.
+
+        @param existing_data: current user record
+        @param update_data: dict of new data
+        """
         braze_user_data = self.to_vendor(existing_data, update_data)
         external_id = braze_user_data["attributes"][0]["external_id"]
         self.interface.save_user(braze_user_data)
@@ -418,12 +439,26 @@ class Braze:
             self.interface.add_fxa_id_alias(external_id, update_data["fxa_id"])
 
     def update_by_fxa_id(self, fxa_id, update_data):
+        """
+        Update data in an existing user record by fxa_id.
+
+        @param fxa_id: external ID from FxA
+        @param update_data: dict of new data
+        @raises BrazeUserNotFoundByFxaIdError: when no record found
+        """
         existing_user = self.get(fxa_id=fxa_id)
         if not existing_user:
             raise BrazeUserNotFoundByFxaIdError
         self.update(existing_user, update_data)
 
     def update_by_token(self, token, update_data):
+        """
+        Update data in an existing user record by basket_token.
+
+        @param token: basket_token
+        @param update_data: dict of new data
+        @raises BrazeUserNotFoundByTokenError: when no record found
+        """
         existing_user = self.get(token=token)
         if not existing_user:
             raise BrazeUserNotFoundByTokenError
@@ -487,6 +522,9 @@ class Braze:
         return basket_user_data
 
     def to_vendor(self, basket_user_data=None, update_data=None, events=None):
+        """
+        Converts Basket-formatted data to Braze-formatted data
+        """
         existing_user_data = basket_user_data or {}
         updated_user_data = existing_user_data | (update_data or {})
 
