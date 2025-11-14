@@ -209,8 +209,8 @@ The following URLs are available (assuming "/news" is app url):
     On success, response is a bunch of data about the user::
 
         {
-            'status':  'ok',      # no errors talking to CTMS
-            'status':  'error',   # errors talking to CTMS, see next field
+            'status':  'ok',      # no errors talking to backend
+            'status':  'error',   # errors talking to backend, see next field
             'desc':  'error message'   # details if status is error
             'email': 'email@address',
             'country': country code,
@@ -245,7 +245,7 @@ The following URLs are available (assuming "/news" is app url):
     sent to the email, containing a link to the existing subscriptions page
     with their token in it, so they can use it to manage their subscriptions.
 
-    If the user is known in CTMS, the message will be sent in their preferred
+    If the user is known, the message will be sent in their preferred
     language.
 
     If the email provided is not known, a 404 status is returned.
