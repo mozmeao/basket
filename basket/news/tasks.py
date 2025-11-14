@@ -60,7 +60,7 @@ def fxa_email_changed(
         # message older than our last update for this UID
         return
 
-    # Update CTMS
+    # Update backend
     user_data = get_user_data(fxa_id=fxa_id, extra_fields=["id", "email_id"], use_braze_backend=use_braze_backend)
     if user_data:
         if use_braze_backend:
