@@ -280,7 +280,7 @@ class TestAdminDSARInfoView(DSARViewTestBase):
             assert response.status_code == 200
             assert mock_braze.get.called
             assert mock_ctms.interface.get_by_alternate_id.called
-            assert b"User not found in CTMS and Braze" in response.content
+            assert b"User not found in CTMS or Braze" in response.content
 
     def test_post_invalid_email_ctms(self, mocker):
         self._create_admin_user()

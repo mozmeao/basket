@@ -128,7 +128,7 @@ class BasketAdminSite(admin.AdminSite):
                             contact = None
 
                     if not contact and fallback_to_ctms:
-                        context["vendor"] = "CTMS and Braze"
+                        context["vendor"] = "CTMS or Braze"
 
                     context["dsar_contact"] = contact
                     context["dsar_submitted"] = True
