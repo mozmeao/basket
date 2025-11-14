@@ -41,9 +41,9 @@ class FxaBearerToken(HttpBearer):
         try:
             oauth.verify_token(token, scope=["basket", "profile:email"])
             fxa_email = profile.get_email(token)
-        except fxa.errors.Error:
+        except fxa.errors.Error as e:
             # Unable to validate token or find email.
-            sentry_sdk.capture_exception()
+            sentry_sdk.capture_exception(e)
             return None
 
         if email == fxa_email:

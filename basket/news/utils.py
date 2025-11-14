@@ -167,16 +167,16 @@ def has_valid_fxa_oauth(request, email):
     # This will raise an exception if things are not as they should be.
     try:
         oauth.verify_token(token, scope=["basket", "profile:email"])
-    except fxa.errors.Error:
+    except fxa.errors.Error as e:
         # security failure or server problem. can't validate. return invalid
-        sentry_sdk.capture_exception()
+        sentry_sdk.capture_exception(e)
         return False
 
     try:
         fxa_email = profile.get_email(token)
-    except fxa.errors.Error:
+    except fxa.errors.Error as e:
         # security failure or server problem. can't validate. return invalid
-        sentry_sdk.capture_exception()
+        sentry_sdk.capture_exception(e)
         return False
 
     return email == fxa_email
