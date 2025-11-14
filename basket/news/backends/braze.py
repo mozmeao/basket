@@ -556,5 +556,5 @@ class Braze:
         return braze_data
 
 
-braze_tx = Braze(BrazeInterface(settings.BRAZE_BASE_API_URL, settings.BRAZE_TRANSACTIONAL_API_KEY))
-braze = Braze(BrazeInterface(settings.BRAZE_BASE_API_URL, settings.BRAZE_API_KEY))
+braze_tx = Braze(BrazeInterface(settings.BRAZE_BASE_API_URL, settings.BRAZE_API_KEY))
+braze = Braze(BrazeInterface(settings.BRAZE_BASE_API_URL, settings.BRAZE_NEWSLETTER_API_KEY))

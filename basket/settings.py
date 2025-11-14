@@ -211,8 +211,11 @@ WATCHMAN_CHECKS = (
 # Send confirmation messages
 SEND_CONFIRM_MESSAGES = config("SEND_CONFIRM_MESSAGES", parser=bool, default="false")
 
-BRAZE_TRANSACTIONAL_API_KEY = config("BRAZE_TRANSACTIONAL_API_KEY", default="")
+# Used for transactional emails
 BRAZE_API_KEY = config("BRAZE_API_KEY", default="")
+# Used for everything else
+BRAZE_NEWSLETTER_API_KEY = config("BRAZE_NEWSLETTER_API_KEY", default="")
+
 BRAZE_BASE_API_URL = config("BRAZE_BASE_API_URL", default="https://rest.iad-05.braze.com")
 # Map of Braze message IDs to the actual message IDs.
 # This is intended for older messages that are hard to change.
