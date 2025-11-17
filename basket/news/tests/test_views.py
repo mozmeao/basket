@@ -36,7 +36,7 @@ class UpdateUserMetaTests(TestCase):
         req = self.rf.post("/", {"country": "GB"})
         resp = views.user_meta(req, "the-dudes-token-man")
         assert resp.status_code == 200
-        uum_mock.delay.assert_called_with(
+        uum_mock.delay.assert_called_with_subset(
             "the-dudes-token-man",
             {"country": "gb"},
         )
@@ -45,7 +45,7 @@ class UpdateUserMetaTests(TestCase):
         req = self.rf.post("/", {"first_name": "The", "last_name": "Dude"})
         resp = views.user_meta(req, "the-dudes-token-man")
         assert resp.status_code == 200
-        uum_mock.delay.assert_called_with(
+        uum_mock.delay.assert_called_with_subset(
             "the-dudes-token-man",
             {"first_name": "The", "last_name": "Dude"},
         )
@@ -104,7 +104,7 @@ class SubscribeEmailValidationTest(TestCase):
             data={"email": "dude@黒川.日本", "newsletters": "firefox-os"},
         )
         views.subscribe(req)
-        update_user_mock.assert_called_with(
+        update_user_mock.assert_called_with_subset(
             req,
             views.SUBSCRIBE,
             data={"email": "dude@xn--5rtw95l.xn--wgv71a", "newsletters": "firefox-os"},
@@ -179,7 +179,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
 
         response = views.subscribe(request)
         self.assertEqual(response, self.update_user_task.return_value)
-        self.update_user_task.assert_called_with(
+        self.update_user_task.assert_called_with_subset(
             request,
             SUBSCRIBE,
             data=update_data,
@@ -299,7 +299,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
 
         self.assertEqual(response, self.update_user_task.return_value)
         self.process_email.assert_called_with(request_data["email"])
-        self.update_user_task.assert_called_with(
+        self.update_user_task.assert_called_with_subset(
             request,
             SUBSCRIBE,
             data=update_data,
@@ -333,7 +333,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
 
         self.assertEqual(response, self.update_user_task.return_value)
         self.process_email.assert_called_with(request_data["email"])
-        self.update_user_task.assert_called_with(
+        self.update_user_task.assert_called_with_subset(
             request,
             SUBSCRIBE,
             data=update_data,
@@ -363,7 +363,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
 
         self.assertEqual(response, self.update_user_task.return_value)
         self.process_email.assert_called_with(request_data["email"])
-        self.update_user_task.assert_called_with(
+        self.update_user_task.assert_called_with_subset(
             request,
             SUBSCRIBE,
             data=update_data,
@@ -396,7 +396,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         self.assertEqual(response, self.update_user_task.return_value)
         self.is_token.assert_called_with(request_data["token"])
         self.process_email.assert_called_with(email)
-        self.update_user_task.assert_called_with(
+        self.update_user_task.assert_called_with_subset(
             request,
             SUBSCRIBE,
             data=update_data,
@@ -424,7 +424,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         self.is_authorized.assert_called_with(request, self.process_email.return_value)
         self.assertEqual(response, self.update_user_task.return_value)
         self.process_email.assert_called_with("dude@example.com")
-        self.update_user_task.assert_called_with(
+        self.update_user_task.assert_called_with_subset(
             request,
             SUBSCRIBE,
             data=update_data,
@@ -451,7 +451,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
 
         self.assertEqual(response, self.update_user_task.return_value)
         self.process_email.assert_called_with("dude@example.com")
-        self.update_user_task.assert_called_with(
+        self.update_user_task.assert_called_with_subset(
             request,
             SUBSCRIBE,
             data=update_data,
@@ -868,7 +868,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TasksPatcherMixin, Test
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         metricsmock.assert_incr_once("news.views.fxa_callback", tags=["status:success"])
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-token/?fxa=1"
-        self.get_user_data.assert_called_with(email="dude@example.com", fxa_id="abc123")
+        self.get_user_data.assert_called_with_subset(email="dude@example.com", fxa_id="abc123")
 
     @mock_metrics
     def test_new_user_with_locale(self, metricsmock):
@@ -898,8 +898,8 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TasksPatcherMixin, Test
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         metricsmock.assert_incr_once("news.views.fxa_callback", tags=["status:success"])
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
-        self.get_user_data.assert_called_with(email="dude@example.com", fxa_id=None)
-        self.upsert_contact.assert_called_with(
+        self.get_user_data.assert_called_with_subset(email="dude@example.com", fxa_id=None)
+        self.upsert_contact.assert_called_with_subset(
             SUBSCRIBE,
             {
                 "email": "dude@example.com",
@@ -939,8 +939,8 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TasksPatcherMixin, Test
         fxa_profile_mock.get_profile.assert_called_with("access-token")
         metricsmock.assert_incr_once("news.views.fxa_callback", tags=["status:success"])
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
-        self.get_user_data.assert_called_with(email="dude@example.com", fxa_id=None)
-        self.upsert_contact.assert_called_with(
+        self.get_user_data.assert_called_with_subset(email="dude@example.com", fxa_id=None)
+        self.upsert_contact.assert_called_with_subset(
             SUBSCRIBE,
             {
                 "email": "dude@example.com",

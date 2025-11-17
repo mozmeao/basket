@@ -11,32 +11,22 @@ from django.utils.decorators import method_decorator
 import sentry_sdk
 
 from basket.base.forms import EmailForm, EmailListForm
-from basket.news.backends.braze import braze
-from basket.news.backends.ctms import (
-    CTMSNotFoundByEmailError,
-    CTMSNotFoundByEmailIDError,
-    ctms,
-)
-from basket.news.newsletters import newsletter_obj
+from basket.news.backends.braze import BrazeUserNotFoundByEmailError, braze
+from basket.news.backends.ctms import CTMSNotFoundByEmailError, CTMSNotFoundByEmailIDError, ctms, from_vendor
+from basket.news.newsletters import slug_to_vendor_id
 
 log = logging.getLogger(__name__)
 
 
-def get_newsletter_names(ctms_contact):
+def get_newsletter_names(contact):
     names = []
-    newsletters = ctms_contact["newsletters"]
-    for nl in newsletters:
-        if not nl["subscribed"]:
-            continue
-
-        nl_slug = nl["name"]
-        nl_obj = newsletter_obj(nl_slug)
-        if nl_obj:
-            nl_name = nl_obj.title
-        else:
-            nl_name = ""
-        names.append(f"{nl_name} (id: {nl_slug})")
-
+    newsletters = contact["newsletters"]
+    for newsletter_slug in newsletters:
+        try:
+            newsletter_id = slug_to_vendor_id(newsletter_slug)
+            names.append(f"{newsletter_slug} (id: {newsletter_id})")
+        except KeyError:
+            pass
     return names
 
 
@@ -104,27 +94,55 @@ class BasketAdminSite(admin.AdminSite):
     def dsar_info_view(self, request):
         form = EmailForm()
         context = {
-            "title": "DSAR: Fetch CTMS User Info by Email Address",
+            "title": "DSAR: Fetch User Info by Email Address",
         }
         if request.method == "POST":
             form = EmailForm(request.POST)
             if form.is_valid():
                 email = form.cleaned_data["email"]
-                try:
-                    contact = ctms.interface.get_by_alternate_id(primary_email=email)
-                except CTMSNotFoundByEmailError:
-                    contact = None
-                else:
-                    # response could be 200 with an empty list
-                    if contact:
-                        contact = contact[0]
-                        context["dsar_contact_pretty"] = json.dumps(contact, indent=2, sort_keys=True)
-                        context["newsletter_names"] = get_newsletter_names(contact)
-                    else:
-                        contact = None
 
-                context["dsar_contact"] = contact
-                context["dsar_submitted"] = True
+                def handler(email, use_braze_backend=False, fallback_to_ctms=False):
+                    context["vendor"] = "Braze" if use_braze_backend else "CTMS"
+                    try:
+                        if use_braze_backend:
+                            contact = braze.get(email=email)
+                            if not contact and fallback_to_ctms:
+                                context["vendor"] = "CTMS"
+                                contact = ctms.interface.get_by_alternate_id(primary_email=email)
+                        else:
+                            contact = ctms.interface.get_by_alternate_id(primary_email=email)
+                    except CTMSNotFoundByEmailError:
+                        contact = None
+                    else:
+                        # response could be 200 with an empty list
+                        if contact:
+                            if context["vendor"] == "Braze":
+                                context["dsar_contact_pretty"] = json.dumps(contact, indent=2, sort_keys=True)
+                            else:
+                                raw_contact = contact[0]
+                                contact = from_vendor(raw_contact)
+                                context["dsar_contact_pretty"] = json.dumps(raw_contact, indent=2, sort_keys=True)
+
+                            context["newsletter_names"] = get_newsletter_names(contact)
+                        else:
+                            contact = None
+
+                    if not contact and fallback_to_ctms:
+                        context["vendor"] = "CTMS or Braze"
+
+                    context["dsar_contact"] = contact
+                    context["dsar_submitted"] = True
+
+                if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
+                    try:
+                        handler(email, use_braze_backend=True, fallback_to_ctms=True)
+                    except Exception as e:
+                        sentry_sdk.capture_exception(e)
+                        handler(email, use_braze_backend=False)
+                elif settings.BRAZE_ONLY_READ_ENABLE:
+                    handler(email, use_braze_backend=True)
+                else:
+                    handler(email, use_braze_backend=False)
 
         context["dsar_form"] = form
         # adds default django admin context so sidebar shows etc.
@@ -152,20 +170,39 @@ class BasketAdminSite(admin.AdminSite):
                     "waitlists": "UNSUBSCRIBE",
                 }
 
-                # Process the emails.
-                for email in emails:
-                    contact = ctms.get(email=email)
-                    if contact:
-                        email_id = contact["email_id"]
-                        try:
-                            ctms.interface.patch_by_email_id(email_id, update_data)
-                        except CTMSNotFoundByEmailIDError:
-                            # should never reach here, but best to catch it anyway
-                            output.append(f"{email} not found in CTMS")
+                def handler(emails, use_braze_backend=False):
+                    # Process the emails.
+                    for email in emails:
+                        if use_braze_backend:
+                            contact = braze.get(email=email)
                         else:
-                            output.append(f"UNSUBSCRIBED {email} (ctms id: {email_id}).")
-                    else:
-                        output.append(f"{email} not found in CTMS")
+                            contact = ctms.get(email=email)
+                        if contact:
+                            email_id = contact["email_id"]
+                            try:
+                                if use_braze_backend:
+                                    braze.update(contact, {"optout": True})
+                                else:
+                                    ctms.interface.patch_by_email_id(email_id, update_data)
+                            except CTMSNotFoundByEmailIDError:
+                                # should never reach here, but best to catch it anyway
+                                output.append(f"{email} not found in CTMS")
+                            else:
+                                output.append(f"UNSUBSCRIBED {email} ({'Braze external id:' if use_braze_backend else 'ctms id:'} {email_id}).")
+                        else:
+                            output.append(f"{email} not found in {'Braze' if use_braze_backend else 'CTMS'}")
+
+                if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+                    try:
+                        handler(emails, use_braze_backend=True)
+                    except Exception as e:
+                        sentry_sdk.capture_exception(e)
+
+                    handler(emails, use_braze_backend=False)
+                elif settings.BRAZE_ONLY_WRITE_ENABLE:
+                    handler(emails, use_braze_backend=True)
+                else:
+                    handler(emails, use_braze_backend=False)
 
                 output = "\n".join(output)
 
@@ -173,7 +210,7 @@ class BasketAdminSite(admin.AdminSite):
                 form = EmailListForm()
 
         context = {
-            "title": "DSAR: Unsubscribe CTMS Users by Email Address",
+            "title": "DSAR: Unsubscribe Users by Email Address",
             "dsar_form": form,
             "dsar_output": output,
         }
@@ -192,35 +229,42 @@ class BasketAdminSite(admin.AdminSite):
                 emails = form.cleaned_data["emails"]
                 output = []
 
-                # Process the emails.
-                for email in emails:
-                    try:
-                        data = ctms.delete(email)
-                    except CTMSNotFoundByEmailError:
-                        output.append(f"{email} not found in CTMS")
-                    else:
-                        for contact in data:
-                            email_id = contact["email_id"]
-                            msg = f"DELETED {email} (ctms id: {email_id})."
-                            if contact["fxa_id"]:
-                                msg += " fxa: YES."
-                            if contact["mofo_contact_id"]:
-                                msg += " mofo: YES."
-                            output.append(msg)
-
-                    if settings.BRAZE_DELETE_USER_ENABLE:
+                def handler(emails, use_braze_backend=False):
+                    # Process the emails.
+                    for email in emails:
                         try:
-                            # Fetch braze_ids instead of external_ids so we also delete
-                            # alias-only profiles.
-                            response = braze.export_users(email, ["braze_id"])
-                            if response and response.get("users"):
-                                braze_ids = [user["braze_id"] for user in response["users"]]
-                                braze.delete_users(braze_ids)
-                                msg = f"DELETED {email} (braze ids: {', '.join(braze_ids)})."
+                            if use_braze_backend:
+                                data = braze.delete(email)
+                            else:
+                                data = ctms.delete(email)
+                        except CTMSNotFoundByEmailError:
+                            output.append(f"{email} not found in CTMS")
+                        except BrazeUserNotFoundByEmailError:
+                            output.append(f"{email} not found in Braze")
+                        else:
+                            for contact in data:
+                                email_id = contact["email_id"]
+                                if use_braze_backend:
+                                    msg = f"DELETED {email} from Braze (external_id: {email_id})."
+                                else:
+                                    msg = f"DELETED {email} from CTMS (ctms id: {email_id})."
+                                if contact.get("fxa_id"):
+                                    msg += " fxa: YES."
+                                if contact.get("mofo_contact_id"):
+                                    msg += " mofo: YES."
                                 output.append(msg)
-                        except Exception as e:
-                            sentry_sdk.capture_exception()
-                            log.error(f"Braze user deletion error: {e}")
+
+                if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+                    try:
+                        handler(emails, use_braze_backend=True)
+                    except Exception as e:
+                        sentry_sdk.capture_exception(e)
+
+                    handler(emails, use_braze_backend=False)
+                elif settings.BRAZE_ONLY_WRITE_ENABLE:
+                    handler(emails, use_braze_backend=True)
+                else:
+                    handler(emails, use_braze_backend=False)
 
                 output = "\n".join(output)
 
@@ -228,7 +272,7 @@ class BasketAdminSite(admin.AdminSite):
                 form = EmailListForm()
 
         context = {
-            "title": "DSAR: Delete CTMS Data by Email Address",
+            "title": "DSAR: Delete Data by Email Address",
             "dsar_form": form,
             "dsar_output": output,
         }

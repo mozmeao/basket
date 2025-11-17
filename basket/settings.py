@@ -211,7 +211,11 @@ WATCHMAN_CHECKS = (
 # Send confirmation messages
 SEND_CONFIRM_MESSAGES = config("SEND_CONFIRM_MESSAGES", parser=bool, default="false")
 
+# Used for transactional emails
 BRAZE_API_KEY = config("BRAZE_API_KEY", default="")
+# Used for everything else
+BRAZE_NEWSLETTER_API_KEY = config("BRAZE_NEWSLETTER_API_KEY", default="")
+
 BRAZE_BASE_API_URL = config("BRAZE_BASE_API_URL", default="https://rest.iad-05.braze.com")
 # Map of Braze message IDs to the actual message IDs.
 # This is intended for older messages that are hard to change.
@@ -220,7 +224,11 @@ BRAZE_MESSAGE_ID_MAP = {
     "firefox-mobile-welcome": "download-firefox-mobile",
 }
 
-BRAZE_DELETE_USER_ENABLE = config("BRAZE_DELETE_USER_ENABLE", parser=bool, default="false")
+BRAZE_PARALLEL_WRITE_ENABLE = config("BRAZE_PARALLEL_WRITE_ENABLE", parser=bool, default="false")
+BRAZE_ONLY_WRITE_ENABLE = config("BRAZE_ONLY_WRITE_ENABLE", parser=bool, default="false")
+BRAZE_READ_WITH_FALLBACK_ENABLE = config("BRAZE_READ_WITH_FALLBACK_ENABLE", parser=bool, default="false")
+BRAZE_ONLY_READ_ENABLE = config("BRAZE_ONLY_READ_ENABLE", parser=bool, default="false")
+BRAZE_CTMS_SHIM_ENABLE = config("BRAZE_CTMS_SHIM_ENABLE", parser=bool, default="false")
 
 # Mozilla CTMS
 CTMS_ENV = config("CTMS_ENV", default="").lower()
@@ -429,6 +437,7 @@ FXA_EVENTS_QUEUE_REGION = config("FXA_EVENTS_QUEUE_REGION", default="")
 FXA_EVENTS_QUEUE_URL = config("FXA_EVENTS_QUEUE_URL", default="")
 FXA_EVENTS_QUEUE_WAIT_TIME = config("FXA_EVENTS_QUEUE_WAIT_TIME", parser=int, default="10")
 FXA_EVENTS_SNITCH_ID = config("FXA_EVENTS_SNITCH_ID", default="")
+FXA_EVENTS_ENDPOINT_URL = config("FXA_EVENTS_ENDPOINT_URL", default="") or None
 
 # stage or production
 # https://github.com/mozilla/PyFxA/blob/main/fxa/constants.py

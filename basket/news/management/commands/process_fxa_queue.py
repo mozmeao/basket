@@ -18,6 +18,7 @@ from basket.news.tasks import (
     fxa_newsletters_update,
     fxa_verified,
 )
+from basket.news.utils import generate_token
 
 FXA_EVENT_TYPES = {
     "delete": fxa_delete,
@@ -55,6 +56,7 @@ class Command(BaseCommand):
             region_name=settings.FXA_EVENTS_QUEUE_REGION,
             aws_access_key_id=settings.FXA_EVENTS_ACCESS_KEY_ID,
             aws_secret_access_key=settings.FXA_EVENTS_SECRET_ACCESS_KEY,
+            endpoint_url=settings.FXA_EVENTS_ENDPOINT_URL,
         )
         queue = sqs.Queue(settings.FXA_EVENTS_QUEUE_URL)
 
@@ -100,7 +102,33 @@ class Command(BaseCommand):
                         continue
 
                     try:
-                        FXA_EVENT_TYPES[event_type].delay(event)
+                        if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+                            pre_generated_token = generate_token()
+                            pre_generated_email_id = generate_token()
+                            FXA_EVENT_TYPES[event_type].delay(
+                                event,
+                                use_braze_backend=True,
+                                should_send_tx_messages=False,
+                                pre_generated_token=pre_generated_token,
+                                pre_generated_email_id=pre_generated_email_id,
+                            )
+                            FXA_EVENT_TYPES[event_type].delay(
+                                event,
+                                use_braze_backend=False,
+                                should_send_tx_messages=True,
+                                pre_generated_token=pre_generated_token,
+                                pre_generated_email_id=pre_generated_email_id,
+                            )
+                        elif settings.BRAZE_ONLY_WRITE_ENABLE:
+                            FXA_EVENT_TYPES[event_type].delay(
+                                event,
+                                use_braze_backend=True,
+                            )
+                        else:
+                            FXA_EVENT_TYPES[event_type].delay(
+                                event,
+                                use_braze_backend=False,
+                            )
                     except Exception:
                         # something's wrong with the queue. try again.
                         metrics.incr("fxa.events.message", tags=["info:queue_error", f"event:{event_type}"])

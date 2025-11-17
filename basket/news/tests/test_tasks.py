@@ -78,7 +78,7 @@ class FxAVerifiedTests(TestCase):
             "service": "sync",
         }
         fxa_verified(data)
-        upsert_mock.assert_called_with(
+        upsert_mock.assert_called_with_subset(
             SUBSCRIBE,
             {
                 "email": data["email"],
@@ -103,7 +103,7 @@ class FxAVerifiedTests(TestCase):
             "service": "sync",
         }
         fxa_verified(data)
-        upsert_mock.assert_called_with(
+        upsert_mock.assert_called_with_subset(
             SUBSCRIBE,
             {
                 "email": data["email"],
@@ -134,7 +134,7 @@ class FxAVerifiedTests(TestCase):
             "countryCode": "DE",
         }
         fxa_verified(data)
-        upsert_mock.assert_called_with(
+        upsert_mock.assert_called_with_subset(
             SUBSCRIBE,
             {
                 "email": data["email"],
@@ -160,7 +160,7 @@ class FxAVerifiedTests(TestCase):
             "locale": "en-US,en",
         }
         fxa_verified(data)
-        upsert_mock.assert_called_with(
+        upsert_mock.assert_called_with_subset(
             SUBSCRIBE,
             {
                 "email": data["email"],
@@ -218,7 +218,7 @@ class FxALoginTests(TestCase):
     def test_fxa_login_task_with_utm_data(self, upsert_mock):
         data = self.get_data()
         fxa_login(data)
-        upsert_mock.delay.assert_called_with(
+        upsert_mock.delay.assert_called_with_subset(
             SUBSCRIBE,
             {
                 "email": "the.dude@example.com",
@@ -294,8 +294,8 @@ class FxAEmailChangedTests(TestCase):
         fxa_email_changed(data)
         gud_mock.assert_has_calls(
             [
-                call(fxa_id=data["uid"], extra_fields=["id", "email_id"]),
-                call(email=data["email"], extra_fields=["id", "email_id"]),
+                call(fxa_id=data["uid"], extra_fields=["id", "email_id"], use_braze_backend=False),
+                call(email=data["email"], extra_fields=["id", "email_id"], use_braze_backend=False),
             ],
         )
         ctms_mock.update.assert_called_with(
@@ -316,8 +316,8 @@ class FxAEmailChangedTests(TestCase):
         fxa_email_changed(data)
         gud_mock.assert_has_calls(
             [
-                call(fxa_id=data["uid"], extra_fields=["id", "email_id"]),
-                call(email=data["email"], extra_fields=["id", "email_id"]),
+                call(fxa_id=data["uid"], extra_fields=["id", "email_id"], use_braze_backend=False),
+                call(email=data["email"], extra_fields=["id", "email_id"], use_braze_backend=False),
             ],
         )
         ctms_mock.update.assert_not_called()
@@ -347,8 +347,8 @@ class FxAEmailChangedTests(TestCase):
         fxa_email_changed(data)
         gud_mock.assert_has_calls(
             [
-                call(fxa_id=data["uid"], extra_fields=["id", "email_id"]),
-                call(email=data["email"], extra_fields=["id", "email_id"]),
+                call(fxa_id=data["uid"], extra_fields=["id", "email_id"], use_braze_backend=False),
+                call(email=data["email"], extra_fields=["id", "email_id"], use_braze_backend=False),
             ],
         )
         ctms_mock.update.assert_not_called()
@@ -496,7 +496,11 @@ class TestGetFxaUserData(TestCase):
         fxa_user_data = get_fxa_user_data("123", "test@example.com")
         assert user_data == fxa_user_data
 
-        mock_gud.assert_called_once_with(fxa_id="123", extra_fields=["id", "email_id"])
+        mock_gud.assert_called_once_with(
+            fxa_id="123",
+            extra_fields=["id", "email_id"],
+            use_braze_backend=False,
+        )
         mock_ctms.update.assert_not_called()
 
     def test_found_by_fxa_id_email_mismatch(self, mock_gud, mock_ctms):
@@ -512,7 +516,11 @@ class TestGetFxaUserData(TestCase):
         fxa_user_data = get_fxa_user_data("123", "fxa@example.com")
         assert user_data == fxa_user_data
 
-        mock_gud.assert_called_once_with(fxa_id="123", extra_fields=["id", "email_id"])
+        mock_gud.assert_called_once_with(
+            fxa_id="123",
+            extra_fields=["id", "email_id"],
+            use_braze_backend=False,
+        )
         mock_ctms.update.assert_called_once_with(
             user_data,
             {"fxa_primary_email": "fxa@example.com"},
@@ -531,8 +539,16 @@ class TestGetFxaUserData(TestCase):
         assert user_data == fxa_user_data
 
         assert mock_gud.call_count == 2
-        mock_gud.assert_any_call(fxa_id="123", extra_fields=["id", "email_id"])
-        mock_gud.assert_called_with(email="test@example.com", extra_fields=["id", "email_id"])
+        mock_gud.assert_any_call(
+            fxa_id="123",
+            extra_fields=["id", "email_id"],
+            use_braze_backend=False,
+        )
+        mock_gud.assert_called_with(
+            email="test@example.com",
+            extra_fields=["id", "email_id"],
+            use_braze_backend=False,
+        )
         mock_ctms.update.assert_not_called()
 
 
@@ -560,51 +576,51 @@ class TestFxaDelete(TestCase):
         )
 
 
-@patch("basket.news.tasks.braze")
+@patch("basket.news.tasks.braze_tx")
 def test_send_tx_message(mock_braze, metricsmock):
     send_tx_message("test@example.com", "download-foo", "en-US")
-    mock_braze.track_user.assert_called_once_with("test@example.com", event="send-download-foo-en-US", user_data=None)
+    mock_braze.interface.track_user.assert_called_once_with("test@example.com", event="send-download-foo-en-US", user_data=None)
     metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
 
 
-@patch("basket.news.tasks.braze")
+@patch("basket.news.tasks.braze_tx")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
 def test_send_tx_messages(mock_model, mock_braze, metricsmock):
     """Test multipe message IDs, but only one is a transactional message."""
     mock_model.side_effect = [BrazeTxEmailMessage(message_id="download-foo", language="en-US"), None]
     send_tx_messages("test@example.com", "en-US", ["newsletter", "download-foo"])
-    mock_braze.track_user.assert_called_once_with("test@example.com", event="send-download-foo-en-US", user_data=None)
+    mock_braze.interface.track_user.assert_called_once_with("test@example.com", event="send-download-foo-en-US", user_data=None)
     metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
 
 
 @override_settings(BRAZE_MESSAGE_ID_MAP={"download-zzz": "download-foo"})
-@patch("basket.news.tasks.braze")
+@patch("basket.news.tasks.braze_tx")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
 def test_send_tx_messages_with_map(mock_model, mock_braze, metricsmock):
     """Test multipe message IDs, but only one is a transactional message."""
     mock_model.side_effect = [BrazeTxEmailMessage(message_id="download-foo", language="en-US"), None]
     send_tx_messages("test@example.com", "en-US", ["newsletter", "download-foo"])
-    mock_braze.track_user.assert_called_once_with("test@example.com", event="send-download-foo-en-US", user_data=None)
+    mock_braze.interface.track_user.assert_called_once_with("test@example.com", event="send-download-foo-en-US", user_data=None)
     metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:download-foo", "language:en-US"])
 
 
-@patch("basket.news.tasks.braze")
+@patch("basket.news.tasks.braze_tx")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
 def test_send_confirm_message(mock_get_message, mock_braze, metricsmock):
     mock_get_message.return_value = BrazeTxEmailMessage(message_id="newsletter-confirm-fx", language="en-US")
     send_confirm_message("test@example.com", "abc123", "en", "fx", "fed654")
-    mock_braze.track_user.assert_called_once_with(
+    mock_braze.interface.track_user.assert_called_once_with(
         "test@example.com", event="send-newsletter-confirm-fx-en-US", user_data={"basket_token": "abc123", "email_id": "fed654"}
     )
     metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
 
 
-@patch("basket.news.tasks.braze")
+@patch("basket.news.tasks.braze_tx")
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
 def test_send_recovery_message(mock_get_message, mock_braze, metricsmock):
     mock_get_message.return_value = BrazeTxEmailMessage(message_id="newsletter-confirm-fx", language="en-US")
     send_recovery_message("test@example.com", "abc123", "en", "fed654")
-    mock_braze.track_user.assert_called_once_with(
+    mock_braze.interface.track_user.assert_called_once_with(
         "test@example.com", event="send-newsletter-confirm-fx-en-US", user_data={"basket_token": "abc123", "email_id": "fed654"}
     )
     metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])

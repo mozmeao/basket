@@ -5,6 +5,7 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.views.decorators.cache import cache_page, never_cache
 
+import sentry_sdk
 from ninja import NinjaAPI, Router
 from ninja.decorators import decorate_view
 from ninja.errors import Throttled, ValidationError
@@ -82,7 +83,27 @@ def confirm_user(request, token: uuid.UUID):
     if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
         return _maintenance_error()
 
-    tasks.confirm_user.delay(str(token))
+    if settings.BRAZE_PARALLEL_WRITE_ENABLE:
+        tasks.confirm_user.delay(
+            str(token),
+            use_braze_backend=True,
+            extra_metrics_tags=["backend:braze"],
+        )
+        tasks.confirm_user.delay(
+            str(token),
+            use_braze_backend=False,
+        )
+    elif settings.BRAZE_ONLY_WRITE_ENABLE:
+        tasks.confirm_user.delay(
+            str(token),
+            use_braze_backend=True,
+            extra_metrics_tags=["backend:braze"],
+        )
+    else:
+        tasks.confirm_user.delay(
+            str(token),
+            use_braze_backend=False,
+        )
 
     return {"status": "ok"}
 
@@ -107,7 +128,32 @@ def recover_user(request, body: RecoverUserSchema):
         return {"status": "ok"}
 
     try:
-        user_data = get_user_data(email=body.email, extra_fields=["email_id"])
+        if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
+            try:
+                user_data = get_user_data(
+                    email=body.email,
+                    extra_fields=["email_id"],
+                    use_braze_backend=True,
+                )
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
+                user_data = get_user_data(
+                    email=body.email,
+                    extra_fields=["email_id"],
+                    use_braze_backend=False,
+                )
+        elif settings.BRAZE_ONLY_READ_ENABLE:
+            user_data = get_user_data(
+                email=body.email,
+                extra_fields=["email_id"],
+                use_braze_backend=True,
+            )
+        else:
+            user_data = get_user_data(
+                email=body.email,
+                extra_fields=["email_id"],
+                use_braze_backend=False,
+            )
     except NewsletterException as exc:
         return _unknown_error(exc)
 
@@ -160,7 +206,36 @@ def lookup_user(request, email: str | None = None, token: uuid.UUID | None = Non
             return _invalid_email()
 
     try:
-        user_data = get_user_data(email=email, token=token, masked=masked)
+        if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
+            try:
+                user_data = get_user_data(
+                    email=email,
+                    token=token,
+                    masked=masked,
+                    use_braze_backend=True,
+                )
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
+                user_data = get_user_data(
+                    email=email,
+                    token=token,
+                    masked=masked,
+                    use_braze_backend=False,
+                )
+        elif settings.BRAZE_ONLY_READ_ENABLE:
+            user_data = get_user_data(
+                email=email,
+                token=token,
+                masked=masked,
+                use_braze_backend=True,
+            )
+        else:
+            user_data = get_user_data(
+                email=email,
+                token=token,
+                masked=masked,
+                use_braze_backend=False,
+            )
     except NewsletterException as exc:
         return _unknown_error(exc)
 

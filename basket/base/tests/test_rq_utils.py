@@ -1,4 +1,5 @@
 from unittest.mock import patch
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.test.utils import override_settings
@@ -18,6 +19,8 @@ from basket.base.rq import (
 from basket.base.tests.tasks import failing_job, retryable_job
 from basket.news.models import FailedTask
 from basket.news.utils import NewsletterException
+
+default_rq_url = settings.RQ_URL
 
 
 @pytest.mark.django_db
@@ -46,7 +49,7 @@ class TestRQUtils:
         """
         assert rq_exponential_backoff() == [5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
 
-    @override_settings(RQ_URL="redis://redis:6379/2")
+    @override_settings(RQ_URL=default_rq_url)
     def test_get_redis_connection(self):
         """
         Test that the get_redis_connection function returns a Redis connection with params we expect.
@@ -58,7 +61,12 @@ class TestRQUtils:
         # Test with no URL argument, but with RQ_URL in the settings.
         # Note: The RQ_URL being used also sets this back to the "default" for tests that follow.
         connection = get_redis_connection(force=True)
-        assert connection.connection_pool.connection_kwargs == {"host": "redis", "port": 6379, "db": 2}
+        parsed_default_rq_url = urlparse(default_rq_url)
+        assert connection.connection_pool.connection_kwargs == {
+            "host": parsed_default_rq_url.hostname,
+            "port": parsed_default_rq_url.port,
+            "db": 2,
+        }
 
     @override_settings(REDIS_URL=None, RQ_URL=None)
     def test_get_redis_connection_none(self):
@@ -69,7 +77,7 @@ class TestRQUtils:
             get_redis_connection(force=True)
 
         # Set back to the "default" for tests that follow since the connection is cached in the module.
-        get_redis_connection("redis://redis:6379/2", force=True)
+        get_redis_connection(default_rq_url, force=True)
 
     @override_settings(RQ_DEFAULT_QUEUE="")
     def test_get_queue(self):

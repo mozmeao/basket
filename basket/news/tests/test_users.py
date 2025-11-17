@@ -26,7 +26,7 @@ class UserTest(TestCase):
         """If request is POST, it should attempt to update the user's info."""
         update_user_task.return_value = HttpResponse()
         resp = self.client.post(self.url, data={"fake": "data"})
-        update_user_task.assert_called_with(
+        update_user_task.assert_called_with_subset(
             resp.wsgi_request,
             SET,
             {"fake": "data", "token": self.token},
