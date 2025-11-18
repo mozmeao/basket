@@ -181,7 +181,7 @@ class BasketAdminSite(admin.AdminSite):
                             email_id = contact["email_id"]
                             try:
                                 if use_braze_backend:
-                                    braze.update(contact, {"optout": True})
+                                    braze.update(contact, {"optout": True, "unsub_reason": update_data["email"]["unsubscribe_reason"]})
                                 else:
                                     ctms.interface.patch_by_email_id(email_id, update_data)
                             except CTMSNotFoundByEmailIDError:

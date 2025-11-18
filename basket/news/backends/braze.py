@@ -586,7 +586,7 @@ class Braze:
             "email": updated_user_data.get("email"),
             "update_timestamp": now,
             "_update_existing_only": bool(existing_user_data),
-            "email_subscribe": "opted_in" if updated_user_data.get("optin") else "unsubscribed" if updated_user_data.get("optout") else "subscribed",
+            "email_subscribe": "unsubscribed" if updated_user_data.get("optout") else "opted_in" if updated_user_data.get("optin") else "subscribed",
             "subscription_groups": subscription_groups,
             "user_attributes_v1": [
                 {

@@ -365,7 +365,7 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
 
         assert response.status_code == 200
         assert mock_braze.get.call_count == 3
-        mock_braze.update.assert_has_calls([call(user, {"optout": True}) for user in mock_users])
+        mock_braze.update.assert_has_calls([call(user, {"optout": True, "unsub_reason": "User requested global unsubscribe"}) for user in mock_users])
         assert "UNSUBSCRIBED test1@example.com (Braze external id: 123)." in response.context["dsar_output"]
         assert "UNSUBSCRIBED test2@example.com (Braze external id: 456)." in response.context["dsar_output"]
         assert "UNSUBSCRIBED test3@example.com (Braze external id: 789)." in response.context["dsar_output"]
@@ -392,7 +392,9 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
 
         assert response.status_code == 200
         assert mock_braze.get.called
-        mock_braze.update.assert_called_with({"email_id": "123", "fxa_id": "", "mofo_contact_id": ""}, {"optout": True})
+        mock_braze.update.assert_called_with(
+            {"email_id": "123", "fxa_id": "", "mofo_contact_id": ""}, {"optout": True, "unsub_reason": "User requested global unsubscribe"}
+        )
         assert "UNSUBSCRIBED test@example.com (Braze external id: 123)." in response.context["dsar_output"]
 
     def test_post_unknown_ctms_user(self, mocker):
