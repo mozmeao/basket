@@ -1,3 +1,4 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.test.utils import override_settings
@@ -32,6 +33,41 @@ class TestDecorator:
         empty_job.delay("arg1")
 
         mock_queue.enqueue_call.assert_called_once_with(
+            empty_job,
+            args=("arg1",),
+            kwargs={},
+            meta={
+                "task_name": f"{empty_job.__module__}.{empty_job.__qualname__}",
+                "start_time": 1672662896.123456,
+            },
+            retry=None,  # Retry logic is tested above, so no need to test it here.
+            result_ttl=0,
+            on_failure=mock_callback(),
+            on_success=mock_callback(),
+        )
+
+    @override_settings(RQ_RESULT_TTL=0)
+    @override_settings(RQ_MAX_RETRIES=0)
+    @patch("basket.base.rq.Callback")
+    @patch("basket.base.rq.get_queue")
+    @patch("basket.base.rq.Queue")
+    def test_rq_delayed_task(
+        self,
+        mock_get_queue,
+        mock_queue,
+        mock_callback,
+    ):
+        """
+        Test that the decorator uses queue.enqueue_in if an enqueue_in kwarg was passed.
+        It should pop `enqueue_in` from kwargs so it isn't passed to the function.
+        """
+        mock_get_queue.return_value = mock_queue
+
+        enqueue_in = timedelta(minutes=5)
+        empty_job.delay("arg1", enqueue_in=enqueue_in)
+
+        mock_queue.enqueue_in.assert_called_once_with(
+            enqueue_in,
             empty_job,
             args=("arg1",),
             kwargs={},
