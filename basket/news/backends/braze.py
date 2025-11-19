@@ -570,7 +570,7 @@ class Braze:
             raise ValueError("Missing Braze external_id")
 
         subscription_groups = []
-        if update_data and isinstance(update_data.get("newsletters"), dict):
+        if update_data and not updated_user_data.get("optout") and isinstance(update_data.get("newsletters"), dict):
             for slug, is_subscribed in update_data["newsletters"].items():
                 vendor_id = slug_to_vendor_id(slug)
                 if is_valid_uuid(vendor_id):

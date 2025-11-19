@@ -471,6 +471,61 @@ def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock
         assert braze_instance.to_vendor(None, update_data) == expected
 
 
+@mock.patch(
+    "basket.news.newsletters._newsletters",
+    return_value=mock_newsletters,
+)
+@mock.patch(
+    "basket.news.newsletters.newsletter_languages",
+    return_value=["en"],
+)
+def test_to_vendor_optout_sends_no_subscription_groups(mock_newsletter_languages, mock_newsletters, braze_client):
+    braze_instance = Braze(braze_client)
+    dt = timezone.now()
+    update_data = {
+        "newsletters": {"bar-news": True},
+        "email": "test@example.com",
+        "token": "abc",
+        "email_id": "123",
+        "optout": True,
+    }
+    expected = {
+        "attributes": [
+            {
+                "_update_existing_only": False,
+                "email": "test@example.com",
+                "external_id": "123",
+                "language": "en",
+                "email_subscribe": "unsubscribed",
+                "subscription_groups": [],
+                "update_timestamp": dt.isoformat(),
+                "user_attributes_v1": [
+                    {
+                        "email_lang": "en",
+                        "created_at": {
+                            "$time": dt.isoformat(),
+                        },
+                        "basket_token": "abc",
+                        "fxa_first_service": None,
+                        "fxa_lang": None,
+                        "fxa_primary_email": None,
+                        "fxa_created_at": None,
+                        "has_fxa": False,
+                        "fxa_deleted": None,
+                        "mailing_country": None,
+                        "unsub_reason": None,
+                        "updated_at": {
+                            "$time": dt.isoformat(),
+                        },
+                    }
+                ],
+            }
+        ]
+    }
+    with freeze_time(dt):
+        assert braze_instance.to_vendor(None, update_data) == expected
+
+
 @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
 @mock.patch(
     "basket.news.newsletters._newsletters",
