@@ -37,13 +37,23 @@ def rq_task(func):
         else:
             queue = get_queue()
             enqueue_kwargs = get_enqueue_kwargs(func)
+            enqueue_in = kwargs.pop("enqueue_in", None)
 
-            return queue.enqueue_call(
-                func,
-                args=args,
-                kwargs=kwargs,
-                **enqueue_kwargs,
-            )
+            if enqueue_in:
+                return queue.enqueue_in(
+                    enqueue_in,
+                    func,
+                    args=args,
+                    kwargs=kwargs,
+                    **enqueue_kwargs,
+                )
+            else:
+                return queue.enqueue_call(
+                    func,
+                    args=args,
+                    kwargs=kwargs,
+                    **enqueue_kwargs,
+                )
 
     func.delay = delay
     return func

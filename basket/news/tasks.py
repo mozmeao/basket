@@ -537,7 +537,7 @@ def confirm_user(token, use_braze_backend=False, extra_metrics_tags=None):
         raise BasketError(f"token has no email in {'Braze' if use_braze_backend else 'CTMS'}")
 
     if use_braze_backend:
-        braze.update(user_data, {"optin": True})
+        braze.update(user_data, {"optin": True, "optout": False})
     else:
         ctms.update(user_data, {"optin": True})
 

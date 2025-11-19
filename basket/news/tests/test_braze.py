@@ -712,7 +712,10 @@ def test_braze_add(mock_newsletters, braze_client):
     "basket.news.newsletters._newsletters",
     return_value=mock_newsletters,
 )
-def test_braze_add_with_fxa_id(mock_newsletters, braze_client):
+@mock.patch(
+    "basket.news.backends.braze.add_fxa_id_alias_task.delay",
+)
+def test_braze_add_with_fxa_id(add_fxa_id, mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     fxa_id = "fxa123"
     new_user = {"email": "test@example.com", "email_id": "123", "token": "abc", "newsletters": {"foo-news": True}, "country": "US", "fxa_id": fxa_id}
@@ -727,8 +730,11 @@ def test_braze_add_with_fxa_id(mock_newsletters, braze_client):
             assert response == expected
             assert api_requests[0].url == "http://test.com/users/track"
             assert api_requests[0].json() == braze_instance.to_vendor(None, new_user)
-            assert api_requests[1].url == "http://test.com/users/alias/new"
-            assert api_requests[1].json() == {"user_aliases": [{"alias_name": fxa_id, "alias_label": "fxa_id", "external_id": "123"}]}
+            add_fxa_id.assert_called_once_with(
+                "123",
+                fxa_id,
+                enqueue_in=braze.BRAZE_OPTIMAL_DELAY,
+            )
 
 
 @override_settings(BRAZE_PARALLEL_WRITE_ENABLE=True)
@@ -736,7 +742,10 @@ def test_braze_add_with_fxa_id(mock_newsletters, braze_client):
     "basket.news.newsletters._newsletters",
     return_value=mock_newsletters,
 )
-def test_braze_add_with_external_id_migration(mock_newsletters, braze_client):
+@mock.patch(
+    "basket.news.backends.braze.migrate_external_id_task.delay",
+)
+def test_braze_add_with_external_id_migration(migrate_external_id, mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     new_user = {
         "email": "test@example.com",
@@ -748,30 +757,18 @@ def test_braze_add_with_external_id_migration(mock_newsletters, braze_client):
 
     with requests_mock.mock() as m:
         m.register_uri("POST", "http://test.com/users/track", json={})
-        m.register_uri(
-            "POST",
-            "http://test.com/users/external_ids/rename",
-            json={
-                "message": "success",
-                "external_ids": [new_user["token"]],
-            },
-        )
-        expected = {"email": {"email_id": new_user["token"]}}
+        expected = {"email": {"email_id": new_user["email_id"]}}
         with freeze_time():
             response = braze_instance.add(new_user)
             api_requests = m.request_history
             assert response == expected
             assert api_requests[0].url == "http://test.com/users/track"
             assert api_requests[0].json() == braze_instance.to_vendor(None, new_user)
-            assert api_requests[1].url == "http://test.com/users/external_ids/rename"
-            assert api_requests[1].json() == {
-                "external_id_renames": [
-                    {
-                        "current_external_id": "123",
-                        "new_external_id": "abc",
-                    },
-                ],
-            }
+            migrate_external_id.assert_called_once_with(
+                "123",
+                "abc",
+                enqueue_in=braze.BRAZE_OPTIMAL_DELAY,
+            )
 
 
 @override_settings(BRAZE_PARALLEL_WRITE_ENABLE=True)
@@ -779,7 +776,10 @@ def test_braze_add_with_external_id_migration(mock_newsletters, braze_client):
     "basket.news.newsletters._newsletters",
     return_value=mock_newsletters,
 )
-def test_braze_add_migrates_external_id(mock_newsletters, braze_client):
+@mock.patch(
+    "basket.news.backends.braze.migrate_external_id_task.delay",
+)
+def test_braze_add_migrates_external_id(migrate_external_id, mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     new_user = {
         "email": "test@example.com",
@@ -800,9 +800,7 @@ def test_braze_add_migrates_external_id(mock_newsletters, braze_client):
         )
         braze_instance.add(new_user)
 
-        # Assert the rename endpoint was called
-        rename_calls = [call for call in m.request_history if call.url == "http://test.com/users/external_ids/rename"]
-        assert len(rename_calls) == 1
+        migrate_external_id.assert_called_once()
 
 
 @mock.patch(
@@ -831,7 +829,15 @@ def test_braze_update(mock_newsletter_languages, mock_newsletters, braze_client)
     "basket.news.newsletters.newsletter_languages",
     return_value=["en"],
 )
-def test_braze_update_with_fxa_id_change(mock_newsletter_languages, mock_newsletters, braze_client):
+@mock.patch(
+    "basket.news.backends.braze.add_fxa_id_alias_task.delay",
+)
+def test_braze_update_with_fxa_id_change(
+    add_fxa_id,
+    mock_newsletter_languages,
+    mock_newsletters,
+    braze_client,
+):
     braze_instance = Braze(braze_client)
     update_data = {"country": "CA", "fxa_id": "new_fxa_id"}
     with requests_mock.mock() as m:
@@ -842,10 +848,11 @@ def test_braze_update_with_fxa_id_change(mock_newsletter_languages, mock_newslet
             api_requests = m.request_history
             assert api_requests[0].url == "http://test.com/users/track"
             assert api_requests[0].json() == braze_instance.to_vendor(mock_basket_user_data, update_data)
-            assert api_requests[1].url == "http://test.com/users/alias/new"
-            assert api_requests[1].json() == {
-                "user_aliases": [{"alias_name": "new_fxa_id", "alias_label": "fxa_id", "external_id": mock_basket_user_data["email_id"]}]
-            }
+            add_fxa_id.assert_called_once_with(
+                mock_basket_user_data["email_id"],
+                "new_fxa_id",
+                enqueue_in=braze.BRAZE_OPTIMAL_DELAY,
+            )
 
 
 def test_braze_delete(braze_client):

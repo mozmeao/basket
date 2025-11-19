@@ -1,6 +1,7 @@
 import json
 import logging
 import warnings
+from datetime import timedelta
 from enum import Enum
 from urllib.parse import urljoin, urlparse, urlunparse
 
@@ -9,11 +10,36 @@ from django.utils import timezone
 
 import requests
 
+from basket.base.decorators import rq_task
 from basket.base.utils import is_valid_uuid
 from basket.news.backends.ctms import ctms, process_country, process_lang
 from basket.news.newsletters import slug_to_vendor_id, vendor_id_to_slug
 
 log = logging.getLogger(__name__)
+
+# We need to wait 5 minutes after creating a user to rename its external_id or add
+# an alias.
+# See: https://www.braze.com/docs/api/api_limits/#optimal-delay-between-endpoints
+BRAZE_OPTIMAL_DELAY = timedelta(minutes=5)
+
+
+# These tasks cannot be placed in basket/news/tasks.py because it would
+# create a circular dependency.
+@rq_task
+def migrate_external_id_task(current_external_id, new_external_id):
+    braze.interface.migrate_external_id(
+        [
+            {
+                "current_external_id": current_external_id,
+                "new_external_id": new_external_id,
+            }
+        ]
+    )
+
+
+@rq_task
+def add_fxa_id_alias_task(external_id, fxa_id):
+    braze.interface.add_fxa_id_alias(external_id, fxa_id)
 
 
 # Braze errors: https://www.braze.com/docs/api/errors/
@@ -408,19 +434,19 @@ class Braze:
         self.interface.save_user(braze_user_data)
 
         if data.get("fxa_id"):
-            self.interface.add_fxa_id_alias(external_id, data["fxa_id"])
+            add_fxa_id_alias_task.delay(
+                external_id,
+                data["fxa_id"],
+                enqueue_in=BRAZE_OPTIMAL_DELAY,
+            )
 
         token = data.get("token")
         if token and settings.BRAZE_PARALLEL_WRITE_ENABLE:
-            self.interface.migrate_external_id(
-                [
-                    {
-                        "current_external_id": external_id,
-                        "new_external_id": token,
-                    }
-                ]
+            migrate_external_id_task.delay(
+                external_id,
+                token,
+                enqueue_in=BRAZE_OPTIMAL_DELAY,
             )
-            external_id = token
 
         return {"email": {"email_id": external_id}}
 
@@ -436,7 +462,11 @@ class Braze:
         self.interface.save_user(braze_user_data)
 
         if update_data.get("fxa_id") and existing_data.get("fxa_id") != update_data["fxa_id"]:
-            self.interface.add_fxa_id_alias(external_id, update_data["fxa_id"])
+            add_fxa_id_alias_task.delay(
+                external_id,
+                update_data["fxa_id"],
+                enqueue_in=BRAZE_OPTIMAL_DELAY,
+            )
 
     def update_by_fxa_id(self, fxa_id, update_data):
         """
@@ -556,7 +586,7 @@ class Braze:
             "email": updated_user_data.get("email"),
             "update_timestamp": now,
             "_update_existing_only": bool(existing_user_data),
-            "email_subscribe": "opted_in" if updated_user_data.get("optin") else "unsubscribed" if updated_user_data.get("optout") else "subscribed",
+            "email_subscribe": "unsubscribed" if updated_user_data.get("optout") else "opted_in" if updated_user_data.get("optin") else "subscribed",
             "subscription_groups": subscription_groups,
             "user_attributes_v1": [
                 {
