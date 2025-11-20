@@ -415,9 +415,10 @@ class Braze:
         if user_response["users"]:
             user_data = user_response["users"][0]
             user_email = email or user_data.get("email")
+            is_opted_out = user_data.get("email_subscribe") == "unsubscribed"
             subscriptions = []
 
-            if user_data.get("external_id") and user_email:
+            if user_data.get("external_id") and user_email and not is_opted_out:
                 subscription_response = self.interface.get_user_subscriptions(user_data["external_id"], email)
                 subscriptions = subscription_response.get("users", [{}])[0].get("subscription_groups", [])
 

@@ -686,6 +686,31 @@ def test_braze_get(mock_newsletters, braze_client):
         assert api_requests[1].url == "http://test.com/subscription/user/status?external_id=123&email=test%40example.com"
 
 
+def test_braze_get_opted_out_user(braze_client):
+    email = mock_braze_user_data["email"]
+    braze_instance = Braze(braze_client)
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/export/ids", json={"users": [mock_braze_user_data | {"email_subscribe": "unsubscribed"}]})
+        assert braze_instance.get(email=email) == mock_basket_user_data | {"optout": True, "optin": False, "newsletters": []}
+        assert m.last_request.json() == {
+            "email_address": email,
+            "fields_to_export": [
+                "braze_id",
+                "country",
+                "created_at",
+                "custom_attributes",
+                "email",
+                "email_subscribe",
+                "external_id",
+                "first_name",
+                "language",
+                "last_name",
+                "user_aliases",
+            ],
+            "user_aliases": [],
+        }
+
+
 @mock.patch(
     "basket.news.newsletters._newsletters",
     return_value=mock_newsletters,
