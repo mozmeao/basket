@@ -356,8 +356,8 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         self._login_admin_user()
         with patch("basket.admin.braze", spec_set=["get", "update"]) as mock_braze:
             mock_users = [
-                {"email_id": "123", "fxa_id": "", "mofo_contact_id": ""},
-                {"email_id": "456", "fxa_id": "string", "mofo_contact_id": ""},
+                {"email_id": "123", "fxa_id": "", "mofo_contact_id": "", "newsletters": ["foo_news", "bar_news"]},
+                {"email_id": "456", "fxa_id": "string", "mofo_contact_id": "", "newsletters": []},
                 {"email_id": "789", "fxa_id": "string", "mofo_contact_id": "string"},
             ]
             mock_braze.get.side_effect = mock_users
@@ -365,7 +365,19 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
 
         assert response.status_code == 200
         assert mock_braze.get.call_count == 3
-        mock_braze.update.assert_has_calls([call(user, {"optout": True, "unsub_reason": "User requested global unsubscribe"}) for user in mock_users])
+        mock_braze.update.assert_has_calls(
+            [
+                call(
+                    user,
+                    {
+                        "optout": True,
+                        "unsub_reason": "User requested global unsubscribe",
+                        "newsletters": dict.fromkeys(user.get("newsletters", []), False),
+                    },
+                )
+                for user in mock_users
+            ]
+        )
         assert "UNSUBSCRIBED test1@example.com (Braze external id: 123)." in response.context["dsar_output"]
         assert "UNSUBSCRIBED test2@example.com (Braze external id: 456)." in response.context["dsar_output"]
         assert "UNSUBSCRIBED test3@example.com (Braze external id: 789)." in response.context["dsar_output"]
@@ -387,13 +399,15 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         self._create_admin_user()
         self._login_admin_user()
         with patch("basket.admin.braze", spec_set=["get", "update"]) as mock_braze:
-            mock_braze.get.return_value = {"email_id": "123", "fxa_id": "", "mofo_contact_id": ""}
+            mock_braze_user = {"email_id": "123", "fxa_id": "", "mofo_contact_id": "", "newsletters": ["foo_news", "bar_news"]}
+            mock_braze.get.return_value = mock_braze_user
             response = self.client.post(self.url, {"emails": "test@example.com"}, follow=True)
 
         assert response.status_code == 200
         assert mock_braze.get.called
         mock_braze.update.assert_called_with(
-            {"email_id": "123", "fxa_id": "", "mofo_contact_id": ""}, {"optout": True, "unsub_reason": "User requested global unsubscribe"}
+            mock_braze_user,
+            {"optout": True, "unsub_reason": "User requested global unsubscribe", "newsletters": {"foo_news": False, "bar_news": False}},
         )
         assert "UNSUBSCRIBED test@example.com (Braze external id: 123)." in response.context["dsar_output"]
 

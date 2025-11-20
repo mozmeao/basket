@@ -14,6 +14,7 @@ from basket.base.forms import EmailForm, EmailListForm
 from basket.news.backends.braze import BrazeUserNotFoundByEmailError, braze
 from basket.news.backends.ctms import CTMSNotFoundByEmailError, CTMSNotFoundByEmailIDError, ctms, from_vendor
 from basket.news.newsletters import slug_to_vendor_id
+from basket.news.utils import UNSUBSCRIBE, parse_newsletters
 
 log = logging.getLogger(__name__)
 
@@ -181,7 +182,18 @@ class BasketAdminSite(admin.AdminSite):
                             email_id = contact["email_id"]
                             try:
                                 if use_braze_backend:
-                                    braze.update(contact, {"optout": True, "unsub_reason": update_data["email"]["unsubscribe_reason"]})
+                                    braze.update(
+                                        contact,
+                                        {
+                                            "optout": True,
+                                            "unsub_reason": update_data["email"]["unsubscribe_reason"],
+                                            "newsletters": parse_newsletters(
+                                                UNSUBSCRIBE,
+                                                contact.get("newsletters", []),
+                                                contact.get("newsletters", []),
+                                            ),
+                                        },
+                                    )
                                 else:
                                     ctms.interface.patch_by_email_id(email_id, update_data)
                             except CTMSNotFoundByEmailIDError:
