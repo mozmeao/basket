@@ -212,6 +212,7 @@ def lookup_user(request, email: str | None = None, token: uuid.UUID | None = Non
                     email=email,
                     token=token,
                     masked=masked,
+                    omit_extra_braze_fields=masked,
                     use_braze_backend=True,
                 )
             except Exception as e:
@@ -227,6 +228,7 @@ def lookup_user(request, email: str | None = None, token: uuid.UUID | None = Non
                 email=email,
                 token=token,
                 masked=masked,
+                omit_extra_braze_fields=masked,
                 use_braze_backend=True,
             )
         else:
