@@ -452,14 +452,16 @@ class TestGetUserData(TestCase):
             mock_braze.get.return_value = {
                 "email": self.email,
                 "fxa_primary_email": self.email,
-                "fxa_id": "123",
+                "has_fxa": True,
+                "fxa_lang": "en",
                 "unsub_reason": "global unsubscribe",
                 "email_id": "abc",
             }
             data = get_user_data(token="foo", use_braze_backend=True)
             self.assertEqual(data["email"], self.email)
             self.assertEqual(data["fxa_primary_email"], self.email)
-            self.assertEqual(data["fxa_id"], "123")
+            self.assertEqual(data["has_fxa"], True)
+            self.assertEqual(data["fxa_lang"], "en")
             self.assertEqual(data["email_id"], "abc")
             self.assertEqual(data["unsub_reason"], "global unsubscribe")
 
@@ -476,6 +478,7 @@ class TestGetUserData(TestCase):
             self.assertEqual(data["email"], "h*********s@e*****e.com")
             self.assertEqual(data["fxa_primary_email"], "h*********s@e*****e.com")
             self.assertEqual(data["fxa_id"], "123")
+            self.assertEqual(data["has_fxa"], True)
             self.assertEqual(data["email_id"], "abc")
             self.assertEqual(data["unsub_reason"], "global unsubscribe")
 
@@ -484,6 +487,7 @@ class TestGetUserData(TestCase):
             mock_braze.get.return_value = {
                 "email": self.email,
                 "fxa_primary_email": self.email,
+                "has_fxa": True,
                 "fxa_id": "123",
                 "unsub_reason": "global unsubscribe",
                 "email_id": "abc",
@@ -491,6 +495,7 @@ class TestGetUserData(TestCase):
             data = get_user_data(token="foo", use_braze_backend=True, omit_extra_braze_fields=True)
             self.assertEqual(data["email"], self.email)
             self.assertEqual(data["fxa_primary_email"], self.email)
+            self.assertEqual(data["has_fxa"], True)
             self.assertIsNone(data.get("fxa_id"))
             self.assertIsNone(data.get("email_id"))
             self.assertIsNone(data.get("unsub_reason"))
