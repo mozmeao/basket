@@ -463,8 +463,6 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         """Test basic success case, ignores any unexpected keys in the request body."""
         request_data = {
             "newsletters": "news,lets",
-            "optin": "N",
-            "sync": "N",
             "email": "dude@example.com",
             "first_name": "The",
             "last_name": "Dude",
@@ -474,8 +472,6 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             "test": "example",
         }
         update_data = request_data.copy()
-        del update_data["optin"]
-        del update_data["sync"]
         del update_data["fxa_id"]
         del update_data["optout"]
         del update_data["test"]
@@ -490,8 +486,6 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             request,
             SUBSCRIBE,
             data=update_data,
-            optin=False,
-            sync=False,
         )
 
 
