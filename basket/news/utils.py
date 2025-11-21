@@ -244,7 +244,14 @@ BRAZE_USER_ALLOWED_FIELDS = ALLOWED_USER_FIELDS + [
 
 
 def get_user_data(
-    token=None, email=None, payee_id=None, fxa_id=None, extra_fields=None, masked=False, use_braze_backend=False, omit_extra_braze_fields=False
+    token=None,
+    email=None,
+    payee_id=None,
+    fxa_id=None,
+    extra_fields=None,
+    masked=False,
+    use_braze_backend=False,
+    omit_extra_braze_fields=False,
 ):
     """
     Return a dictionary of the user's data.
