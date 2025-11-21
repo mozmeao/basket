@@ -45,6 +45,7 @@ from basket.news.utils import (
     get_best_request_lang,
     get_best_supported_lang,
     get_fxa_clients,
+    get_post_request_body,
     get_user,
     get_user_data,
     has_valid_api_key,
@@ -371,7 +372,21 @@ def subscribe(request):
         pre_generated_token=None,
         pre_generated_email_id=None,
     ):
-        data = request.POST.dict()
+        allowed_body_keys = [
+            "email",
+            "token",
+            "format",
+            "country",
+            "lang",
+            "newsletters",
+            "optin",
+            "source_url",
+            "trigger_welcome",
+            "sync",
+            "first_name",
+            "last_name",
+        ]
+        data = get_post_request_body(request, allowed_body_keys)
         newsletters = data.get("newsletters", None)
         if not newsletters:
             return HttpResponseJSON(
@@ -535,7 +550,8 @@ def invalid_token_response():
 @csrf_exempt
 def unsubscribe(request, token):
     token = str(token)
-    data = request.POST.dict()
+    allowed_body_keys = ["email", "newsletters", "optout"]
+    data = get_post_request_body(request, allowed_body_keys)
     data["token"] = token
 
     if data.get("optout", "N") == "Y":
@@ -618,7 +634,8 @@ def user_meta(request, token):
 def user(request, token):
     token = str(token)
     if request.method == "POST":
-        data = request.POST.dict()
+        allowed_body_keys = ["email", "format", "country", "lang", "newsletters", "optin"]
+        data = get_post_request_body(request, allowed_body_keys)
         data["token"] = token
         if "email" in data:
             email = process_email(data["email"])

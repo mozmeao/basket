@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from django.conf import settings
 from django.core.cache import caches
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.utils import timezone
 from django.utils.encoding import force_str
 from django.utils.translation.trans_real import parse_accept_lang_header
@@ -615,3 +615,8 @@ def parse_newsletters(api_call_type, newsletters, cur_newsletters):
             newsletter_map[nl] = False
 
     return newsletter_map
+
+
+def get_post_request_body(request: HttpRequest, allowed_keys: list["str"]):
+    "Extracts the body of a POST request, but only includes the allowed keys."
+    return {key: request.POST[key] for key in request.POST if key in allowed_keys}
