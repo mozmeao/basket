@@ -244,13 +244,7 @@ BRAZE_USER_ALLOWED_FIELDS = ALLOWED_USER_FIELDS + [
 
 
 def get_user_data(
-    token=None,
-    email=None,
-    payee_id=None,
-    fxa_id=None,
-    extra_fields=None,
-    masked=False,
-    use_braze_backend=False,
+    token=None, email=None, payee_id=None, fxa_id=None, extra_fields=None, masked=False, use_braze_backend=False, omit_extra_braze_fields=False
 ):
     """
     Return a dictionary of the user's data.
@@ -341,12 +335,12 @@ def get_user_data(
     if not backend_user:
         return None
 
-    allowed_fields = BRAZE_USER_ALLOWED_FIELDS if use_braze_backend else ALLOWED_USER_FIELDS
+    allowed_fields = BRAZE_USER_ALLOWED_FIELDS if use_braze_backend and not omit_extra_braze_fields else ALLOWED_USER_FIELDS
     # Only return fields in `ALLOWED_USER_FIELDS` or in the `extra_fields` arg.
     allowed = set(allowed_fields + extra_fields)
     user = {fn: backend_user[fn] for fn in allowed if fn in backend_user}
 
-    user["has_fxa"] = backend_user.get("has_fxa", False) if use_braze_backend else bool(backend_user.get("fxa_id"))
+    user["has_fxa"] = bool(backend_user.get("fxa_id")) or (use_braze_backend and backend_user.get("has_fxa", False))
 
     if masked:
         # mask all emails
@@ -375,6 +369,7 @@ def get_user(token=None, email=None, masked=True, use_braze_backend=False):
             token,
             email,
             masked=masked,
+            omit_extra_braze_fields=masked,
             use_braze_backend=use_braze_backend,
         )
         status_code = 200
