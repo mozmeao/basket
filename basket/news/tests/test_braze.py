@@ -9,7 +9,7 @@ import requests_mock
 from freezegun import freeze_time
 
 from basket.news.backends import braze
-from basket.news.backends.braze import Braze
+from basket.news.backends.braze import Braze, optin_to_boolean
 
 
 @pytest.fixture
@@ -975,3 +975,19 @@ def test_braze_update_by_token_user_not_found(braze_client):
         with pytest.raises(braze.BrazeUserNotFoundByTokenError):
             braze_instance.update_by_token(token, update_data)
             assert m.last_request.url == "http://test.com/users/export/ids"
+
+
+def test_optin_to_boolean():
+    """Test that boolean inputs are returned unchanged."""
+    assert optin_to_boolean(True) is True
+    assert optin_to_boolean(False) is False
+
+    """Test valid Y/N string inputs."""
+    assert optin_to_boolean("Y") is True
+    assert optin_to_boolean("y") is True
+
+    assert optin_to_boolean("N") is False
+    assert optin_to_boolean("n") is False
+
+    """Test passes through None"""
+    assert optin_to_boolean(None) is None

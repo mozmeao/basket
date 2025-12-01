@@ -582,12 +582,14 @@ class Braze:
                         }
                     )
 
+        optin = optin_to_boolean(updated_user_data.get("optin"))
+
         user_attributes = {
             "external_id": external_id,
             "email": updated_user_data.get("email"),
             "update_timestamp": now,
             "_update_existing_only": bool(existing_user_data),
-            "email_subscribe": "unsubscribed" if updated_user_data.get("optout") else "opted_in" if updated_user_data.get("optin") else "subscribed",
+            "email_subscribe": "unsubscribed" if updated_user_data.get("optout") else "opted_in" if optin else "subscribed",
             "subscription_groups": subscription_groups,
             "user_attributes_v1": [
                 {
@@ -623,6 +625,19 @@ class Braze:
             braze_data["events"] = events
 
         return braze_data
+
+
+def optin_to_boolean(optin):
+    """
+    Converts `optin`, which can either be a boolean or a string (`Y` or `N`) by the time it
+    reaches to_vendor, to a boolean.
+    """
+
+    if optin is None:
+        return None
+    elif isinstance(optin, bool):
+        return optin
+    return optin.upper().strip() == "Y"
 
 
 braze_tx = Braze(BrazeInterface(settings.BRAZE_BASE_API_URL, settings.BRAZE_API_KEY))

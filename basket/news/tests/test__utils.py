@@ -15,6 +15,7 @@ from basket.news.utils import (
     get_best_supported_lang,
     get_email_block_list,
     get_fxa_clients,
+    get_post_request_body,
     get_user_data,
     has_valid_fxa_oauth,
     is_authorized,
@@ -509,3 +510,14 @@ class TestGetUserData(TestCase):
         ctms_mock.get.return_value = {"email": self.email, "fxa_primary_email": self.email, "fxa_id": "123"}
         data = get_user_data(token="foo")
         self.assertEqual(data["has_fxa"], True)
+
+
+class GetPostRequestBodyTests(TestCase):
+    def mock_post_request(self):
+        request = RequestFactory()
+        return request.post("/", {"foo": "one", "bar": "two", "baz": "three"})
+
+    def test_values(self):
+        self.assertEqual(get_post_request_body(self.mock_post_request(), ["foo"]), {"foo": "one"})
+        self.assertEqual(get_post_request_body(self.mock_post_request(), ["bar", "baz"]), {"bar": "two", "baz": "three"})
+        self.assertEqual(get_post_request_body(self.mock_post_request(), ["test"]), {})
