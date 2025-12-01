@@ -25,11 +25,11 @@ class UserTest(TestCase):
     def test_user_set(self, update_user_task):
         """If request is POST, it should attempt to update the user's info."""
         update_user_task.return_value = HttpResponse()
-        resp = self.client.post(self.url, data={"fake": "data"})
+        resp = self.client.post(self.url, data={"country": "CA"})
         update_user_task.assert_called_with_subset(
             resp.wsgi_request,
             SET,
-            {"fake": "data", "token": self.token},
+            {"country": "CA", "token": self.token},
         )
 
     @patch("basket.news.utils.ctms", spec_set=["get"])

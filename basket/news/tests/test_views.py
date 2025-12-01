@@ -459,6 +459,35 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             sync=True,
         )
 
+    def test_ignores_extraneous_request_keys(self):
+        """Test basic success case, ignores any unexpected keys in the request body."""
+        request_data = {
+            "newsletters": "news,lets",
+            "email": "dude@example.com",
+            "first_name": "The",
+            "last_name": "Dude",
+            # the keys below are not allowed and should be ignored
+            "fxa_id": "123",
+            "optout": "Y",
+            "test": "example",
+        }
+        update_data = request_data.copy()
+        del update_data["fxa_id"]
+        del update_data["optout"]
+        del update_data["test"]
+        self.process_email.return_value = update_data["email"]
+        request = self.factory.post("/", request_data)
+
+        response = views.subscribe(request)
+
+        self.assertEqual(response, self.update_user_task.return_value)
+        self.process_email.assert_called_with(request_data["email"])
+        self.update_user_task.assert_called_with_subset(
+            request,
+            SUBSCRIBE,
+            data=update_data,
+        )
+
 
 class TestRatelimit(TestCase):
     @mock_metrics
