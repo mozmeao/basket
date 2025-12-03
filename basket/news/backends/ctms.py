@@ -854,6 +854,10 @@ class CTMS:
             alt_ids = []
             if token:
                 alt_ids.append({"basket_token": token})
+
+                # While we transition from `basket_token` to `external_id` / `email_id` the
+                # token passed in can either be a `basket_token` or an `external_id` / `email_id`.
+                alt_ids.append({"email_id": token})
             if email:
                 alt_ids.append({"primary_email": email})
             if fxa_id:
