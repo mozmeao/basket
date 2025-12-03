@@ -374,9 +374,9 @@ def upsert_contact(
                 ctms_add_or_update.delay(update_data)
         else:
             if use_braze_backend:
-                new_user = braze.add(update_data)
+                braze.add(update_data)
             else:
-                new_user = ctms.add(update_data)
+                ctms.add(update_data)
 
         if send_confirm and settings.SEND_CONFIRM_MESSAGES and should_send_tx_messages:
             send_confirm_message.delay(
@@ -384,7 +384,6 @@ def upsert_contact(
                 token,
                 data.get("lang", "en-US"),
                 send_confirm,
-                new_user and new_user.get("email", {}).get("email_id") or None,
             )
 
         return token, True
@@ -430,7 +429,6 @@ def upsert_contact(
             token,
             update_data.get("lang", user_data.get("lang", "en-US")),
             send_confirm,
-            user_data.get("email_id"),
         )
 
     return token, False
@@ -485,13 +483,13 @@ def send_tx_messages(email, lang, message_ids):
 
 
 @rq_task
-def send_confirm_message(email, token, lang, message_type, email_id):
+def send_confirm_message(email, token, lang, message_type):
     lang = lang.strip()
     lang = lang or "en-US"
     message_id = f"newsletter-confirm-{message_type}"
     txm = BrazeTxEmailMessage.objects.get_message(message_id, lang)
     if txm:
-        send_tx_message(email, txm.message_id, txm.language, user_data={"basket_token": token, "email_id": email_id})
+        send_tx_message(email, txm.message_id, txm.language, user_data={"basket_token": token, "email_id": token})
 
 
 @rq_task
