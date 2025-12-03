@@ -48,7 +48,6 @@ def fxa_email_changed(
     data,
     use_braze_backend=False,
     pre_generated_token=None,
-    pre_generated_email_id=None,
     **kwargs,
 ):
     ts = data["ts"]
@@ -83,8 +82,8 @@ def fxa_email_changed(
                 "fxa_id": fxa_id,
                 "fxa_primary_email": email,
             }
-            if pre_generated_email_id:
-                data["email_id"] = pre_generated_email_id
+            if pre_generated_token:
+                data["email_id"] = pre_generated_token
 
             backend_data = data.copy()
             contact = None
@@ -125,7 +124,6 @@ def fxa_verified(
     use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
-    pre_generated_email_id=None,
 ):
     """Add new FxA users"""
     # if we're not using the sandbox ignore testing domains
@@ -169,7 +167,6 @@ def fxa_verified(
         use_braze_backend=use_braze_backend,
         should_send_tx_messages=should_send_tx_messages,
         pre_generated_token=pre_generated_token,
-        pre_generated_email_id=pre_generated_email_id,
     )
 
 
@@ -179,7 +176,6 @@ def fxa_newsletters_update(
     use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
-    pre_generated_email_id=None,
 ):
     email = data["email"]
     fxa_id = data["uid"]
@@ -199,7 +195,6 @@ def fxa_newsletters_update(
         use_braze_backend=use_braze_backend,
         should_send_tx_messages=should_send_tx_messages,
         pre_generated_token=pre_generated_token,
-        pre_generated_email_id=pre_generated_email_id,
     )
 
 
@@ -209,7 +204,6 @@ def fxa_login(
     use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
-    pre_generated_email_id=None,
 ):
     email = data["email"]
     # if we're not using the sandbox ignore testing domains
@@ -230,7 +224,6 @@ def fxa_login(
             use_braze_backend=use_braze_backend,
             should_send_tx_messages=should_send_tx_messages,
             pre_generated_token=pre_generated_token,
-            pre_generated_email_id=pre_generated_email_id,
         )
 
 
@@ -253,7 +246,6 @@ def upsert_user(
     use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
-    pre_generated_email_id=None,
 ):
     """
     Update or insert (upsert) a contact record
@@ -275,7 +267,6 @@ def upsert_user(
         use_braze_backend=use_braze_backend,
         should_send_tx_messages=should_send_tx_messages,
         pre_generated_token=pre_generated_token,
-        pre_generated_email_id=pre_generated_email_id,
     )
 
 
@@ -286,7 +277,6 @@ def upsert_contact(
     use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
-    pre_generated_email_id=None,
 ):
     """
     Update or insert (upsert) a contact record
@@ -374,8 +364,8 @@ def upsert_contact(
         # no user found. create new one.
         token = update_data["token"] = pre_generated_token or generate_token()
 
-        if pre_generated_email_id:
-            update_data["email_id"] = pre_generated_email_id
+        if pre_generated_token:
+            update_data["email_id"] = pre_generated_token
 
         if settings.MAINTENANCE_MODE:
             if use_braze_backend:

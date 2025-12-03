@@ -104,20 +104,17 @@ class Command(BaseCommand):
                     try:
                         if settings.BRAZE_PARALLEL_WRITE_ENABLE:
                             pre_generated_token = generate_token()
-                            pre_generated_email_id = generate_token()
                             FXA_EVENT_TYPES[event_type].delay(
                                 event,
                                 use_braze_backend=True,
                                 should_send_tx_messages=False,
                                 pre_generated_token=pre_generated_token,
-                                pre_generated_email_id=pre_generated_email_id,
                             )
                             FXA_EVENT_TYPES[event_type].delay(
                                 event,
                                 use_braze_backend=False,
                                 should_send_tx_messages=True,
                                 pre_generated_token=pre_generated_token,
-                                pre_generated_email_id=pre_generated_email_id,
                             )
                         elif settings.BRAZE_ONLY_WRITE_ENABLE:
                             FXA_EVENT_TYPES[event_type].delay(
