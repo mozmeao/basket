@@ -306,7 +306,6 @@ mock_basket_user_data = {
     "optin": True,
     "optout": False,
     "token": "123",
-    "basket_token": "abc",
     "fxa_service": "test",
     "fxa_lang": "en",
     "fxa_primary_email": "test2@example.com",
@@ -334,7 +333,6 @@ mock_braze_user_data = {
                 "email_lang": "en",
                 "created_at": "2022-01-01",
                 "updated_at": "2022-02-01",
-                "basket_token": "abc",
                 "fxa_first_service": "test",
                 "fxa_lang": "en",
                 "fxa_primary_email": "test2@example.com",
@@ -401,7 +399,6 @@ def test_to_vendor_with_user_data_and_no_updates(mock_newsletter_languages, mock
                         "created_at": {
                             "$time": "2022-01-01",
                         },
-                        "basket_token": "abc",
                         "fxa_first_service": "test",
                         "fxa_lang": "en",
                         "fxa_primary_email": "test2@example.com",
@@ -451,7 +448,6 @@ def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock
                         "created_at": {
                             "$time": dt.isoformat(),
                         },
-                        "basket_token": "abc",
                         "fxa_first_service": None,
                         "fxa_lang": None,
                         "fxa_primary_email": None,
@@ -503,7 +499,6 @@ def test_to_vendor_with_updates_and_no_user_data_in_braze_only_write(mock_newsle
                         "created_at": {
                             "$time": dt.isoformat(),
                         },
-                        "basket_token": "abc",
                         "fxa_first_service": None,
                         "fxa_lang": None,
                         "fxa_primary_email": None,
@@ -574,7 +569,6 @@ def test_to_vendor_with_both_user_data_and_updates(mock_newsletter_languages, mo
                         "created_at": {
                             "$time": "2022-01-01",
                         },
-                        "basket_token": "abc",
                         "fxa_first_service": "test",
                         "fxa_lang": "en",
                         "fxa_primary_email": "test2@example.com",
@@ -630,7 +624,6 @@ def test_to_vendor_with_events(mock_newsletters, braze_client):
                         "created_at": {
                             "$time": "2022-01-01",
                         },
-                        "basket_token": "abc",
                         "fxa_first_service": "test",
                         "fxa_lang": "en",
                         "fxa_primary_email": "test2@example.com",

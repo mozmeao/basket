@@ -240,7 +240,6 @@ BRAZE_USER_ALLOWED_FIELDS = ALLOWED_USER_FIELDS + [
     "has_fxa",
     "fxa_deleted",
     "unsub_reason",
-    "basket_token",
 ]
 
 
