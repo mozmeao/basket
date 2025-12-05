@@ -1,7 +1,6 @@
 from collections import namedtuple
 from unittest import mock
 
-from django.test.utils import override_settings
 from django.utils import timezone
 
 import pytest
@@ -427,57 +426,6 @@ def test_to_vendor_with_user_data_and_no_updates(mock_newsletter_languages, mock
     return_value=["en"],
 )
 def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock_newsletters, braze_client):
-    braze_instance = Braze(braze_client)
-    dt = timezone.now()
-    update_data = {"newsletters": {"bar-news": True}, "email": "test@example.com", "token": "abc", "email_id": "123", "unsub_reason": "unsub"}
-    expected = {
-        "attributes": [
-            {
-                "_update_existing_only": False,
-                "email": "test@example.com",
-                "external_id": "123",
-                "language": "en",
-                "email_subscribe": "subscribed",
-                "subscription_groups": [
-                    {"subscription_group_id": "78fe6671-9f94-48bd-aaf3-7e873536c3e6", "subscription_state": "subscribed"},
-                ],
-                "update_timestamp": dt.isoformat(),
-                "user_attributes_v1": [
-                    {
-                        "email_lang": "en",
-                        "created_at": {
-                            "$time": dt.isoformat(),
-                        },
-                        "fxa_first_service": None,
-                        "fxa_lang": None,
-                        "fxa_primary_email": None,
-                        "fxa_created_at": None,
-                        "has_fxa": False,
-                        "fxa_deleted": None,
-                        "mailing_country": None,
-                        "updated_at": {
-                            "$time": dt.isoformat(),
-                        },
-                        "unsub_reason": "unsub",
-                    }
-                ],
-            }
-        ]
-    }
-    with freeze_time(dt):
-        assert braze_instance.to_vendor(None, update_data) == expected
-
-
-@override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
-@mock.patch(
-    "basket.news.newsletters._newsletters",
-    return_value=mock_newsletters,
-)
-@mock.patch(
-    "basket.news.newsletters.newsletter_languages",
-    return_value=["en"],
-)
-def test_to_vendor_with_updates_and_no_user_data_in_braze_only_write(mock_newsletter_languages, mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     dt = timezone.now()
     update_data = {"newsletters": {"bar-news": True}, "email": "test@example.com", "token": "abc", "email_id": "123", "unsub_reason": "unsub"}
