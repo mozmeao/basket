@@ -521,6 +521,7 @@ class Braze:
             "optin": braze_user_data.get("email_subscribe") == "opted_in",
             "optout": braze_user_data.get("email_subscribe") == "unsubscribed",
             "token": braze_user_data["external_id"],
+            "ctms_legacy_token": user_attributes.get("basket_token"),
             "fxa_service": user_attributes.get("fxa_first_service"),
             "fxa_lang": user_attributes.get("fxa_lang"),
             "fxa_primary_email": user_attributes.get("fxa_primary_email"),
@@ -572,6 +573,7 @@ class Braze:
             "subscription_groups": subscription_groups,
             "user_attributes_v1": [
                 {
+                    "basket_token": updated_user_data.get("ctms_legacy_token") or updated_user_data.get("token"),
                     "created_at": {"$time": updated_user_data.get("created_date", now)},
                     "email_lang": language,
                     "mailing_country": country,

@@ -294,7 +294,15 @@ def upsert_contact(
     newsletters = parse_newsletters_csv(data.get("newsletters"))
     cur_newsletters = user_data and user_data.get("newsletters")
 
-    if user_data and data.get("token") and user_data.get("token") != data["token"]:
+    if (
+        user_data
+        and data.get("token")
+        and data["token"]
+        not in [
+            user_data.get("token"),
+            user_data.get("ctms_legacy_token"),
+        ]
+    ):
         # We were passed a token but it doesn't match the user.
         return None, None
 
