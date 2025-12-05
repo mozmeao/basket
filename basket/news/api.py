@@ -162,7 +162,6 @@ def recover_user(request, body: RecoverUserSchema):
 
     tasks.send_recovery_message.delay(
         body.email,
-        user_data["token"],
         user_data.get("lang", "en") or "en",
         user_data.get("email_id"),
     )

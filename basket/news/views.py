@@ -750,7 +750,7 @@ def send_recovery_message(request):
 
     lang = user_data.get("lang", "en") or "en"
     email_id = user_data.get("email_id")
-    tasks.send_recovery_message.delay(email, email_id, lang, email_id)
+    tasks.send_recovery_message.delay(email, lang, email_id)
     return HttpResponseJSON({"status": "ok"})
 
 

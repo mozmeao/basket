@@ -547,11 +547,11 @@ def update_custom_unsub(token, reason, use_braze_backend=False):
 
 
 @rq_task
-def send_recovery_message(email, token, lang, email_id):
+def send_recovery_message(email, lang, email_id):
     message_id = "account-recovery"
     txm = BrazeTxEmailMessage.objects.get_message(message_id, lang)
     if txm:
-        user_data = {"basket_token": token, "email_id": email_id}
+        user_data = {"basket_token": email_id, "email_id": email_id}
         send_tx_message(email, txm.message_id, txm.language, user_data=user_data)
 
 
