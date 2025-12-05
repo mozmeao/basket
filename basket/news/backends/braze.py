@@ -356,7 +356,6 @@ class Braze:
 
     def get(
         self,
-        email_id=None,
         token=None,
         email=None,
         fxa_id=None,
