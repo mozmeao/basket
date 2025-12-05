@@ -11,6 +11,7 @@ import requests
 import sentry_sdk
 
 from basket import metrics
+from basket.news.backends.braze import BRAZE_OPTIMAL_DELAY
 from basket.news.tasks import (
     fxa_delete,
     fxa_email_changed,
@@ -101,6 +102,7 @@ class Command(BaseCommand):
                         msg.delete()
                         continue
 
+                    enqueue_in = BRAZE_OPTIMAL_DELAY if should_delay_execution(event_type, event) else None
                     try:
                         if settings.BRAZE_PARALLEL_WRITE_ENABLE:
                             pre_generated_token = generate_token()
@@ -109,6 +111,7 @@ class Command(BaseCommand):
                                 use_braze_backend=True,
                                 should_send_tx_messages=False,
                                 pre_generated_token=pre_generated_token,
+                                enqueue_in=enqueue_in,
                             )
                             FXA_EVENT_TYPES[event_type].delay(
                                 event,
@@ -120,6 +123,7 @@ class Command(BaseCommand):
                             FXA_EVENT_TYPES[event_type].delay(
                                 event,
                                 use_braze_backend=True,
+                                enqueue_in=enqueue_in,
                             )
                         else:
                             FXA_EVENT_TYPES[event_type].delay(
@@ -139,3 +143,16 @@ class Command(BaseCommand):
                     msg.delete()
         except KeyboardInterrupt:
             sys.exit("\nBuh bye")
+
+
+def should_delay_execution(event_type, event):
+    """
+    Braze can take up to 5 minutes to add an fxa_id alias. We use this function
+    to determine if an event relies on the fxa_id alias and should be delayed.
+    """
+    if event_type == "primaryEmailChanged":
+        return True
+    elif event.get("uid") and not event.get("email"):
+        return True
+    else:
+        return False
