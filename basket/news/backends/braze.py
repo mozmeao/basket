@@ -25,8 +25,6 @@ BRAZE_OPTIMAL_DELAY = timedelta(minutes=5)
 
 # This task cannot be placed in basket/news/tasks.py because it would
 # create a circular dependency.
-
-
 @rq_task
 def add_fxa_id_alias_task(external_id, fxa_id):
     braze.interface.add_fxa_id_alias(external_id, fxa_id)
