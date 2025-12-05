@@ -1278,9 +1278,10 @@ class CTMSTests(TestCase):
         ctms = CTMS(interface)
         user_data = ctms.get(token=token)
         assert user_data == self.TEST_BASKET_FORMAT
-        interface.session.get.assert_called_once_with(
-            "/ctms",
-            params={"basket_token": token},
+        interface.session.get.assert_has_calls(
+            [
+                call("/ctms", params={"basket_token": "token"}),
+            ],
         )
 
     def test_get_by_token_not_found(self):
@@ -1387,13 +1388,14 @@ class CTMSTests(TestCase):
     def test_get_by_several_ids_none_then_one(self):
         """If multiple alt IDs are passed, the second is tried on miss."""
         interface = Mock(spec_set=["get_by_alternate_id"])
-        interface.get_by_alternate_id.side_effect = ([], [self.TEST_CTMS_CONTACT])
+        interface.get_by_alternate_id.side_effect = ([], [], [self.TEST_CTMS_CONTACT])
         ctms = CTMS(interface)
         user_data = ctms.get(token="some-token", email="some-email@example.com")
         assert user_data == self.TEST_BASKET_FORMAT
         interface.get_by_alternate_id.assert_has_calls(
             [
                 call(basket_token="some-token"),
+                call(email_id="some-token"),
                 call(primary_email="some-email@example.com"),
             ],
         )
@@ -1401,13 +1403,14 @@ class CTMSTests(TestCase):
     def test_get_by_several_ids_both_none(self):
         """If multiple alt IDs are passed and all miss, None is returned."""
         interface = Mock(spec_set=["get_by_alternate_id"])
-        interface.get_by_alternate_id.side_effect = ([], [])
+        interface.get_by_alternate_id.side_effect = ([], [], [])
         ctms = CTMS(interface)
         user_data = ctms.get(token="some-token", email="some-email@example.com")
         assert user_data is None
         interface.get_by_alternate_id.assert_has_calls(
             [
                 call(basket_token="some-token"),
+                call(email_id="some-token"),
                 call(primary_email="some-email@example.com"),
             ],
         )

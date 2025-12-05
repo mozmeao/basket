@@ -57,7 +57,7 @@ class TestUsersRecoverAPI(_TestAPIwCTMSBase):
                 assert resp.status_code == 200, resp.content
                 data = resp.json()
                 self.validate_schema(data, OkSchema)
-                mock_send.assert_called_with(self.email, self.token, "en", self.email_id)
+                mock_send.assert_called_with(self.email, "en", self.email_id)
 
     # 4xx errors
 

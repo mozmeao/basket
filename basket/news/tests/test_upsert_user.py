@@ -268,7 +268,7 @@ class UpsertUserTests(TestCase):
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
-        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz", email_id)
+        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
     def test_send_fx_confirm(self, get_user_mock, ctms_mock, confirm_mock):
         """Subscribing to a Fx newsletter should send a Fx confirm email"""
@@ -296,7 +296,7 @@ class UpsertUserTests(TestCase):
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
-        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "fx", email_id)
+        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "fx")
 
     def test_send_moz_confirm(self, get_user_mock, ctms_mock, confirm_mock):
         """Subscribing to a Fx and moz newsletters should send a moz confirm email"""
@@ -333,7 +333,7 @@ class UpsertUserTests(TestCase):
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
-        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz", email_id)
+        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
     def test_no_send_confirm_newsletter(
         self,
@@ -500,7 +500,7 @@ class UpsertUserTests(TestCase):
         update_data["newsletters"] = {"slug": True}
         update_data["token"] = ANY
         ctms_mock.add.assert_called_with(update_data)
-        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz", None)
+        confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
     def test_new_user_subscribes_to_mofo_newsletter(
         self,

@@ -48,7 +48,6 @@ def fxa_email_changed(
     data,
     use_braze_backend=False,
     pre_generated_token=None,
-    pre_generated_email_id=None,
     **kwargs,
 ):
     ts = data["ts"]
@@ -83,8 +82,8 @@ def fxa_email_changed(
                 "fxa_id": fxa_id,
                 "fxa_primary_email": email,
             }
-            if pre_generated_email_id:
-                data["email_id"] = pre_generated_email_id
+            if pre_generated_token:
+                data["email_id"] = pre_generated_token
 
             backend_data = data.copy()
             contact = None
@@ -125,7 +124,6 @@ def fxa_verified(
     use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
-    pre_generated_email_id=None,
 ):
     """Add new FxA users"""
     # if we're not using the sandbox ignore testing domains
@@ -169,7 +167,6 @@ def fxa_verified(
         use_braze_backend=use_braze_backend,
         should_send_tx_messages=should_send_tx_messages,
         pre_generated_token=pre_generated_token,
-        pre_generated_email_id=pre_generated_email_id,
     )
 
 
@@ -179,7 +176,6 @@ def fxa_newsletters_update(
     use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
-    pre_generated_email_id=None,
 ):
     email = data["email"]
     fxa_id = data["uid"]
@@ -199,7 +195,6 @@ def fxa_newsletters_update(
         use_braze_backend=use_braze_backend,
         should_send_tx_messages=should_send_tx_messages,
         pre_generated_token=pre_generated_token,
-        pre_generated_email_id=pre_generated_email_id,
     )
 
 
@@ -209,7 +204,6 @@ def fxa_login(
     use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
-    pre_generated_email_id=None,
 ):
     email = data["email"]
     # if we're not using the sandbox ignore testing domains
@@ -230,7 +224,6 @@ def fxa_login(
             use_braze_backend=use_braze_backend,
             should_send_tx_messages=should_send_tx_messages,
             pre_generated_token=pre_generated_token,
-            pre_generated_email_id=pre_generated_email_id,
         )
 
 
@@ -253,7 +246,6 @@ def upsert_user(
     use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
-    pre_generated_email_id=None,
 ):
     """
     Update or insert (upsert) a contact record
@@ -275,7 +267,6 @@ def upsert_user(
         use_braze_backend=use_braze_backend,
         should_send_tx_messages=should_send_tx_messages,
         pre_generated_token=pre_generated_token,
-        pre_generated_email_id=pre_generated_email_id,
     )
 
 
@@ -286,7 +277,6 @@ def upsert_contact(
     use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
-    pre_generated_email_id=None,
 ):
     """
     Update or insert (upsert) a contact record
@@ -304,7 +294,15 @@ def upsert_contact(
     newsletters = parse_newsletters_csv(data.get("newsletters"))
     cur_newsletters = user_data and user_data.get("newsletters")
 
-    if user_data and data.get("token") and user_data.get("token") != data["token"]:
+    if (
+        user_data
+        and data.get("token")
+        and data["token"]
+        not in [
+            user_data.get("token"),
+            user_data.get("ctms_legacy_token"),
+        ]
+    ):
         # We were passed a token but it doesn't match the user.
         return None, None
 
@@ -374,8 +372,8 @@ def upsert_contact(
         # no user found. create new one.
         token = update_data["token"] = pre_generated_token or generate_token()
 
-        if pre_generated_email_id:
-            update_data["email_id"] = pre_generated_email_id
+        if pre_generated_token:
+            update_data["email_id"] = pre_generated_token
 
         if settings.MAINTENANCE_MODE:
             if use_braze_backend:
@@ -384,9 +382,9 @@ def upsert_contact(
                 ctms_add_or_update.delay(update_data)
         else:
             if use_braze_backend:
-                new_user = braze.add(update_data)
+                braze.add(update_data)
             else:
-                new_user = ctms.add(update_data)
+                ctms.add(update_data)
 
         if send_confirm and settings.SEND_CONFIRM_MESSAGES and should_send_tx_messages:
             send_confirm_message.delay(
@@ -394,7 +392,6 @@ def upsert_contact(
                 token,
                 data.get("lang", "en-US"),
                 send_confirm,
-                new_user and new_user.get("email", {}).get("email_id") or None,
             )
 
         return token, True
@@ -440,7 +437,6 @@ def upsert_contact(
             token,
             update_data.get("lang", user_data.get("lang", "en-US")),
             send_confirm,
-            user_data.get("email_id"),
         )
 
     return token, False
@@ -495,13 +491,13 @@ def send_tx_messages(email, lang, message_ids):
 
 
 @rq_task
-def send_confirm_message(email, token, lang, message_type, email_id):
+def send_confirm_message(email, token, lang, message_type):
     lang = lang.strip()
     lang = lang or "en-US"
     message_id = f"newsletter-confirm-{message_type}"
     txm = BrazeTxEmailMessage.objects.get_message(message_id, lang)
     if txm:
-        send_tx_message(email, txm.message_id, txm.language, user_data={"basket_token": token, "email_id": email_id})
+        send_tx_message(email, txm.message_id, txm.language, user_data={"basket_token": token, "email_id": token})
 
 
 @rq_task
@@ -559,11 +555,11 @@ def update_custom_unsub(token, reason, use_braze_backend=False):
 
 
 @rq_task
-def send_recovery_message(email, token, lang, email_id):
+def send_recovery_message(email, lang, token):
     message_id = "account-recovery"
     txm = BrazeTxEmailMessage.objects.get_message(message_id, lang)
     if txm:
-        user_data = {"basket_token": token, "email_id": email_id}
+        user_data = {"basket_token": token, "email_id": token}
         send_tx_message(email, txm.message_id, txm.language, user_data=user_data)
 
 
