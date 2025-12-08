@@ -1,7 +1,6 @@
 from collections import namedtuple
 from unittest import mock
 
-from django.test.utils import override_settings
 from django.utils import timezone
 
 import pytest
@@ -305,7 +304,8 @@ mock_basket_user_data = {
     "last_modified_date": "2022-02-01",
     "optin": True,
     "optout": False,
-    "token": "abc",
+    "token": "123",
+    "ctms_legacy_token": "abc",
     "fxa_service": "test",
     "fxa_lang": "en",
     "fxa_primary_email": "test2@example.com",
@@ -438,58 +438,6 @@ def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock
                 "_update_existing_only": False,
                 "email": "test@example.com",
                 "external_id": "123",
-                "language": "en",
-                "email_subscribe": "subscribed",
-                "subscription_groups": [
-                    {"subscription_group_id": "78fe6671-9f94-48bd-aaf3-7e873536c3e6", "subscription_state": "subscribed"},
-                ],
-                "update_timestamp": dt.isoformat(),
-                "user_attributes_v1": [
-                    {
-                        "email_lang": "en",
-                        "created_at": {
-                            "$time": dt.isoformat(),
-                        },
-                        "basket_token": "abc",
-                        "fxa_first_service": None,
-                        "fxa_lang": None,
-                        "fxa_primary_email": None,
-                        "fxa_created_at": None,
-                        "has_fxa": False,
-                        "fxa_deleted": None,
-                        "mailing_country": None,
-                        "updated_at": {
-                            "$time": dt.isoformat(),
-                        },
-                        "unsub_reason": "unsub",
-                    }
-                ],
-            }
-        ]
-    }
-    with freeze_time(dt):
-        assert braze_instance.to_vendor(None, update_data) == expected
-
-
-@override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
-@mock.patch(
-    "basket.news.newsletters._newsletters",
-    return_value=mock_newsletters,
-)
-@mock.patch(
-    "basket.news.newsletters.newsletter_languages",
-    return_value=["en"],
-)
-def test_to_vendor_with_updates_and_no_user_data_in_braze_only_write(mock_newsletter_languages, mock_newsletters, braze_client):
-    braze_instance = Braze(braze_client)
-    dt = timezone.now()
-    update_data = {"newsletters": {"bar-news": True}, "email": "test@example.com", "token": "abc", "email_id": "123", "unsub_reason": "unsub"}
-    expected = {
-        "attributes": [
-            {
-                "_update_existing_only": False,
-                "email": "test@example.com",
-                "external_id": "abc",
                 "language": "en",
                 "email_subscribe": "subscribed",
                 "subscription_groups": [
@@ -760,72 +708,6 @@ def test_braze_add_with_fxa_id(add_fxa_id, mock_newsletters, braze_client):
                 fxa_id,
                 enqueue_in=braze.BRAZE_OPTIMAL_DELAY,
             )
-
-
-@override_settings(BRAZE_PARALLEL_WRITE_ENABLE=True)
-@mock.patch(
-    "basket.news.newsletters._newsletters",
-    return_value=mock_newsletters,
-)
-@mock.patch(
-    "basket.news.backends.braze.migrate_external_id_task.delay",
-)
-def test_braze_add_with_external_id_migration(migrate_external_id, mock_newsletters, braze_client):
-    braze_instance = Braze(braze_client)
-    new_user = {
-        "email": "test@example.com",
-        "email_id": "123",
-        "token": "abc",
-        "newsletters": {"foo-news": True},
-        "country": "US",
-    }
-
-    with requests_mock.mock() as m:
-        m.register_uri("POST", "http://test.com/users/track", json={})
-        expected = {"email": {"email_id": new_user["email_id"]}}
-        with freeze_time():
-            response = braze_instance.add(new_user)
-            api_requests = m.request_history
-            assert response == expected
-            assert api_requests[0].url == "http://test.com/users/track"
-            assert api_requests[0].json() == braze_instance.to_vendor(None, new_user)
-            migrate_external_id.assert_called_once_with(
-                "123",
-                "abc",
-                enqueue_in=braze.BRAZE_OPTIMAL_DELAY,
-            )
-
-
-@override_settings(BRAZE_PARALLEL_WRITE_ENABLE=True)
-@mock.patch(
-    "basket.news.newsletters._newsletters",
-    return_value=mock_newsletters,
-)
-@mock.patch(
-    "basket.news.backends.braze.migrate_external_id_task.delay",
-)
-def test_braze_add_migrates_external_id(migrate_external_id, mock_newsletters, braze_client):
-    braze_instance = Braze(braze_client)
-    new_user = {
-        "email": "test@example.com",
-        "email_id": "123",
-        "token": "abc",
-        "newsletters": {"foo-news": True},
-        "country": "US",
-    }
-    with requests_mock.mock() as m:
-        m.register_uri("POST", "http://test.com/users/track", json={})
-        m.register_uri(
-            "POST",
-            "http://test.com/users/external_ids/rename",
-            json={
-                "message": "success",
-                "external_ids": ["abc"],
-            },
-        )
-        braze_instance.add(new_user)
-
-        migrate_external_id.assert_called_once()
 
 
 @mock.patch(

@@ -707,7 +707,6 @@ class RecoveryViewTest(TestCase):
         self.assertEqual(200, resp.status_code)
         mock_send_recovery_message_task.assert_called_with(
             email,
-            "el-dudarino",
             "en",
             "fed654",
         )

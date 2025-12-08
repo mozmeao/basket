@@ -146,7 +146,6 @@ def fxa_callback(request):
         should_send_tx_messages=True,
         extra_metrics_tags=None,
         pre_generated_token=None,
-        pre_generated_email_id=None,
     ):
         if extra_metrics_tags is None:
             extra_metrics_tags = []
@@ -188,7 +187,6 @@ def fxa_callback(request):
                     use_braze_backend=use_braze_backend,
                     should_send_tx_messages=should_send_tx_messages,
                     pre_generated_token=pre_generated_token,
-                    pre_generated_email_id=pre_generated_email_id,
                 )[0]
             except Exception as e:
                 metrics.incr("news.views.fxa_callback", tags=["status:error", "error:upsert_contact", *extra_metrics_tags])
@@ -201,7 +199,6 @@ def fxa_callback(request):
 
     if settings.BRAZE_PARALLEL_WRITE_ENABLE:
         pre_generated_token = generate_token()
-        pre_generated_email_id = generate_token()
         try:
             handler(
                 email,
@@ -210,7 +207,6 @@ def fxa_callback(request):
                 should_send_tx_messages=False,
                 extra_metrics_tags=["backend:braze"],
                 pre_generated_token=pre_generated_token,
-                pre_generated_email_id=pre_generated_email_id,
             )
         except Exception as e:
             sentry_sdk.capture_exception(e)
@@ -221,7 +217,6 @@ def fxa_callback(request):
             use_braze_backend=False,
             should_send_tx_messages=True,
             pre_generated_token=pre_generated_token,
-            pre_generated_email_id=pre_generated_email_id,
         )
     elif settings.BRAZE_ONLY_WRITE_ENABLE:
         return handler(
@@ -370,7 +365,6 @@ def subscribe(request):
         rate_limit_increment=True,
         extra_metrics_tags=None,
         pre_generated_token=None,
-        pre_generated_email_id=None,
     ):
         allowed_body_keys = [
             "email",
@@ -479,13 +473,11 @@ def subscribe(request):
             rate_limit_increment=rate_limit_increment,
             extra_metrics_tags=extra_metrics_tags,
             pre_generated_token=pre_generated_token,
-            pre_generated_email_id=pre_generated_email_id,
         )
 
     # We are doing parallel writes and want the token/email_id
     # to be same in both CTMS and Braze so we eagerly generate them now.
     pre_generated_token = generate_token()
-    pre_generated_email_id = generate_token()
 
     if settings.BRAZE_PARALLEL_WRITE_ENABLE:
         try:
@@ -496,7 +488,6 @@ def subscribe(request):
                 rate_limit_increment=False,
                 extra_metrics_tags=["backend:braze"],
                 pre_generated_token=pre_generated_token,
-                pre_generated_email_id=pre_generated_email_id,
             )
         except Exception as e:
             sentry_sdk.capture_exception(e)
@@ -507,7 +498,6 @@ def subscribe(request):
             should_send_tx_messages=True,
             rate_limit_increment=True,
             pre_generated_token=pre_generated_token,
-            pre_generated_email_id=pre_generated_email_id,
         )
     elif settings.BRAZE_ONLY_WRITE_ENABLE:
         return handler(
@@ -760,7 +750,7 @@ def send_recovery_message(request):
 
     lang = user_data.get("lang", "en") or "en"
     email_id = user_data.get("email_id")
-    tasks.send_recovery_message.delay(email, user_data["token"], lang, email_id)
+    tasks.send_recovery_message.delay(email, lang, email_id)
     return HttpResponseJSON({"status": "ok"})
 
 
@@ -972,7 +962,6 @@ def update_user_task(
     rate_limit_increment=True,
     extra_metrics_tags=None,
     pre_generated_token=None,
-    pre_generated_email_id=None,
 ):
     """Call the update_user task async with the right parameters.
 
@@ -1081,7 +1070,6 @@ def update_user_task(
                 use_braze_backend=use_braze_backend,
                 should_send_tx_messages=should_send_tx_messages,
                 pre_generated_token=pre_generated_token,
-                pre_generated_email_id=pre_generated_email_id,
             )
             # have to error since we can't return a token
             return HttpResponseJSON(
@@ -1122,7 +1110,6 @@ def update_user_task(
             use_braze_backend=use_braze_backend,
             should_send_tx_messages=should_send_tx_messages,
             pre_generated_token=pre_generated_token,
-            pre_generated_email_id=pre_generated_email_id,
         )
         return HttpResponseJSON({"status": "ok", "token": token, "created": created})
     else:
@@ -1132,6 +1119,5 @@ def update_user_task(
             use_braze_backend=use_braze_backend,
             should_send_tx_messages=should_send_tx_messages,
             pre_generated_token=pre_generated_token,
-            pre_generated_email_id=pre_generated_email_id,
         )
         return HttpResponseJSON({"status": "ok"})

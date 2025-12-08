@@ -23,20 +23,8 @@ log = logging.getLogger(__name__)
 BRAZE_OPTIMAL_DELAY = timedelta(minutes=5)
 
 
-# These tasks cannot be placed in basket/news/tasks.py because it would
+# This task cannot be placed in basket/news/tasks.py because it would
 # create a circular dependency.
-@rq_task
-def migrate_external_id_task(current_external_id, new_external_id):
-    braze.interface.migrate_external_id(
-        [
-            {
-                "current_external_id": current_external_id,
-                "new_external_id": new_external_id,
-            }
-        ]
-    )
-
-
 @rq_task
 def add_fxa_id_alias_task(external_id, fxa_id):
     braze.interface.add_fxa_id_alias(external_id, fxa_id)
@@ -366,7 +354,6 @@ class Braze:
 
     def get(
         self,
-        email_id=None,
         token=None,
         email=None,
         fxa_id=None,
@@ -380,18 +367,6 @@ class Braze:
         @param fxa_id: external ID from FxA
         @return: dict, or None if not found
         """
-
-        # If we only have a token or fxa_id and the Braze migrations for them haven't been
-        # completed we won't be able to look up the user. We add a temporary shim here which
-        # will fetch the email from CTMS. This shim can be disabled/removed after the migrations
-        # are complete.
-        if not email and settings.BRAZE_CTMS_SHIM_ENABLE:
-            try:
-                ctms_response = ctms.get(token=token, fxa_id=fxa_id)
-                if ctms_response:
-                    email = ctms_response.get("email")
-            except Exception:
-                log.warn("Unable to fetch email from CTMS in braze.get shim")
 
         user_response = self.interface.export_users(
             email,
@@ -424,6 +399,20 @@ class Braze:
 
             return self.from_vendor(user_data, subscriptions)
 
+        # If we only have an outdated token or the Braze fxa_id migrations haven't been
+        # completed we won't be able to look up the user. We add a temporary shim here which
+        # will fetch the email from CTMS. This shim can be disabled/removed after the migration
+        # is complete.
+        elif not email and (fxa_id or token) and settings.BRAZE_CTMS_SHIM_ENABLE:
+            try:
+                ctms_response = ctms.get(token=token, fxa_id=fxa_id)
+                if ctms_response:
+                    ctms_email = ctms_response.get("email")
+                    if ctms_email:
+                        return self.get(email=ctms_email)
+            except Exception:
+                log.warn("Unable to fetch email from CTMS in braze.get shim")
+
     def add(self, data):
         """
         Create a user record.
@@ -438,14 +427,6 @@ class Braze:
             add_fxa_id_alias_task.delay(
                 external_id,
                 data["fxa_id"],
-                enqueue_in=BRAZE_OPTIMAL_DELAY,
-            )
-
-        token = data.get("token")
-        if token and settings.BRAZE_PARALLEL_WRITE_ENABLE:
-            migrate_external_id_task.delay(
-                external_id,
-                token,
                 enqueue_in=BRAZE_OPTIMAL_DELAY,
             )
 
@@ -539,7 +520,8 @@ class Braze:
             "last_modified_date": user_attributes.get("updated_at"),
             "optin": braze_user_data.get("email_subscribe") == "opted_in",
             "optout": braze_user_data.get("email_subscribe") == "unsubscribed",
-            "token": user_attributes.get("basket_token"),
+            "token": braze_user_data["external_id"],
+            "ctms_legacy_token": user_attributes.get("basket_token"),
             "fxa_service": user_attributes.get("fxa_first_service"),
             "fxa_lang": user_attributes.get("fxa_lang"),
             "fxa_primary_email": user_attributes.get("fxa_primary_email"),
@@ -563,9 +545,7 @@ class Braze:
         country = process_country(updated_user_data.get("country") or None)
         language = process_lang(updated_user_data.get("lang") or None)
 
-        external_id = (
-            updated_user_data.get("token") if not existing_user_data and settings.BRAZE_ONLY_WRITE_ENABLE else updated_user_data.get("email_id")
-        )
+        external_id = updated_user_data.get("email_id")
 
         if not external_id:
             raise ValueError("Missing Braze external_id")
@@ -593,7 +573,7 @@ class Braze:
             "subscription_groups": subscription_groups,
             "user_attributes_v1": [
                 {
-                    "basket_token": updated_user_data.get("token"),
+                    "basket_token": updated_user_data.get("ctms_legacy_token") or updated_user_data.get("token"),
                     "created_at": {"$time": updated_user_data.get("created_date", now)},
                     "email_lang": language,
                     "mailing_country": country,

@@ -608,9 +608,9 @@ def test_send_tx_messages_with_map(mock_model, mock_braze, metricsmock):
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
 def test_send_confirm_message(mock_get_message, mock_braze, metricsmock):
     mock_get_message.return_value = BrazeTxEmailMessage(message_id="newsletter-confirm-fx", language="en-US")
-    send_confirm_message("test@example.com", "abc123", "en", "fx", "fed654")
+    send_confirm_message("test@example.com", "abc123", "en", "fx")
     mock_braze.interface.track_user.assert_called_once_with(
-        "test@example.com", event="send-newsletter-confirm-fx-en-US", user_data={"basket_token": "abc123", "email_id": "fed654"}
+        "test@example.com", event="send-newsletter-confirm-fx-en-US", user_data={"basket_token": "abc123", "email_id": "abc123"}
     )
     metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
 
@@ -619,8 +619,8 @@ def test_send_confirm_message(mock_get_message, mock_braze, metricsmock):
 @patch("basket.news.models.BrazeTxEmailMessage.objects.get_message")
 def test_send_recovery_message(mock_get_message, mock_braze, metricsmock):
     mock_get_message.return_value = BrazeTxEmailMessage(message_id="newsletter-confirm-fx", language="en-US")
-    send_recovery_message("test@example.com", "abc123", "en", "fed654")
+    send_recovery_message("test@example.com", "en", "fed654")
     mock_braze.interface.track_user.assert_called_once_with(
-        "test@example.com", event="send-newsletter-confirm-fx-en-US", user_data={"basket_token": "abc123", "email_id": "fed654"}
+        "test@example.com", event="send-newsletter-confirm-fx-en-US", user_data={"basket_token": "fed654", "email_id": "fed654"}
     )
     metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
