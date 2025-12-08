@@ -1,5 +1,4 @@
 import json
-import sys
 import time
 
 from django.core.management.base import BaseCommand, CommandError
@@ -11,7 +10,7 @@ from basket.news.backends.braze import braze
 
 
 class Command(BaseCommand):
-    help = "Migrator utility to fetch external_ids from a Parquet file in GCS and migrate them to updated UUIDs."
+    help = "Migrator utility to fetch external_ids from a Parquet file in GCS and aliases to them in Braze."
 
     def add_arguments(self, parser):
         parser.add_argument("--project", type=str, required=False, help="Project ID")
@@ -56,48 +55,44 @@ class Command(BaseCommand):
 
         for i in range(0, len(migrations), chunk_size):
             chunk = migrations[i : i + chunk_size]
+            braze_token_alias_chunk = self.strip_for_braze_token_alias(chunk)
             braze_fxa_alias_chunk = self.strip_for_braze_fxa_alias(chunk)
-            braze_migration_chunk = self.strip_for_braze_migration(chunk)
+
             try:
+                if braze_token_alias_chunk:
+                    braze.interface.add_aliases(braze_token_alias_chunk)
                 if braze_fxa_alias_chunk:
                     braze.interface.add_aliases(braze_fxa_alias_chunk)
 
-                migrate_response = braze.interface.migrate_external_id(braze_migration_chunk)
-
-                if not migrate_response["braze_collected_response"]["external_ids"]:
-                    # If no external_ids are migrated we assume we are done.
-                    self.stdout.write(self.style.SUCCESS(f"Migration complete. Ended on email_id {chunk[-1]['current_external_id']}."))
-                    sys.exit(0)
-
-                time.sleep(0.035)
+                time.sleep(0.003)
             except Exception as e:
                 failure = {
                     "current_external_id": self.mask(chunk[0]["current_external_id"]),
-                    "new_external_id": self.mask(chunk[0]["new_external_id"]),
-                    "create_timestamp": str(chunk[0].get("create_timestamp", "")),
                     "reason": str(e),
                 }
                 self.stdout.write(self.style.ERROR(json.dumps(failure, indent=2)))
                 raise CommandError("Migration failed. Process terminated error.") from None
 
-    def strip_for_braze_migration(self, chunk):
-        return [
-            {
-                "current_external_id": item["current_external_id"],
-                "new_external_id": item["new_external_id"],
-            }
-            for item in chunk
-        ]
-
     def strip_for_braze_fxa_alias(self, chunk):
         return [
             {
                 "external_id": item["current_external_id"],
-                "alias_name": "fxa_id",
-                "alias_label": item["fxa_id"],
+                "alias_label": "fxa_id",
+                "alias_name": item["fxa_id"],
             }
             for item in chunk
             if item.get("fxa_id")
+        ]
+
+    def strip_for_braze_token_alias(self, chunk):
+        return [
+            {
+                "external_id": item["current_external_id"],
+                "alias_label": "basket_token",
+                "alias_name": item["basket_token"],
+            }
+            for item in chunk
+            if item.get("basket_token")
         ]
 
     def mask(self, external_id):
@@ -112,7 +107,7 @@ class Command(BaseCommand):
         return [
             {
                 "current_external_id": row.email_id,
-                "new_external_id": row.basket_token,
+                "basket_token": row.basket_token,
                 "create_timestamp": getattr(row, "create_timestamp", ""),
                 "fxa_id": getattr(row, "fxa_id", ""),
             }

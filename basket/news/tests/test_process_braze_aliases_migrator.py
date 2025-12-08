@@ -6,7 +6,7 @@ from django.core.management.base import CommandError
 import pandas as pd
 import pytest
 
-from basket.news.management.commands.process_braze_external_id_migrator import Command
+from basket.news.management.commands.process_braze_aliases_migrator import Command
 
 
 @pytest.fixture
@@ -38,13 +38,13 @@ def parquet_bytes(df):
 
 @pytest.fixture(autouse=True)
 def mock_braze():
-    with mock.patch("basket.news.management.commands.process_braze_external_id_migrator.braze") as braze_mock:
+    with mock.patch("basket.news.management.commands.process_braze_aliases_migrator.braze") as braze_mock:
         yield braze_mock
 
 
 @pytest.fixture(autouse=True)
 def mock_storage_client():
-    with mock.patch("basket.news.management.commands.process_braze_external_id_migrator.storage.Client") as storage_mock:
+    with mock.patch("basket.news.management.commands.process_braze_aliases_migrator.storage.Client") as storage_mock:
         yield storage_mock
 
 
@@ -58,7 +58,7 @@ def test_successful_migration(mock_storage_client, mock_braze, sample_df):
     mock_client.bucket.return_value = mock_bucket
     mock_storage_client.return_value = mock_client
 
-    mock_braze.interface.migrate_external_id.return_value = {"braze_collected_response": {"external_ids": ["id1", "id2"], "rename_errors": []}}
+    mock_braze.interface.add_aliases.return_value = {"aliases_processed": 2, "message": "success"}
 
     cmd = Command()
     cmd.stdout = mock.Mock()
@@ -66,12 +66,10 @@ def test_successful_migration(mock_storage_client, mock_braze, sample_df):
         project="proj", bucket="bucket", prefix="prefix", file_name="file.parquet", start_timestamp=None, chunk_size=2
     )
     expected_chunk = [
-        {"current_external_id": "id1", "new_external_id": "token1"},
-        {"current_external_id": "id2", "new_external_id": "token2"},
+        {"external_id": "id1", "alias_label": "basket_token", "alias_name": "token1"},
+        {"external_id": "id2", "alias_label": "basket_token", "alias_name": "token2"},
     ]
-    mock_braze.interface.migrate_external_id.assert_called_once_with(expected_chunk)
-    # No fxa_ids in chunk so no calls should be made to add_aliases
-    mock_braze.interface.add_aliases.assert_not_called()
+    mock_braze.interface.add_aliases.assert_called_once_with(expected_chunk)
 
 
 def test_successful_migration_with_fxa(mock_storage_client, mock_braze, sample_df_with_fxa):
@@ -84,19 +82,27 @@ def test_successful_migration_with_fxa(mock_storage_client, mock_braze, sample_d
     mock_client.bucket.return_value = mock_bucket
     mock_storage_client.return_value = mock_client
 
-    mock_braze.interface.migrate_external_id.return_value = {"braze_collected_response": {"external_ids": ["id1", "id2"], "rename_errors": []}}
+    mock_braze.interface.add_aliases.return_value = {"aliases_processed": 2, "message": "success"}
 
     cmd = Command()
     cmd.stdout = mock.Mock()
     cmd.process_and_migrate_parquet_file(
         project="proj", bucket="bucket", prefix="prefix", file_name="file.parquet", start_timestamp=None, chunk_size=2
     )
-    expected_chunk = [
-        {"current_external_id": "id1", "new_external_id": "token1"},
-        {"current_external_id": "id2", "new_external_id": "token2"},
+    expected_chunk_1 = [
+        {"external_id": "id1", "alias_label": "basket_token", "alias_name": "token1"},
+        {"external_id": "id2", "alias_label": "basket_token", "alias_name": "token2"},
     ]
-    mock_braze.interface.migrate_external_id.assert_called_once_with(expected_chunk)
-    mock_braze.interface.add_aliases.assert_called_once()
+    expected_chunk_2 = [
+        {"external_id": "id1", "alias_label": "fxa_id", "alias_name": "fxa1"},
+        {"external_id": "id2", "alias_label": "fxa_id", "alias_name": "fxa2"},
+    ]
+    mock_braze.interface.add_aliases.assert_has_calls(
+        [
+            mock.call(expected_chunk_1),
+            mock.call(expected_chunk_2),
+        ],
+    )
 
 
 def test_file_not_found(mock_storage_client, mock_braze):
@@ -126,7 +132,7 @@ def test_migration_failure(mock_storage_client, mock_braze, sample_df):
     mock_client.bucket.return_value = mock_bucket
     mock_storage_client.return_value = mock_client
 
-    mock_braze.interface.migrate_external_id.side_effect = Exception("fail!")
+    mock_braze.interface.add_aliases.side_effect = Exception("fail!")
     cmd = Command()
     cmd.stdout = mock.Mock()
     cmd.style = mock.Mock()
@@ -160,8 +166,8 @@ def test_start_timestamp_filtering(mock_storage_client, mock_braze):
     cmd.process_and_migrate_parquet_file(
         project="proj", bucket="bucket", prefix="prefix", file_name="file.parquet", start_timestamp="2024-01-01T00:00:00", chunk_size=2
     )
-    expected_chunk = [{"current_external_id": "id2", "new_external_id": "token2"}]
-    mock_braze.interface.migrate_external_id.assert_called_once_with(expected_chunk)
+    expected_chunk = [{"external_id": "id2", "alias_label": "basket_token", "alias_name": "token2"}]
+    mock_braze.interface.add_aliases.assert_called_once_with(expected_chunk)
 
 
 def test_empty_parquet_file(mock_storage_client, mock_braze):
@@ -180,7 +186,7 @@ def test_empty_parquet_file(mock_storage_client, mock_braze):
     cmd.process_and_migrate_parquet_file(
         project="proj", bucket="bucket", prefix="prefix", file_name="file.parquet", start_timestamp=None, chunk_size=2
     )
-    mock_braze.interface.migrate_external_id.assert_not_called()
+    mock_braze.interface.add_aliases.assert_not_called()
 
 
 def test_chunking_behavior(mock_storage_client, mock_braze):
@@ -200,12 +206,12 @@ def test_chunking_behavior(mock_storage_client, mock_braze):
         project="proj", bucket="bucket", prefix="prefix", file_name="file.parquet", start_timestamp=None, chunk_size=2
     )
     # Should be called 3 times: 2, 2, 1
-    assert mock_braze.interface.migrate_external_id.call_count == 3
-    all_calls = [call.args[0] for call in mock_braze.migrate_external_id.call_args_list]
+    assert mock_braze.interface.add_aliases.call_count == 3
+    all_calls = [call.args[0] for call in mock_braze.add_aliases.call_args_list]
     assert all(len(chunk) <= 2 for chunk in all_calls)
 
 
-@mock.patch("basket.news.management.commands.process_braze_external_id_migrator.time.sleep")
+@mock.patch("basket.news.management.commands.process_braze_aliases_migrator.time.sleep")
 def test_rate_limit_sleep_between_chunks(mock_sleep, sample_df, mock_storage_client, mock_braze):
     mock_blob = mock.Mock()
     mock_blob.exists.return_value = True
@@ -223,4 +229,4 @@ def test_rate_limit_sleep_between_chunks(mock_sleep, sample_df, mock_storage_cli
     )
 
     assert mock_sleep.call_count == 2
-    mock_sleep.assert_called_with(0.035)
+    mock_sleep.assert_called_with(0.003)
