@@ -408,7 +408,7 @@ class Braze:
                 enqueue_in=BRAZE_OPTIMAL_DELAY,
             )
 
-        # Add basket_token (which is not email_id/external_id) as alias
+        # Add basket_token (which is email_id/external_id) as alias
         # to all new users so they are consistent with existing users which
         # have been processed by `process_braze_aliases_migrator.py`.
         add_basket_token_alias_task.delay(
