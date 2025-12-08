@@ -23,11 +23,16 @@ log = logging.getLogger(__name__)
 BRAZE_OPTIMAL_DELAY = timedelta(minutes=5)
 
 
-# This task cannot be placed in basket/news/tasks.py because it would
+# These tasks cannot be placed in basket/news/tasks.py because it would
 # create a circular dependency.
 @rq_task
 def add_fxa_id_alias_task(external_id, fxa_id):
     braze.interface.add_fxa_id_alias(external_id, fxa_id)
+
+
+@rq_task
+def add_basket_token_alias_task(external_id, basket_token):
+    braze.interface.add_basket_token_alias(external_id, basket_token)
 
 
 # Braze errors: https://www.braze.com/docs/api/errors/
@@ -295,6 +300,14 @@ class BrazeInterface:
         data = {"user_aliases": [{"alias_name": fxa_id, "alias_label": "fxa_id", "external_id": external_id}]}
         return self._request(BrazeEndpoint.USERS_ADD_ALIAS, data)
 
+    def add_basket_token_alias(self, external_id, basket_token):
+        """
+        Adds the basket_token user alias to a user in Braze.
+        https://www.braze.com/docs/api/endpoints/user_data/post_user_alias
+        """
+        data = {"user_aliases": [{"alias_name": basket_token, "alias_label": "basket_token", "external_id": external_id}]}
+        return self._request(BrazeEndpoint.USERS_ADD_ALIAS, data)
+
     def add_aliases(self, alias_operations):
         """
         @param alias_operations: List of user alias objects (schema below)
@@ -429,6 +442,15 @@ class Braze:
                 data["fxa_id"],
                 enqueue_in=BRAZE_OPTIMAL_DELAY,
             )
+
+        # Add basket_token (which is not email_id/external_id) as alias
+        # to all new users so they are consistent with existing users which
+        # have been processed by `process_braze_aliases_migrator.py`.
+        add_basket_token_alias_task.delay(
+            external_id,
+            external_id,
+            enqueue_in=BRAZE_OPTIMAL_DELAY,
+        )
 
         return {"email": {"email_id": external_id}}
 
