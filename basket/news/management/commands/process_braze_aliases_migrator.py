@@ -64,7 +64,7 @@ class Command(BaseCommand):
                 if braze_fxa_alias_chunk:
                     braze.interface.add_aliases(braze_fxa_alias_chunk)
 
-                time.sleep(0.003)
+                time.sleep(0.006)
             except Exception as e:
                 failure = {
                     "current_external_id": self.mask(chunk[0]["current_external_id"]),
