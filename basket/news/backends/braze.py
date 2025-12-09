@@ -23,11 +23,16 @@ log = logging.getLogger(__name__)
 BRAZE_OPTIMAL_DELAY = timedelta(minutes=5)
 
 
-# This task cannot be placed in basket/news/tasks.py because it would
+# These tasks cannot be placed in basket/news/tasks.py because it would
 # create a circular dependency.
 @rq_task
 def add_fxa_id_alias_task(external_id, fxa_id):
     braze.interface.add_fxa_id_alias(external_id, fxa_id)
+
+
+@rq_task
+def add_basket_token_alias_task(external_id, basket_token):
+    braze.interface.add_basket_token_alias(external_id, basket_token)
 
 
 # Braze errors: https://www.braze.com/docs/api/errors/
@@ -77,7 +82,6 @@ class BrazeEndpoint(Enum):
     USERS_TRACK = "/users/track"
     USERS_DELETE = "/users/delete"
     SUBSCRIPTION_USER_STATUS = "/subscription/user/status"
-    USERS_MIGRATE_EXTERNAL_ID = "/users/external_ids/rename"
     USERS_ADD_ALIAS = "/users/alias/new"
 
 
@@ -295,6 +299,14 @@ class BrazeInterface:
         data = {"user_aliases": [{"alias_name": fxa_id, "alias_label": "fxa_id", "external_id": external_id}]}
         return self._request(BrazeEndpoint.USERS_ADD_ALIAS, data)
 
+    def add_basket_token_alias(self, external_id, basket_token):
+        """
+        Adds the basket_token user alias to a user in Braze.
+        https://www.braze.com/docs/api/endpoints/user_data/post_user_alias
+        """
+        data = {"user_aliases": [{"alias_name": basket_token, "alias_label": "basket_token", "external_id": external_id}]}
+        return self._request(BrazeEndpoint.USERS_ADD_ALIAS, data)
+
     def add_aliases(self, alias_operations):
         """
         @param alias_operations: List of user alias objects (schema below)
@@ -310,40 +322,6 @@ class BrazeInterface:
         """
         data = {"user_aliases": alias_operations}
         return self._request(BrazeEndpoint.USERS_ADD_ALIAS, data)
-
-    def migrate_external_id(self, migrations):
-        """
-        Migrate a user's external_id to a new value. 50 rename objects per request is the hard Braze limit.
-
-        If the migrations list has more than 50 objects, method will send multiple requests, each with <=50 objects.
-
-        https://www.braze.com/docs/api/endpoints/user_data/external_id_migration/post_external_ids_rename/#prerequisites
-
-        """
-
-        if not (isinstance(migrations, list) and all(isinstance(item, dict) for item in migrations)):
-            raise BrazeClientError("migrations must be a list of dictionaries")
-
-        results = []
-        errors = []
-
-        for i in range(0, len(migrations), 50):
-            chunk = migrations[i : i + 50]
-            rename_request = {"external_id_renames": chunk}
-            rename_response = self._request(BrazeEndpoint.USERS_MIGRATE_EXTERNAL_ID, rename_request)
-
-            external_ids = rename_response.get("external_ids", [])
-            rename_errors = rename_response.get("rename_errors", [])
-
-            results.extend(external_ids)
-            errors.extend(rename_errors)
-
-        return {
-            "braze_collected_response": {
-                "external_ids": results,
-                "rename_errors": errors,
-            }
-        }
 
 
 class Braze:
@@ -429,6 +407,15 @@ class Braze:
                 data["fxa_id"],
                 enqueue_in=BRAZE_OPTIMAL_DELAY,
             )
+
+        # Add basket_token (which is email_id/external_id) as alias
+        # to all new users so they are consistent with existing users which
+        # have been processed by `process_braze_aliases_migrator.py`.
+        add_basket_token_alias_task.delay(
+            external_id,
+            external_id,
+            enqueue_in=BRAZE_OPTIMAL_DELAY,
+        )
 
         return {"email": {"email_id": external_id}}
 

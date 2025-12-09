@@ -16,25 +16,6 @@ def braze_client():
     return braze.BrazeInterface("http://test.com", "test_api_key")
 
 
-def test_migrate_external_id_success(braze_client):
-    migrations = [
-        {"current_external_id": "old_id_1", "new_external_id": "new_id_1"},
-        {"current_external_id": "old_id_2", "new_external_id": "new_id_2"},
-    ]
-    mock_response = {
-        "external_ids": ["new_id_1", "new_id_2"],
-        "rename_errors": [],
-    }
-    with mock.patch.object(braze.BrazeInterface, "_request", return_value=mock_response):
-        result = braze_client.migrate_external_id(migrations)
-        assert result == {
-            "braze_collected_response": {
-                "external_ids": ["new_id_1", "new_id_2"],
-                "rename_errors": [],
-            }
-        }
-
-
 def test_braze_client_no_api_key():
     with pytest.warns(UserWarning, match="Braze API key is not configured"):
         braze_client = braze.BrazeInterface("http://test.com", "")
@@ -237,6 +218,16 @@ def test_braze_add_fxa_id_alias(braze_client):
     with requests_mock.mock() as m:
         m.register_uri("POST", "http://test.com/users/alias/new", json={})
         braze_client.add_fxa_id_alias(external_id, fxa_id)
+        assert m.last_request.json() == expected
+
+
+def test_braze_add_basket_token_alias(braze_client):
+    external_id = "abc"
+    expected = {"user_aliases": [{"alias_name": external_id, "alias_label": "basket_token", "external_id": external_id}]}
+
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/alias/new", json={})
+        braze_client.add_basket_token_alias(external_id, external_id)
         assert m.last_request.json() == expected
 
 
@@ -663,7 +654,10 @@ def test_braze_get_opted_out_user(braze_client):
     "basket.news.newsletters._newsletters",
     return_value=mock_newsletters,
 )
-def test_braze_add(mock_newsletters, braze_client):
+@mock.patch(
+    "basket.news.backends.braze.add_basket_token_alias_task.delay",
+)
+def test_braze_add(add_basket_token_alias, mock_newsletters, braze_client):
     braze_instance = Braze(braze_client)
     new_user = {
         "email": "test@example.com",
@@ -679,6 +673,11 @@ def test_braze_add(mock_newsletters, braze_client):
             response = braze_instance.add(new_user)
             assert response == expected
             assert m.last_request.json() == braze_instance.to_vendor(None, new_user)
+            add_basket_token_alias.assert_called_once_with(
+                "123",
+                "123",
+                enqueue_in=braze.BRAZE_OPTIMAL_DELAY,
+            )
 
 
 @mock.patch(
