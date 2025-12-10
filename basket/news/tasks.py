@@ -8,7 +8,7 @@ from basket import metrics
 from basket.base.decorators import rq_task
 from basket.base.exceptions import BasketError
 from basket.base.utils import email_is_testing
-from basket.news.backends.braze import BrazeUserNotFoundByFxaIdError, braze, braze_tx
+from basket.news.backends.braze import BrazeUserNotFoundByFxaIdError, BrazeUserNotFoundByTokenError, braze, braze_tx
 from basket.news.backends.ctms import (
     CTMSNotFoundByAltIDError,
     CTMSUniqueIDConflictError,
@@ -550,7 +550,7 @@ def update_custom_unsub(token, reason, use_braze_backend=False):
     else:
         try:
             ctms.update_by_alt_id("token", token, {"reason": reason})
-        except CTMSNotFoundByAltIDError:
+        except (CTMSNotFoundByAltIDError, BrazeUserNotFoundByTokenError):
             # No record found for that token, nothing to do.
             pass
 
