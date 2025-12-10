@@ -301,6 +301,7 @@ def upsert_contact(
         not in [
             user_data.get("token"),
             user_data.get("ctms_legacy_token"),
+            user_data.get("email_id"),
         ]
     ):
         # We were passed a token but it doesn't match the user.
