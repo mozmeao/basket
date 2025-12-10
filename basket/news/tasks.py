@@ -8,7 +8,12 @@ from basket import metrics
 from basket.base.decorators import rq_task
 from basket.base.exceptions import BasketError
 from basket.base.utils import email_is_testing
-from basket.news.backends.braze import BrazeUserNotFoundByFxaIdError, BrazeUserNotFoundByTokenError, braze, braze_tx
+from basket.news.backends.braze import (
+    BrazeUserNotFoundByFxaIdError,
+    BrazeUserNotFoundByTokenError,
+    braze,
+    braze_tx,
+)
 from basket.news.backends.ctms import (
     CTMSNotFoundByAltIDError,
     CTMSUniqueIDConflictError,
@@ -545,14 +550,14 @@ def confirm_user(token, use_braze_backend=False, extra_metrics_tags=None):
 @rq_task
 def update_custom_unsub(token, reason, use_braze_backend=False):
     """Record a user's custom unsubscribe reason."""
-    if use_braze_backend:
-        braze.update_by_token(token, {"unsub_reason": reason})
-    else:
-        try:
+    try:
+        if use_braze_backend:
+            braze.update_by_token(token, {"unsub_reason": reason})
+        else:
             ctms.update_by_alt_id("token", token, {"reason": reason})
-        except (CTMSNotFoundByAltIDError, BrazeUserNotFoundByTokenError):
-            # No record found for that token, nothing to do.
-            pass
+    except (CTMSNotFoundByAltIDError, BrazeUserNotFoundByTokenError):
+        # No record found for that token, nothing to do.
+        pass
 
 
 @rq_task
