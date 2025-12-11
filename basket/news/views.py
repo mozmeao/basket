@@ -362,7 +362,7 @@ def subscribe(request):
         request,
         use_braze_backend=False,
         should_send_tx_messages=True,
-        rate_limit_increment=True,
+        should_rate_limit=True,
         extra_metrics_tags=None,
         pre_generated_token=None,
     ):
@@ -470,7 +470,7 @@ def subscribe(request):
             sync=sync,
             use_braze_backend=use_braze_backend,
             should_send_tx_messages=should_send_tx_messages,
-            rate_limit_increment=rate_limit_increment,
+            should_rate_limit=should_rate_limit,
             extra_metrics_tags=extra_metrics_tags,
             pre_generated_token=pre_generated_token,
         )
@@ -485,7 +485,7 @@ def subscribe(request):
                 request,
                 use_braze_backend=True,
                 should_send_tx_messages=False,
-                rate_limit_increment=False,
+                should_rate_limit=False,
                 extra_metrics_tags=["backend:braze"],
                 pre_generated_token=pre_generated_token,
             )
@@ -496,7 +496,7 @@ def subscribe(request):
             request,
             use_braze_backend=False,
             should_send_tx_messages=True,
-            rate_limit_increment=True,
+            should_rate_limit=True,
             pre_generated_token=pre_generated_token,
         )
     elif settings.BRAZE_ONLY_WRITE_ENABLE:
@@ -504,7 +504,7 @@ def subscribe(request):
             request,
             use_braze_backend=True,
             should_send_tx_messages=True,
-            rate_limit_increment=True,
+            should_rate_limit=True,
             extra_metrics_tags=["backend:braze"],
         )
     else:
@@ -512,7 +512,7 @@ def subscribe(request):
             request,
             use_braze_backend=False,
             should_send_tx_messages=True,
-            rate_limit_increment=True,
+            should_rate_limit=True,
         )
 
 
@@ -556,7 +556,7 @@ def unsubscribe(request, token):
                 data,
                 use_braze_backend=True,
                 should_send_tx_messages=False,
-                rate_limit_increment=False,
+                should_rate_limit=False,
                 extra_metrics_tags=["backend:braze"],
             )
         except Exception as e:
@@ -568,7 +568,7 @@ def unsubscribe(request, token):
             data,
             use_braze_backend=False,
             should_send_tx_messages=True,
-            rate_limit_increment=True,
+            should_rate_limit=True,
         )
     elif settings.BRAZE_ONLY_WRITE_ENABLE:
         return update_user_task(
@@ -577,7 +577,7 @@ def unsubscribe(request, token):
             data,
             use_braze_backend=True,
             should_send_tx_messages=True,
-            rate_limit_increment=True,
+            should_rate_limit=True,
             extra_metrics_tags=["backend:braze"],
         )
     else:
@@ -587,7 +587,7 @@ def unsubscribe(request, token):
             data,
             use_braze_backend=False,
             should_send_tx_messages=True,
-            rate_limit_increment=True,
+            should_rate_limit=True,
         )
 
 
@@ -641,7 +641,7 @@ def user(request, token):
                 data,
                 use_braze_backend=True,
                 should_send_tx_messages=False,
-                rate_limit_increment=False,
+                should_rate_limit=False,
                 extra_metrics_tags=["backend:braze"],
                 pre_generated_token=pre_generated_token,
             )
@@ -651,7 +651,7 @@ def user(request, token):
                 data,
                 use_braze_backend=False,
                 should_send_tx_messages=True,
-                rate_limit_increment=True,
+                should_rate_limit=True,
                 pre_generated_token=pre_generated_token,
             )
         elif settings.BRAZE_ONLY_WRITE_ENABLE:
@@ -661,7 +661,7 @@ def user(request, token):
                 data,
                 use_braze_backend=True,
                 should_send_tx_messages=True,
-                rate_limit_increment=True,
+                should_rate_limit=True,
                 extra_metrics_tags=["backend:braze"],
             )
         else:
@@ -671,7 +671,7 @@ def user(request, token):
                 data,
                 use_braze_backend=False,
                 should_send_tx_messages=True,
-                rate_limit_increment=True,
+                should_rate_limit=True,
             )
 
     masked = not has_valid_api_key(request)
@@ -959,7 +959,7 @@ def update_user_task(
     sync=False,
     use_braze_backend=False,
     should_send_tx_messages=True,
-    rate_limit_increment=True,
+    should_rate_limit=True,
     extra_metrics_tags=None,
     pre_generated_token=None,
 ):
@@ -1038,27 +1038,28 @@ def update_user_task(
     if optin:
         data["optin"] = True
 
-    if api_call_type == SUBSCRIBE and email and data.get("newsletters"):
-        # only rate limit here so we don't rate limit errors.
-        if is_ratelimited(
-            request,
-            group="basket.news.views.update_user_task.subscribe",
-            key=lambda x, y: f"{data['newsletters']}-{email}",
-            rate=settings.EMAIL_SUBSCRIBE_RATE_LIMIT,
-            increment=rate_limit_increment,
-        ):
-            raise Ratelimited()
+    if should_rate_limit:
+        if api_call_type == SUBSCRIBE and email and data.get("newsletters"):
+            # only rate limit here so we don't rate limit errors.
+            if is_ratelimited(
+                request,
+                group="basket.news.views.update_user_task.subscribe",
+                key=lambda x, y: f"{data['newsletters']}-{email}",
+                rate=settings.EMAIL_SUBSCRIBE_RATE_LIMIT,
+                increment=True,
+            ):
+                raise Ratelimited()
 
-    if api_call_type == SET and token and data.get("newsletters"):
-        # only rate limit here so we don't rate limit errors.
-        if is_ratelimited(
-            request,
-            group="basket.news.views.update_user_task.set",
-            key=lambda x, y: f"{data['newsletters']}-{token}",
-            rate=settings.EMAIL_SUBSCRIBE_RATE_LIMIT,
-            increment=rate_limit_increment,
-        ):
-            raise Ratelimited()
+        if api_call_type == SET and token and data.get("newsletters"):
+            # only rate limit here so we don't rate limit errors.
+            if is_ratelimited(
+                request,
+                group="basket.news.views.update_user_task.set",
+                key=lambda x, y: f"{data['newsletters']}-{token}",
+                rate=settings.EMAIL_SUBSCRIBE_RATE_LIMIT,
+                increment=True,
+            ):
+                raise Ratelimited()
 
     if sync:
         metrics.incr("news.views.subscribe.sync", tags=extra_metrics_tags)
