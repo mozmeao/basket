@@ -678,12 +678,12 @@ def user(request, token):
 
     if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
         try:
-            return get_user(token, masked=masked, omit_extra_braze_fields=masked, use_braze_backend=True)
+            return get_user(token, masked=masked, use_braze_backend=True)
         except Exception as e:
             sentry_sdk.capture_exception(e)
             return get_user(token, masked=masked, use_braze_backend=False)
     elif settings.BRAZE_ONLY_READ_ENABLE:
-        return get_user(token, masked=masked, omit_extra_braze_fields=masked, use_braze_backend=True)
+        return get_user(token, masked=masked, use_braze_backend=True)
     else:
         return get_user(token, masked=masked, use_braze_backend=False)
 
