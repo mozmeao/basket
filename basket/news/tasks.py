@@ -294,6 +294,7 @@ def upsert_contact(
     """
     update_data = data.copy()
     update_data.pop("format", None)  # Format defaults to "H".
+    update_data.pop("token", None)  # We don't want to update the token
     forced_optin = data.pop("optin", False)
 
     newsletters = parse_newsletters_csv(data.get("newsletters"))
