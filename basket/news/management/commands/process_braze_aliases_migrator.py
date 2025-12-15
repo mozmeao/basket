@@ -1,12 +1,56 @@
-import json
+import logging
+import tempfile
 import time
 
 from django.core.management.base import BaseCommand, CommandError
 
 import pandas as pd
+import sentry_sdk
 from google.cloud import storage
 
+from basket.base.rq import get_queue
 from basket.news.backends.braze import braze
+from basket.news.management.commands.alias_migration.lib import (
+    build_alias_operations_from_dataframe,
+    create_batched_chunks,
+    fake_add_aliases,
+    mask,
+)
+
+log = logging.getLogger(__name__)
+
+
+def process_migration_batch(
+    batch,
+    batch_index,
+    file_name,
+    use_fake_braze=False,
+):
+    """
+    RQ job function to process a batch of chunks.
+    batch is a list of chunks, where each chunk is a list of migration items.
+    """
+    try:
+        processed_count = 0
+
+        for chunk in batch:
+            if use_fake_braze:
+                fake_add_aliases(chunk)
+            else:
+                braze.interface.add_aliases(chunk)
+            time.sleep(0.003)
+            processed_count += len(chunk)
+
+        log.info(f"Successfully processed batch (batch index {batch_index}) with {len(batch)} chunks, {processed_count} total items")
+
+    except Exception as e:
+        first_external_id = mask(batch[0][0]["external_id"])
+        message = (f"Batch starting with external_id={first_external_id} from file {file_name} has failed.",)
+        sentry_sdk.capture_exception(
+            e,
+            extra={"message": message},
+        )
+        log.error(message)
 
 
 class Command(BaseCommand):
@@ -15,8 +59,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--project", type=str, required=False, help="Project ID")
         parser.add_argument("--bucket", type=str, required=True, help="GCS Storage Bucket")
-        parser.add_argument("--prefix", type=str, required=True, help="GCS Storage Prefix")
-        parser.add_argument("--file", type=str, required=True, help="Name of file to migrate")
+        parser.add_argument("--files", type=str, required=True, help="Comma separated list of files to migrate")
         parser.add_argument(
             "--start_timestamp",
             type=str,
@@ -30,86 +73,101 @@ class Command(BaseCommand):
             default=50,
             help="Number of records per migration batch, 50 max",
         )
+        parser.add_argument(
+            "--batch-size",
+            type=int,
+            required=False,
+            default=100,
+            help="Number of chunks to be processed in a single job by a worker",
+        )
+        parser.add_argument(
+            "--use-fake-braze",
+            action="store_true",
+            help="Use a fake Braze call instead of actually hitting Braze (for testing)",
+        )
 
     def handle(self, **options):
         project = options.get("project")
         bucket = options["bucket"]
-        prefix = options["prefix"]
-        file_name = options["file"]
+        files = options["files"].split(",")
         start_timestamp = options.get("start_timestamp")
         chunk_size = options["chunk_size"]
+        batch_size = options["batch_size"]
+        use_fake_braze = options["use_fake_braze"]
+
         try:
-            self.process_and_migrate_parquet_file(project, bucket, prefix, file_name, start_timestamp, chunk_size)
+            for file in files:
+                self.process_and_migrate_parquet_file(
+                    project,
+                    bucket,
+                    file,
+                    start_timestamp,
+                    chunk_size,
+                    batch_size,
+                    use_fake_braze,
+                )
         except Exception as err:
             raise CommandError(f"Error processing Parquet file: {str(err)}") from err
 
-    def process_and_migrate_parquet_file(self, project, bucket, prefix, file_name, start_timestamp, chunk_size):
+    def process_and_migrate_parquet_file(
+        self,
+        project,
+        bucket,
+        file,
+        start_timestamp,
+        chunk_size,
+        batch_size,
+        use_fake_braze,
+    ):
         client = storage.Client(project=project)
-        blob = client.bucket(bucket).blob(f"{prefix}/{file_name}")
+        blob = client.bucket(bucket).blob(file)
         if not blob.exists():
-            raise CommandError(f"File '{file_name}' not found in bucket '{bucket}' with prefix '{prefix}'")
+            raise CommandError(f"File '{file}' not found in bucket '{bucket}'")
         df = self.read_parquet_blob(blob)
         if start_timestamp and "create_timestamp" in df.columns:
             df = df[df["create_timestamp"] >= start_timestamp]
-        migrations = self.build_migrations(df)
 
-        for i in range(0, len(migrations), chunk_size):
-            chunk = migrations[i : i + chunk_size]
-            braze_token_alias_chunk = self.strip_for_braze_token_alias(chunk)
-            braze_fxa_alias_chunk = self.strip_for_braze_fxa_alias(chunk)
+        alias_operations = build_alias_operations_from_dataframe(df)
+        batches = create_batched_chunks(
+            alias_operations,
+            batch_size,
+            chunk_size,
+        )
 
-            try:
-                if braze_token_alias_chunk:
-                    braze.interface.add_aliases(braze_token_alias_chunk)
-                if braze_fxa_alias_chunk:
-                    braze.interface.add_aliases(braze_fxa_alias_chunk)
+        queue = get_queue()
+        previous_job = None
 
-                time.sleep(0.006)
-            except Exception as e:
-                failure = {
-                    "current_external_id": self.mask(chunk[0]["current_external_id"]),
-                    "reason": str(e),
-                }
-                self.stdout.write(self.style.ERROR(json.dumps(failure, indent=2)))
-                raise CommandError("Migration failed. Process terminated error.") from None
+        for batch_index, batch in enumerate(batches):
+            total_items_in_batch = sum(len(chunk) for chunk in batch)
 
-    def strip_for_braze_fxa_alias(self, chunk):
-        return [
-            {
-                "external_id": item["current_external_id"],
-                "alias_label": "fxa_id",
-                "alias_name": item["fxa_id"],
-            }
-            for item in chunk
-            if item.get("fxa_id")
-        ]
+            # Create job with dependency on previous job so they execute sequentially
+            if previous_job is None:
+                job = queue.enqueue(
+                    process_migration_batch,
+                    batch,
+                    batch_index,
+                    file,
+                    use_fake_braze,
+                    job_timeout="30m",  # Increased timeout
+                )
+            else:
+                job = queue.enqueue(
+                    process_migration_batch,
+                    batch,
+                    batch_index,
+                    file,
+                    use_fake_braze,
+                    depends_on=previous_job,
+                    job_timeout="30m",
+                )
 
-    def strip_for_braze_token_alias(self, chunk):
-        return [
-            {
-                "external_id": item["current_external_id"],
-                "alias_label": "basket_token",
-                "alias_name": item["basket_token"],
-            }
-            for item in chunk
-            if item.get("basket_token")
-        ]
+            previous_job = job
 
-    def mask(self, external_id):
-        parts = str(external_id).split("-")
-        return "-".join(["***"] * 3 + parts[3:])
+            self.stdout.write(f"Queued job {job.id} for file {file}, batch {batch_index + 1}: {len(batch)} chunks, {total_items_in_batch} items")
 
     def read_parquet_blob(self, blob):
-        data = blob.download_as_bytes()
-        return pd.read_parquet(pd.io.common.BytesIO(data))
-
-    def build_migrations(self, df):
-        return [
-            {
-                "current_external_id": row.email_id,
-                "basket_token": row.basket_token,
-                "create_timestamp": getattr(row, "create_timestamp", ""),
-                "fxa_id": getattr(row, "fxa_id", ""),
-            }
-            for row in df.itertuples(index=False)
-        ]
+        with tempfile.NamedTemporaryFile() as tmp_file:
+            print(tmp_file.name)
+            blob.download_to_filename(tmp_file.name)
+            df = pd.read_parquet(tmp_file.name)
+            return df
