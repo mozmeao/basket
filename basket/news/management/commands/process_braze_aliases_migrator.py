@@ -4,7 +4,7 @@ import time
 
 from django.core.management.base import BaseCommand, CommandError
 
-import pandas as pd
+import pyarrow.parquet as pq
 import sentry_sdk
 from google.cloud import storage
 
@@ -123,51 +123,53 @@ class Command(BaseCommand):
         blob = client.bucket(bucket).blob(file)
         if not blob.exists():
             raise CommandError(f"File '{file}' not found in bucket '{bucket}'")
-        df = self.read_parquet_blob(blob)
-        if start_timestamp and "create_timestamp" in df.columns:
-            df = df[df["create_timestamp"] >= start_timestamp]
-
-        alias_operations = build_alias_operations_from_dataframe(df)
-        batches = create_batched_chunks(
-            alias_operations,
-            batch_size,
-            chunk_size,
-        )
 
         queue = get_queue()
         previous_job = None
 
-        for batch_index, batch in enumerate(batches):
-            total_items_in_batch = sum(len(chunk) for chunk in batch)
+        for df in self.read_parquet_blob(blob, chunk_size, batch_size):
+            if start_timestamp and "create_timestamp" in df.columns:
+                df = df[df["create_timestamp"] >= start_timestamp]
+            alias_operations = build_alias_operations_from_dataframe(df)
+            batches = create_batched_chunks(
+                alias_operations,
+                batch_size,
+                chunk_size,
+            )
 
-            # Create job with dependency on previous job so they execute sequentially
-            if previous_job is None:
-                job = queue.enqueue(
-                    process_migration_batch,
-                    batch,
-                    batch_index,
-                    file,
-                    use_fake_braze,
-                    job_timeout="30m",  # Increased timeout
-                )
-            else:
-                job = queue.enqueue(
-                    process_migration_batch,
-                    batch,
-                    batch_index,
-                    file,
-                    use_fake_braze,
-                    depends_on=previous_job,
-                    job_timeout="30m",
-                )
+            for batch_index, batch in enumerate(batches):
+                total_items_in_batch = sum(len(chunk) for chunk in batch)
 
-            previous_job = job
+                # Create job with dependency on previous job so they execute sequentially
+                if previous_job is None:
+                    job = queue.enqueue(
+                        process_migration_batch,
+                        batch,
+                        batch_index,
+                        file,
+                        use_fake_braze,
+                        job_timeout="30m",  # Increased timeout
+                    )
+                else:
+                    job = queue.enqueue(
+                        process_migration_batch,
+                        batch,
+                        batch_index,
+                        file,
+                        use_fake_braze,
+                        depends_on=previous_job,
+                        job_timeout="30m",
+                    )
 
-            self.stdout.write(f"Queued job {job.id} for file {file}, batch {batch_index + 1}: {len(batch)} chunks, {total_items_in_batch} items")
+                previous_job = job
 
-    def read_parquet_blob(self, blob):
+                self.stdout.write(f"Queued job {job.id} for file {file}, batch {batch_index + 1}: {len(batch)} chunks, {total_items_in_batch} items")
+
+    def read_parquet_blob(self, blob, chunk_size, batch_size):
         with tempfile.NamedTemporaryFile() as tmp_file:
-            print(tmp_file.name)
             blob.download_to_filename(tmp_file.name)
-            df = pd.read_parquet(tmp_file.name)
-            return df
+
+            parquet_file = pq.ParquetFile(tmp_file.name)
+            for batch in parquet_file.iter_batches(batch_size=chunk_size * batch_size):
+                df_chunk = batch.to_pandas()
+                yield df_chunk
