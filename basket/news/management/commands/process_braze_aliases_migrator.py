@@ -85,6 +85,12 @@ class Command(BaseCommand):
             action="store_true",
             help="Use a fake Braze call instead of actually hitting Braze (for testing)",
         )
+        parser.add_argument(
+            "--sleep",
+            type=int,
+            required=False,
+            help="How many seconds to sleep between files",
+        )
 
     def handle(self, **options):
         project = options.get("project")
@@ -94,6 +100,7 @@ class Command(BaseCommand):
         chunk_size = options["chunk_size"]
         batch_size = options["batch_size"]
         use_fake_braze = options["use_fake_braze"]
+        sleep_in_sec = options["sleep"]
 
         try:
             for file in files:
@@ -106,6 +113,9 @@ class Command(BaseCommand):
                     batch_size,
                     use_fake_braze,
                 )
+                if sleep_in_sec:
+                    self.stdout.write(f"Sleeping for {sleep_in_sec} seconds")
+                    time.sleep(sleep_in_sec)
         except Exception as err:
             raise CommandError(f"Error processing Parquet file: {str(err)}") from err
 
