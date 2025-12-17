@@ -34,11 +34,16 @@ def process_migration_batch(
         processed_count = 0
 
         for chunk in batch:
+            start_time = time.time()
             if use_fake_braze:
                 fake_add_aliases(chunk)
             else:
                 braze.interface.add_aliases(chunk)
-            time.sleep(0.003)
+
+            end_time = time.time()
+            execution_time = end_time - start_time
+            sleep_time = max(0, 0.003 - execution_time)
+            time.sleep(sleep_time)
             processed_count += len(chunk)
 
         log.info(f"Successfully processed batch (batch index {batch_index}) with {len(batch)} chunks, {processed_count} total items")
@@ -91,6 +96,11 @@ class Command(BaseCommand):
             required=False,
             help="How many seconds to sleep between files",
         )
+        parser.add_argument(
+            "--use-workers",
+            action="store_true",
+            help="Use rq workers",
+        )
 
     def handle(self, **options):
         project = options.get("project")
@@ -101,6 +111,7 @@ class Command(BaseCommand):
         batch_size = options["batch_size"]
         use_fake_braze = options["use_fake_braze"]
         sleep_in_sec = options["sleep"]
+        use_workers = options["use_workers"]
 
         try:
             for file in files:
@@ -112,6 +123,7 @@ class Command(BaseCommand):
                     chunk_size,
                     batch_size,
                     use_fake_braze,
+                    use_workers,
                 )
                 if sleep_in_sec:
                     self.stdout.write(f"Sleeping for {sleep_in_sec} seconds")
@@ -128,6 +140,7 @@ class Command(BaseCommand):
         chunk_size,
         batch_size,
         use_fake_braze,
+        use_workers,
     ):
         client = storage.Client(project=project)
         blob = client.bucket(bucket).blob(file)
@@ -150,30 +163,40 @@ class Command(BaseCommand):
             for batch_index, batch in enumerate(batches):
                 total_items_in_batch = sum(len(chunk) for chunk in batch)
 
-                # Create job with dependency on previous job so they execute sequentially
-                if previous_job is None:
-                    job = queue.enqueue(
-                        process_migration_batch,
-                        batch,
-                        batch_index,
-                        file,
-                        use_fake_braze,
-                        job_timeout="30m",  # Increased timeout
+                if use_workers:
+                    # Create job with dependency on previous job so they execute sequentially
+                    if previous_job is None:
+                        job = queue.enqueue(
+                            process_migration_batch,
+                            batch,
+                            batch_index,
+                            file,
+                            use_fake_braze,
+                            job_timeout="30m",  # Increased timeout
+                        )
+                    else:
+                        job = queue.enqueue(
+                            process_migration_batch,
+                            batch,
+                            batch_index,
+                            file,
+                            use_fake_braze,
+                            depends_on=previous_job,
+                            job_timeout="30m",
+                        )
+
+                    previous_job = job
+
+                    self.stdout.write(
+                        f"Queued job {job.id} for file {file}, batch {batch_index + 1}: {len(batch)} chunks, {total_items_in_batch} items"
                     )
                 else:
-                    job = queue.enqueue(
-                        process_migration_batch,
+                    process_migration_batch(
                         batch,
                         batch_index,
                         file,
                         use_fake_braze,
-                        depends_on=previous_job,
-                        job_timeout="30m",
                     )
-
-                previous_job = job
-
-                self.stdout.write(f"Queued job {job.id} for file {file}, batch {batch_index + 1}: {len(batch)} chunks, {total_items_in_batch} items")
 
     def read_parquet_blob(self, blob, chunk_size, batch_size):
         with tempfile.NamedTemporaryFile() as tmp_file:
