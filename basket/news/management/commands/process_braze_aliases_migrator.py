@@ -16,7 +16,6 @@ from basket.news.management.commands.alias_migration.lib import (
     build_alias_operations_from_dataframe,
     create_batched_chunks,
     fake_add_aliases,
-    mask,
     rate_limited_add_aliases,
 )
 
@@ -47,11 +46,7 @@ def process_migration_batch(
                     result = future.result()
                     results.append(result)
 
-            return results
-
         else:
-            processed_count = 0
-
             for chunk in batch:
                 start_time = time.time()
                 if use_fake_braze:
@@ -63,18 +58,12 @@ def process_migration_batch(
                 execution_time = end_time - start_time
                 sleep_time = max(0, 0.003 - execution_time)
                 time.sleep(sleep_time)
-                processed_count += len(chunk)
 
-        log.info(f"Successfully processed batch (batch index {batch_index}) with {len(batch)} chunks, {processed_count} total items")
+        log.info(f"Successfully processed batch (batch index {batch_index}) with {len(batch)} chunks.")
 
     except Exception as e:
-        first_external_id = mask(batch[0][0]["external_id"])
-        message = (f"Batch starting with external_id={first_external_id} from file {file_name} has failed.",)
-        sentry_sdk.capture_exception(
-            e,
-            extra={"message": message},
-        )
-        log.error(message)
+        sentry_sdk.capture_exception(e)
+        log.error(e)
 
 
 class Command(BaseCommand):
