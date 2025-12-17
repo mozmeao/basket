@@ -1,6 +1,7 @@
 import logging
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from django.core.management.base import BaseCommand, CommandError
 
@@ -11,10 +12,12 @@ from google.cloud import storage
 from basket.base.rq import get_queue
 from basket.news.backends.braze import braze
 from basket.news.management.commands.alias_migration.lib import (
+    ThreadSafeRateLimiter,
     build_alias_operations_from_dataframe,
     create_batched_chunks,
     fake_add_aliases,
     mask,
+    rate_limited_add_aliases,
 )
 
 log = logging.getLogger(__name__)
@@ -25,26 +28,42 @@ def process_migration_batch(
     batch_index,
     file_name,
     use_fake_braze=False,
+    parallel=False,
+    threads=20,
 ):
     """
     RQ job function to process a batch of chunks.
     batch is a list of chunks, where each chunk is a list of migration items.
     """
     try:
-        processed_count = 0
+        if parallel:
+            rate_limiter = ThreadSafeRateLimiter(max_requests=19500, time_window=60)
 
-        for chunk in batch:
-            start_time = time.time()
-            if use_fake_braze:
-                fake_add_aliases(chunk)
-            else:
-                braze.interface.add_aliases(chunk)
+            with ThreadPoolExecutor(max_workers=threads) as executor:
+                futures = {executor.submit(rate_limited_add_aliases, chunk, rate_limiter): (chunk) for chunk in batch}
 
-            end_time = time.time()
-            execution_time = end_time - start_time
-            sleep_time = max(0, 0.003 - execution_time)
-            time.sleep(sleep_time)
-            processed_count += len(chunk)
+                results = []
+                for future in as_completed(futures):
+                    result = future.result()
+                    results.append(result)
+
+            return results
+
+        else:
+            processed_count = 0
+
+            for chunk in batch:
+                start_time = time.time()
+                if use_fake_braze:
+                    fake_add_aliases(chunk)
+                else:
+                    braze.interface.add_aliases(chunk)
+
+                end_time = time.time()
+                execution_time = end_time - start_time
+                sleep_time = max(0, 0.003 - execution_time)
+                time.sleep(sleep_time)
+                processed_count += len(chunk)
 
         log.info(f"Successfully processed batch (batch index {batch_index}) with {len(batch)} chunks, {processed_count} total items")
 
@@ -101,6 +120,17 @@ class Command(BaseCommand):
             action="store_true",
             help="Use rq workers",
         )
+        parser.add_argument(
+            "--parallel",
+            action="store_true",
+            help="Use a thread pool to execute multiple requests in parallel. Cannot be used with --use-workers",
+        )
+        parser.add_argument(
+            "--threads",
+            type=int,
+            required=False,
+            help="Number of concurrent threads to use for requests (use with --parallel)",
+        )
 
     def handle(self, **options):
         project = options.get("project")
@@ -112,6 +142,8 @@ class Command(BaseCommand):
         use_fake_braze = options["use_fake_braze"]
         sleep_in_sec = options["sleep"]
         use_workers = options["use_workers"]
+        parallel = options["parallel"]
+        threads = options["threads"]
 
         try:
             for file in files:
@@ -124,6 +156,8 @@ class Command(BaseCommand):
                     batch_size,
                     use_fake_braze,
                     use_workers,
+                    parallel,
+                    threads,
                 )
                 if sleep_in_sec:
                     self.stdout.write(f"Sleeping for {sleep_in_sec} seconds")
@@ -141,6 +175,8 @@ class Command(BaseCommand):
         batch_size,
         use_fake_braze,
         use_workers,
+        parallel,
+        threads,
     ):
         client = storage.Client(project=project)
         blob = client.bucket(bucket).blob(file)
@@ -196,6 +232,8 @@ class Command(BaseCommand):
                         batch_index,
                         file,
                         use_fake_braze,
+                        parallel,
+                        threads,
                     )
 
     def read_parquet_blob(self, blob, chunk_size, batch_size):

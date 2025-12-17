@@ -1,5 +1,8 @@
+import threading
 import time
 from itertools import chain
+
+from basket.news.backends.braze import braze
 
 
 def build_alias_operations_from_dataframe(dataframe):
@@ -69,3 +72,31 @@ def fake_add_aliases(alias_opererations):
 def mask(external_id):
     parts = str(external_id).split("-")
     return "-".join(["***"] * 3 + parts[3:])
+
+
+class ThreadSafeRateLimiter:
+    def __init__(self, max_requests=19500, time_window=60):
+        self.max_requests = max_requests
+        self.time_window = time_window
+        self.requests = []
+        self.lock = threading.Lock()
+
+    def acquire(self):
+        with self.lock:
+            now = time.time()
+
+            # Remove old requests
+            self.requests = [req_time for req_time in self.requests if req_time > now - self.time_window]
+
+            # Check if we can make a request
+            if len(self.requests) >= self.max_requests:
+                sleep_time = self.requests[0] + self.time_window - now
+                time.sleep(sleep_time)
+                return self.acquire()
+
+            self.requests.append(now)
+
+
+def rate_limited_add_aliases(chunk, rate_limiter):
+    rate_limiter.acquire()
+    return braze.interface.add_aliases(chunk)
