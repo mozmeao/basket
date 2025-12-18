@@ -8,7 +8,12 @@ from basket import metrics
 from basket.base.decorators import rq_task
 from basket.base.exceptions import BasketError
 from basket.base.utils import email_is_testing
-from basket.news.backends.braze import BrazeUserNotFoundByFxaIdError, braze, braze_tx
+from basket.news.backends.braze import (
+    BrazeUserNotFoundByFxaIdError,
+    BrazeUserNotFoundByTokenError,
+    braze,
+    braze_tx,
+)
 from basket.news.backends.ctms import (
     CTMSNotFoundByAltIDError,
     CTMSUniqueIDConflictError,
@@ -289,6 +294,7 @@ def upsert_contact(
     """
     update_data = data.copy()
     update_data.pop("format", None)  # Format defaults to "H".
+    update_data.pop("token", None)  # We don't want to update the token
     forced_optin = data.pop("optin", False)
 
     newsletters = parse_newsletters_csv(data.get("newsletters"))
@@ -301,6 +307,7 @@ def upsert_contact(
         not in [
             user_data.get("token"),
             user_data.get("ctms_legacy_token"),
+            user_data.get("email_id"),
         ]
     ):
         # We were passed a token but it doesn't match the user.
@@ -328,7 +335,7 @@ def upsert_contact(
             return None, None
     elif use_braze_backend and update_data.get("optout"):
         # Unsubscribe from all current Braze newsletters if user is opting out
-        newsletters = cur_newsletters if api_call_type == UNSUBSCRIBE else []
+        newsletters = cur_newsletters if cur_newsletters and api_call_type == UNSUBSCRIBE else []
 
     # Set the newsletter flags in the record by comparing to their
     # current subscriptions.
@@ -544,14 +551,14 @@ def confirm_user(token, use_braze_backend=False, extra_metrics_tags=None):
 @rq_task
 def update_custom_unsub(token, reason, use_braze_backend=False):
     """Record a user's custom unsubscribe reason."""
-    if use_braze_backend:
-        braze.update_by_token(token, {"unsub_reason": reason})
-    else:
-        try:
+    try:
+        if use_braze_backend:
+            braze.update_by_token(token, {"unsub_reason": reason})
+        else:
             ctms.update_by_alt_id("token", token, {"reason": reason})
-        except CTMSNotFoundByAltIDError:
-            # No record found for that token, nothing to do.
-            pass
+    except (CTMSNotFoundByAltIDError, BrazeUserNotFoundByTokenError):
+        # No record found for that token, nothing to do.
+        pass
 
 
 @rq_task

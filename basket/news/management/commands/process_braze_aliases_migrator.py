@@ -1,12 +1,69 @@
-import json
+import logging
+import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from django.core.management.base import BaseCommand, CommandError
 
-import pandas as pd
+import pyarrow.parquet as pq
+import sentry_sdk
 from google.cloud import storage
 
+from basket.base.rq import get_queue
 from basket.news.backends.braze import braze
+from basket.news.management.commands.alias_migration.lib import (
+    ThreadSafeRateLimiter,
+    build_alias_operations_from_dataframe,
+    create_batched_chunks,
+    fake_add_aliases,
+    rate_limited_add_aliases,
+)
+
+log = logging.getLogger(__name__)
+
+
+def process_migration_batch(
+    batch,
+    batch_index,
+    file_name,
+    use_fake_braze=False,
+    parallel=False,
+    threads=20,
+):
+    """
+    RQ job function to process a batch of chunks.
+    batch is a list of chunks, where each chunk is a list of migration items.
+    """
+    try:
+        if parallel:
+            rate_limiter = ThreadSafeRateLimiter(max_requests=19500, time_window=60)
+
+            with ThreadPoolExecutor(max_workers=threads) as executor:
+                futures = {executor.submit(rate_limited_add_aliases, chunk, rate_limiter): (chunk) for chunk in batch}
+
+                results = []
+                for future in as_completed(futures):
+                    result = future.result()
+                    results.append(result)
+
+        else:
+            for chunk in batch:
+                start_time = time.time()
+                if use_fake_braze:
+                    fake_add_aliases(chunk)
+                else:
+                    braze.interface.add_aliases(chunk)
+
+                end_time = time.time()
+                execution_time = end_time - start_time
+                sleep_time = max(0, 0.003 - execution_time)
+                time.sleep(sleep_time)
+
+        log.info(f"Successfully processed batch (batch index {batch_index}) with {len(batch)} chunks.")
+
+    except Exception as e:
+        sentry_sdk.capture_exception(e)
+        log.error(e)
 
 
 class Command(BaseCommand):
@@ -15,8 +72,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--project", type=str, required=False, help="Project ID")
         parser.add_argument("--bucket", type=str, required=True, help="GCS Storage Bucket")
-        parser.add_argument("--prefix", type=str, required=True, help="GCS Storage Prefix")
-        parser.add_argument("--file", type=str, required=True, help="Name of file to migrate")
+        parser.add_argument("--files", type=str, required=True, help="Comma separated list of files to migrate")
         parser.add_argument(
             "--start_timestamp",
             type=str,
@@ -30,86 +86,150 @@ class Command(BaseCommand):
             default=50,
             help="Number of records per migration batch, 50 max",
         )
+        parser.add_argument(
+            "--batch-size",
+            type=int,
+            required=False,
+            default=100,
+            help="Number of chunks to be processed in a single job by a worker",
+        )
+        parser.add_argument(
+            "--use-fake-braze",
+            action="store_true",
+            help="Use a fake Braze call instead of actually hitting Braze (for testing)",
+        )
+        parser.add_argument(
+            "--sleep",
+            type=int,
+            required=False,
+            help="How many seconds to sleep between files",
+        )
+        parser.add_argument(
+            "--use-workers",
+            action="store_true",
+            help="Use rq workers",
+        )
+        parser.add_argument(
+            "--parallel",
+            action="store_true",
+            help="Use a thread pool to execute multiple requests in parallel. Cannot be used with --use-workers",
+        )
+        parser.add_argument(
+            "--threads",
+            type=int,
+            required=False,
+            help="Number of concurrent threads to use for requests (use with --parallel)",
+        )
 
     def handle(self, **options):
         project = options.get("project")
         bucket = options["bucket"]
-        prefix = options["prefix"]
-        file_name = options["file"]
+        files = options["files"].split(",")
         start_timestamp = options.get("start_timestamp")
         chunk_size = options["chunk_size"]
+        batch_size = options["batch_size"]
+        use_fake_braze = options["use_fake_braze"]
+        sleep_in_sec = options["sleep"]
+        use_workers = options["use_workers"]
+        parallel = options["parallel"]
+        threads = options["threads"]
+
         try:
-            self.process_and_migrate_parquet_file(project, bucket, prefix, file_name, start_timestamp, chunk_size)
+            for file in files:
+                self.process_and_migrate_parquet_file(
+                    project,
+                    bucket,
+                    file,
+                    start_timestamp,
+                    chunk_size,
+                    batch_size,
+                    use_fake_braze,
+                    use_workers,
+                    parallel,
+                    threads,
+                )
+                if sleep_in_sec:
+                    self.stdout.write(f"Sleeping for {sleep_in_sec} seconds")
+                    time.sleep(sleep_in_sec)
         except Exception as err:
             raise CommandError(f"Error processing Parquet file: {str(err)}") from err
 
-    def process_and_migrate_parquet_file(self, project, bucket, prefix, file_name, start_timestamp, chunk_size):
+    def process_and_migrate_parquet_file(
+        self,
+        project,
+        bucket,
+        file,
+        start_timestamp,
+        chunk_size,
+        batch_size,
+        use_fake_braze,
+        use_workers,
+        parallel,
+        threads,
+    ):
         client = storage.Client(project=project)
-        blob = client.bucket(bucket).blob(f"{prefix}/{file_name}")
+        blob = client.bucket(bucket).blob(file)
         if not blob.exists():
-            raise CommandError(f"File '{file_name}' not found in bucket '{bucket}' with prefix '{prefix}'")
-        df = self.read_parquet_blob(blob)
-        if start_timestamp and "create_timestamp" in df.columns:
-            df = df[df["create_timestamp"] >= start_timestamp]
-        migrations = self.build_migrations(df)
+            raise CommandError(f"File '{file}' not found in bucket '{bucket}'")
 
-        for i in range(0, len(migrations), chunk_size):
-            chunk = migrations[i : i + chunk_size]
-            braze_token_alias_chunk = self.strip_for_braze_token_alias(chunk)
-            braze_fxa_alias_chunk = self.strip_for_braze_fxa_alias(chunk)
+        queue = get_queue()
+        previous_job = None
 
-            try:
-                if braze_token_alias_chunk:
-                    braze.interface.add_aliases(braze_token_alias_chunk)
-                if braze_fxa_alias_chunk:
-                    braze.interface.add_aliases(braze_fxa_alias_chunk)
+        for df in self.read_parquet_blob(blob, chunk_size, batch_size):
+            if start_timestamp and "create_timestamp" in df.columns:
+                df = df[df["create_timestamp"] >= start_timestamp]
+            alias_operations = build_alias_operations_from_dataframe(df)
+            batches = create_batched_chunks(
+                alias_operations,
+                batch_size,
+                chunk_size,
+            )
 
-                time.sleep(0.006)
-            except Exception as e:
-                failure = {
-                    "current_external_id": self.mask(chunk[0]["current_external_id"]),
-                    "reason": str(e),
-                }
-                self.stdout.write(self.style.ERROR(json.dumps(failure, indent=2)))
-                raise CommandError("Migration failed. Process terminated error.") from None
+            for batch_index, batch in enumerate(batches):
+                total_items_in_batch = sum(len(chunk) for chunk in batch)
 
-    def strip_for_braze_fxa_alias(self, chunk):
-        return [
-            {
-                "external_id": item["current_external_id"],
-                "alias_label": "fxa_id",
-                "alias_name": item["fxa_id"],
-            }
-            for item in chunk
-            if item.get("fxa_id")
-        ]
+                if use_workers:
+                    # Create job with dependency on previous job so they execute sequentially
+                    if previous_job is None:
+                        job = queue.enqueue(
+                            process_migration_batch,
+                            batch,
+                            batch_index,
+                            file,
+                            use_fake_braze,
+                            job_timeout="30m",  # Increased timeout
+                        )
+                    else:
+                        job = queue.enqueue(
+                            process_migration_batch,
+                            batch,
+                            batch_index,
+                            file,
+                            use_fake_braze,
+                            depends_on=previous_job,
+                            job_timeout="30m",
+                        )
 
-    def strip_for_braze_token_alias(self, chunk):
-        return [
-            {
-                "external_id": item["current_external_id"],
-                "alias_label": "basket_token",
-                "alias_name": item["basket_token"],
-            }
-            for item in chunk
-            if item.get("basket_token")
-        ]
+                    previous_job = job
 
-    def mask(self, external_id):
-        parts = str(external_id).split("-")
-        return "-".join(["***"] * 3 + parts[3:])
+                    self.stdout.write(
+                        f"Queued job {job.id} for file {file}, batch {batch_index + 1}: {len(batch)} chunks, {total_items_in_batch} items"
+                    )
+                else:
+                    process_migration_batch(
+                        batch,
+                        batch_index,
+                        file,
+                        use_fake_braze,
+                        parallel,
+                        threads,
+                    )
 
-    def read_parquet_blob(self, blob):
-        data = blob.download_as_bytes()
-        return pd.read_parquet(pd.io.common.BytesIO(data))
+    def read_parquet_blob(self, blob, chunk_size, batch_size):
+        with tempfile.NamedTemporaryFile() as tmp_file:
+            blob.download_to_filename(tmp_file.name)
 
-    def build_migrations(self, df):
-        return [
-            {
-                "current_external_id": row.email_id,
-                "basket_token": row.basket_token,
-                "create_timestamp": getattr(row, "create_timestamp", ""),
-                "fxa_id": getattr(row, "fxa_id", ""),
-            }
-            for row in df.itertuples(index=False)
-        ]
+            parquet_file = pq.ParquetFile(tmp_file.name)
+            for batch in parquet_file.iter_batches(batch_size=chunk_size * batch_size):
+                df_chunk = batch.to_pandas()
+                yield df_chunk

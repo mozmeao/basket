@@ -9,6 +9,7 @@ from django.conf import settings
 from django.utils import timezone
 
 import requests
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from basket.base.decorators import rq_task
 from basket.base.utils import is_valid_uuid
@@ -98,6 +99,18 @@ class BrazeInterface:
 
         self.active = bool(self.api_key)
 
+    @retry(
+        reraise=True,
+        retry=retry_if_exception_type(
+            (
+                BrazeRateLimitError,
+                BrazeInternalServerError,
+                requests.ConnectionError,
+            )
+        ),
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(2),
+    )
     def _request(self, endpoint, data=None, method="POST", params=None):
         """
         Make a request to the Braze API.
@@ -529,8 +542,10 @@ class Braze:
         updated_user_data = existing_user_data | (update_data or {})
 
         now = timezone.now().isoformat()
-        country = process_country(updated_user_data.get("country") or None)
         language = process_lang(updated_user_data.get("lang") or None)
+
+        saved_country = process_braze_country(existing_user_data.get("country"))
+        updated_country = process_braze_country(update_data.get("country")) if update_data else None
 
         external_id = updated_user_data.get("email_id")
 
@@ -563,7 +578,7 @@ class Braze:
                     "basket_token": updated_user_data.get("ctms_legacy_token") or updated_user_data.get("token"),
                     "created_at": {"$time": updated_user_data.get("created_date", now)},
                     "email_lang": language,
-                    "mailing_country": country,
+                    "mailing_country": updated_country or saved_country,
                     "updated_at": {"$time": now},
                     "has_fxa": bool(updated_user_data.get("fxa_id")) or updated_user_data.get("has_fxa", False),
                     "fxa_created_at": {"$time": fxa_create_date} if (fxa_create_date := updated_user_data.get("fxa_create_date")) else None,
@@ -577,9 +592,9 @@ class Braze:
         }
 
         # Country, language, first and last name are billable data points. Only update them when necessary.
-        if country != process_country(existing_user_data.get("country") or None):
-            user_attributes["country"] = country
-        if not existing_user_data or language != process_lang(existing_user_data.get("language") or None):
+        if updated_country and updated_country != saved_country:
+            user_attributes["country"] = updated_country
+        if not existing_user_data or language != process_lang(existing_user_data.get("lang") or None):
             user_attributes["language"] = language
         if (first_name := updated_user_data.get("first_name")) != existing_user_data.get("first_name"):
             user_attributes["first_name"] = first_name
@@ -605,6 +620,13 @@ def optin_to_boolean(optin):
     elif isinstance(optin, bool):
         return optin
     return optin.upper().strip() == "Y"
+
+
+def process_braze_country(country):
+    try:
+        return process_country(country)
+    except ValueError:
+        return None
 
 
 braze_tx = Braze(BrazeInterface(settings.BRAZE_BASE_API_URL, settings.BRAZE_API_KEY))

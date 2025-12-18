@@ -85,6 +85,8 @@ class UpsertUserTests(TestCase):
             "token": self.token,
         }
         update_data = data.copy()
+        update_data.pop("token")
+
         update_data["newsletters"] = {"slug": False}
 
         get_user_mock.return_value = self.get_user_data
@@ -159,6 +161,7 @@ class UpsertUserTests(TestCase):
             "token": self.token,
         }
         update_data = data.copy()
+        update_data.pop("token")
         update_data["newsletters"] = {}
 
         # Mock user data - we want our user subbed to our newsletter to start
@@ -197,6 +200,7 @@ class UpsertUserTests(TestCase):
             "token": self.token,
         }
         update_data = data.copy()
+        update_data.pop("token")
         # We should only mention slug, not slug2
         update_data["newsletters"] = {"slug": False}
         get_user_mock.return_value = self.get_user_data
