@@ -378,7 +378,11 @@ class Braze:
             fxa_id,
         )
 
-        if user_response["users"]:
+        # There appears to be a period of time in Braze, shortly after creating a user, where
+        # the export endpoint will return the user if you look it up by external_id but the
+        # email will not be populated. We check for that here, and if there is no email we
+        # behave as if the user wasn't found.
+        if user_response["users"] and user_response["users"][0].get("email"):
             user_data = user_response["users"][0]
             user_email = email or user_data.get("email")
             is_opted_out = user_data.get("email_subscribe") == "unsubscribed"
