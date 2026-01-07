@@ -64,7 +64,7 @@ jobs:
           bin/dc.sh build --no-cache --pull web
           bin/dc.sh build --no-cache builder
           docker/bin/push2dockerhub.sh
-          bin/dc.sh run test-image
+          bin/dc.sh up -d db redis && bin/dc.sh run test-image
 
         env:
             GIT_COMMIT: ${{ steps.sha.outputs.LONG_SHA }}
