@@ -11,7 +11,7 @@ Interact with our email marketing provider via a nice simple HTTP API.
 Docs
 ----
 
-Documentation can be found at http://basket.readthedocs.org/ .
+Documentation can be found at http://basket.readthedocs.org/.
 
 
 License
