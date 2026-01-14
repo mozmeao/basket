@@ -36,25 +36,43 @@ class Command(BaseCommand):
         conn = rq_helpers.get_redis_connection()
         q = Queue(connection=conn)
 
-        # Get job_ids once to avoid multiple Redis calls
-        job_ids = q.job_ids
-        total_jobs = len(job_ids)
-        job_ids = job_ids[:max_jobs]
+        total_jobs = conn.llen(q.key)
+
+        # Only fetch the job IDs we'll actually inspect
+        if total_jobs > 0:
+            job_ids = conn.lrange(q.key, 0, min(max_jobs, total_jobs) - 1)
+            job_ids = [job_id.decode("utf-8") if isinstance(job_id, bytes) else job_id for job_id in job_ids]
+        else:
+            job_ids = []
 
         if total_jobs > max_jobs:
             self.stdout.write(self.style.WARNING(f"Inspecting first {max_jobs:,} of {total_jobs:,} jobs"))
 
-        # Batch fetch all jobs in one Redis call (much faster than individual fetches)
-        jobs = Job.fetch_many(job_ids, connection=conn)
-
+        # For filter mode, fetch descriptions first, then full jobs
         if task_name_filter:
-            matching_jobs = [job for job in jobs if job is not None and job.description and task_name_filter in job.description]
+            pipeline = conn.pipeline()
+            for job_id in job_ids:
+                pipeline.hget(Job.key_for(job_id), "description")
+            descriptions = pipeline.execute()
+            matching_ids = []
+            for job_id, desc in zip(job_ids, descriptions, strict=False):
+                if desc:
+                    desc_str = desc.decode("utf-8") if isinstance(desc, bytes) else desc
+                    if task_name_filter in desc_str:
+                        matching_ids.append(job_id)
+
+            if not matching_ids:
+                self.stdout.write(self.style.WARNING(f"No jobs found matching '{task_name_filter}'"))
+                return
+
+            self.stdout.write(f"Count: {len(matching_ids)}\n")
+
+            matching_jobs = Job.fetch_many(matching_ids, connection=conn)
+            matching_jobs = [job for job in matching_jobs if job is not None]
 
             if not matching_jobs:
                 self.stdout.write(self.style.WARNING(f"No jobs found matching '{task_name_filter}'"))
                 return
-
-            self.stdout.write(f"Count: {len(matching_jobs)}\n")
 
             oldest_job = min(matching_jobs, key=lambda j: j.enqueued_at or j.created_at)
             self.stdout.write("Longest running task:")
@@ -64,7 +82,7 @@ class Command(BaseCommand):
             self.stdout.write(f"  Status: {oldest_job.get_status().name.lower()}")
             return
 
-        # Summary mode: show task type counts
+        jobs = Job.fetch_many(job_ids, connection=conn)
         counts = Counter()
         for job in jobs:
             if job is None:
@@ -76,4 +94,6 @@ class Command(BaseCommand):
         for task, n in counts.most_common():
             self.stdout.write(f"{n:6}  {task}")
 
-        self.stdout.write(f"\nTotal: {sum(counts.values())} jobs")
+        inspected_count = sum(counts.values())
+        self.stdout.write(f"\nInspected: {inspected_count:,} jobs")
+        self.stdout.write(f"Total in queue: {total_jobs:,} jobs")
