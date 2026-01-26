@@ -130,7 +130,8 @@ class TestRQUtils:
         RQ_EXCEPTION_HANDLERS=["basket.base.rq.store_task_exception_handler"],
         RQ_IS_ASYNC=True,
     )
-    def test_on_failure(self, metricsmock):
+    @patch("basket.base.decorators.close_old_connections")
+    def test_on_failure(self, mock_close_connections, metricsmock):
         """
         Test that the on_failure function creates a FailedTask object and sends
         statsd metrics.
@@ -164,7 +165,8 @@ class TestRQUtils:
         RQ_IS_ASYNC=True,
         RQ_MAX_RETRIES=3,
     )
-    def test_retry_allowed(self, metricsmock):
+    @patch("basket.base.decorators.close_old_connections")
+    def test_retry_allowed(self, mock_close_connections, metricsmock):
         """
         Test that the error raised from `retryable_job` is actually retried.
         """
