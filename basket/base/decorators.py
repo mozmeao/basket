@@ -1,6 +1,7 @@
 import functools
 
 from django.conf import settings
+from django.db import close_old_connections
 
 from basket import metrics
 from basket.base.rq import get_enqueue_kwargs, get_queue
@@ -16,9 +17,20 @@ def rq_task(func):
     - adds success/failure/retry callbacks
     - adds statsd metrics for job success/failure/retry
     - adds Sentry error reporting for failed jobs
+    - closes stale database connections before task execution
 
     """
     task_name = f"{func.__module__}.{func.__qualname__}"
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        """
+        Wrapper that closes stale database connections before executing the task.
+        This prevents MySQL 'Server has gone away' errors in long-running RQ workers seen in stage Sentry errors.
+        """
+        close_old_connections()
+
+        return func(*args, **kwargs)
 
     @functools.wraps(func)
     def delay(*args, **kwargs):
@@ -36,24 +48,26 @@ def rq_task(func):
 
         else:
             queue = get_queue()
-            enqueue_kwargs = get_enqueue_kwargs(func)
+            # Pass the wrapper (with connection management) instead of raw func
+            enqueue_kwargs = get_enqueue_kwargs(wrapper)
             enqueue_in = kwargs.pop("enqueue_in", None)
 
             if enqueue_in:
                 return queue.enqueue_in(
                     enqueue_in,
-                    func,
+                    wrapper,
                     args=args,
                     kwargs=kwargs,
                     **enqueue_kwargs,
                 )
             else:
                 return queue.enqueue_call(
-                    func,
+                    wrapper,
                     args=args,
                     kwargs=kwargs,
                     **enqueue_kwargs,
                 )
 
-    func.delay = delay
-    return func
+    # Attach delay method to the wrapper, not the original func
+    wrapper.delay = delay
+    return wrapper
