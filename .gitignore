@@ -19,6 +19,7 @@ Dockerfile.jenkins
 build.py
 docs/_build
 docs/_gh-pages
+env*
 pip-log.txt
 python_coverage/
 settings/local.py
