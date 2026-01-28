@@ -15,3 +15,5 @@ updates:
   - dependency-name: urllib3
     versions:
     - ">= 0"
+  cooldown:
+    default-days: 7
