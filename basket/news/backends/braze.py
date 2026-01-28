@@ -12,7 +12,7 @@ import requests
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from basket.base.decorators import rq_task
-from basket.base.utils import is_valid_uuid
+from basket.base.utils import generate_token, is_valid_uuid
 from basket.news.backends.ctms import ctms, process_country, process_lang
 from basket.news.newsletters import slug_to_vendor_id, vendor_id_to_slug
 
@@ -80,6 +80,7 @@ class BrazeClientError(Exception):
 class BrazeEndpoint(Enum):
     CAMPAIGNS_TRIGGER_SEND = "/campaigns/trigger/send"
     USERS_EXPORT_IDS = "/users/export/ids"
+    USERS_IDENTIFY = "/users/identify"
     USERS_TRACK = "/users/track"
     USERS_DELETE = "/users/delete"
     SUBSCRIPTION_USER_STATUS = "/subscription/user/status"
@@ -336,6 +337,25 @@ class BrazeInterface:
         data = {"user_aliases": alias_operations}
         return self._request(BrazeEndpoint.USERS_ADD_ALIAS, data)
 
+    def identify_user(self, user_alias, external_id):
+        """
+        Identify an alias-only user by assigning them an external_id.
+
+        https://www.braze.com/docs/api/endpoints/user_data/post_user_identify/
+
+        @param user_alias: dict with alias_name and alias_label
+        @param external_id: the external_id to assign to the user
+        """
+        data = {
+            "aliases_to_identify": [
+                {
+                    "external_id": external_id,
+                    "user_alias": user_alias,
+                }
+            ]
+        }
+        return self._request(BrazeEndpoint.USERS_IDENTIFY, data)
+
 
 class Braze:
     """Basket interface to Braze"""
@@ -385,6 +405,25 @@ class Braze:
         if user_response["users"] and user_response["users"][0].get("email"):
             user_data = user_response["users"][0]
             user_email = email or user_data.get("email")
+
+            # Alias-only users (e.g., from transactional emails) may not have an external_id.
+            # Upgrade them by assigning a new external_id so they can be fully managed.
+            if not user_data.get("external_id"):
+                new_external_id = generate_token()
+                email_alias = {"alias_name": user_data["email"], "alias_label": "email"}
+                try:
+                    self.interface.identify_user(email_alias, new_external_id)
+                    user_data["external_id"] = new_external_id
+                    # Schedule adding the basket_token alias (requires delay per Braze API limits)
+                    add_basket_token_alias_task.delay(
+                        new_external_id,
+                        new_external_id,
+                        enqueue_in=BRAZE_OPTIMAL_DELAY,
+                    )
+                except Exception:
+                    log.exception("Failed to upgrade alias-only user to identified user")
+                    return None
+
             is_opted_out = user_data.get("email_subscribe") == "unsubscribed"
             subscriptions = []
 

@@ -9,6 +9,8 @@
 .DS_Store
 .coverage
 .env
+.env/*
+.env-local/*
 .just-*
 .make.*
 .noseids
@@ -19,6 +21,7 @@ Dockerfile.jenkins
 build.py
 docs/_build
 docs/_gh-pages
+
 pip-log.txt
 python_coverage/
 settings/local.py

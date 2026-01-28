@@ -21,3 +21,7 @@ def is_valid_uuid(value, version=None):
         return True
     except ValueError:
         return False
+
+
+def generate_token():
+    return str(uuid.uuid4())

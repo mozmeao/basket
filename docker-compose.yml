@@ -30,8 +30,8 @@ services:
     volumes:
       - .:/app
     env_file:
+      - .env/${BASKET_ENV:-.env}
       - docker/envfiles/local.env
-      - .env
     ports:
       - "8000:8000"
     depends_on:
@@ -55,8 +55,8 @@ services:
     volumes:
       - .:/app
     env_file:
+      - .env/${BASKET_ENV:-.env}
       - docker/envfiles/local.env
-      - .env
     depends_on:
       db:
         condition: service_healthy

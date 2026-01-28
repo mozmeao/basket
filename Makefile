@@ -1,11 +1,25 @@
 DC := docker compose
 
 .DEFAULT_GOAL := help
-.PHONY: help _env _docker-build _docker-pull build pull run run-shell shell stop kill test test-image clean check-requirements compile-requirements install-local-python-deps
+.PHONY: help _env _docker-build _docker-pull build pull run run-shell shell stop kill test test-image clean check-requirements compile-requirements install-local-python-deps dev-% stage-% prod-%
 
 # Default target - show available commands
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-30s %s\n", $$1, $$2}'
+
+# ---------------------------
+# Environment-specific targets
+# ---------------------------
+# Usage: make dev-run, make stage-test, make prod-build, etc.
+
+%-dev:
+	@$(MAKE) -f .make.dev $*
+
+%-stage:
+	@$(MAKE) -f .make.stage $*
+
+%-prod:
+	@$(MAKE) -f .make.prod $*
 
 # ------
 # Docker
