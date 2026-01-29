@@ -19,10 +19,17 @@ TEST_DATA_DIR = Path(__file__).resolve().parent.joinpath("data")
 
 class DSARViewTestBase:
     url_name = None
+    user_data_file = None
 
     def setup_method(self, method):
         self.client = Client()
         self.url = reverse(self.url_name)
+
+    def _get_test_data(self):
+        with TEST_DATA_DIR.joinpath(self.user_data_file).open() as fp:
+            data = json.load(fp)
+
+        return data
 
     def _create_admin_user(self, with_perm=True):
         user = User.objects.create_user(username="admin", password="password")
@@ -172,12 +179,6 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
 class TestAdminDSARInfoView(DSARViewTestBase):
     url_name = "admin:dsar.info"
     user_data_file = "example_ctms_user_data.json"
-
-    def _get_test_data(self):
-        with TEST_DATA_DIR.joinpath(self.user_data_file).open() as fp:
-            data = json.load(fp)
-
-        return data
 
     def test_get(self):
         self._create_admin_user()
@@ -460,3 +461,151 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         assert not mock_braze.update.called
         assert response.context["dsar_output"] is None
         assert response.context["dsar_form"].errors == {"emails": ["Invalid email: invalid@email"]}
+
+
+@pytest.mark.django_db
+class TestAdminDSARInfoDownloadView(DSARViewTestBase):
+    url_name = "admin:dsar.info.download"
+    user_data_file = "example_ctms_user_data.json"
+
+    def test_download_missing_email_param(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        response = self.client.get(self.url)
+        assert response.status_code == 400
+        assert b"Missing email parameter" in response.content
+
+    def test_download_invalid_email(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        response = self.client.get(self.url, {"email": "invalid@email"})
+        assert response.status_code == 400
+        assert b"Invalid email format" in response.content
+
+    def test_download_user_not_found_ctms(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            mock_ctms.interface.get_by_alternate_id.side_effect = CTMSNotFoundByEmailError("unknown@example.com")
+            response = self.client.get(self.url, {"email": "unknown@example.com"})
+
+        assert response.status_code == 404
+        assert b"User not found in CTMS" in response.content
+
+    @override_settings(BRAZE_ONLY_READ_ENABLE=True)
+    def test_download_user_not_found_braze(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.braze", spec_set=["get"]) as mock_braze:
+            mock_braze.get.return_value = None
+            response = self.client.get(self.url, {"email": "unknown@example.com"})
+
+        assert response.status_code == 404
+        assert b"User not found in Braze" in response.content
+
+    def test_download_pdf_success_ctms(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        user_data = self._get_test_data()
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            mock_ctms.interface.get_by_alternate_id.return_value = user_data
+            response = self.client.get(self.url, {"email": "test@example.com"})
+
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/pdf"
+        assert "attachment" in response["Content-Disposition"]
+        assert ".pdf" in response["Content-Disposition"]
+        assert "data-basket-test_example_com-" in response["Content-Disposition"]
+        assert response.content.startswith(b"%PDF")
+        assert int(response["Content-Length"]) > 0
+
+    @override_settings(BRAZE_ONLY_READ_ENABLE=True)
+    def test_download_pdf_success_braze(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        mock_user_data = {
+            "email": "test@example.com",
+            "token": "abc123",
+            "country": "us",
+            "lang": "en",
+            "newsletters": ["firefox-news"],
+            "email_id": "123",
+            "first_name": "Test",
+            "last_name": "User",
+        }
+        with patch("basket.admin.braze", spec_set=["get"]) as mock_braze:
+            mock_braze.get.return_value = mock_user_data
+            response = self.client.get(self.url, {"email": "test@example.com"})
+
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/pdf"
+        assert "attachment" in response["Content-Disposition"]
+        assert ".pdf" in response["Content-Disposition"]
+        assert response.content.startswith(b"%PDF")
+
+    @override_settings(BRAZE_READ_WITH_FALLBACK_ENABLE=True)
+    def test_download_pdf_success_braze_fallback(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        user_data = self._get_test_data()
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            with patch("basket.admin.braze", spec_set=["get"]) as mock_braze:
+                mock_braze.get.return_value = None
+                mock_ctms.interface.get_by_alternate_id.return_value = user_data
+                response = self.client.get(self.url, {"email": "test@example.com"})
+
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/pdf"
+        assert response.content.startswith(b"%PDF")
+
+    def test_download_pdf_with_unicode_data(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        user_data = self._get_test_data()
+        # Modify test data to include unicode characters
+        user_data[0]["email"]["first_name"] = "José"
+        user_data[0]["email"]["last_name"] = "García"
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            mock_ctms.interface.get_by_alternate_id.return_value = user_data
+            response = self.client.get(self.url, {"email": "test@example.com"})
+
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/pdf"
+        assert response.content.startswith(b"%PDF")
+
+    def test_download_pdf_user_no_newsletters(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        user_data = self._get_test_data()
+        # Remove newsletters
+        user_data[0]["newsletters"] = []
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            mock_ctms.interface.get_by_alternate_id.return_value = user_data
+            response = self.client.get(self.url, {"email": "test@example.com"})
+
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/pdf"
+        assert response.content.startswith(b"%PDF")
+
+    def test_download_pdf_generation_error(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        user_data = self._get_test_data()
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            with patch("basket.admin.weasyprint") as mock_weasyprint:
+                mock_ctms.interface.get_by_alternate_id.return_value = user_data
+                mock_weasyprint.HTML.side_effect = Exception("PDF generation error")
+                response = self.client.get(self.url, {"email": "test@example.com"})
+
+        assert response.status_code == 500
+        assert b"Error generating PDF" in response.content
+
+    def test_download_backend_error(self):
+        self._create_admin_user()
+        self._login_admin_user()
+        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
+            mock_ctms.interface.get_by_alternate_id.side_effect = Exception("Backend error")
+            response = self.client.get(self.url, {"email": "test@example.com"})
+
+        assert response.status_code == 500
+        assert b"Error fetching contact data" in response.content

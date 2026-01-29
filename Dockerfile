@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 COPY docker/bin/apt-install /usr/local/bin/
 RUN <<EOT
-apt-install build-essential ca-certificates default-libmysqlclient-dev libxslt1.1 libxml2 libxml2-dev libxslt1-dev pkg-config
+apt-install build-essential ca-certificates default-libmysqlclient-dev libxslt1.1 libxml2 libxml2-dev libxslt1-dev pkg-config libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev
 python -m venv /venv
 EOT
 
@@ -45,7 +45,7 @@ WORKDIR /app
 # Install runtime dependencies and create non-root user
 COPY docker/bin/apt-install /usr/local/bin/
 RUN <<EOT
-apt-install default-libmysqlclient-dev libxslt1.1 libxml2
+apt-install default-libmysqlclient-dev libxslt1.1 libxml2 libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 fonts-dejavu-core
 adduser --uid 1000 --disabled-password --gecos '' --no-create-home webdev
 chown webdev:webdev /app
 EOT

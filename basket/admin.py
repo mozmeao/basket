@@ -1,14 +1,19 @@
 import json
 import logging
+import re
+from datetime import date
 
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.decorators import permission_required
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseNotFound, HttpResponseServerError
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.urls import path
 from django.utils.decorators import method_decorator
 
 import sentry_sdk
+import weasyprint
 
 from basket.base.forms import EmailForm, EmailListForm
 from basket.news.backends.braze import BrazeUserNotFoundByEmailError, braze
@@ -40,6 +45,7 @@ class BasketAdminSite(admin.AdminSite):
             path("dsar/delete/", self.admin_view(self.dsar_delete_view), name="dsar.delete"),
             path("dsar/unsubscribe/", self.admin_view(self.dsar_unsub_view), name="dsar.unsubscribe"),
             path("dsar/info/", self.admin_view(self.dsar_info_view), name="dsar.info"),
+            path("dsar/info/download/", self.admin_view(self.dsar_info_download_view), name="dsar.info.download"),
         ]
         # very important that custom_urls are first
         return custom_urls + admin_urls
@@ -101,49 +107,14 @@ class BasketAdminSite(admin.AdminSite):
             form = EmailForm(request.POST)
             if form.is_valid():
                 email = form.cleaned_data["email"]
+                contact, raw_contact, vendor = self._fetch_dsar_contact(email)
 
-                def handler(email, use_braze_backend=False, fallback_to_ctms=False):
-                    context["vendor"] = "Braze" if use_braze_backend else "CTMS"
-                    try:
-                        if use_braze_backend:
-                            contact = braze.get(email=email)
-                            if not contact and fallback_to_ctms:
-                                context["vendor"] = "CTMS"
-                                contact = ctms.interface.get_by_alternate_id(primary_email=email)
-                        else:
-                            contact = ctms.interface.get_by_alternate_id(primary_email=email)
-                    except CTMSNotFoundByEmailError:
-                        contact = None
-                    else:
-                        # response could be 200 with an empty list
-                        if contact:
-                            if context["vendor"] == "Braze":
-                                context["dsar_contact_pretty"] = json.dumps(contact, indent=2, sort_keys=True)
-                            else:
-                                raw_contact = contact[0]
-                                contact = from_vendor(raw_contact)
-                                context["dsar_contact_pretty"] = json.dumps(raw_contact, indent=2, sort_keys=True)
-
-                            context["newsletter_names"] = get_newsletter_names(contact)
-                        else:
-                            contact = None
-
-                    if not contact and fallback_to_ctms:
-                        context["vendor"] = "CTMS or Braze"
-
-                    context["dsar_contact"] = contact
-                    context["dsar_submitted"] = True
-
-                if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
-                    try:
-                        handler(email, use_braze_backend=True, fallback_to_ctms=True)
-                    except Exception as e:
-                        sentry_sdk.capture_exception(e)
-                        handler(email, use_braze_backend=False)
-                elif settings.BRAZE_ONLY_READ_ENABLE:
-                    handler(email, use_braze_backend=True)
-                else:
-                    handler(email, use_braze_backend=False)
+                context["vendor"] = vendor
+                context["dsar_contact"] = contact
+                context["dsar_submitted"] = True
+                if contact:
+                    context["dsar_contact_pretty"] = json.dumps(raw_contact, indent=2, sort_keys=True)
+                    context["newsletter_names"] = get_newsletter_names(contact)
 
         context["dsar_form"] = form
         # adds default django admin context so sidebar shows etc.
@@ -291,3 +262,133 @@ class BasketAdminSite(admin.AdminSite):
         # adds default django admin context so sidebar shows etc.
         context.update(self.each_context(request))
         return render(request, "admin/dsar.html", context)
+
+    def _fetch_dsar_contact(self, email):
+        """
+        Fetch contact data from CTMS or Braze based on settings.
+
+        Returns a tuple of (contact, raw_contact, vendor) where:
+        - contact: normalized contact dict (from from_vendor for CTMS, or raw dict for Braze)
+        - raw_contact: raw contact data as returned by the backend
+        - vendor: string indicating which backend was used ("CTMS", "Braze", or "CTMS or Braze")
+
+        Returns (None, None, vendor) if user not found.
+        Raises exceptions on backend errors.
+        """
+        vendor = "CTMS"
+        contact = None
+        raw_contact = None
+
+        def handler(email, use_braze_backend=False, fallback_to_ctms=False):
+            nonlocal contact, raw_contact, vendor
+            vendor = "Braze" if use_braze_backend else "CTMS"
+            try:
+                if use_braze_backend:
+                    contact = braze.get(email=email)
+                    if not contact and fallback_to_ctms:
+                        vendor = "CTMS"
+                        contact = ctms.interface.get_by_alternate_id(primary_email=email)
+                else:
+                    contact = ctms.interface.get_by_alternate_id(primary_email=email)
+            except CTMSNotFoundByEmailError:
+                contact = None
+            else:
+                # response could be 200 with an empty list
+                if contact:
+                    if vendor == "Braze":
+                        raw_contact = contact
+                    else:
+                        raw_contact = contact[0]
+                        contact = from_vendor(raw_contact)
+                else:
+                    contact = None
+
+            if not contact and fallback_to_ctms:
+                vendor = "CTMS or Braze"
+
+        if settings.BRAZE_READ_WITH_FALLBACK_ENABLE:
+            try:
+                handler(email, use_braze_backend=True, fallback_to_ctms=True)
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
+                handler(email, use_braze_backend=False)
+        elif settings.BRAZE_ONLY_READ_ENABLE:
+            handler(email, use_braze_backend=True)
+        else:
+            handler(email, use_braze_backend=False)
+
+        return contact, raw_contact, vendor
+
+    def _generate_dsar_pdf(self, contact, raw_contact, vendor):
+        """
+        Generate a PDF document containing the user's DSAR data.
+
+        Args:
+            contact: normalized contact dict
+            raw_contact: raw contact data for the Raw Data section
+            vendor: string indicating which backend was used
+
+        Returns:
+            bytes: PDF file content
+        """
+        newsletter_names = get_newsletter_names(contact)
+        raw_data = json.dumps(raw_contact, indent=2, sort_keys=True)
+
+        context = {
+            "contact": contact,
+            "newsletter_names": newsletter_names,
+            "raw_data": raw_data,
+            "vendor": vendor,
+            "generated_date": date.today().isoformat(),
+        }
+
+        html = render_to_string("admin/dsar-download.html", context)
+
+        # Block external URL fetching
+        def block_url_fetcher(url, timeout=10, ssl_context=None):
+            raise ValueError(f"External URL fetching is disabled: {url}")
+
+        pdf = weasyprint.HTML(string=html, url_fetcher=block_url_fetcher).write_pdf()
+        return pdf
+
+    @method_decorator(permission_required("base.dsar_access"))
+    def dsar_info_download_view(self, request):
+        """Download DSAR contact info as a PDF file."""
+        email = request.GET.get("email")
+        if not email:
+            return HttpResponseBadRequest("Missing email parameter")
+
+        # Validate email format
+        form = EmailForm({"email": email})
+        if not form.is_valid():
+            return HttpResponseBadRequest("Invalid email format")
+
+        email = form.cleaned_data["email"]
+
+        try:
+            contact, raw_contact, vendor = self._fetch_dsar_contact(email)
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
+            log.error(f"DSAR PDF download error fetching contact for {email}: {e}")
+            return HttpResponseServerError("Error fetching contact data")
+
+        if not contact:
+            return HttpResponseNotFound(f"User not found in {vendor}")
+
+        try:
+            pdf = self._generate_dsar_pdf(contact, raw_contact, vendor)
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
+            log.error(f"DSAR PDF generation error for {email}: {e}")
+            return HttpResponseServerError("Error generating PDF")
+
+        log.info(f"DSAR PDF download for {email} by user {request.user}")
+
+        # Generate filename with sanitized email (only allow alphanumeric, underscore, hyphen)
+        safe_email = re.sub(r"[^a-zA-Z0-9_-]", "_", email)
+        filename = f"data-basket-{safe_email}-{date.today().isoformat()}.pdf"
+
+        response = HttpResponse(pdf, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response["Content-Length"] = len(pdf)
+        return response

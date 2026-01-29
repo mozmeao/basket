@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Your data in Mozilla Basket</title>
+  <style>
+    @page {
+      margin: 2cm;
+      size: A4;
+    }
+    body {
+      font-family: DejaVu Sans, sans-serif;
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+      line-height: 1.6;
+      font-size: 10pt;
+    }
+    h1 {
+      color: #000;
+      font-size: 18pt;
+      margin-bottom: 20px;
+    }
+    h2 {
+      color: #333;
+      font-size: 14pt;
+      margin-top: 25px;
+      margin-bottom: 10px;
+      page-break-after: avoid;
+    }
+    h3 {
+      color: #444;
+      font-size: 12pt;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      background: #f5f5f5;
+      padding: 8px 10px;
+      page-break-after: avoid;
+    }
+    .intro {
+      background: #f0f7ff;
+      padding: 15px 20px;
+      border-left: 4px solid #0060df;
+      margin: 20px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+    th, td {
+      text-align: left;
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      font-size: 9pt;
+    }
+    th {
+      background: #f5f5f5;
+      width: 30%;
+      font-weight: bold;
+    }
+    .note {
+      font-style: italic;
+      color: #666;
+      padding: 6px 10px;
+    }
+    hr {
+      border: none;
+      border-top: 2px solid #ddd;
+      margin: 30px 0;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 15px;
+      overflow-wrap: break-word;
+      white-space: pre-wrap;
+      font-family: DejaVu Sans Mono, monospace;
+      font-size: 8pt;
+      border: 1px solid #ddd;
+    }
+    .user-info-table th {
+      width: 25%;
+    }
+    .user-info-table td {
+      width: 75%;
+    }
+    ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+    li {
+      margin-bottom: 3px;
+    }
+    .generated-info {
+      color: #666;
+      font-size: 8pt;
+      margin-top: 30px;
+      border-top: 1px solid #ddd;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Your Data in Mozilla Basket</h1>
+
+  <div class="intro">
+    <p>This file contains information that we collected linked to your account in <strong>Basket</strong> - Mozilla's Newsletter Service. Below is the granular description of collected fields.</p>
+  </div>
+
+  <h2>User Summary (from {{ vendor }})</h2>
+  <table class="user-info-table">
+    <tr>
+      <th>Primary Email</th>
+      <td>{{ contact.email }}</td>
+    </tr>
+    <tr>
+      <th>Basket Token</th>
+      <td>{{ contact.token }}</td>
+    </tr>
+    {% if contact.first_name or contact.last_name %}
+    <tr>
+      <th>Name</th>
+      <td>{% if contact.first_name %}{{ contact.first_name }}{% endif %}{% if contact.last_name %} {{ contact.last_name }}{% endif %}</td>
+    </tr>
+    {% endif %}
+    <tr>
+      <th>Language</th>
+      <td>{{ contact.lang|default:"Not set" }}</td>
+    </tr>
+    {% if contact.country %}
+    <tr>
+      <th>Country</th>
+      <td>{{ contact.country }}</td>
+    </tr>
+    {% endif %}
+    <tr>
+      <th>FxA ID</th>
+      <td>{{ contact.fxa_id|default:"Not set" }}</td>
+    </tr>
+    {% if contact.fxa_primary_email %}
+    <tr>
+      <th>FxA Primary Email</th>
+      <td>{{ contact.fxa_primary_email }}</td>
+    </tr>
+    {% endif %}
+    <tr>
+      <th>MoFo Relevant?</th>
+      <td>{{ contact.mofo_relevant|yesno:"Yes,No,Unknown" }}</td>
+    </tr>
+    <tr>
+      <th>Double Opt In?</th>
+      <td>{{ contact.optin|yesno:"Yes,No,Unknown" }}</td>
+    </tr>
+    <tr>
+      <th>Opt Out of All Email?</th>
+      <td>{{ contact.optout|yesno:"Yes,No,Unknown" }}</td>
+    </tr>
+    <tr>
+      <th>Newsletter Subscriptions</th>
+      <td>
+        {% if newsletter_names %}
+        <ul>
+          {% for nl in newsletter_names %}
+          <li>{{ nl }}</li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        No subscriptions
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+
+  <h2>Field Descriptions</h2>
+
+  <h3>amo - Addon Authors Data</h3>
+  <table>
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>add_on_ids</td><td>IDs of addons for which the user is listed as an author</td></tr>
+    <tr><td>create_timestamp</td><td>Date/Time the record was created</td></tr>
+    <tr><td>display_name</td><td>User's name</td></tr>
+    <tr><td>email_opt_in</td><td>User has opted into email or not</td></tr>
+    <tr><td>language</td><td>User's preferred language</td></tr>
+    <tr><td>last_login</td><td>Date/Time of user's last login</td></tr>
+    <tr><td>location</td><td>Country from which the user signed up to AMO</td></tr>
+    <tr><td>profile_url</td><td>URL on AMO for the user</td></tr>
+    <tr><td>update_timestamp</td><td>Date/Time the user's record was last updated</td></tr>
+    <tr><td>user</td><td>Whether the user is an AMO user (true or false)</td></tr>
+    <tr><td>user_id</td><td>AMO internal user ID</td></tr>
+    <tr><td>username</td><td>AMO username</td></tr>
+  </table>
+
+  <h3>email - Marketing Email Data</h3>
+  <table>
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>basket_token</td><td>User ID used to identify the user in unsubscribe links in emails</td></tr>
+    <tr><td>create_timestamp</td><td>Date/Time the user record was created</td></tr>
+    <tr><td>double_opt_in</td><td>Whether the user has opted into receiving email (true/false)</td></tr>
+    <tr><td>email_format</td><td>H or T for HTML or Text</td></tr>
+    <tr><td>email_id</td><td>Internal ID for the user</td></tr>
+    <tr><td>email_lang</td><td>Language in which the user would prefer to receive emails</td></tr>
+    <tr><td>first_name</td><td>First name</td></tr>
+    <tr><td>has_opted_out_of_email</td><td>Whether the user has opted out of all email (true/false)</td></tr>
+    <tr><td>last_name</td><td>Last name</td></tr>
+    <tr><td>mailing_country</td><td>Country of residence of the user</td></tr>
+    <tr><td>primary_email</td><td>User's email address for marketing purposes</td></tr>
+    <tr><td>sfdc_id</td><td>Legacy ID from the no-longer-used SFDC system</td></tr>
+    <tr><td>unsubscribe_reason</td><td>Optional text for why the user opted out of email</td></tr>
+    <tr><td>update_timestamp</td><td>Date/Time the user's record was last updated</td></tr>
+  </table>
+
+  <h3>fxa - Mozilla Accounts Data</h3>
+  <table>
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>account_deleted</td><td>Whether the user's Mozilla Account has been deleted (true/false)</td></tr>
+    <tr><td>created_date</td><td>Date/Time on which the user's FxA was created</td></tr>
+    <tr><td>first_service</td><td>First service the user signed up for with their FxA (e.g. Sync or VPN)</td></tr>
+    <tr><td>fxa_id</td><td>ID of the user in FxA</td></tr>
+    <tr><td>lang</td><td>Language the user prefers to use in FxA</td></tr>
+    <tr><td>primary_email</td><td>Primary email of the user in FxA (if different from primary_email in the email section)</td></tr>
+  </table>
+
+  <h3>mofo - Mozilla Foundation Data</h3>
+  <table>
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>mofo_contact_id</td><td>Internal ID for the user at MoFo</td></tr>
+    <tr><td>mofo_email_id</td><td>Internal ID for the user's email at MoFo</td></tr>
+    <tr><td>mofo_relevant</td><td>Whether the user has interacted with MoFo (true/false)</td></tr>
+  </table>
+
+  <h3>newsletters - Newsletter Subscriptions</h3>
+  <table>
+    <tr><th>Field</th><th>Description</th></tr>
+    <tr><td>create_timestamp</td><td>Date/Time the user subscribed to the newsletter</td></tr>
+    <tr><td>format</td><td>H or T for HTML or Text</td></tr>
+    <tr><td>lang</td><td>Language the user selected when subscribing to this newsletter</td></tr>
+    <tr><td>name</td><td>Identifier of the newsletter for this subscription. See https://basket.mozilla.org/news/</td></tr>
+    <tr><td>source</td><td>URL of the form used to subscribe to this newsletter</td></tr>
+    <tr><td>subscribed</td><td>Whether the user is still subscribed to this newsletter (true/false)</td></tr>
+    <tr><td>unsub_reason</td><td>Optional text for why the user unsubscribed</td></tr>
+    <tr><td>update_timestamp</td><td>Date/Time the user's record was last updated</td></tr>
+  </table>
+
+  <h3>waitlists - Product Waiting Lists</h3>
+  <p class="note">Including "relay_waitlist" and "vpn_waitlist": Very similar to newsletters but for product waiting lists.</p>
+
+  <hr>
+  <h2>Raw Data</h2>
+  <pre>{{ raw_data }}</pre>
+
+  <div class="generated-info">
+    <p>Generated on {{ generated_date }} from {{ vendor }}</p>
+  </div>
+</body>
+</html>

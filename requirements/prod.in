@@ -32,6 +32,7 @@ rq-scheduler==0.14.0
 sentry-processor==0.0.1
 sentry-sdk==2.29.1
 user-agents==2.2.0
+weasyprint==64.0
 whitenoise==6.9.0
 google-cloud-storage==3.4.1
 pandas==2.3.3
