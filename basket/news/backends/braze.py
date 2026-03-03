@@ -11,6 +11,7 @@ from django.utils import timezone
 import requests
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
+from basket import metrics
 from basket.base.decorators import rq_task
 from basket.base.utils import is_valid_uuid
 from basket.news.backends.ctms import ctms, process_country, process_lang
@@ -383,6 +384,7 @@ class Braze:
         # email will not be populated. We check for that here, and if there is no email we
         # behave as if the user wasn't found.
         if user_response["users"] and user_response["users"][0].get("email"):
+            metrics.incr("news.backends.braze.get", tags=["status:found"])
             user_data = user_response["users"][0]
             user_email = email or user_data.get("email")
             is_opted_out = user_data.get("email_subscribe") == "unsubscribed"
@@ -399,6 +401,7 @@ class Braze:
         # will fetch the email from CTMS. This shim can be disabled/removed after the migration
         # is complete.
         elif not email and (fxa_id or token) and settings.BRAZE_CTMS_SHIM_ENABLE:
+            metrics.incr("news.backends.braze.get", tags=["status:not_found_invoked_ctms_fallback"])
             try:
                 ctms_response = ctms.get(token=token, fxa_id=fxa_id)
                 if ctms_response:
@@ -407,6 +410,8 @@ class Braze:
                         return self.get(email=ctms_email)
             except Exception:
                 log.warn("Unable to fetch email from CTMS in braze.get shim")
+        else:
+            metrics.incr("news.backends.braze.get", tags=["status:not_found"])
 
     def add(self, data):
         """
