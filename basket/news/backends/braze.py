@@ -401,14 +401,16 @@ class Braze:
         # will fetch the email from CTMS. This shim can be disabled/removed after the migration
         # is complete.
         elif not email and (fxa_id or token) and settings.BRAZE_CTMS_SHIM_ENABLE:
-            metrics.incr("news.backends.braze.get", tags=["status:not_found_invoked_ctms_fallback"])
             try:
                 ctms_response = ctms.get(token=token, fxa_id=fxa_id)
                 if ctms_response:
                     ctms_email = ctms_response.get("email")
                     if ctms_email:
+                        metrics.incr("news.backends.braze.get", tags=["status:not_found_ctms_resolved"])
                         return self.get(email=ctms_email)
+                metrics.incr("news.backends.braze.get", tags=["status:not_found_ctms_not_resolved"])
             except Exception:
+                metrics.incr("news.backends.braze.get", tags=["status:not_found_ctms_not_resolved"])
                 log.warn("Unable to fetch email from CTMS in braze.get shim")
         else:
             metrics.incr("news.backends.braze.get", tags=["status:not_found"])
