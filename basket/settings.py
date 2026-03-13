@@ -252,7 +252,7 @@ RATELIMIT_VIEW = "basket.news.views.ratelimited"
 EMAIL_SUBSCRIBE_RATE_LIMIT = config("EMAIL_SUBSCRIBE_RATE_LIMIT", default="4/5m")
 
 # RQ configuration.
-RQ_RESULT_TTL = config("RQ_RESULT_TTL", parser=int, default="0")  # Ignore results.
+RQ_RESULT_TTL = config("RQ_RESULT_TTL", parser=int, default="60")
 RQ_MAX_RETRY_DELAY = config("RQ_MAX_RETRY_DELAY", parser=int, default=str(34 * 60 * 60))  # 34 hours in seconds.
 RQ_MAX_RETRIES = 0 if UNITTEST else config("RQ_MAX_RETRIES", parser=int, default="12")
 RQ_EXCEPTION_HANDLERS = ["basket.base.rq.store_task_exception_handler"]
