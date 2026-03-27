@@ -563,7 +563,7 @@ class Braze:
         saved_country = process_braze_country(existing_user_data.get("country"))
         updated_country = process_braze_country(update_data.get("country")) if update_data else None
 
-        external_id = updated_user_data.get("email_id")
+        external_id = updated_user_data.get("email_id") or updated_user_data.get("token")
 
         if not external_id:
             raise ValueError("Missing Braze external_id")

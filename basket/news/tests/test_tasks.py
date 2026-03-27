@@ -361,6 +361,92 @@ class FxAEmailChangedTests(TestCase):
             },
         )
 
+    def test_email_change_with_missing_pre_generated_token(
+        self,
+        cache_mock,
+        gud_mock,
+        ctms_mock
+    ):
+        gud_mock.return_value = None
+        data = {
+            "ts": 1234.567,
+            "uid": "the-fxa-id-for-el-dudarino",
+            "email": "the-dudes-new-email@example.com",
+        }
+
+        fxa_email_changed(data, pre_generated_token="ABC123", use_braze_backend=True)
+
+    def test_email_change_with_pre_generated_token(
+        self,
+        cache_mock,
+        gud_mock,
+        ctms_mock
+    ):
+        gud_mock.return_value = None
+        data = {
+            "ts": 1234.567,
+            "uid": "the-fxa-id-for-el-dudarino",
+            "email": "the-dudes-new-email@example.com",
+        }
+
+        fxa_email_changed(data, use_braze_backend=True)
+
+    @patch("basket.news.tasks.braze")
+    def test_existing_user_found_by_fxa_id(
+        self,
+        braze_mock,
+        cache_mock,
+        gud_mock,
+        ctms_mock,
+    ):
+        user_data = {
+            "id": "1234",
+            "email_id": "123ABC"
+        }
+        gud_mock.return_value = user_data
+
+        data = {
+            "ts": 2,
+            "uid": "the-fxa-id-for-el-dudarino",
+            "email": "the-dudes-new-email@example.com",
+        }
+
+        fxa_email_changed(data, use_braze_backend=True)
+
+        braze_mock.update.assert_called_once_with(
+            user_data,
+            { "fxa_primary_email": "the-dudes-new-email@example.com" },
+        )
+
+    @patch("basket.news.tasks.braze")
+    def test_existing_user_found_by_email(
+        self,
+        braze_mock,
+        cache_mock,
+        gud_mock,
+        ctms_mock,
+    ):
+        first_user_data = None
+        second_user_data = {
+            "id": "1234",
+            "email_id": "123ABC"
+        }
+
+        gud_mock.side_effect = [first_user_data, second_user_data]
+
+        data = {
+            "ts": 2,
+            "uid": "the-fxa-id-for-el-dudarino",
+            "email": "the-dudes-new-email@example.com",
+        }
+
+        fxa_email_changed(data, use_braze_backend=True)
+
+        braze_mock.update.assert_called_once_with(
+            second_user_data,
+            {"fxa_id": "the-fxa-id-for-el-dudarino", "fxa_primary_email": "the-dudes-new-email@example.com"},
+        )
+
 
 @patch("basket.news.tasks.ctms")
 @patch("basket.news.tasks.get_user_data")

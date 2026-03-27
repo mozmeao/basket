@@ -87,8 +87,6 @@ def fxa_email_changed(
                 "fxa_id": fxa_id,
                 "fxa_primary_email": email,
             }
-            if pre_generated_token:
-                data["email_id"] = pre_generated_token
 
             backend_data = data.copy()
             contact = None
