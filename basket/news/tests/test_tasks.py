@@ -373,7 +373,13 @@ class FxAEmailChangedTests(TestCase):
 
         fxa_email_changed(data, pre_generated_token=None, use_braze_backend=True)
 
-        braze_mock.add.assert_called_with_subset( {"email": "the-dudes-new-email@example.com", "fxa_id": "the-fxa-id-for-el-dudarino", "fxa_primary_email": "the-dudes-new-email@example.com"} )
+        braze_mock.add.assert_called_with_subset(
+            {
+                "email": "the-dudes-new-email@example.com",
+                "fxa_id": "the-fxa-id-for-el-dudarino",
+                "fxa_primary_email": "the-dudes-new-email@example.com",
+            }
+        )
 
     @patch("basket.news.tasks.braze")
     def test_with_pre_generated_token(self, braze_mock, cache_mock, gud_mock, ctms_mock):
@@ -386,8 +392,14 @@ class FxAEmailChangedTests(TestCase):
 
         fxa_email_changed(data, pre_generated_token="ABC123", use_braze_backend=True)
 
-        braze_mock.add.assert_called_with( {"email": "the-dudes-new-email@example.com", "fxa_id": "the-fxa-id-for-el-dudarino", "fxa_primary_email": "the-dudes-new-email@example.com", "token": "ABC123"} )
-
+        braze_mock.add.assert_called_with(
+            {
+                "email": "the-dudes-new-email@example.com",
+                "fxa_id": "the-fxa-id-for-el-dudarino",
+                "fxa_primary_email": "the-dudes-new-email@example.com",
+                "token": "ABC123",
+            }
+        )
 
     @patch("basket.news.tasks.braze")
     def test_user_found_by_fxa_id(
