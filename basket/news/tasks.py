@@ -377,9 +377,6 @@ def upsert_contact(
         # no user found. create new one.
         token = update_data["token"] = pre_generated_token or generate_token()
 
-        if pre_generated_token:
-            update_data["email_id"] = pre_generated_token
-
         if settings.MAINTENANCE_MODE:
             if use_braze_backend:
                 braze_add_or_update.delay(update_data)
@@ -387,6 +384,7 @@ def upsert_contact(
                 ctms_add_or_update.delay(update_data)
         else:
             if use_braze_backend:
+                print(update_data)
                 braze.add(update_data)
             else:
                 ctms.add(update_data)

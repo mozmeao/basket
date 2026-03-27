@@ -20,6 +20,7 @@ from basket.news.tasks import (
     send_recovery_message,
     send_tx_message,
     send_tx_messages,
+    upsert_contact,
     update_custom_unsub,
     update_user_meta,
 )
@@ -361,7 +362,7 @@ class FxAEmailChangedTests(TestCase):
             },
         )
 
-    def test_email_change_with_missing_pre_generated_token(
+    def test_without_pre_generated_token(
         self,
         cache_mock,
         gud_mock,
@@ -376,7 +377,7 @@ class FxAEmailChangedTests(TestCase):
 
         fxa_email_changed(data, pre_generated_token="ABC123", use_braze_backend=True)
 
-    def test_email_change_with_pre_generated_token(
+    def test_with_pre_generated_token(
         self,
         cache_mock,
         gud_mock,
@@ -392,7 +393,7 @@ class FxAEmailChangedTests(TestCase):
         fxa_email_changed(data, use_braze_backend=True)
 
     @patch("basket.news.tasks.braze")
-    def test_existing_user_found_by_fxa_id(
+    def test_user_found_by_fxa_id(
         self,
         braze_mock,
         cache_mock,
@@ -419,7 +420,7 @@ class FxAEmailChangedTests(TestCase):
         )
 
     @patch("basket.news.tasks.braze")
-    def test_existing_user_found_by_email(
+    def test_user_found_by_email(
         self,
         braze_mock,
         cache_mock,
@@ -710,3 +711,37 @@ def test_send_recovery_message(mock_get_message, mock_braze, metricsmock):
         "test@example.com", event="send-newsletter-confirm-fx-en-US", user_data={"basket_token": "fed654", "email_id": "fed654"}
     )
     metricsmock.assert_incr_once("news.tasks.send_tx_message", tags=["message_id:newsletter-confirm-fx", "language:en-US"])
+
+@patch("basket.news.tasks.braze")
+class TestUpsertContact(TestCase):
+    def test_without_pre_generated_token(self, braze_mock):
+        create_date = 1526996035.498
+        data = {
+            "createDate": create_date,
+            "email": "thedude@example.com",
+            "uid": "the-fxa-id",
+            "locale": "en-US,en",
+            "newsletters": ["test"]
+        }
+
+        braze_mock.slug_to_vendor_id.return_value = "d13cf2a4-0bc9-44a9-a923-9a5689c67351"
+        
+        upsert_contact("SUBSCRIBE", data, None, pre_generated_token=None, use_braze_backend=True)
+
+        braze_mock.add.assert_called_with_subset({'createDate': 1526996035.498, 'email': 'thedude@example.com', 'uid': 'the-fxa-id', 'locale': 'en-US,en', 'newsletters': {'test': True}})
+
+    def test_with_pre_generated_token(self, braze_mock):
+        create_date = 1526996035.498
+        data = {
+            "createDate": create_date,
+            "email": "thedude@example.com",
+            "uid": "the-fxa-id",
+            "locale": "en-US,en",
+            "newsletters": ["test"]
+        }
+
+        braze_mock.slug_to_vendor_id.return_value = "d13cf2a4-0bc9-44a9-a923-9a5689c67351"
+        
+        upsert_contact("SUBSCRIBE", data, None, pre_generated_token="ABC123", use_braze_backend=True)
+
+        braze_mock.add.assert_called_once_with({'createDate': 1526996035.498, 'email': 'thedude@example.com', 'uid': 'the-fxa-id', 'locale': 'en-US,en', 'newsletters': {'test': True}, 'token': 'ABC123'})
