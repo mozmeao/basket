@@ -384,7 +384,6 @@ def upsert_contact(
                 ctms_add_or_update.delay(update_data)
         else:
             if use_braze_backend:
-                print(update_data)
                 braze.add(update_data)
             else:
                 ctms.add(update_data)
