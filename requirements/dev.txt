@@ -962,9 +962,9 @@ lxml==6.0.2 \
     --hash=sha256:fbc74f42c3525ac4ffa4b89cbdd00057b6196bcefe8bce794abd42d33a018092 \
     --hash=sha256:fe659f6b5d10fb5a17f00a50eb903eb277a71ee35df4615db573c069bcf967ac
     # via -r requirements/prod.txt
-markus[datadog]==5.1.0 \
-    --hash=sha256:424172efdccc35172b8aadfdcd753412c3ed2b5651c3b3bc9e0b7e7f2e97da52 \
-    --hash=sha256:a4ec2d6bb1dcf471638be11a10cb5708de8cc3092ade9cf3b38bb2f651ede33a
+markus[datadog]==5.2.0 \
+    --hash=sha256:ada9042662e7091c1219080a86909460b8aea4ef52574de1fd1f0d880c3bde93 \
+    --hash=sha256:edd47627f5feab4e3eb9844677c4a921fcd2d19d7b7d00286e31a69c7b9a8442
     # via -r requirements/prod.txt
 mozilla-django-oidc==4.0.1 \
     --hash=sha256:04ef58759be69f22cdc402d082480aaebf193466cad385dc9e4f8df2a0b187ca \
