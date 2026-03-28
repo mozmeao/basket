@@ -30,7 +30,7 @@ redis==6.2.0
 rq==2.3.3
 rq-scheduler==0.14.0
 sentry-processor==0.0.1
-sentry-sdk==2.29.1
+sentry-sdk==2.55.0
 user-agents==2.2.0
 whitenoise==6.9.0
 google-cloud-storage==3.4.1
