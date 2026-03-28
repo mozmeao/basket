@@ -25,7 +25,7 @@ mysqlclient==2.2.7
 PyFxA==0.8.1
 pyOpenSSL==26.0.0
 pysilverpop==0.2.6
-PyYAML==6.0.2
+PyYAML==6.0.3
 redis==6.2.0
 rq==2.3.3
 rq-scheduler==0.14.0
