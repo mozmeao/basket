@@ -16,7 +16,7 @@ everett==3.4.0
 granian==2.3.2
 hiredis==3.2.1
 ipaddress==1.0.23
-legacy-cgi==2.6.3  # To satisfy pinning requirement: pyfxa -> hawkauthlib ->  webob -> legacy-cgi
+legacy-cgi==2.6.4  # To satisfy pinning requirement: pyfxa -> hawkauthlib ->  webob -> legacy-cgi
 lxml==6.0.2
 markus[datadog]==5.1.0
 mozilla-django-oidc==4.0.1
