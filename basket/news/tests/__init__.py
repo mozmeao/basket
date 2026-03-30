@@ -38,8 +38,13 @@ def assert_called_with_subset(self, *expected_args, **expected_kwargs):
         raise AssertionError(f"Expected at least {len(expected_args)} args, got {len(actual_args)}")
 
     for i, expected_arg in enumerate(expected_args):
-        if actual_args[i] != expected_arg:
-            raise AssertionError(f"Arg {i}: expected {expected_arg}, got {actual_args[i]}")
+        if isinstance(expected_arg, dict):
+            for nested_arg in expected_arg:
+                if actual_args[i][nested_arg] != expected_arg[nested_arg]:
+                    raise AssertionError(f"Arg {i}: expected {expected_arg[nested_arg]}, got {actual_args[i][nested_arg]}")
+        else:
+            if actual_args[i] != expected_arg:
+                raise AssertionError(f"Arg {i}: expected {expected_arg}, got {actual_args[i]}")
 
     # Check keyword args
     for key, expected_value in expected_kwargs.items():
