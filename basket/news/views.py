@@ -17,8 +17,6 @@ from django_ratelimit.exceptions import Ratelimited
 
 from basket import errors, metrics
 from basket.news import tasks
-from basket.news.backends.braze import braze
-from basket.news.backends.ctms import ctms
 from basket.news.forms import (
     CommonVoiceForm,
     UpdateUserMeta,
@@ -166,10 +164,7 @@ def fxa_callback(request):
         if user_data:
             token = user_data["token"]
             if uid and not user_data.get("fxa_id"):
-                if use_braze_backend:
-                    braze.update(user_data, {"fxa_id": uid})
-                else:
-                    ctms.update(user_data, {"fxa_id": uid})
+                tasks.set_user_fxa_id(user_data, uid, use_braze_backend=use_braze_backend)
         else:
             new_user_data = {
                 "email": email,
