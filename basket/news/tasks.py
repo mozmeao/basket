@@ -101,6 +101,14 @@ def fxa_email_changed(
     cache.set(cache_key, ts, 7200)  # 2 hr
 
 
+def set_user_fxa_id(user_data, fxa_id, use_braze_backend=False):
+    """Write the fxa_id alias for an existing user who doesn't have one yet."""
+    if use_braze_backend:
+        braze.update(user_data, {"fxa_id": fxa_id})
+    else:
+        ctms.update(user_data, {"fxa_id": fxa_id})
+
+
 def fxa_direct_update_contact(fxa_id, data, use_braze_backend=False):
     """Set some small data for a contact with an FxA ID
 
