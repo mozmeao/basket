@@ -810,6 +810,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TasksPatcherMixin, Test
         self._patch_views("get_fxa_clients")
         self._patch_views("sentry_sdk")
         self._patch_tasks("upsert_contact")
+        self._patch_tasks("set_user_fxa_id")
 
     @mock_metrics
     def test_no_session_state(self, metricsmock):

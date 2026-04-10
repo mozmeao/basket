@@ -163,12 +163,15 @@ def fxa_callback(request):
 
         if user_data:
             token = user_data["token"]
+            if uid and not user_data.get("fxa_id"):
+                tasks.set_user_fxa_id(user_data, uid, use_braze_backend=use_braze_backend)
         else:
             new_user_data = {
                 "email": email,
                 "optin": True,
                 "newsletters": [settings.FXA_REGISTER_NEWSLETTER],
                 "source_url": f"{settings.FXA_REGISTER_SOURCE_URL}?utm_source=basket-fxa-oauth",
+                "fxa_id": uid,
             }
             locale = user_profile.get("locale")
             if locale:

@@ -87,8 +87,6 @@ def fxa_email_changed(
                 "fxa_id": fxa_id,
                 "fxa_primary_email": email,
             }
-            if pre_generated_token:
-                data["email_id"] = pre_generated_token
 
             backend_data = data.copy()
             contact = None
@@ -101,6 +99,14 @@ def fxa_email_changed(
             metrics.incr("news.tasks.fxa_email_changed.user_not_found")
 
     cache.set(cache_key, ts, 7200)  # 2 hr
+
+
+def set_user_fxa_id(user_data, fxa_id, use_braze_backend=False):
+    """Write the fxa_id alias for an existing user who doesn't have one yet."""
+    if use_braze_backend:
+        braze.update(user_data, {"fxa_id": fxa_id})
+    else:
+        ctms.update(user_data, {"fxa_id": fxa_id})
 
 
 def fxa_direct_update_contact(fxa_id, data, use_braze_backend=False):
@@ -378,9 +384,6 @@ def upsert_contact(
 
         # no user found. create new one.
         token = update_data["token"] = pre_generated_token or generate_token()
-
-        if pre_generated_token:
-            update_data["email_id"] = pre_generated_token
 
         if settings.MAINTENANCE_MODE:
             if use_braze_backend:
