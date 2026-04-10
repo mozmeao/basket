@@ -439,6 +439,16 @@ def upsert_contact(
                 send_confirm = "fx" if send_fx_confirm else "moz"
 
     if send_confirm and settings.SEND_CONFIRM_MESSAGES and should_send_tx_messages:
+        if not data.get("email"):
+            user = None
+            if use_braze_backend:
+                user = braze.get(token=data["token"])
+            else:
+                user = ctms.get(token=data["token"])
+
+            if user:
+                data["email"] = user["email"]
+
         send_confirm_message.delay(
             data["email"],
             token,
