@@ -379,6 +379,12 @@ coverage[toml]==7.13.5 \
     --hash=sha256:f70c9ab2595c56f81a89620e22899eea8b212a4041bd728ac6f4a28bf5d3ddd0 \
     --hash=sha256:fbabfaceaeb587e16f7008f7795cd80d20ec548dc7f94fbb0d4ec2e038ce563f
     # via pytest-cov
+croniter==6.2.2 \
+    --hash=sha256:a5d17b1060974d36251ea4faf388233eca8acf0d09cbd92d35f4c4ac8f279960 \
+    --hash=sha256:ba60832a5ec8e12e51b8691c3309a113d1cf6526bdf1a48150ce8ec7a532d0ab
+    # via
+    #   -r requirements/prod.txt
+    #   rq
 crontab==1.0.5 \
     --hash=sha256:f80e01b4f07219763a9869f926dd17147278e7965a928089bca6d3dc80ae46d5
     # via
@@ -1406,6 +1412,7 @@ python-dateutil==2.9.0.post0 \
     # via
     #   -r requirements/prod.txt
     #   botocore
+    #   croniter
     #   freezegun
     #   pandas
     #   rq-scheduler
@@ -1520,9 +1527,9 @@ requests-oauthlib==2.0.0 \
     # via
     #   -r requirements/prod.txt
     #   pysilverpop
-rq==2.3.3 \
-    --hash=sha256:20c41c977b6f27c852a41bd855893717402bae7b8d9607dca21fe9dd55453e22 \
-    --hash=sha256:2202c4409c4c527ac4bee409867d6c02515dd110030499eb0de54c7374aee0ce
+rq==2.7.0 \
+    --hash=sha256:4b320e95968208d2e249fa0d3d90ee309478e2d7ea60a116f8ff9aa343a4c117 \
+    --hash=sha256:c2156fc7249b5d43dda918c4355cfbf8d0d299a5cdd3963918e9c8daf4b1e0c0
     # via
     #   -r requirements/prod.txt
     #   rq-scheduler
