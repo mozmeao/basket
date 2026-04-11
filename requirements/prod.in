@@ -33,7 +33,7 @@ sentry-processor==0.0.1
 sentry-sdk==2.57.0
 user-agents==2.2.0
 whitenoise==6.9.0
-google-cloud-storage==3.10.0
+google-cloud-storage==3.10.1
 pandas==2.3.3
 pyarrow==23.0.1
 tenacity==9.1.4
