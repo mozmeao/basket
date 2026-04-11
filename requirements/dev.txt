@@ -1388,9 +1388,9 @@ pytest-cov==7.0.0 \
     --hash=sha256:33c97eda2e049a0c5298e91f519302a1334c26ac65c1a483d6206fd458361af1 \
     --hash=sha256:3b8e9558b16cc1479da72058bdecf8073661c7f57f7d3c5f22a1c23507f2d861
     # via -r requirements/dev.in
-pytest-datadir==1.7.1 \
-    --hash=sha256:12372417ff2cec4db8aecaf6b6fac119db91515f17e81c7926220e342148e3b4 \
-    --hash=sha256:367b4cd34b6ca3151317db310ab688ef9a28a9ec15e1e7d6696f4737b5f14bd8
+pytest-datadir==1.8.0 \
+    --hash=sha256:5c677bc097d907ac71ca418109adc3abe34cf0bddfe6cf78aecfbabd96a15cf0 \
+    --hash=sha256:7a15faed76cebe87cc91941dd1920a9a38eba56a09c11e9ddf1434d28a0f78eb
     # via -r requirements/dev.in
 pytest-django==4.12.0 \
     --hash=sha256:3ff300c49f8350ba2953b90297d23bf5f589db69545f56f1ec5f8cff5da83e85 \
