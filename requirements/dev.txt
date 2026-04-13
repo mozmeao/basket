@@ -443,7 +443,6 @@ cryptography==46.0.7 \
     # via
     #   -r requirements/prod.txt
     #   google-auth
-    #   josepy
     #   mozilla-django-oidc
     #   pyfxa
     #   pyopenssl
@@ -813,12 +812,6 @@ jmespath==1.1.0 \
     #   -r requirements/prod.txt
     #   boto3
     #   botocore
-josepy==2.2.0 \
-    --hash=sha256:63e9dd116d4078778c25ca88f880cc5d95f1cab0099bebe3a34c2e299f65d10b \
-    --hash=sha256:74c033151337c854f83efe5305a291686cef723b4b970c43cfe7270cf4a677a9
-    # via
-    #   -r requirements/prod.txt
-    #   mozilla-django-oidc
 legacy-cgi==2.6.4 \
     --hash=sha256:7e235ce58bf1e25d1fc9b2d299015e4e2cd37305eccafec1e6bac3fc04b878cd \
     --hash=sha256:abb9dfc7835772f7c9317977c63253fd22a7484b5c9bbcdca60a29dcce97c577
@@ -971,9 +964,9 @@ markus[datadog]==5.2.0 \
     --hash=sha256:ada9042662e7091c1219080a86909460b8aea4ef52574de1fd1f0d880c3bde93 \
     --hash=sha256:edd47627f5feab4e3eb9844677c4a921fcd2d19d7b7d00286e31a69c7b9a8442
     # via -r requirements/prod.txt
-mozilla-django-oidc==4.0.1 \
-    --hash=sha256:04ef58759be69f22cdc402d082480aaebf193466cad385dc9e4f8df2a0b187ca \
-    --hash=sha256:4ff8c64069e3e05c539cecf9345e73225a99641a25e13b7a5f933ec897b58918
+mozilla-django-oidc==5.0.2 \
+    --hash=sha256:4e953dcd963c036daaa2ac42b5bb6ea89a1c6ea7be0387c2022a59aca2f83043 \
+    --hash=sha256:965a3533b0e299288cdf38ec2f8b550217c302ffe78ce5bd0b2d2f4bc436878b
     # via -r requirements/prod.txt
 msgpack-python==0.5.6 \
     --hash=sha256:378cc8a6d3545b532dfd149da715abae4fda2a3adb6d74e525d0d5e51f46909b
@@ -1369,6 +1362,7 @@ pyjwt==2.12.1 \
     --hash=sha256:c74a7a2adf861c04d002db713dd85f84beb242228e671280bf709d765b03672b
     # via
     #   -r requirements/prod.txt
+    #   mozilla-django-oidc
     #   pyfxa
 pyopenssl==26.0.0 \
     --hash=sha256:df94d28498848b98cc1c0ffb8ef1e71e40210d3b0a8064c9d29571ed2904bf81 \
