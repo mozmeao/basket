@@ -1,4 +1,4 @@
-APScheduler==3.11.0
+APScheduler==3.11.2
 boto3==1.38.30
 contextlib2==21.6.0
 cryptography==46.0.7
