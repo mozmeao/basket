@@ -21,13 +21,13 @@ asgiref==3.11.1 \
     #   -r requirements/prod.txt
     #   django
     #   django-cors-headers
-boto3==1.38.30 \
-    --hash=sha256:17af769544b5743843bcc732709b43226de19f1ebff2c324a3440bbecbddb893 \
-    --hash=sha256:949df0a0edd360f4ad60f1492622eecf98a359a2f72b1e236193d9b320c5dc8c
+boto3==1.42.96 \
+    --hash=sha256:2f4566da2c209a98bdbfc874d813ef231c84ad24e4f815e9bc91de5f63351a24 \
+    --hash=sha256:b38a9e4a3fbbee9017252576f1379780d0a5814768676c08df2f539d31fcdd68
     # via -r requirements/prod.txt
-botocore==1.38.46 \
-    --hash=sha256:8798e5a418c27cf93195b077153644aea44cb171fcd56edc1ecebaa1e49e226e \
-    --hash=sha256:89ca782ffbf2e8769ca9c89234cfa5ca577f1987d07d913ee3c68c4776b1eb5b
+botocore==1.42.97 \
+    --hash=sha256:5c0bb00e32d16ff6d278cc8c9e10dc3672d9c1d569031635ac3c908a60de8310 \
+    --hash=sha256:77d2c8ce1bc592d3fbd7c01c35836f4a5b0cac2ca03ccdf6ffc60faa16b5fadc
     # via
     #   -r requirements/prod.txt
     #   boto3
@@ -1554,9 +1554,9 @@ ruff==0.15.10 \
     --hash=sha256:e3e53c588164dc025b671c9df2462429d60357ea91af7e92e9d56c565a9f1b07 \
     --hash=sha256:e59c9bdc056a320fb9ea1700a8d591718b8faf78af065484e801258d3a76bc3f
     # via -r requirements/dev.in
-s3transfer==0.13.1 \
-    --hash=sha256:a981aa7429be23fe6dfc13e80e4020057cbab622b08c0315288758d67cabc724 \
-    --hash=sha256:c3fdba22ba1bd367922f27ec8032d6a1cf5f10c934fb5d68cf60fd5a23d936cf
+s3transfer==0.16.1 \
+    --hash=sha256:61bcd00ccb83b21a0fe7e91a553fff9729d46c83b4e0106e7c314a733891f7c2 \
+    --hash=sha256:8e424355754b9ccb32467bdc568edf55be82692ef2002d934b1311dbb3b9e524
     # via
     #   -r requirements/prod.txt
     #   boto3
