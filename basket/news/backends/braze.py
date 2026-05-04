@@ -15,7 +15,7 @@ from basket import metrics
 from basket.base.decorators import rq_task
 from basket.base.utils import is_valid_uuid
 from basket.news.backends.ctms import ctms, process_country, process_lang
-from basket.news.newsletters import slug_to_vendor_id, vendor_id_to_slug
+from basket.news.newsletters import newsletter_obj, slug_to_vendor_id, vendor_id_to_slug
 
 log = logging.getLogger(__name__)
 
@@ -569,6 +569,7 @@ class Braze:
             raise ValueError("Missing Braze external_id")
 
         subscription_groups = []
+        newsletter_events = []
         if update_data and isinstance(update_data.get("newsletters"), dict):
             for slug, is_subscribed in update_data["newsletters"].items():
                 vendor_id = slug_to_vendor_id(slug)
@@ -577,6 +578,16 @@ class Braze:
                         {
                             "subscription_group_id": vendor_id,
                             "subscription_state": "subscribed" if is_subscribed else "unsubscribed",
+                        }
+                    )
+                newsletter = newsletter_obj(slug)
+                if newsletter:
+                    action = "subscribe" if is_subscribed else "unsubscribe"
+                    newsletter_events.append(
+                        {
+                            "external_id": external_id,
+                            "name": f"{newsletter.title} - {action}",
+                            "time": now,
                         }
                     )
 
@@ -619,8 +630,9 @@ class Braze:
 
         braze_data = {"attributes": [user_attributes]}
 
-        if events:
-            braze_data["events"] = events
+        all_events = newsletter_events + (events or [])
+        if all_events:
+            braze_data["events"] = all_events
 
         return braze_data
 
