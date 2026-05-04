@@ -348,8 +348,8 @@ mock_newsletters = {
         "78fe6671-9f94-48bd-aaf3-7e873536c3e6": namedtuple("Newsletter", ["slug"])("bar-news"),
     },
     "by_name": {
-        "foo-news": namedtuple("Newsletter", ["vendor_id"])("234c9b4a-1785-4cd5-b839-5dbc134982eb"),
-        "bar-news": namedtuple("Newsletter", ["vendor_id"])("78fe6671-9f94-48bd-aaf3-7e873536c3e6"),
+        "foo-news": namedtuple("Newsletter", ["vendor_id", "title"])("234c9b4a-1785-4cd5-b839-5dbc134982eb", "Foo News"),
+        "bar-news": namedtuple("Newsletter", ["vendor_id", "title"])("78fe6671-9f94-48bd-aaf3-7e873536c3e6", "Bar News"),
     },
 }
 
@@ -456,7 +456,8 @@ def test_to_vendor_with_updates_and_no_user_data(mock_newsletter_languages, mock
                     }
                 ],
             }
-        ]
+        ],
+        "events": [{"external_id": "123", "name": "Bar News - subscribe", "time": dt.isoformat()}],
     }
     with freeze_time(dt):
         assert braze_instance.to_vendor(None, update_data) == expected
@@ -528,7 +529,11 @@ def test_to_vendor_with_both_user_data_and_updates(mock_newsletter_languages, mo
                     }
                 ],
             }
-        ]
+        ],
+        "events": [
+            {"external_id": "123", "name": "Bar News - subscribe", "time": dt.isoformat()},
+            {"external_id": "123", "name": "Foo News - unsubscribe", "time": dt.isoformat()},
+        ],
     }
     with freeze_time(dt):
         assert braze_instance.to_vendor(mock_basket_user_data, update_data) == expected

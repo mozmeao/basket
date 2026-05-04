@@ -581,15 +581,14 @@ class Braze:
                         }
                     )
                 newsletter = newsletter_obj(slug)
-                if newsletter:
-                    action = "subscribe" if is_subscribed else "unsubscribe"
-                    newsletter_events.append(
-                        {
-                            "external_id": external_id,
-                            "name": f"{newsletter.title} - {action}",
-                            "time": now,
-                        }
-                    )
+                action = "subscribe" if is_subscribed else "unsubscribe"
+                newsletter_events.append(
+                    {
+                        "external_id": external_id,
+                        "name": f"{newsletter.title} - {action}",
+                        "time": now,
+                    }
+                )
 
         optin = optin_to_boolean(updated_user_data.get("optin"))
 
