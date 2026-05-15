@@ -8,4 +8,4 @@ pytest==9.0.3
 requests-mock==1.12.1
 ruff==0.15.10
 uv==0.11.6
-watchfiles==1.0.5  # required for `granian --reload`
+watchfiles==1.1.1  # required for `granian --reload`
