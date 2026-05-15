@@ -4,7 +4,7 @@ contextlib2==21.6.0
 cryptography==46.0.7
 dj-database-url==3.1.2
 django-allow-cidr==0.8.0
-django-cache-url==3.4.5
+django-cache-url==3.4.6
 django-cors-headers==4.9.0
 django-mozilla-product-details==1.0.3
 django-ninja==1.6.2
