@@ -1,10 +1,18 @@
+from unittest.mock import patch
+
 from django.urls import reverse
+
 import pytest
+
 from basket.news.tests.api import _TestAPIBase
 
 
 @pytest.mark.django_db
 class TestContactEnterpriseAPI(_TestAPIBase):
+    @pytest.fixture(autouse=True)
+    def disable_ratelimit(self, settings):
+        settings.RATELIMIT_ENABLE = False
+
     def setup_method(self, method):
         super().setup_method(method)
         self.method = "POST"
@@ -15,9 +23,11 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         return {
             "first_name": "Jane",
             "last_name": "Doe",
+            "email": "jane@acme.com",
             "company": "Acme Corp",
             "job_title": "Engineer",
             "message": "I'd like to learn more about your enterprise plan.",
+            "website": ""
         }
 
     def valid_request(self):
@@ -31,6 +41,13 @@ class TestContactEnterpriseAPI(_TestAPIBase):
 
     def test_valid_submission_returns_200(self):
         resp = self.valid_request()
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
+    def test_success_if_website_exists(self):
+        payload = self.valid_payload()
+        payload["website"] = "www.firefox.com"
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
@@ -109,3 +126,98 @@ class TestContactEnterpriseAPI(_TestAPIBase):
     def test_rejects_empty_body(self):
         resp = self.client.post(self.url, data={}, content_type="application/json")
         assert resp.status_code == 422
+
+    # --- Invalid fields ---
+
+    def test_if_message_contains_multiple_urls(self):
+        payload = self.valid_payload()
+        payload["message"] = "www.firefox.com www.firefox.org www.firefox.net"
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 422
+        assert resp.json()["status"] == "error"
+
+    def test_rejects_first_name_with_numbers(self):
+        payload = self.valid_payload()
+        payload["first_name"] = "Jan3"
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 422
+        assert resp.json()["status"] == "error"
+
+    def test_rejects_last_name_with_numbers(self):
+        payload = self.valid_payload()
+        payload["last_name"] = "Jan3"
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 422
+        assert resp.json()["status"] == "error"
+
+    def test_rejects_first_name_with_symbols(self):
+        payload = self.valid_payload()
+        payload["first_name"] = "J@ne"
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 422
+        assert resp.json()["status"] == "error"
+
+    def test_rejects_last_name_with_symbols(self):
+        payload = self.valid_payload()
+        payload["last_name"] = "J@ne"
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 422
+        assert resp.json()["status"] == "error"
+
+    def test_rejects_spam_domains(self):
+        payload = self.valid_payload()
+        payload["email"] = "jane@10minutemail.com"
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 422
+        assert resp.json()["status"] == "error"
+
+    # --- Allowed fields ---
+
+    def test_allows_first_name_unicode(self):
+        payload = self.valid_payload()
+        payload["first_name"] = "François"
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
+    def test_allows_last_name_unicode(self):
+        payload = self.valid_payload()
+        payload["last_name"] = "López"
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
+    def test_allows_first_name_accepted_symbols(self):
+        payload = self.valid_payload()
+        payload["first_name"] = "Jan'-e"
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
+    def test_allows_last_name_accepted_symbols(self):
+        payload = self.valid_payload()
+        payload["last_name"] = "Jan'-e"
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
+    # --- Rate limiting ---
+
+    def test_rate_limited_by_ip_returns_429(self):
+        with patch("basket.contact.api.is_ratelimited", side_effect=[True]):
+            resp = self.valid_request()
+        assert resp.status_code == 429
+        assert resp.json()["status"] == "error"
+
+    def test_rate_limited_by_email_returns_429(self):
+        with patch("basket.contact.api.is_ratelimited", side_effect=[False, True]):
+            resp = self.valid_request()
+        assert resp.status_code == 429
+        assert resp.json()["status"] == "error"
+
+    def test_not_rate_limited_returns_200(self):
+        with patch("basket.contact.api.is_ratelimited", return_value=False):
+            resp = self.valid_request()
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
