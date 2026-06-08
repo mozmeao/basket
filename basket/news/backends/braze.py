@@ -37,6 +37,15 @@ def add_basket_token_alias_task(external_id, basket_token):
     braze.interface.add_basket_token_alias(external_id, basket_token)
 
 
+@rq_task
+def assign_basket_token_alias_task(external_id):
+    # Adds a basket_token alias whose value == external_id, for users given an external_id by
+    # the /users/assign webhook. Uses braze_tx (BRAZE_API_KEY) for the users.alias.new
+    # permission, and is enqueued with BRAZE_OPTIMAL_DELAY so Braze has propagated the new
+    # external_id before we attach the alias (an inline alias/new races identify and no-ops).
+    braze_tx.interface.add_basket_token_alias(external_id, external_id)
+
+
 # Braze errors: https://www.braze.com/docs/api/errors/
 class BrazeBadRequestError(Exception):
     pass  # 400 error (invalid request)
@@ -85,6 +94,7 @@ class BrazeEndpoint(Enum):
     USERS_DELETE = "/users/delete"
     SUBSCRIPTION_USER_STATUS = "/subscription/user/status"
     USERS_ADD_ALIAS = "/users/alias/new"
+    USERS_IDENTIFY = "/users/identify"
 
 
 class BrazeInterface:
@@ -337,6 +347,23 @@ class BrazeInterface:
         data = {"user_aliases": alias_operations}
         return self._request(BrazeEndpoint.USERS_ADD_ALIAS, data)
 
+    def identify_user(self, aliases_to_identify=None, emails_to_identify=None):
+        """
+        Assign an external_id to an alias-only user, merging the alias-only
+        profile into the identified profile.
+
+        @param aliases_to_identify: list of {"external_id", "user_alias": {"alias_name", "alias_label"}}
+        @param emails_to_identify: list of {"external_id", "email", "prioritization"}
+
+        https://www.braze.com/docs/api/endpoints/user_data/post_user_identify/
+        """
+        data = {}
+        if aliases_to_identify:
+            data["aliases_to_identify"] = aliases_to_identify
+        if emails_to_identify:
+            data["emails_to_identify"] = emails_to_identify
+        return self._request(BrazeEndpoint.USERS_IDENTIFY, data)
+
 
 class Braze:
     """Basket interface to Braze"""
@@ -525,7 +552,7 @@ class Braze:
 
         basket_user_data = {
             "email": braze_user_data["email"],
-            "email_id": braze_user_data["external_id"],
+            "email_id": braze_user_data.get("external_id"),
             "id": braze_user_data["braze_id"],
             "first_name": braze_user_data.get("first_name"),
             "last_name": braze_user_data.get("last_name"),
@@ -536,7 +563,7 @@ class Braze:
             "last_modified_date": user_attributes.get("updated_at"),
             "optin": braze_user_data.get("email_subscribe") == "opted_in",
             "optout": braze_user_data.get("email_subscribe") == "unsubscribed",
-            "token": braze_user_data["external_id"],
+            "token": braze_user_data.get("external_id"),
             "ctms_legacy_token": user_attributes.get("basket_token"),
             "fxa_service": user_attributes.get("fxa_first_service"),
             "fxa_lang": user_attributes.get("fxa_lang"),

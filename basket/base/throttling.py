@@ -1,3 +1,5 @@
+import json
+
 from ninja.throttling import SimpleRateThrottle
 
 
@@ -62,4 +64,27 @@ class TokenThrottle(MultiPeriodThrottle):
         return self.cache_format % {
             "scope": "token",
             "ident": token,
+        }
+
+
+class WebhookIdentifierThrottle(MultiPeriodThrottle):
+    """
+    Limits the rate of inbound webhook calls per user identifier in the JSON body.
+    """
+
+    identifier_keys = ("basket_token", "fxa_id", "email")
+
+    def get_cache_key(self, request) -> str | None:
+        try:
+            body = json.loads(request.body or b"{}")
+        except (ValueError, TypeError):
+            return None
+
+        ident = next((body.get(k) for k in self.identifier_keys if body.get(k)), None)
+        if not ident:
+            return None
+
+        return self.cache_format % {
+            "scope": "webhook",
+            "ident": ident,
         }

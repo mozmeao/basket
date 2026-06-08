@@ -12,6 +12,7 @@ from basket.news.auth import (
     HeaderApiKey,
     QueryApiKey,
     Unauthorized,
+    WebhookBearerToken,
 )
 from basket.news.models import APIUser
 
@@ -128,3 +129,39 @@ class TestUnauthorized:
     def test_always_returns_unauthorized(self):
         request = self.request.get("/")
         assert Unauthorized()(request) == UNAUTHORIZED
+
+
+@pytest.mark.django_db
+class TestWebhookBearerToken:
+    def setup_method(self):
+        self.request = RequestFactory()
+
+    def test_valid_secret(self, settings):
+        settings.ASSIGN_WEBHOOK_SECRET = "webhook-secret"
+        request = self.request.post("/")
+        assert WebhookBearerToken().authenticate(request, "webhook-secret") == AUTHORIZED
+
+    def test_invalid_secret(self, settings):
+        settings.ASSIGN_WEBHOOK_SECRET = "webhook-secret"
+        request = self.request.post("/")
+        assert WebhookBearerToken().authenticate(request, "nope") is None
+
+    def test_unset_secret_rejects_all(self, settings):
+        # An empty/unset secret must never authenticate (even with an empty token).
+        settings.ASSIGN_WEBHOOK_SECRET = ""
+        request = self.request.post("/")
+        assert WebhookBearerToken().authenticate(request, "") is None
+        assert WebhookBearerToken().authenticate(request, "anything") is None
+
+    def test_scope_secret_rejected_by_apiuser_auth(self, settings):
+        # The webhook secret must NOT authenticate APIUser-based endpoints.
+        settings.ASSIGN_WEBHOOK_SECRET = "webhook-secret"
+        request = self.request.get("/", HTTP_X_API_KEY="webhook-secret")
+        assert HeaderApiKey().authenticate(request, "webhook-secret") is None
+
+    def test_scope_apiuser_key_rejected_by_webhook_auth(self, settings):
+        # An APIUser key must NOT authenticate the webhook endpoint.
+        settings.ASSIGN_WEBHOOK_SECRET = "webhook-secret"
+        APIUser.objects.create(api_key="apiuser-key")
+        request = self.request.post("/")
+        assert WebhookBearerToken().authenticate(request, "apiuser-key") is None
