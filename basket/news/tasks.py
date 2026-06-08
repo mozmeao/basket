@@ -7,10 +7,17 @@ from django.core.cache import cache
 from basket import metrics
 from basket.base.decorators import rq_task
 from basket.base.exceptions import BasketError
-from basket.base.utils import email_is_testing
+from basket.base.utils import email_is_testing, is_valid_uuid
 from basket.news.backends.braze import (
+    BRAZE_OPTIMAL_DELAY,
+    BrazeBadRequestError,
+    BrazeClientError,
+    BrazeForbiddenError,
+    BrazeNotFoundError,
+    BrazeUnauthorizedError,
     BrazeUserNotFoundByFxaIdError,
     BrazeUserNotFoundByTokenError,
+    assign_basket_token_alias_task,
     braze,
     braze_tx,
 )
@@ -601,6 +608,82 @@ def record_common_voice_update(data):
     else:
         new_data.update({"email": email, "token": generate_token()})
         ctms.add(new_data)
+
+
+# Braze client errors that won't succeed on retry (unlike rate-limit / 5xx / connection
+# errors, which the backend's own @retry handles). For these we log + metric rather than
+# letting the rq job fail and retry.
+NON_RETRYABLE_BRAZE_ERRORS = (
+    BrazeBadRequestError,
+    BrazeUnauthorizedError,
+    BrazeForbiddenError,
+    BrazeNotFoundError,
+    BrazeClientError,
+)
+
+
+@rq_task
+def braze_assign_external_id(data):
+    """
+    Assign an external_id to a Braze user that only has a user alias.
+
+    Triggered by an inbound webhook from Braze for a user lacking an external_id.
+    If the user already has an external_id, this is a no-op. Otherwise we pick an
+    external_id (the basket_token when it's a valid UUID, else a fresh one) and
+    write it back to Braze, keyed by whichever identifier Braze sent. Users who
+    arrived without a basket_token also get a basket_token alias whose value equals
+    the new external_id.
+    """
+    email = data.get("email")
+    basket_token = data.get("basket_token")
+    fxa_id = data.get("fxa_id")
+
+    try:
+        # If the user already has an external_id, there is nothing to do.
+        user = braze.get(email=email, token=basket_token, fxa_id=fxa_id)
+        if user and user.get("email_id"):
+            metrics.incr("news.tasks.braze_assign_external_id", tags=["status:already_assigned"])
+            return
+
+        # Prefer the basket_token as the external_id so that `external_id == basket_token`
+        # and basket's token lookups resolve. Otherwise mint a fresh one.
+        if basket_token and is_valid_uuid(basket_token):
+            external_id = basket_token
+        else:
+            external_id = generate_token()
+
+        # The identify write goes through `braze_tx` (BRAZE_API_KEY), which carries the
+        # `users.identify` permission; the read above uses `braze` (BRAZE_NEWSLETTER_API_KEY).
+        # basket_token and fxa_id are user aliases; email uses the email-identify form.
+        if basket_token:
+            user_alias = {"alias_name": basket_token, "alias_label": "basket_token"}
+        elif fxa_id:
+            user_alias = {"alias_name": fxa_id, "alias_label": "fxa_id"}
+        else:
+            user_alias = None
+
+        if user_alias:
+            braze_tx.interface.identify_user(aliases_to_identify=[{"external_id": external_id, "user_alias": user_alias}])
+        elif email:
+            braze_tx.interface.identify_user(
+                emails_to_identify=[{"external_id": external_id, "email": email, "prioritization": ["unidentified", "most_recently_updated"]}]
+            )
+
+        # Users who arrived without a basket_token (e.g. fxa_id-only) get one whose value IS
+        # the external_id, so they become a full basket user (external_id == basket_token) that
+        # basket's token lookups resolve. Users who came in with a basket_token already have it.
+        # Enqueued with a delay (not inline): Braze needs time to propagate the just-assigned
+        # external_id before alias/new can attach to it, otherwise it silently no-ops.
+        if not basket_token:
+            assign_basket_token_alias_task.delay(external_id, enqueue_in=BRAZE_OPTIMAL_DELAY)
+
+        metrics.incr("news.tasks.braze_assign_external_id", tags=["status:assigned"])
+    except NON_RETRYABLE_BRAZE_ERRORS as exc:
+        # e.g. a missing Braze permission or malformed request. These won't succeed on retry,
+        # so log + emit a metric instead of failing the job and triggering RQ's retry storm.
+        # Retryable errors (rate limit / 5xx / connection) are intentionally NOT caught here.
+        log.error(f"braze_assign_external_id: non-retryable Braze error: {exc}")
+        metrics.incr("news.tasks.braze_assign_external_id", tags=["status:braze_client_error"])
 
 
 def get_fxa_user_data(fxa_id, email, use_braze_backend=False):

@@ -11,12 +11,13 @@ from ninja.decorators import decorate_view
 from ninja.errors import Throttled, ValidationError
 
 from basket import errors, metrics
-from basket.base.throttling import TokenThrottle
+from basket.base.throttling import TokenThrottle, WebhookIdentifierThrottle
 from basket.base.utils import is_valid_uuid
 from basket.news import tasks
-from basket.news.auth import AUTHORIZED, FxaBearerToken, HeaderApiKey, QueryApiKey, Unauthorized
+from basket.news.auth import AUTHORIZED, FxaBearerToken, HeaderApiKey, QueryApiKey, Unauthorized, WebhookBearerToken
 from basket.news.models import Newsletter
 from basket.news.schemas import (
+    AssignExternalIdSchema,
     ErrorSchema,
     NewsletterModelSchema,
     NewslettersSchema,
@@ -246,6 +247,37 @@ def lookup_user(request, email: str | None = None, token: uuid.UUID | None = Non
         return _unknown_email()
 
     return user_data
+
+
+@user_router.post(
+    "/assign/",
+    url_name="users.assign",
+    description="Webhook: assign an external_id to a user that only has a backend user alias",
+    auth=[WebhookBearerToken()],
+    throttle=[WebhookIdentifierThrottle(settings.ASSIGN_RATE_LIMIT)],
+    response={
+        200: OkSchema,
+        400: ErrorSchema,
+        401: ErrorSchema,
+    },
+)
+def assign_external_id(request, body: AssignExternalIdSchema):
+    # Auth is enforced by `WebhookBearerToken` (no `Unauthorized()` fallback in `auth=[...]`),
+    # so django-ninja returns 401 before this handler runs — no in-view auth check needed.
+    if not (body.email or body.basket_token or body.fxa_id):
+        return 400, {
+            "status": "error",
+            "desc": "An identifier (email, basket_token, or fxa_id) is required",
+            "code": errors.BASKET_USAGE_ERROR,
+        }
+
+    # Dispatch to whichever backend can assign an external_id. Only the Braze
+    # backend has one; when it isn't the write backend this is a no-op (the
+    # other backends have nothing to assign).
+    if settings.BRAZE_PARALLEL_WRITE_ENABLE or settings.BRAZE_ONLY_WRITE_ENABLE:
+        tasks.braze_assign_external_id.delay(body.dict())
+
+    return {"status": "ok"}
 
 
 ## Validation errors

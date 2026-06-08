@@ -1,5 +1,8 @@
 from abc import ABC
 
+from django.conf import settings
+from django.utils.crypto import constant_time_compare
+
 import fxa.errors
 import sentry_sdk
 from ninja.security import APIKeyHeader, APIKeyQuery, HttpBearer
@@ -27,6 +30,13 @@ class QueryApiKey(APIUserIsValid, APIKeyQuery):
 
 class HeaderApiKey(APIUserIsValid, APIKeyHeader):
     param_name = "X-Api-Key"
+
+
+class WebhookBearerToken(HttpBearer):
+    def authenticate(self, request, token):
+        secret = settings.ASSIGN_WEBHOOK_SECRET
+        if secret and constant_time_compare(token, secret):
+            return AUTHORIZED
 
 
 class FxaBearerToken(HttpBearer):

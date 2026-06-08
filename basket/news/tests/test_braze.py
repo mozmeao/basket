@@ -231,6 +231,37 @@ def test_braze_add_basket_token_alias(braze_client):
         assert m.last_request.json() == expected
 
 
+def test_braze_identify_user_by_alias(braze_client):
+    aliases = [{"external_id": "abc", "user_alias": {"alias_name": "tok", "alias_label": "basket_token"}}]
+    expected = {"aliases_to_identify": aliases}
+
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/identify", json={})
+        braze_client.identify_user(aliases_to_identify=aliases)
+        assert m.last_request.json() == expected
+
+
+def test_braze_identify_user_by_email(braze_client):
+    emails = [{"external_id": "abc", "email": "test@test.com", "prioritization": ["unidentified"]}]
+    expected = {"emails_to_identify": emails}
+
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/identify", json={})
+        braze_client.identify_user(emails_to_identify=emails)
+        assert m.last_request.json() == expected
+
+
+def test_braze_identify_endpoint_value():
+    assert braze.BrazeEndpoint.USERS_IDENTIFY.value == "/users/identify"
+
+
+@mock.patch("basket.news.backends.braze.braze_tx")
+def test_assign_basket_token_alias_task(mock_braze_tx):
+    # Sets a basket_token alias whose value == external_id, via braze_tx (BRAZE_API_KEY).
+    braze.assign_basket_token_alias_task("ext-123")
+    mock_braze_tx.interface.add_basket_token_alias.assert_called_once_with("ext-123", "ext-123")
+
+
 def test_braze_exception_400(braze_client):
     with requests_mock.mock() as m:
         m.register_uri("POST", "http://test.com/users/track", status_code=400, json={})
@@ -362,6 +393,23 @@ def test_from_vendor(braze_client):
     braze_instance = Braze(braze_client)
 
     assert braze_instance.from_vendor(mock_braze_user_data, mock_braze_user_subscription_groups) == mock_basket_user_data
+
+
+def test_from_vendor_alias_only_user_has_no_external_id(braze_client):
+    # Alias-only users (awaiting external_id assignment) have no `external_id` key.
+    # from_vendor must yield None for email_id/token rather than raising KeyError.
+    braze_instance = Braze(braze_client)
+    alias_only_user = {
+        "email": "alias-only@example.com",
+        "braze_id": "braze-123",
+        "user_aliases": [{"alias_name": "the-fxa-id", "alias_label": "fxa_id"}],
+    }
+
+    result = braze_instance.from_vendor(alias_only_user, [])
+
+    assert result["email_id"] is None
+    assert result["token"] is None
+    assert result["fxa_id"] == "the-fxa-id"
 
 
 @mock.patch(

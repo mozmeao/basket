@@ -35,6 +35,14 @@ class RecoverUserSchema(Schema):
     email: EmailStr
 
 
+class AssignExternalIdSchema(Schema):
+    # Request body for the `/users/assign/` webhook. The caller (e.g. Braze, via
+    # Liquid templating) supplies these fields. At least one is required (validated in the view).
+    email: str | None = None
+    basket_token: str | None = None
+    fxa_id: str | None = None
+
+
 class NewslettersSchema(Schema):
     newsletters: dict[str, NewsletterSchema]
     status: str
