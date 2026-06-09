@@ -6,7 +6,7 @@ from django.conf import settings
 from google.auth.transport.requests import AuthorizedSession
 from google.oauth2.service_account import Credentials
 
-from .ContactSink import ContactSink
+from .contact_sink import ContactSink
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +32,8 @@ class GoogleSheetsContactSink(ContactSink):
             contact["company_size"],
             contact["country"],
             contact["opt_in"],
-            "http://techrider.de",  # lead source
-            "Request a Private Briefing",  # cta
+            contact["lead_source"],
+            contact["cta"]
         ]
 
         url = _APPEND_URL.format(

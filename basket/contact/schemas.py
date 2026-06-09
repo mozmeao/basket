@@ -1,5 +1,5 @@
 from ninja import Schema
-from pydantic import Field, field_validator
+from pydantic import EmailStr, Field, field_validator
 
 from .validators import reject_urls, validate_name_shape
 
@@ -11,12 +11,14 @@ class ContactEnterpriseSchema(Schema):
     last_name: str = Field(..., min_length=1, max_length=100)
     company: str = Field(..., min_length=1, max_length=200)
     job_title: str = Field(..., min_length=1, max_length=150)
-    business_email: str = Field(..., min_length=1, max_length=255)
+    business_email: EmailStr = Field(..., min_length=1, max_length=255)
     business_phone: str = Field(..., min_length=1, max_length=255)
     company_size: str = Field(..., min_length=1, max_length=255)
     country: str = Field(..., min_length=1, max_length=255)
     opt_in: str = Field(default="False")
     website: str = Field(default="")
+    lead_source: str = Field(default="http://techrider.de")
+    cta: str = Field(default="Request a Private Briefing")
 
     @field_validator("first_name", "last_name", "company")
     @classmethod

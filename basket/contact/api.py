@@ -5,8 +5,8 @@ from ninja import Router
 
 from basket import metrics
 
-from .backends import get_contact_sink
 from .schemas import ContactEnterpriseSchema
+from . import tasks
 
 ### /api/v1/contact URLS
 contact_router = Router()
@@ -32,7 +32,7 @@ def contact_enterprise(request, payload: ContactEnterpriseSchema):
     if is_ratelimited(
         request,
         group="basket.contact.enterprise.email",
-        key=lambda *_: payload.email.lower(),
+        key=lambda *_: payload.business_email.lower(),
         rate=settings.CONTACT_ENTERPRISE_RATE_LIMIT,
         increment=True,
     ):
@@ -43,6 +43,5 @@ def contact_enterprise(request, payload: ContactEnterpriseSchema):
         metrics.incr("contact.enterprise.honeypot")
         return {"status": "ok"}
 
-    sink = get_contact_sink()
-    sink.submit(payload.model_dump(exclude={"website"}))
+    tasks.submit_contact.delay(payload.model_dump(exclude={"website"}))
     return {"status": "ok"}
