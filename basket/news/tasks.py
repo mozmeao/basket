@@ -4,6 +4,8 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.core.cache import cache
 
+import sentry_sdk
+
 from basket import metrics
 from basket.base.decorators import rq_task
 from basket.base.exceptions import BasketError
@@ -679,10 +681,12 @@ def braze_assign_external_id(data):
 
         metrics.incr("news.tasks.braze_assign_external_id", tags=["status:assigned"])
     except NON_RETRYABLE_BRAZE_ERRORS as exc:
-        # e.g. a missing Braze permission or malformed request. These won't succeed on retry,
-        # so log + emit a metric instead of failing the job and triggering RQ's retry storm.
-        # Retryable errors (rate limit / 5xx / connection) are intentionally NOT caught here.
-        log.error(f"braze_assign_external_id: non-retryable Braze error: {exc}")
+        # e.g. a missing Braze permission or malformed request: won't succeed on retry, so
+        # report to Sentry (project convention) + emit a metric instead of re-raising, which
+        # would fail the job and trigger RQ's retry storm. Sentry captures the frame locals
+        # (basket_token/fxa_id/email) for triage. Retryable errors (rate limit / 5xx /
+        # connection) are intentionally NOT caught here, so they still propagate and retry.
+        sentry_sdk.capture_exception(exc)
         metrics.incr("news.tasks.braze_assign_external_id", tags=["status:braze_client_error"])
 
 

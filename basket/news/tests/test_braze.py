@@ -395,9 +395,9 @@ def test_from_vendor(braze_client):
     assert braze_instance.from_vendor(mock_braze_user_data, mock_braze_user_subscription_groups) == mock_basket_user_data
 
 
-def test_from_vendor_alias_only_user_has_no_external_id(braze_client):
-    # Alias-only users (awaiting external_id assignment) have no `external_id` key.
-    # from_vendor must yield None for email_id/token rather than raising KeyError.
+def test_from_vendor_alias_only_user_returns_none(braze_client):
+    # An alias-only profile (no external_id) isn't a Basket user yet; from_vendor returns
+    # None rather than a dict with token=None (which would break callers/response schemas).
     braze_instance = Braze(braze_client)
     alias_only_user = {
         "email": "alias-only@example.com",
@@ -405,11 +405,7 @@ def test_from_vendor_alias_only_user_has_no_external_id(braze_client):
         "user_aliases": [{"alias_name": "the-fxa-id", "alias_label": "fxa_id"}],
     }
 
-    result = braze_instance.from_vendor(alias_only_user, [])
-
-    assert result["email_id"] is None
-    assert result["token"] is None
-    assert result["fxa_id"] == "the-fxa-id"
+    assert braze_instance.from_vendor(alias_only_user, []) is None
 
 
 @mock.patch(
@@ -693,6 +689,18 @@ def test_braze_get_export_missing_email(mock_newsletters, braze_client):
         m.register_uri("POST", "http://test.com/users/export/ids", json={"users": [mock_braze_user_data_without_email]})
 
         assert braze_instance.get(email=email) is None
+
+
+def test_braze_get_alias_only_user_returns_none(braze_client):
+    # A profile found by email/alias but with no external_id is alias-only (awaiting
+    # /users/assign) — braze.get treats it as not found.
+    braze_instance = Braze(braze_client)
+    alias_only = mock_braze_user_data.copy()
+    del alias_only["external_id"]
+
+    with requests_mock.mock() as m:
+        m.register_uri("POST", "http://test.com/users/export/ids", json={"users": [alias_only]})
+        assert braze_instance.get(email=alias_only["email"]) is None
 
 
 def test_braze_get_opted_out_user(braze_client):
