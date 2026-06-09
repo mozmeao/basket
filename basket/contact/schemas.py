@@ -17,8 +17,8 @@ class ContactEnterpriseSchema(Schema):
     country: str = Field(..., min_length=1, max_length=255)
     opt_in: str = Field(default="False")
     website: str = Field(default="")
-    lead_source: str = Field(default="http://techrider.de")
-    cta: str = Field(default="Request a Private Briefing")
+    lead_source: str = Field(default="", max_length=255)
+    cta: str = Field(default="", max_length=255)
 
     @field_validator("first_name", "last_name", "company")
     @classmethod
