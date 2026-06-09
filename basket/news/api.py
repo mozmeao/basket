@@ -258,7 +258,6 @@ def lookup_user(request, email: str | None = None, token: uuid.UUID | None = Non
     response={
         200: OkSchema,
         400: ErrorSchema,
-        401: ErrorSchema,
     },
 )
 def assign_external_id(request, body: AssignExternalIdSchema):

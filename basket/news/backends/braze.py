@@ -411,8 +411,14 @@ class Braze:
         # email will not be populated. We check for that here, and if there is no email we
         # behave as if the user wasn't found.
         if user_response["users"] and user_response["users"][0].get("email"):
-            metrics.incr("news.backends.braze.get", tags=["status:found"])
             user_data = user_response["users"][0]
+            if not user_data.get("external_id"):
+                # Alias-only profile (found by email/alias but awaiting /users/assign);
+                # not a Basket user yet, so report it as not found.
+                metrics.incr("news.backends.braze.get", tags=["status:alias_only"])
+                return None
+
+            metrics.incr("news.backends.braze.get", tags=["status:found"])
             user_email = email or user_data.get("email")
             is_opted_out = user_data.get("email_subscribe") == "unsubscribed"
             subscriptions = []
@@ -541,8 +547,13 @@ class Braze:
 
     def from_vendor(self, braze_user_data, subscription_groups):
         """
-        Converts Braze-formatted data to Basket-formatted data
+        Converts Braze-formatted data to Basket-formatted data.
+
+        Returns None for an alias-only profile (no external_id): it isn't a Basket user
+        yet (awaiting /users/assign), and callers expect a real token/email_id.
         """
+        if not braze_user_data.get("external_id"):
+            return None
 
         user_attributes = braze_user_data.get("custom_attributes", {}).get("user_attributes_v1", [{}])[0]
         user_aliases = braze_user_data.get("user_aliases", [])

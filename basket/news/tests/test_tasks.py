@@ -853,17 +853,20 @@ class BrazeAssignExternalIdTests(TestCase):
         mock_braze_tx.interface.identify_user.assert_not_called()
         mock_braze_tx.interface.add_basket_token_alias.assert_not_called()
 
+    @patch("basket.news.tasks.sentry_sdk")
     @patch("basket.news.tasks.metrics")
-    def test_non_retryable_braze_error_is_caught(self, mock_metrics, mock_braze, mock_braze_tx):
+    def test_non_retryable_braze_error_is_caught(self, mock_metrics, mock_sentry, mock_braze, mock_braze_tx):
         # A non-retryable Braze client error (e.g. 403 missing permission) must NOT propagate
-        # (which would fail the job and trigger RQ retries); it's logged + metriced instead.
+        # (which would fail the job and trigger RQ retries); it's reported to Sentry + metriced.
         from basket.news.backends.braze import BrazeForbiddenError
 
         mock_braze.get.return_value = None
-        mock_braze_tx.interface.identify_user.side_effect = BrazeForbiddenError("Access Denied")
+        exc = BrazeForbiddenError("Access Denied")
+        mock_braze_tx.interface.identify_user.side_effect = exc
 
         braze_assign_external_id({"fxa_id": "fxa-123"})  # should not raise
 
+        mock_sentry.capture_exception.assert_called_once_with(exc)
         mock_metrics.incr.assert_called_with("news.tasks.braze_assign_external_id", tags=["status:braze_client_error"])
 
     def test_retryable_braze_error_still_propagates(self, mock_braze, mock_braze_tx):
