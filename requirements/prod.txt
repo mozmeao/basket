@@ -377,9 +377,9 @@ email-validator==2.3.0 \
     --hash=sha256:80f13f623413e6b197ae73bb10bf4eb0908faf509ad8362c5edeb0be7fd450b4 \
     --hash=sha256:9fc05c37f2f6cf439ff414f8fc46d917929974a82244c20eb10231ba60c54426
     # via -r requirements/prod.in
-everett==3.4.0 \
-    --hash=sha256:f403c4a41764a6301fb31e2558d6e9718999f0eab9e260d986b894fa2e6b6871 \
-    --hash=sha256:f8c29c7300702f47b7323b75348e2b86647246694fda7ad410c2a2bfaa980ff7
+everett==3.5.0 \
+    --hash=sha256:996fccda259510676e599cdad4d6837dc6e0194389fcfcb5b66ac867ad2b9430 \
+    --hash=sha256:c7cf5d9dd95c6a8f291c2b3365e4a9724157272f6a21dfc0ac7f287b97099d37
     # via -r requirements/prod.in
 freezegun==1.5.5 \
     --hash=sha256:ac7742a6cc6c25a2c35e9292dfd554b897b517d2dec26891a2e8debf205cb94a \
