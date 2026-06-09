@@ -28,7 +28,7 @@ pysilverpop==0.2.6
 PyYAML==6.0.3
 regex==2024.11.6
 redis==6.2.0
-rq==2.7.0
+rq==2.8.0
 rq-scheduler==0.14.0
 sentry-processor==0.0.1
 sentry-sdk==2.57.0
