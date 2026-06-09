@@ -29,11 +29,14 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         return {
             "first_name": "Jane",
             "last_name": "Doe",
-            "email": "jane@acme.com",
             "company": "Acme Corp",
             "job_title": "Engineer",
-            "message": "I'd like to learn more about your enterprise plan.",
-            "website": ""
+            "business_email": "jane@acme.com",
+            "business_phone": "123-456-7890",
+            "company_size": "big",
+            "country": "Canada",
+            "opt_in": "true",
+            "website": "",
         }
 
     def valid_request(self):
@@ -109,9 +112,27 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         resp = self.client.post(self.url, data=payload, content_type="application/json")
         assert resp.status_code == 422
 
-    def test_rejects_message_over_2000_chars(self):
+    def test_rejects_business_email_over_255_chars(self):
         payload = self.valid_payload()
-        payload["message"] = "a" * 2001
+        payload["business_email"] = "a" * 256
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 422
+
+    def test_rejects_business_phone_over_255_chars(self):
+        payload = self.valid_payload()
+        payload["business_phone"] = "a" * 256
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 422
+
+    def test_rejects_company_size_over_255_chars(self):
+        payload = self.valid_payload()
+        payload["company_size"] = "a" * 256
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 422
+
+    def test_rejects_country_over_255_chars(self):
+        payload = self.valid_payload()
+        payload["country"] = "a" * 256
         resp = self.client.post(self.url, data=payload, content_type="application/json")
         assert resp.status_code == 422
 
@@ -134,13 +155,6 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         assert resp.status_code == 422
 
     # --- Invalid fields ---
-
-    def test_if_message_contains_multiple_urls(self):
-        payload = self.valid_payload()
-        payload["message"] = "www.firefox.com www.firefox.org www.firefox.net"
-        resp = self.client.post(self.url, data=payload, content_type="application/json")
-        assert resp.status_code == 422
-        assert resp.json()["status"] == "error"
 
     def test_rejects_first_name_with_numbers(self):
         payload = self.valid_payload()
@@ -172,7 +186,7 @@ class TestContactEnterpriseAPI(_TestAPIBase):
 
     def test_rejects_spam_domains(self):
         payload = self.valid_payload()
-        payload["email"] = "jane@10minutemail.com"
+        payload["business_email"] = "jane@10minutemail.com"
         resp = self.client.post(self.url, data=payload, content_type="application/json")
         assert resp.status_code == 422
         assert resp.json()["status"] == "error"
@@ -233,7 +247,7 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         self.valid_request()
         self._mock_sink.submit.assert_called_once()
         submitted = self._mock_sink.submit.call_args[0][0]
-        assert submitted["email"] == "jane@acme.com"
+        assert submitted["business_email"] == "jane@acme.com"
         assert "website" not in submitted
 
     def test_backend_failure_returns_500(self):
@@ -241,4 +255,3 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         self.client.raise_request_exception = False
         resp = self.valid_request()
         assert resp.status_code == 500
-

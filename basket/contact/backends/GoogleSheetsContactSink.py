@@ -1,6 +1,5 @@
 import json
 import logging
-from datetime import datetime, UTC
 
 from django.conf import settings
 
@@ -12,10 +11,7 @@ from .ContactSink import ContactSink
 logger = logging.getLogger(__name__)
 
 _SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-_APPEND_URL = (
-    "https://sheets.googleapis.com/v4/spreadsheets"
-    "/{spreadsheet_id}/values/{range}:append"
-)
+_APPEND_URL = "https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{range}:append"
 
 
 class GoogleSheetsContactSink(ContactSink):
@@ -27,18 +23,22 @@ class GoogleSheetsContactSink(ContactSink):
         session = AuthorizedSession(credentials)
 
         row = [
-            datetime.now(UTC).isoformat(),
             contact["first_name"],
             contact["last_name"],
-            contact["email"],
             contact["company"],
             contact["job_title"],
-            contact["message"],
+            contact["business_email"],
+            contact["business_phone"],
+            contact["company_size"],
+            contact["country"],
+            contact["opt_in"],
+            "http://techrider.de",  # lead source
+            "Request a Private Briefing",  # cta
         ]
 
         url = _APPEND_URL.format(
             spreadsheet_id=settings.GOOGLE_SHEETS_CONTACT_SPREADSHEET_ID,
-            range="Sheet1",
+            range="lead-capture",
         )
         response = session.post(
             url,

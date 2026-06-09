@@ -11,6 +11,7 @@ from .schemas import ContactEnterpriseSchema
 ### /api/v1/contact URLS
 contact_router = Router()
 
+
 @contact_router.post(
     "/",
     url_name="contact.enterprise",
@@ -45,4 +46,3 @@ def contact_enterprise(request, payload: ContactEnterpriseSchema):
     sink = get_contact_sink()
     sink.submit(payload.model_dump(exclude={"website"}))
     return {"status": "ok"}
-
