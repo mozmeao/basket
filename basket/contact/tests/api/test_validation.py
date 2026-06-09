@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.urls import reverse
 
@@ -14,10 +14,10 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         settings.RATELIMIT_ENABLE = False
 
     @pytest.fixture(autouse=True)
-    def mock_sink(self):
-        self._mock_sink = MagicMock()
-        with patch("basket.contact.api.get_contact_sink", return_value=self._mock_sink):
-            yield self._mock_sink
+    def mock_task(self):
+        with patch("basket.contact.tasks.submit_contact.delay") as mock_delay:
+            self._mock_delay = mock_delay
+            yield mock_delay
 
     def setup_method(self, method):
         super().setup_method(method)
@@ -243,15 +243,9 @@ class TestContactEnterpriseAPI(_TestAPIBase):
 
     # --- Backend failure ---
 
-    def test_sink_submit_called_with_contact_data(self):
+    def test_task_enqueued_with_contact_data(self):
         self.valid_request()
-        self._mock_sink.submit.assert_called_once()
-        submitted = self._mock_sink.submit.call_args[0][0]
+        self._mock_delay.assert_called_once()
+        submitted = self._mock_delay.call_args[0][0]
         assert submitted["business_email"] == "jane@acme.com"
         assert "website" not in submitted
-
-    def test_backend_failure_returns_500(self):
-        self._mock_sink.submit.side_effect = Exception("sheets unavailable")
-        self.client.raise_request_exception = False
-        resp = self.valid_request()
-        assert resp.status_code == 500
