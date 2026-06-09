@@ -87,6 +87,33 @@ class TestUsersAssignAPI(_TestAPIBase):
             assert data["code"] == errors.BASKET_USAGE_ERROR
             mock_task.assert_not_called()
 
+    def test_blank_email_with_token_is_accepted(self, settings):
+        # Braze Liquid may send an empty email alongside a real identifier; the blank email
+        # is coerced to None (not rejected by EmailStr) and the token is used.
+        settings.BRAZE_ONLY_WRITE_ENABLE = True
+        token = str(uuid.uuid4())
+        with patch("basket.news.tasks.braze_assign_external_id.delay", autospec=True) as mock_task:
+            resp = self.client.post(
+                self.url,
+                {"email": "", "basket_token": token},
+                content_type="application/json",
+                headers=self.auth,
+            )
+            assert resp.status_code == 200, resp.content
+            mock_task.assert_called_once_with({"email": None, "basket_token": token, "fxa_id": None})
+
+    def test_invalid_email_is_rejected(self):
+        # A non-empty malformed email fails EmailStr validation at the boundary (422).
+        with patch("basket.news.tasks.braze_assign_external_id.delay", autospec=True) as mock_task:
+            resp = self.client.post(
+                self.url,
+                {"email": "not-an-email"},
+                content_type="application/json",
+                headers=self.auth,
+            )
+            assert resp.status_code == 422
+            mock_task.assert_not_called()
+
     def test_throttled_per_identifier(self):
         # The default rate is "4/5m", so repeated calls for the SAME identifier are throttled.
         cache.clear()
