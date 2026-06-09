@@ -5,8 +5,8 @@ from ninja import Router
 
 from basket import metrics
 
-from .schemas import ContactEnterpriseSchema
 from . import tasks
+from .schemas import ContactEnterpriseSchema
 
 ### /api/v1/contact URLS
 contact_router = Router()

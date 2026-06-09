@@ -33,7 +33,7 @@ class GoogleSheetsContactSink(ContactSink):
             contact["country"],
             contact["opt_in"],
             contact["lead_source"],
-            contact["cta"]
+            contact["cta"],
         ]
 
         url = _APPEND_URL.format(
