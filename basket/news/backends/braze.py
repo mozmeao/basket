@@ -362,6 +362,8 @@ class BrazeInterface:
             data["aliases_to_identify"] = aliases_to_identify
         if emails_to_identify:
             data["emails_to_identify"] = emails_to_identify
+        if not data:
+            raise ValueError("identify_user requires aliases_to_identify or emails_to_identify")
         return self._request(BrazeEndpoint.USERS_IDENTIFY, data)
 
 
