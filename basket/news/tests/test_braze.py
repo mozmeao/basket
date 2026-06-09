@@ -251,6 +251,12 @@ def test_braze_identify_user_by_email(braze_client):
         assert m.last_request.json() == expected
 
 
+def test_braze_identify_user_requires_an_identifier(braze_client):
+    # An empty payload would 400 at Braze; identify_user fails fast instead.
+    with pytest.raises(ValueError):
+        braze_client.identify_user()
+
+
 def test_braze_identify_endpoint_value():
     assert braze.BrazeEndpoint.USERS_IDENTIFY.value == "/users/identify"
 

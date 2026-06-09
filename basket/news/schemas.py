@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from ninja import Field, Schema
-from pydantic import EmailStr
+from pydantic import EmailStr, field_validator
 
 
 class NewsletterSchema(Schema):
@@ -38,9 +38,16 @@ class RecoverUserSchema(Schema):
 class AssignExternalIdSchema(Schema):
     # Request body for the `/users/assign/` webhook. The caller (e.g. Braze, via
     # Liquid templating) supplies these fields. At least one is required (validated in the view).
-    email: str | None = None
+    email: EmailStr | None = None
     basket_token: str | None = None
     fxa_id: str | None = None
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def _blank_email_to_none(cls, value):
+        # Braze Liquid renders an empty string for absent attributes; treat that as "no email"
+        # so a basket_token/fxa_id-only call isn't rejected by EmailStr validation.
+        return value or None
 
 
 class NewslettersSchema(Schema):
