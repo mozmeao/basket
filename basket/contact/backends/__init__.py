@@ -4,7 +4,7 @@ from django.core.exceptions import ImproperlyConfigured
 from .contact_sink import ContactSink
 
 _REGISTRY = {
-    "google_sheets": "basket.contact.backends.GoogleSheetsContactSink.GoogleSheetsContactSink",
+    "google_sheets": "basket.contact.backends.google_sheets_contact_sink.GoogleSheetsContactSink",
 }
 
 
