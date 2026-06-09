@@ -26,6 +26,7 @@ PyFxA==0.8.2
 pyOpenSSL==26.0.0
 pysilverpop==0.2.6
 PyYAML==6.0.3
+regex==2024.11.6
 redis==6.2.0
 rq==2.7.0
 rq-scheduler==0.14.0

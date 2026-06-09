@@ -5,6 +5,7 @@ from django.views.generic import TemplateView
 
 from watchman import views as watchman_views
 
+from basket.contact.api import contact_router
 from basket.news.api import api, news_router, user_router
 from basket.news.views import fxa_callback, fxa_start
 
@@ -12,6 +13,7 @@ from basket.news.views import fxa_callback, fxa_start
 
 api.add_router("api/v1/news/", news_router)
 api.add_router("api/v1/users/", user_router)
+api.add_router("api/v1/contact/enterprise", contact_router)
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="home.html")),
