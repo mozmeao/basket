@@ -39,11 +39,7 @@ def add_basket_token_alias_task(external_id, basket_token):
 
 @rq_task
 def assign_basket_token_alias_task(external_id):
-    # Adds a basket_token alias whose value == external_id, for users given an external_id by
-    # the /users/assign webhook. Uses braze_tx (BRAZE_API_KEY) for the users.alias.new
-    # permission, and is enqueued with BRAZE_OPTIMAL_DELAY so Braze has propagated the new
-    # external_id before we attach the alias (an inline alias/new races identify and no-ops).
-    braze_tx.interface.add_basket_token_alias(external_id, external_id)
+    braze.interface.add_basket_token_alias(external_id, external_id)
 
 
 # Braze errors: https://www.braze.com/docs/api/errors/
