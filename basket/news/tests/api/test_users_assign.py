@@ -114,6 +114,17 @@ class TestUsersAssignAPI(_TestAPIBase):
             assert resp.status_code == 422
             mock_task.assert_not_called()
 
+    def test_overlong_identifier_is_rejected(self):
+        with patch("basket.news.tasks.braze_assign_external_id.delay", autospec=True) as mock_task:
+            resp = self.client.post(
+                self.url,
+                {"basket_token": "a" * 129},
+                content_type="application/json",
+                headers=self.auth,
+            )
+            assert resp.status_code == 422
+            mock_task.assert_not_called()
+
     def test_throttled_per_identifier(self):
         # The default rate is "4/5m", so repeated calls for the SAME identifier are throttled.
         cache.clear()

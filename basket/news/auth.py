@@ -8,6 +8,7 @@ import sentry_sdk
 from ninja.security import APIKeyHeader, APIKeyQuery, HttpBearer
 from ninja.security.base import AuthBase
 
+from basket import metrics
 from basket.news.models import APIUser
 from basket.news.utils import get_fxa_clients
 
@@ -35,8 +36,15 @@ class HeaderApiKey(APIUserIsValid, APIKeyHeader):
 class WebhookBearerToken(HttpBearer):
     def authenticate(self, request, token):
         secret = settings.ASSIGN_WEBHOOK_SECRET
-        if secret and constant_time_compare(token, secret):
+        if not secret:
+            # Fail-closed, but emit a metric so a deploy that forgot the secret is visible.
+            metrics.incr("news.auth.webhook_bearer", tags=["result:rejected", "reason:not_configured"])
+            return None
+        if constant_time_compare(token, secret):
+            metrics.incr("news.auth.webhook_bearer", tags=["result:accepted"])
             return AUTHORIZED
+        metrics.incr("news.auth.webhook_bearer", tags=["result:rejected", "reason:mismatch"])
+        return None
 
 
 class FxaBearerToken(HttpBearer):

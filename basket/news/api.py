@@ -11,7 +11,7 @@ from ninja.decorators import decorate_view
 from ninja.errors import Throttled, ValidationError
 
 from basket import errors, metrics
-from basket.base.throttling import TokenThrottle, WebhookIdentifierThrottle
+from basket.base.throttling import TokenThrottle, WebhookGlobalThrottle, WebhookIdentifierThrottle
 from basket.base.utils import is_valid_uuid
 from basket.news import tasks
 from basket.news.auth import AUTHORIZED, FxaBearerToken, HeaderApiKey, QueryApiKey, Unauthorized, WebhookBearerToken
@@ -254,7 +254,10 @@ def lookup_user(request, email: str | None = None, token: uuid.UUID | None = Non
     url_name="users.assign",
     description="Webhook: assign an external_id to a user that only has a backend user alias",
     auth=[WebhookBearerToken()],
-    throttle=[WebhookIdentifierThrottle(settings.ASSIGN_RATE_LIMIT)],
+    throttle=[
+        WebhookIdentifierThrottle(settings.ASSIGN_RATE_LIMIT),
+        WebhookGlobalThrottle(settings.ASSIGN_GLOBAL_RATE_LIMIT),
+    ],
     response={
         200: OkSchema,
         400: ErrorSchema,

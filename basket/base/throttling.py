@@ -80,6 +80,10 @@ class WebhookIdentifierThrottle(MultiPeriodThrottle):
         except (ValueError, TypeError):
             return None
 
+        if not isinstance(body, dict):
+            # Non-object JSON (`42`, `"x"`, `[]`) has no identifier and would break `.get()`.
+            return None
+
         ident = next((body.get(k) for k in self.identifier_keys if body.get(k)), None)
         if not ident:
             return None
@@ -87,4 +91,18 @@ class WebhookIdentifierThrottle(MultiPeriodThrottle):
         return self.cache_format % {
             "scope": "webhook",
             "ident": ident,
+        }
+
+
+class WebhookGlobalThrottle(MultiPeriodThrottle):
+    """
+    Endpoint-wide rate limit keyed on a constant, so it can't be escaped by varying or
+    omitting the request body. Backstop for WebhookIdentifierThrottle; size to total
+    expected caller volume, not per-user.
+    """
+
+    def get_cache_key(self, request) -> str | None:
+        return self.cache_format % {
+            "scope": "webhook_global",
+            "ident": "all",
         }
