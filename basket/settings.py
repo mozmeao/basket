@@ -253,6 +253,8 @@ EMAIL_SUBSCRIBE_RATE_LIMIT = config("EMAIL_SUBSCRIBE_RATE_LIMIT", default="4/5m"
 # Inbound `/users/assign/` webhook: shared bearer secret + per-identifier rate limit.
 ASSIGN_WEBHOOK_SECRET = config("ASSIGN_WEBHOOK_SECRET", default="")
 ASSIGN_RATE_LIMIT = config("ASSIGN_RATE_LIMIT", default="4/5m")
+# Endpoint-wide backstop; size to total expected Braze volume. Tune via env.
+ASSIGN_GLOBAL_RATE_LIMIT = config("ASSIGN_GLOBAL_RATE_LIMIT", default="1000/m")
 CONTACT_ENTERPRISE_RATE_LIMIT = config("CONTACT_ENTERPRISE_RATE_LIMIT", default="5/h")
 ENTERPRISE_CONTACT_SINK = config("ENTERPRISE_CONTACT_SINK", default="google_sheets")
 GOOGLE_SHEETS_CONTACT_SPREADSHEET_ID = config("GOOGLE_SHEETS_CONTACT_SPREADSHEET_ID", default="")

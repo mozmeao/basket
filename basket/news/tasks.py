@@ -624,6 +624,14 @@ NON_RETRYABLE_BRAZE_ERRORS = (
 )
 
 
+def _scrub_frame_locals(event, hint):
+    # Drop all stack-frame local variables from a Sentry event so PII in locals isn't sent.
+    for value in event.get("exception", {}).get("values", []):
+        for frame in (value.get("stacktrace") or {}).get("frames", []):
+            frame.pop("vars", None)
+    return event
+
+
 @rq_task
 def braze_assign_external_id(data):
     """
@@ -681,12 +689,13 @@ def braze_assign_external_id(data):
 
         metrics.incr("news.tasks.braze_assign_external_id", tags=["status:assigned"])
     except NON_RETRYABLE_BRAZE_ERRORS as exc:
-        # e.g. a missing Braze permission or malformed request: won't succeed on retry, so
-        # report to Sentry (project convention) + emit a metric instead of re-raising, which
-        # would fail the job and trigger RQ's retry storm. Sentry captures the frame locals
-        # (basket_token/fxa_id/email) for triage. Retryable errors (rate limit / 5xx /
-        # connection) are intentionally NOT caught here, so they still propagate and retry.
-        sentry_sdk.capture_exception(exc)
+        # Non-retryable (bad permission / malformed request): report + metric instead of
+        # re-raising, which would trigger RQ's retry storm. Retryable errors (rate limit /
+        # 5xx / connection) propagate and retry. Strip frame locals so the email/basket_token/
+        # fxa_id held there are never sent to Sentry.
+        with sentry_sdk.new_scope() as scope:
+            scope.add_event_processor(_scrub_frame_locals)
+            sentry_sdk.capture_exception(exc)
         metrics.incr("news.tasks.braze_assign_external_id", tags=["status:braze_client_error"])
 
 

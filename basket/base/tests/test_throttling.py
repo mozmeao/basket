@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from basket.base.throttling import MultiPeriodThrottle, WebhookIdentifierThrottle
+from basket.base.throttling import MultiPeriodThrottle, WebhookGlobalThrottle, WebhookIdentifierThrottle
 
 
 def test_rate_parser():
@@ -44,3 +44,17 @@ def test_webhook_identifier_throttle_no_identifier_is_unthrottled():
 def test_webhook_identifier_throttle_malformed_body_is_unthrottled():
     th = WebhookIdentifierThrottle("4/5m")
     assert th.get_cache_key(SimpleNamespace(body=b"not json")) is None
+
+
+@pytest.mark.parametrize("body", [b"42", b'"foo"', b"[]", b"null"])
+def test_webhook_identifier_throttle_non_object_json_is_unthrottled(body):
+    # Valid JSON that isn't an object must not raise (regression: `.get()` on a non-dict).
+    th = WebhookIdentifierThrottle("4/5m")
+    assert th.get_cache_key(SimpleNamespace(body=body)) is None
+
+
+def test_webhook_global_throttle_keys_on_constant():
+    th = WebhookGlobalThrottle("600/m")
+    key_a = th.get_cache_key(SimpleNamespace(body=b'{"fxa_id": "abc"}'))
+    key_b = th.get_cache_key(SimpleNamespace(body=b'{"fxa_id": "different"}'))
+    assert key_a == key_b and "webhook_global" in key_a
