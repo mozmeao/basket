@@ -752,23 +752,20 @@ class TestUpsertContact(TestCase):
         )
 
 
-@patch("basket.news.tasks.braze_tx")
 @patch("basket.news.tasks.braze")
 class BrazeAssignExternalIdTests(TestCase):
-    # The read (`braze.get`) uses the newsletter key; the identify write uses `braze_tx`
-    # (BRAZE_API_KEY), which carries the `users.identify` permission.
-    def test_already_assigned_is_noop(self, mock_braze, mock_braze_tx):
+    def test_already_assigned_is_noop(self, mock_braze):
         # User already has an external_id (email_id) -> nothing to do.
         mock_braze.get.return_value = {"email": "a@b.com", "email_id": "existing-id"}
         braze_assign_external_id({"basket_token": str(uuid4())})
-        mock_braze_tx.interface.identify_user.assert_not_called()
-        mock_braze_tx.interface.add_basket_token_alias.assert_not_called()
+        mock_braze.interface.identify_user.assert_not_called()
+        mock_braze.interface.add_basket_token_alias.assert_not_called()
 
-    def test_basket_token_becomes_external_id(self, mock_braze, mock_braze_tx):
+    def test_basket_token_becomes_external_id(self, mock_braze):
         mock_braze.get.return_value = None
         token = str(uuid4())
         braze_assign_external_id({"basket_token": token})
-        mock_braze_tx.interface.identify_user.assert_called_once_with(
+        mock_braze.interface.identify_user.assert_called_once_with(
             aliases_to_identify=[
                 {
                     "external_id": token,
@@ -777,24 +774,24 @@ class BrazeAssignExternalIdTests(TestCase):
             ]
         )
         # User arrived with a basket_token, so we don't add another alias.
-        mock_braze_tx.interface.add_basket_token_alias.assert_not_called()
+        mock_braze.interface.add_basket_token_alias.assert_not_called()
 
-    def test_invalid_token_mints_fresh_external_id(self, mock_braze, mock_braze_tx):
+    def test_invalid_token_mints_fresh_external_id(self, mock_braze):
         mock_braze.get.return_value = None
         braze_assign_external_id({"basket_token": "not-a-uuid"})
-        kwargs = mock_braze_tx.interface.identify_user.call_args.kwargs
+        kwargs = mock_braze.interface.identify_user.call_args.kwargs
         alias = kwargs["aliases_to_identify"][0]
         assert alias["user_alias"] == {"alias_name": "not-a-uuid", "alias_label": "basket_token"}
         # external_id is a freshly minted UUID, not the invalid token.
         assert alias["external_id"] != "not-a-uuid"
         # A basket_token (even if junk) was supplied, so no new alias is added.
-        mock_braze_tx.interface.add_basket_token_alias.assert_not_called()
+        mock_braze.interface.add_basket_token_alias.assert_not_called()
 
     @patch("basket.news.tasks.assign_basket_token_alias_task")
-    def test_fxa_id_only_assigns_and_enqueues_basket_token(self, mock_assign_task, mock_braze, mock_braze_tx):
+    def test_fxa_id_only_assigns_and_enqueues_basket_token(self, mock_assign_task, mock_braze):
         mock_braze.get.return_value = None
         braze_assign_external_id({"fxa_id": "fxa-123"})
-        kwargs = mock_braze_tx.interface.identify_user.call_args.kwargs
+        kwargs = mock_braze.interface.identify_user.call_args.kwargs
         alias = kwargs["aliases_to_identify"][0]
         external_id = alias["external_id"]
         assert alias["user_alias"] == {"alias_name": "fxa-123", "alias_label": "fxa_id"}
@@ -802,26 +799,26 @@ class BrazeAssignExternalIdTests(TestCase):
         # fxa-only user gets a basket_token alias == external_id, enqueued with a delay
         # (not written inline) so Braze can propagate the external_id first.
         mock_assign_task.delay.assert_called_once_with(external_id, enqueue_in=BRAZE_OPTIMAL_DELAY)
-        mock_braze_tx.interface.add_basket_token_alias.assert_not_called()
+        mock_braze.interface.add_basket_token_alias.assert_not_called()
 
     @patch("basket.news.tasks.assign_basket_token_alias_task")
-    def test_email_only_assigns_and_enqueues_basket_token(self, mock_assign_task, mock_braze, mock_braze_tx):
+    def test_email_only_assigns_and_enqueues_basket_token(self, mock_assign_task, mock_braze):
         mock_braze.get.return_value = None
         braze_assign_external_id({"email": "a@b.com"})
-        kwargs = mock_braze_tx.interface.identify_user.call_args.kwargs
+        kwargs = mock_braze.interface.identify_user.call_args.kwargs
         entry = kwargs["emails_to_identify"][0]
         external_id = entry["external_id"]
         assert entry["email"] == "a@b.com"
         assert external_id
         mock_assign_task.delay.assert_called_once_with(external_id, enqueue_in=BRAZE_OPTIMAL_DELAY)
-        mock_braze_tx.interface.add_basket_token_alias.assert_not_called()
+        mock_braze.interface.add_basket_token_alias.assert_not_called()
 
-    def test_basket_token_wins_when_all_identifiers_present(self, mock_braze, mock_braze_tx):
+    def test_basket_token_wins_when_all_identifiers_present(self, mock_braze):
         # Precedence guard: basket_token > fxa_id > email.
         mock_braze.get.return_value = None
         token = str(uuid4())
         braze_assign_external_id({"basket_token": token, "fxa_id": "fxa-123", "email": "a@b.com"})
-        mock_braze_tx.interface.identify_user.assert_called_once_with(
+        mock_braze.interface.identify_user.assert_called_once_with(
             aliases_to_identify=[
                 {
                     "external_id": token,
@@ -829,52 +826,52 @@ class BrazeAssignExternalIdTests(TestCase):
                 }
             ]
         )
-        mock_braze_tx.interface.add_basket_token_alias.assert_not_called()
+        mock_braze.interface.add_basket_token_alias.assert_not_called()
 
     @patch("basket.news.tasks.assign_basket_token_alias_task")
-    def test_fxa_id_wins_over_email(self, mock_assign_task, mock_braze, mock_braze_tx):
+    def test_fxa_id_wins_over_email(self, mock_assign_task, mock_braze):
         # With fxa_id and email but no basket_token, identify by the fxa_id alias (not email).
         mock_braze.get.return_value = None
         braze_assign_external_id({"fxa_id": "fxa-123", "email": "a@b.com"})
-        kwargs = mock_braze_tx.interface.identify_user.call_args.kwargs
+        kwargs = mock_braze.interface.identify_user.call_args.kwargs
         assert "aliases_to_identify" in kwargs  # alias form, not emails_to_identify
         assert kwargs["aliases_to_identify"][0]["user_alias"] == {"alias_name": "fxa-123", "alias_label": "fxa_id"}
 
-    def test_already_assigned_when_found_by_fxa_id(self, mock_braze, mock_braze_tx):
+    def test_already_assigned_when_found_by_fxa_id(self, mock_braze):
         # Re-trigger for an already-identified user found via fxa_id is a no-op (idempotent).
         mock_braze.get.return_value = {"email": "a@b.com", "email_id": "existing-id"}
         braze_assign_external_id({"fxa_id": "fxa-123"})
-        mock_braze_tx.interface.identify_user.assert_not_called()
-        mock_braze_tx.interface.add_basket_token_alias.assert_not_called()
+        mock_braze.interface.identify_user.assert_not_called()
+        mock_braze.interface.add_basket_token_alias.assert_not_called()
 
-    def test_already_assigned_when_found_by_email(self, mock_braze, mock_braze_tx):
+    def test_already_assigned_when_found_by_email(self, mock_braze):
         mock_braze.get.return_value = {"email": "a@b.com", "email_id": "existing-id"}
         braze_assign_external_id({"email": "a@b.com"})
-        mock_braze_tx.interface.identify_user.assert_not_called()
-        mock_braze_tx.interface.add_basket_token_alias.assert_not_called()
+        mock_braze.interface.identify_user.assert_not_called()
+        mock_braze.interface.add_basket_token_alias.assert_not_called()
 
     @patch("basket.news.tasks.sentry_sdk")
     @patch("basket.news.tasks.metrics")
-    def test_non_retryable_braze_error_is_caught(self, mock_metrics, mock_sentry, mock_braze, mock_braze_tx):
+    def test_non_retryable_braze_error_is_caught(self, mock_metrics, mock_sentry, mock_braze):
         # A non-retryable Braze client error (e.g. 403 missing permission) must NOT propagate
         # (which would fail the job and trigger RQ retries); it's reported to Sentry + metriced.
         from basket.news.backends.braze import BrazeForbiddenError
 
         mock_braze.get.return_value = None
         exc = BrazeForbiddenError("Access Denied")
-        mock_braze_tx.interface.identify_user.side_effect = exc
+        mock_braze.interface.identify_user.side_effect = exc
 
         braze_assign_external_id({"fxa_id": "fxa-123"})  # should not raise
 
         mock_sentry.capture_exception.assert_called_once_with(exc)
         mock_metrics.incr.assert_called_with("news.tasks.braze_assign_external_id", tags=["status:braze_client_error"])
 
-    def test_retryable_braze_error_still_propagates(self, mock_braze, mock_braze_tx):
+    def test_retryable_braze_error_still_propagates(self, mock_braze):
         # Transient errors must still bubble up so RQ/tenacity can retry.
         from basket.news.backends.braze import BrazeRateLimitError
 
         mock_braze.get.return_value = None
-        mock_braze_tx.interface.identify_user.side_effect = BrazeRateLimitError("slow down")
+        mock_braze.interface.identify_user.side_effect = BrazeRateLimitError("slow down")
 
         with self.assertRaises(BrazeRateLimitError):
             braze_assign_external_id({"fxa_id": "fxa-123"})

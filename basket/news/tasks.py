@@ -662,9 +662,6 @@ def braze_assign_external_id(data):
         else:
             external_id = generate_token()
 
-        # The identify write goes through `braze_tx` (BRAZE_API_KEY), which carries the
-        # `users.identify` permission; the read above uses `braze` (BRAZE_NEWSLETTER_API_KEY).
-        # basket_token and fxa_id are user aliases; email uses the email-identify form.
         if basket_token:
             user_alias = {"alias_name": basket_token, "alias_label": "basket_token"}
         elif fxa_id:
@@ -673,9 +670,9 @@ def braze_assign_external_id(data):
             user_alias = None
 
         if user_alias:
-            braze_tx.interface.identify_user(aliases_to_identify=[{"external_id": external_id, "user_alias": user_alias}])
+            braze.interface.identify_user(aliases_to_identify=[{"external_id": external_id, "user_alias": user_alias}])
         elif email:
-            braze_tx.interface.identify_user(
+            braze.interface.identify_user(
                 emails_to_identify=[{"external_id": external_id, "email": email, "prioritization": ["unidentified", "most_recently_updated"]}]
             )
 
