@@ -261,11 +261,10 @@ def test_braze_identify_endpoint_value():
     assert braze.BrazeEndpoint.USERS_IDENTIFY.value == "/users/identify"
 
 
-@mock.patch("basket.news.backends.braze.braze_tx")
-def test_assign_basket_token_alias_task(mock_braze_tx):
-    # Sets a basket_token alias whose value == external_id, via braze_tx (BRAZE_API_KEY).
+@mock.patch("basket.news.backends.braze.braze")
+def test_assign_basket_token_alias_task(mock_braze):
     braze.assign_basket_token_alias_task("ext-123")
-    mock_braze_tx.interface.add_basket_token_alias.assert_called_once_with("ext-123", "ext-123")
+    mock_braze.interface.add_basket_token_alias.assert_called_once_with("ext-123", "ext-123")
 
 
 def test_braze_exception_400(braze_client):
