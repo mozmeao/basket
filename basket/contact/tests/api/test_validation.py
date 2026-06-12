@@ -60,6 +60,16 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
+    def test_honeypot_silently_drops_submission(self):
+        # A populated office_fax (hidden honeypot) marks the request as a bot:
+        # respond 200 ok but never enqueue the contact task.
+        payload = self.valid_payload()
+        payload["office_fax"] = "anything"
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+        self._mock_delay.assert_not_called()
+
     # --- URL injection ---
 
     def test_rejects_url_in_first_name(self):
@@ -249,3 +259,4 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         submitted = self._mock_delay.call_args[0][0]
         assert submitted["business_email"] == "jane@acme.com"
         assert "website" not in submitted
+        assert "office_fax" not in submitted

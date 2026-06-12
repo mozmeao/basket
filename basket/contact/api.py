@@ -39,9 +39,9 @@ def contact_enterprise(request, payload: ContactEnterpriseSchema):
         metrics.incr("contact.enterprise.ratelimited", tags=["reason:email"])
         return 429, {"status": "error"}
 
-    if payload.website:
+    if payload.office_fax:
         metrics.incr("contact.enterprise.honeypot")
         return {"status": "ok"}
 
-    tasks.submit_contact.delay(payload.model_dump(exclude={"website"}))
+    tasks.submit_contact.delay(payload.model_dump(exclude={"website", "office_fax"}))
     return {"status": "ok"}
