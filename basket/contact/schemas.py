@@ -19,6 +19,8 @@ class ContactEnterpriseSchema(Schema):
     website: str = Field(default="")
     lead_source: str = Field(default="", max_length=255)
     cta: str = Field(default="", max_length=255)
+    # Honeypot field, hidden from real users. Any value indicates a bot.
+    office_fax: str = Field(default="")
 
     @field_validator("first_name", "last_name", "company")
     @classmethod
