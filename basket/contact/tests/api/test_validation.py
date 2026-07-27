@@ -176,6 +176,12 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         resp = self.client.post(self.url, data={}, content_type="application/json")
         assert resp.status_code == 422
 
+    def test_business_phone_optional(self):
+        payload = self.valid_payload()
+        del payload["business_phone"]
+        resp = self.client.post(self.url, data={}, content_type="application/json")
+        assert resp.status_code == 422
+
     # --- Invalid fields ---
 
     def test_rejects_first_name_with_numbers(self):
