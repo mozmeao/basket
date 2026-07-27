@@ -23,7 +23,7 @@ class ContactEnterpriseSchema(Schema):
     firefox_use_stage: str = Field(..., min_length=1, max_length=100)
     deployment_size: str = Field(..., min_length=1, max_length=100)
     support_needs: str = Field(..., min_length=1, max_length=200)
-    timeline: str = Field(..., min_length=1, max_length=200)
+    timeline: str = Field(..., min_length=1, max_length=100)
     message: str = Field(default="", max_length=2500)
 
     @field_validator("first_name", "last_name", "company")

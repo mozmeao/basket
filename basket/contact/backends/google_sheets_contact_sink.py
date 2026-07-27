@@ -29,7 +29,6 @@ class GoogleSheetsContactSink(ContactSink):
             contact["job_title"],
             contact["business_email"],
             contact["business_phone"],
-            # contact["company_size"],
             contact["country"],
             contact["opt_in"],
             contact["lead_source"],

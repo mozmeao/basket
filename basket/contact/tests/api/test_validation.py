@@ -37,9 +37,9 @@ class TestContactEnterpriseAPI(_TestAPIBase):
             "country": "Canada",
             "opt_in": "true",
             "website": "",
-            "firefox_use_stage": "true",
+            "firefox_use_stage": "currently_deploy,piloting",
             "deployment_size": "1",
-            "support_needs": "help,support,wisdom",
+            "support_needs": "planning_evaluating,deployment_config,security_compliance",
             "timeline": "immediately",
             "message": "I broke production again help",
         }
@@ -179,8 +179,8 @@ class TestContactEnterpriseAPI(_TestAPIBase):
     def test_business_phone_optional(self):
         payload = self.valid_payload()
         del payload["business_phone"]
-        resp = self.client.post(self.url, data={}, content_type="application/json")
-        assert resp.status_code == 422
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 200
 
     # --- Invalid fields ---
 
