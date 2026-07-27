@@ -16,8 +16,8 @@ class ContactSink(ABC):
         opt_in - static "on" value
         lead_source - static "enterprise-default-lead-submission"
         cta - action requested by user
-        firefox_use_stage - ?
-        deployment_size - ?
+        firefox_use_stage - the stage of Firefox adoption in the company
+        deployment_size - how many Firefox instances will be used
         support_needs - comma separated list of support items requested
         timeline - requested timeline for completion
         message - user provided additional information
