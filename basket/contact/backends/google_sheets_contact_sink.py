@@ -29,11 +29,16 @@ class GoogleSheetsContactSink(ContactSink):
             contact["job_title"],
             contact["business_email"],
             contact["business_phone"],
-            contact["company_size"],
+            # contact["company_size"],
             contact["country"],
             contact["opt_in"],
             contact["lead_source"],
             contact["cta"],
+            contact["firefox_use_stage"],
+            contact["deployment_size"],
+            contact["support_needs"],
+            contact["timeline"],
+            contact["message"],
         ]
 
         url = _APPEND_URL.format(
