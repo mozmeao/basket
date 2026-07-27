@@ -24,7 +24,7 @@ class ContactEnterpriseSchema(Schema):
     deployment_size: str = Field(..., min_length=1, max_length=100)
     support_needs: str = Field(..., min_length=1, max_length=200)
     timeline: str = Field(..., min_length=1, max_length=200)
-    message: str = Field(..., min_length=1, max_length=500)
+    message: str = Field(default="", max_length=2500)
 
     @field_validator("first_name", "last_name", "company")
     @classmethod
