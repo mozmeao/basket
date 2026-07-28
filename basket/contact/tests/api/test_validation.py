@@ -32,11 +32,16 @@ class TestContactEnterpriseAPI(_TestAPIBase):
             "company": "Acme Corp",
             "job_title": "Engineer",
             "business_email": "jane@acme.com",
-            "business_phone": "123-456-7890",
+            "business_phone": "",
             "company_size": "big",
             "country": "Canada",
             "opt_in": "true",
             "website": "",
+            "firefox_use_stage": "currently_deploy,piloting",
+            "deployment_size": "1",
+            "support_needs": "planning_evaluating,deployment_config,security_compliance",
+            "timeline": "immediately",
+            "message": "I broke production again help",
         }
 
     def valid_request(self):
@@ -69,6 +74,13 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
         self._mock_delay.assert_not_called()
+
+    def test_extra_fields_should_be_ignored(self):
+        payload = self.valid_payload()
+        payload["error"] = "error"
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
 
     # --- URL injection ---
 
@@ -163,6 +175,12 @@ class TestContactEnterpriseAPI(_TestAPIBase):
     def test_rejects_empty_body(self):
         resp = self.client.post(self.url, data={}, content_type="application/json")
         assert resp.status_code == 422
+
+    def test_business_phone_optional(self):
+        payload = self.valid_payload()
+        del payload["business_phone"]
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 200
 
     # --- Invalid fields ---
 
