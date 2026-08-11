@@ -8,7 +8,7 @@ import pytest
 from basket import errors
 from basket.news import models
 from basket.news.schemas import ErrorSchema, UserSchema
-from basket.news.tests.api import _TestAPIwCTMSBase
+from basket.news.tests.api import _TestAPIwBrazeBase
 from basket.news.utils import (
     MSG_EMAIL_AUTH_REQUIRED,
     MSG_EMAIL_OR_TOKEN_REQUIRED,
@@ -18,7 +18,7 @@ from basket.news.utils import (
 
 
 @pytest.mark.django_db
-class TestLookupUserAPI(_TestAPIwCTMSBase):
+class TestLookupUserAPI(_TestAPIwBrazeBase):
     def setup_method(self, method):
         super().setup_method(method)
         self.method = "GET"
@@ -64,11 +64,11 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
 
     def test_lookup_user_by_email_authorized_qs(self):
         # Test lookup by email with an authorized API key in the query string.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = self._user_data()
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = self._user_data()
             resp = self.client.get(self.url, {"email": self.email, "api-key": self.api_key})
             assert resp.status_code == 200, resp.content
-            mock_ctms.get.assert_called_once_with(
+            braze_mock.get.assert_called_once_with(
                 email="test@example.com",
                 fxa_id=None,
                 token=None,
@@ -81,11 +81,11 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
 
     def test_lookup_user_by_email_authorized_header(self, client):
         # Test lookup by email with an authorized API key in the headers.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = self._user_data()
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = self._user_data()
             resp = client.get(self.url, {"email": self.email}, headers={"X-Api-Key": self.api_key})
             assert resp.status_code == 200
-            mock_ctms.get.assert_called_once_with(
+            braze_mock.get.assert_called_once_with(
                 email="test@example.com",
                 fxa_id=None,
                 token=None,
@@ -98,11 +98,11 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
 
     def test_lookup_user_by_token(self, client):
         # Test lookup by token without an API key.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = self._user_data()
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = self._user_data()
             resp = client.get(self.url, {"token": self.token})
             assert resp.status_code == 200
-            mock_ctms.get.assert_called_once_with(
+            braze_mock.get.assert_called_once_with(
                 email=None,
                 fxa_id=None,
                 token=self.token,
@@ -115,11 +115,11 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
 
     def test_lookup_user_by_token_authorized(self, client):
         # Test lookup by token with an authorized API key in the query string.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = self._user_data()
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = self._user_data()
             resp = client.get(self.url, {"token": self.token, "api-key": self.api_key})
             assert resp.status_code == 200
-            mock_ctms.get.assert_called_once_with(
+            braze_mock.get.assert_called_once_with(
                 email=None,
                 fxa_id=None,
                 token=self.token,
@@ -132,8 +132,8 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
 
     def test_lookup_user_with_has_fxa(self, client):
         # Test lookup with fxa param adds has_fxa to the response.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = self._user_data()
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = self._user_data()
             resp = client.get(self.url, {"token": self.token})
             assert resp.status_code == 200
             data = resp.json()
@@ -142,8 +142,8 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
 
     def test_lookup_user_with_has_fxa_false(self, client):
         # Test lookup with fxa param adds has_fxa to the response.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = self._user_data(fxa_id=None)
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = self._user_data(fxa_id=None)
             resp = client.get(self.url, {"token": self.token})
             assert resp.status_code == 200
             data = resp.json()
@@ -151,8 +151,8 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
             assert data["has_fxa"] is False
 
     def test_lookup_email_with_fxa_bearer_token(self, client):
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = self._user_data()
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = self._user_data()
             with patch("basket.news.auth.get_fxa_clients") as mock_get_clients:
                 oauth_mock = Mock()
                 profile_mock = Mock()
@@ -177,7 +177,7 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
 
     def test_lookup_user_no_params(self, client):
         # Test lookup with no params returns a 400 error.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
             resp = client.get(self.url)
             assert resp.status_code == 400
             data = resp.json()
@@ -185,11 +185,11 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
             assert data["status"] == "error"
             assert data["code"] == errors.BASKET_USAGE_ERROR
             assert data["desc"] == MSG_EMAIL_OR_TOKEN_REQUIRED
-            mock_ctms.get.assert_not_called()
+            braze_mock.get.assert_not_called()
 
     def test_lookup_both_email_and_token(self, client):
         # Test lookup by both email and token returns a 400 error.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
             resp = client.get(self.url, {"email": self.email, "token": self.token})
             assert resp.status_code == 400
             data = resp.json()
@@ -197,12 +197,12 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
             assert data["status"] == "error"
             assert data["code"] == errors.BASKET_USAGE_ERROR
             assert data["desc"] == MSG_EMAIL_OR_TOKEN_REQUIRED
-            mock_ctms.get.assert_not_called()
+            braze_mock.get.assert_not_called()
 
     def test_lookup_user_email_not_found(self, client):
         # Test no user found returns 404.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = None
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = None
             resp = client.get(self.url, {"email": self.email, "api-key": self.api_key})
             assert resp.status_code == 404
             data = resp.json()
@@ -213,8 +213,8 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
 
     def test_lookup_user_invalid_email(self, client):
         # Test invalid email.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = None
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = None
             resp = client.get(self.url, {"email": "invalid", "api-key": self.api_key})
             assert resp.status_code == 400
             data = resp.json()
@@ -225,8 +225,8 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
 
     def test_lookup_user_token_not_found(self, client):
         # Test no user with token found returns 404.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = None
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = None
             resp = client.get(self.url, {"token": self.token})
             assert resp.status_code == 404
             data = resp.json()
@@ -237,8 +237,8 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
 
     def test_lookup_user_by_email_unauthorized(self, client):
         # Test lookup by email without an API key returns a 401 error.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = None
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = None
             resp = client.get(self.url, {"email": self.email})
             assert resp.status_code == 401
             data = resp.json()
@@ -246,12 +246,12 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
             assert data["status"] == "error"
             assert data["code"] == errors.BASKET_AUTH_ERROR
             assert data["desc"] == MSG_EMAIL_AUTH_REQUIRED
-            mock_ctms.get.assert_not_called()
+            braze_mock.get.assert_not_called()
 
     def test_lookup_user_by_email_api_key_disabled(self, client):
         # Test lookup by email with a disabled API key returns a 401 error.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = None
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = None
             self.api_user.enabled = False
             self.api_user.save()
             resp = client.get(self.url, {"email": self.email, "api-key": self.api_key})
@@ -261,12 +261,12 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
             assert data["status"] == "error"
             assert data["code"] == errors.BASKET_AUTH_ERROR
             assert data["desc"] == MSG_EMAIL_AUTH_REQUIRED
-            mock_ctms.get.assert_not_called()
+            braze_mock.get.assert_not_called()
 
     def test_lookup_user_by_email_api_key_bad(self, client):
         # Test lookup by email with a bad API key returns a 401 error.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = None
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = None
             resp = client.get(self.url, {"email": self.email, "api-key": "0xBAD"})
             assert resp.status_code == 401
             data = resp.json()
@@ -274,4 +274,4 @@ class TestLookupUserAPI(_TestAPIwCTMSBase):
             assert data["status"] == "error"
             assert data["code"] == errors.BASKET_AUTH_ERROR
             assert data["desc"] == MSG_EMAIL_AUTH_REQUIRED
-            mock_ctms.get.assert_not_called()
+            braze_mock.get.assert_not_called()

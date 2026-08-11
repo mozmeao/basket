@@ -8,7 +8,7 @@ from requests import Response
 from requests.exceptions import HTTPError
 
 from basket import errors
-from basket.news.backends.ctms import CTMSMultipleContactsError, CTMSNotConfigured
+from basket.news.backends.braze import BrazeNotConfigured
 from basket.news.schemas import ErrorSchema
 from basket.news.utils import MSG_MAINTENANCE_MODE
 
@@ -45,7 +45,7 @@ class _TestAPIBase:
             settings.MAINTENANCE_MODE = True
             settings.MAINTENANCE_READ_ONLY = False
             # If the underlying view tries to get user data from CTMS.
-            with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
+            with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
                 resp = self.valid_request()
                 assert resp.status_code == 400
                 data = resp.json()
@@ -53,12 +53,12 @@ class _TestAPIBase:
                 assert data["status"] == "error"
                 assert data["code"] == errors.BASKET_MAINTENANCE_ERROR
                 assert data["desc"] == MSG_MAINTENANCE_MODE
-                mock_ctms.get.assert_not_called()
+                braze_mock.get.assert_not_called()
 
 
-class _TestAPIwCTMSBase(_TestAPIBase):
-    def ctms_error(self, status_code, detail, reason):
-        """Return a CTMS error response"""
+class _TestAPIwBrazeBase(_TestAPIBase):
+    def braze_error(self, status_code, detail, reason):
+        """Return a Braze error response"""
         response = Response()
         response.status_code = status_code
         response._content = json.dumps({"detail": detail})
@@ -70,10 +70,10 @@ class _TestAPIwCTMSBase(_TestAPIBase):
 
     # Note: Subclasses should defined a `self.valid_request` method for these the following tests.
 
-    def test_ctms_network_failure(self):
+    def test_braze_network_failure(self):
         # Test CTMS network failure returns a 400 error.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.side_effect = self.ctms_error(500, "Network failure", "Server Error")
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.side_effect = self.braze_error(500, "Network failure", "Server Error")
             resp = self.valid_request()
             assert resp.status_code == 400
             data = resp.json()
@@ -82,31 +82,12 @@ class _TestAPIwCTMSBase(_TestAPIBase):
             assert data["code"] == errors.BASKET_NETWORK_FAILURE
             assert data["desc"] == ""
 
-    def test_ctms_multiple_contacts(self):
-        # Test CTMS multiple contacts returns a 400 error.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.side_effect = CTMSMultipleContactsError(
-                "token",
-                self.token,
-                [
-                    {"email": {"email_id": "id_1", "basket_token": self.token}},
-                    {"email": {"email_id": "id_2", "basket_token": self.token}},
-                ],
-            )
-            resp = self.valid_request()
-            assert resp.status_code == 400
-            data = resp.json()
-            self.validate_schema(data, ErrorSchema)
-            assert data["status"] == "error"
-            assert data["code"] == errors.BASKET_NETWORK_FAILURE
-            assert data["desc"] == f"2 contacts returned for token='{self.token}' with email_ids ['id_1', 'id_2']"
-
     # 500 errors
 
-    def test_ctms_not_configured(self):
+    def test_braze_not_configured(self):
         # Test CTMS not configured returns a 500 error.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.side_effect = CTMSNotConfigured()
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.side_effect = BrazeNotConfigured()
             resp = self.valid_request()
             assert resp.status_code == 500
             data = resp.json()
@@ -117,8 +98,8 @@ class _TestAPIwCTMSBase(_TestAPIBase):
 
     def test_ctms_unauthorized(self):
         # Test CTMS unauthorized returns a 500 error.
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.side_effect = self.ctms_error(401, "Unauthorized", "Not authenticated")
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.side_effect = self.braze_error(401, "Unauthorized", "Not authenticated")
             resp = self.valid_request()
             assert resp.status_code == 500
             data = resp.json()

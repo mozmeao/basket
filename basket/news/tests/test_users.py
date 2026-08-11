@@ -10,7 +10,6 @@ from requests import Response
 from requests.exceptions import HTTPError
 
 from basket import errors
-from basket.news.backends.ctms import CTMSMultipleContactsError, CTMSNotConfigured
 from basket.news.models import APIUser
 from basket.news.utils import SET
 
@@ -32,9 +31,9 @@ class UserTest(TestCase):
             {"country": "CA", "token": self.token},
         )
 
-    @patch("basket.news.utils.ctms", spec_set=["get"])
-    def test_user(self, ctms_mock):
-        ctms_mock.get.return_value = {
+    @patch("basket.news.utils.braze", spec_set=["get"])
+    def test_user(self, braze_mock):
+        braze_mock.get.return_value = {
             "email": "hisdudeness@example.com",
         }
         resp = self.client.get(self.url)
@@ -45,9 +44,9 @@ class UserTest(TestCase):
             "has_fxa": False,
         }
 
-    @patch("basket.news.utils.ctms", spec_set=["get"])
-    def test_user_with_api_key(self, ctms_mock):
-        ctms_mock.get.return_value = {
+    @patch("basket.news.utils.braze", spec_set=["get"])
+    def test_user_with_api_key(self, braze_mock):
+        braze_mock.get.return_value = {
             "email": "hisdudeness@example.com",
         }
         resp = self.client.get(self.url, data={"api-key": self.auth.api_key})
@@ -58,9 +57,9 @@ class UserTest(TestCase):
             "has_fxa": False,
         }
 
-    @patch("basket.news.utils.ctms", spec_set=["get"])
-    def test_user_with_fxa(self, ctms_mock):
-        ctms_mock.get.return_value = {
+    @patch("basket.news.utils.braze", spec_set=["get"])
+    def test_user_with_fxa(self, braze_mock):
+        braze_mock.get.return_value = {
             "email": "hisdudeness@example.com",
             "fxa_id": "the-dude-abides",
         }
@@ -114,10 +113,10 @@ class TestLookupUser(TestCase):
         rsp = self.get(params=params)
         self.assertEqual(400, rsp.status_code, rsp.content)
 
-    @patch("basket.news.utils.ctms", spec_set=["get"])
-    def test_with_token(self, ctms_mock):
+    @patch("basket.news.utils.braze", spec_set=["get"])
+    def test_with_token(self, braze_mock):
         """Passing a token gets back that user's data"""
-        ctms_mock.get.return_value = {
+        braze_mock.get.return_value = {
             "token": "dummy",
             "email": "hisdudeness@example.com",
         }
@@ -129,16 +128,16 @@ class TestLookupUser(TestCase):
             "token": "dummy",
             "has_fxa": False,
         }
-        ctms_mock.get.assert_called_once_with(
+        braze_mock.get.assert_called_once_with(
             email=None,
             fxa_id=None,
             token="dummy",
         )
 
-    @patch("basket.news.utils.ctms", spec_set=["get"])
-    def test_with_token_authorized(self, ctms_mock):
+    @patch("basket.news.utils.braze", spec_set=["get"])
+    def test_with_token_authorized(self, braze_mock):
         """Passing a token gets back that user's data"""
-        ctms_mock.get.return_value = {
+        braze_mock.get.return_value = {
             "token": "dummy",
             "email": "hisdudeness@example.com",
         }
@@ -150,13 +149,13 @@ class TestLookupUser(TestCase):
             "token": "dummy",
             "has_fxa": False,
         }
-        ctms_mock.get.assert_called_once_with(
+        braze_mock.get.assert_called_once_with(
             email=None,
             fxa_id=None,
             token="dummy",
         )
 
-    @patch("basket.news.utils.ctms", spec_set=["get"])
+    @patch("basket.news.utils.braze", spec_set=["get"])
     def test_get_fxa_status(self, ctms_mock):
         """Should return FxA status"""
         ctms_mock.get.return_value = {
@@ -171,7 +170,7 @@ class TestLookupUser(TestCase):
             "status": "ok",
         }
 
-    @patch("basket.news.utils.ctms", spec_set=["get"])
+    @patch("basket.news.utils.braze", spec_set=["get"])
     def test_get_fxa_status_false(self, ctms_mock):
         """Should return FxA status"""
         ctms_mock.get.return_value = {"email": "hisdudeness@example.com"}
@@ -183,10 +182,10 @@ class TestLookupUser(TestCase):
             "status": "ok",
         }
 
-    @patch("basket.news.utils.ctms", spec_set=["get"])
-    def test_get_fxa_status_with_api_key(self, ctms_mock):
+    @patch("basket.news.utils.braze", spec_set=["get"])
+    def test_get_fxa_status_with_api_key(self, braze_mock):
         """Passing email and valid api key param gets user's data"""
-        ctms_mock.get.return_value = {
+        braze_mock.get.return_value = {
             "email": "hisdudeness@example.com",
             "fxa_id": "the-dude-abides",
         }
@@ -205,14 +204,14 @@ class TestLookupUser(TestCase):
             },
         )
 
-    @patch("basket.news.utils.ctms", spec_set=["get"])
+    @patch("basket.news.utils.braze", spec_set=["get"])
     def test_ctms_user_not_found(self, ctms_mock):
         """If CTMS return no records, return is None"""
         ctms_mock.get.return_value = None
         rsp = self.get(params={"token": "dummy"})
         assert rsp.status_code == 404
 
-    @patch("basket.news.utils.ctms", spec_set=["get"])
+    @patch("basket.news.utils.braze", spec_set=["get"])
     def test_ctms_user_not_authenticated(self, ctms_mock):
         """If CTMS is not authenticated, an exception is raised"""
         ctms_mock.get.side_effect = self.ctms_error(
@@ -228,38 +227,7 @@ class TestLookupUser(TestCase):
             "status": "error",
         }
 
-    @patch("basket.news.utils.ctms", spec_set=["get"])
-    def test_ctms_user_not_configured(self, ctms_mock):
-        """If CTMS was not configured, an exception is raised"""
-        ctms_mock.get.side_effect = CTMSNotConfigured()
-        rsp = self.get(params={"token": "dummy"})
-        assert rsp.status_code == 500
-        assert rsp.json() == {
-            "code": errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
-            "desc": "Email service provider auth failure",
-            "status": "error",
-        }
-
-    @patch("basket.news.utils.ctms", spec_set=["get"])
-    def test_ctms_user_runtime_error(self, ctms_mock):
-        """If CTMS finds multiple contacts, an error is returned"""
-        ctms_mock.get.side_effect = CTMSMultipleContactsError(
-            "token",
-            "dummy",
-            [
-                {"email": {"email_id": "id_1", "basket_token": "dummy"}},
-                {"email": {"email_id": "id_2", "basket_token": "dummy"}},
-            ],
-        )
-        rsp = self.get(params={"token": "dummy"})
-        assert rsp.status_code == 400
-        assert rsp.json() == {
-            "status": "error",
-            "code": errors.BASKET_NETWORK_FAILURE,
-            "desc": "2 contacts returned for token='dummy' with email_ids ['id_1', 'id_2']",
-        }
-
-    @patch("basket.news.utils.ctms", spec_set=["get"])
+    @patch("basket.news.utils.braze", spec_set=["get"])
     def test_ctms_user_server_error(self, ctms_mock):
         """If CTMS has a network failure, an error is returned"""
         ctms_mock.get.side_effect = self.ctms_error(

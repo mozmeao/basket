@@ -10,7 +10,7 @@ from basket.news.utils import SET, SUBSCRIBE, UNSUBSCRIBE, generate_token
 
 @override_settings(SEND_CONFIRM_MESSAGES=True)
 @patch("basket.news.tasks.send_confirm_message")
-@patch("basket.news.tasks.ctms")
+@patch("basket.news.tasks.braze")
 @patch("basket.news.tasks.get_user_data")
 class UpsertUserTests(TestCase):
     def setUp(self):
@@ -29,13 +29,13 @@ class UpsertUserTests(TestCase):
     def test_update_first_last_names(
         self,
         get_user_mock,
-        ctms_mock,
+        braze_mock,
         confirm_mock,
     ):
         """sending name fields should result in names being passed to SF/CTMS"""
         get_user_mock.return_value = None  # Does not exist yet
         email_id = str(uuid4())
-        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
+        braze_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
             slug="slug",
             title="title",
@@ -56,13 +56,13 @@ class UpsertUserTests(TestCase):
         update_data = data.copy()
         update_data["newsletters"] = {"slug": True}
         update_data["token"] = ANY
-        ctms_mock.add.assert_called_with(update_data)
+        braze_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
 
     def test_update_user_set_works_if_no_newsletters(
         self,
         get_user_mock,
-        ctms_mock,
+        braze_mock,
         confirm_mock,
     ):
         """
@@ -96,12 +96,12 @@ class UpsertUserTests(TestCase):
         get_user_mock.assert_called()
         # We'll specifically unsubscribe each newsletter the user is
         # subscribed to.
-        ctms_mock.update.assert_called_with(self.get_user_data, update_data)
+        braze_mock.update.assert_called_with(self.get_user_data, update_data)
 
     def test_resubscribe_doesnt_update_newsletter(
         self,
         get_user_mock,
-        ctms_mock,
+        braze_mock,
         confirm_mock,
     ):
         """
@@ -132,12 +132,12 @@ class UpsertUserTests(TestCase):
         # We should have looked up the user's data
         get_user_mock.assert_called()
         # We should not have mentioned this newsletter in our call to ET
-        ctms_mock.update.assert_called_with(self.get_user_data, update_data)
+        braze_mock.update.assert_called_with(self.get_user_data, update_data)
 
     def test_set_doesnt_update_newsletter(
         self,
         get_user_mock,
-        ctms_mock,
+        braze_mock,
         confirm_mock,
     ):
         """
@@ -171,9 +171,9 @@ class UpsertUserTests(TestCase):
         # We should have looked up the user's data
         self.assertTrue(get_user_mock.called)
         # We should not have mentioned this newsletter in our call to CTMS
-        ctms_mock.update.assert_called_with(self.get_user_data, update_data)
+        braze_mock.update.assert_called_with(self.get_user_data, update_data)
 
-    def test_unsub_is_careful(self, get_user_mock, ctms_mock, confirm_mock):
+    def test_unsub_is_careful(self, get_user_mock, braze_mock, confirm_mock):
         """
         When unsubscribing, we only unsubscribe things the user is
         currently subscribed to.
@@ -208,12 +208,12 @@ class UpsertUserTests(TestCase):
         upsert_user(UNSUBSCRIBE, data)
         # We should have looked up the user's data
         self.assertTrue(get_user_mock.called)
-        ctms_mock.update.assert_called_with(self.get_user_data, update_data)
+        braze_mock.update.assert_called_with(self.get_user_data, update_data)
 
     def test_update_user_with_email_id(
         self,
         get_user_mock,
-        ctms_mock,
+        braze_mock,
         confirm_mock,
     ):
         """
@@ -245,13 +245,13 @@ class UpsertUserTests(TestCase):
             "slug": True,
         }  # Only the set newsletter is mentioned
         upsert_user(SUBSCRIBE, data)
-        ctms_mock.update.assert_called_with(get_user_mock.return_value, update_data)
+        braze_mock.update.assert_called_with(get_user_mock.return_value, update_data)
 
-    def test_send_confirm(self, get_user_mock, ctms_mock, confirm_mock):
+    def test_send_confirm(self, get_user_mock, braze_mock, confirm_mock):
         """Subscribing to a newsletter should send a confirm email"""
         get_user_mock.return_value = None  # Does not exist yet
         email_id = str(uuid4())
-        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
+        braze_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
             slug="slug",
             title="title",
@@ -270,15 +270,15 @@ class UpsertUserTests(TestCase):
         update_data = data.copy()
         update_data["newsletters"] = {"slug": True}
         update_data["token"] = ANY
-        ctms_mock.add.assert_called_with(update_data)
+        braze_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
-    def test_send_fx_confirm(self, get_user_mock, ctms_mock, confirm_mock):
+    def test_send_fx_confirm(self, get_user_mock, braze_mock, confirm_mock):
         """Subscribing to a Fx newsletter should send a Fx confirm email"""
         get_user_mock.return_value = None  # Does not exist yet
         email_id = str(uuid4())
-        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
+        braze_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
             slug="slug",
             title="title",
@@ -298,15 +298,15 @@ class UpsertUserTests(TestCase):
         update_data = data.copy()
         update_data["newsletters"] = {"slug": True}
         update_data["token"] = ANY
-        ctms_mock.add.assert_called_with(update_data)
+        braze_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "fx")
 
-    def test_send_moz_confirm(self, get_user_mock, ctms_mock, confirm_mock):
+    def test_send_moz_confirm(self, get_user_mock, braze_mock, confirm_mock):
         """Subscribing to a Fx and moz newsletters should send a moz confirm email"""
         get_user_mock.return_value = None  # Does not exist yet
         email_id = str(uuid4())
-        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
+        braze_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
             slug="slug",
             title="title",
@@ -335,14 +335,14 @@ class UpsertUserTests(TestCase):
         update_data = data.copy()
         update_data["newsletters"] = {"slug": True, "slug2": True}
         update_data["token"] = ANY
-        ctms_mock.add.assert_called_with(update_data)
+        braze_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
     def test_no_send_confirm_newsletter(
         self,
         get_user_mock,
-        ctms_mock,
+        braze_mock,
         confirm_mock,
     ):
         """
@@ -351,7 +351,7 @@ class UpsertUserTests(TestCase):
         """
         get_user_mock.return_value = None  # Does not exist yet
         email_id = str(uuid4())
-        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
+        braze_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
             slug="slug",
             title="title",
@@ -371,14 +371,14 @@ class UpsertUserTests(TestCase):
         update_data["newsletters"] = {"slug": True}
         update_data["token"] = ANY
         update_data["optin"] = True
-        ctms_mock.add.assert_called_with(update_data)
+        braze_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
         confirm_mock.delay.assert_not_called()
 
     def test_no_send_confirm_user(
         self,
         get_user_mock,
-        ctms_mock,
+        braze_mock,
         confirm_mock,
     ):
         """
@@ -406,13 +406,13 @@ class UpsertUserTests(TestCase):
         upsert_user(SUBSCRIBE, data)
         update_data = data.copy()
         update_data["newsletters"] = {"slug": True}
-        ctms_mock.update.assert_called_with(user_data, update_data)
+        braze_mock.update.assert_called_with(user_data, update_data)
         confirm_mock.delay.assert_not_called()
 
     def test_send_confirm_optin_false_double_opt_in(
         self,
         get_user_mock,
-        ctms_mock,
+        braze_mock,
         confirm_mock,
     ):
         """
@@ -439,13 +439,13 @@ class UpsertUserTests(TestCase):
         upsert_user(SUBSCRIBE, data)
         update_data = data.copy()
         update_data["newsletters"] = {}  # Gets stripped since it's already subscribed to.
-        ctms_mock.update.assert_called_with(user_data, update_data)
+        braze_mock.update.assert_called_with(user_data, update_data)
         confirm_mock.delay.assert_called()
 
     def test_send_confirm_optin_false_not_double_opt_in(
         self,
         get_user_mock,
-        ctms_mock,
+        braze_mock,
         confirm_mock,
     ):
         """
@@ -473,18 +473,18 @@ class UpsertUserTests(TestCase):
         upsert_user(SUBSCRIBE, data)
         update_data = data.copy()
         update_data["newsletters"] = {}  # Gets stripped since it's already subscribed to.
-        ctms_mock.update.assert_called_with(user_data, update_data)
+        braze_mock.update.assert_called_with(user_data, update_data)
         confirm_mock.delay.assert_not_called()
 
     def test_new_subscription_with_ctms_conflict(
         self,
         get_user_mock,
-        ctms_mock,
+        braze_mock,
         confirm_mock,
     ):
         """Test when CTMS returns an error for a new contact"""
         get_user_mock.return_value = None  # Does not exist yet
-        ctms_mock.add.return_value = None  # Conflict on create
+        braze_mock.add.return_value = None  # Conflict on create
         models.Newsletter.objects.create(
             slug="slug",
             title="title",
@@ -503,20 +503,20 @@ class UpsertUserTests(TestCase):
         update_data = data.copy()
         update_data["newsletters"] = {"slug": True}
         update_data["token"] = ANY
-        ctms_mock.add.assert_called_with(update_data)
+        braze_mock.add.assert_called_with(update_data)
         confirm_mock.delay.assert_called_with(self.email, ANY, "en", "moz")
 
     def test_new_user_subscribes_to_mofo_newsletter(
         self,
         get_user_mock,
-        ctms_mock,
+        braze_mock,
         confirm_mock,
     ):
         """Subscribing to a MoFo-relevant newsletter makes the new user
         mofo-relevant."""
         get_user_mock.return_value = None  # Does not exist yet
         email_id = str(uuid4())
-        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
+        braze_mock.add.return_value = {"email": {"email_id": email_id}}
         models.Newsletter.objects.create(
             slug="mozilla-foundation",
             title="The Mozilla Foundation News",
@@ -538,14 +538,14 @@ class UpsertUserTests(TestCase):
         update_data["mofo_relevant"] = True
         update_data["optin"] = True
         update_data["token"] = ANY
-        ctms_mock.add.assert_called_with(update_data)
+        braze_mock.add.assert_called_with(update_data)
         update_data["email_id"] = email_id
         confirm_mock.delay.assert_not_called()
 
     def test_existing_user_subscribes_to_mofo_newsletter(
         self,
         get_user_mock,
-        ctms_mock,
+        braze_mock,
         confirm_mock,
     ):
         """Subscribing to a MoFo-relevant newsletter makes the user mofo-relevant."""
@@ -571,13 +571,13 @@ class UpsertUserTests(TestCase):
         update_data["newsletters"] = {"mozilla-foundation": True}
         update_data["mofo_relevant"] = True
         update_data["optin"] = True
-        ctms_mock.update.assert_called_with(user_data, update_data)
+        braze_mock.update.assert_called_with(user_data, update_data)
         confirm_mock.delay.assert_not_called()
 
     def test_existing_mofo_user_subscribes_to_mofo_newsletter(
         self,
         get_user_mock,
-        ctms_mock,
+        braze_mock,
         confirm_mock,
     ):
         """If a user is already MoFo-relevant, a subscription does not set it again."""
@@ -603,11 +603,11 @@ class UpsertUserTests(TestCase):
         update_data = data.copy()
         update_data["newsletters"] = {"mozilla-foundation": True}
         update_data["optin"] = True
-        ctms_mock.update.assert_called_with(user_data, update_data)
+        braze_mock.update.assert_called_with(user_data, update_data)
         confirm_mock.delay.assert_not_called()
 
     @patch("basket.news.tasks.send_tx_messages")
-    def test_send_transactional(self, braze_mock, get_user_mock, ctms_mock, confirm_mock):
+    def test_send_transactional(self, get_user_mock, braze_mock, _, __):
         """Subscribing to a transactional should send a transactional email"""
         get_user_mock.return_value = None  # Does not exist yet
         data = {
@@ -619,6 +619,6 @@ class UpsertUserTests(TestCase):
         with patch("basket.news.models.BrazeTxEmailMessage.objects.get_tx_message_ids") as get_tx_message_ids:
             get_tx_message_ids.return_value = ["download-foo"]
             upsert_user(SUBSCRIBE, data)
-            braze_mock.assert_called_with("dude@example.com", "en", ["download-foo"])
+            braze_mock.assert_called_with(token=None, email="dude@example.com", extra_fields=["id", "email_id"])
             assert braze_mock.called
-            ctms_mock.update.assert_not_called()
+            braze_mock.update.assert_not_called()
