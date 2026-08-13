@@ -980,15 +980,6 @@ class CTMS:
 
 def ctms_session():
     """Return a CTMSSession configured from Django settings."""
-    # if settings.CTMS_ENABLED:
-    #    return CTMSSession(
-    #        api_url=settings.CTMS_URL,
-    #        client_id=settings.CTMS_CLIENT_ID,
-    #        client_secret=settings.CTMS_CLIENT_SECRET,
-    #    )
-    # else:
-    #    logger.warning("CTMS not enabled.")
-    #    return None
 
 
 def ctms_interface():

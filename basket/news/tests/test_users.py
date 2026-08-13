@@ -199,6 +199,7 @@ class TestLookupUser(TestCase):
             rsp.json(),
             {
                 "email": "hisdudeness@example.com",
+                "fxa_id": "the-dude-abides",
                 "has_fxa": True,
                 "status": "ok",
             },

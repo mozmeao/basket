@@ -693,7 +693,7 @@ def lookup_user(request):
             token=token,
             email=email,
             masked=not authorized,
-            omit_extra_braze_fields=True,
+            omit_extra_braze_fields=not authorized,
         )
     except NewsletterException as e:
         return newsletter_exception_response(e)

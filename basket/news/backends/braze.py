@@ -391,6 +391,8 @@ class Braze:
         @param fxa_id: external ID from FxA
         @return: dict, or None if not found
         """
+        if not self.interface.active:
+            raise BrazeNotConfigured()
 
         user_response = self.interface.export_users(
             email,

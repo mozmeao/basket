@@ -66,7 +66,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 # CACHE_URL and RQ_URL are derived from REDIS_URL.
 REDIS_URL = config("REDIS_URL", default="")
-RQ_URL = None
 if REDIS_URL:
     REDIS_URL = REDIS_URL.rstrip("/0")
     # Use Redis for cache and rq.
