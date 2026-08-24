@@ -469,7 +469,7 @@ class CommonVoiceGoalsTests(TestCase):
             "email": "dude@example.com",
             "token": ANY,
             "source_url": "https://voice.mozilla.org",
-            "newsletters": [settings.COMMON_VOICE_NEWSLETTER],
+            "newsletters": {settings.COMMON_VOICE_NEWSLETTER: True},
             "cv_first_contribution_date": "2018-06-27T14:56:58Z",
             "cv_last_active_date": "2019-07-11T10:28:32Z",
             "cv_two_day_streak": False,
@@ -491,7 +491,7 @@ class CommonVoiceGoalsTests(TestCase):
         assert orig_data == data
         update_data = {
             "source_url": "https://voice.mozilla.org",
-            "newsletters": [settings.COMMON_VOICE_NEWSLETTER],
+            "newsletters": {settings.COMMON_VOICE_NEWSLETTER: True},
             "cv_first_contribution_date": "2018-06-27T14:56:58Z",
             "cv_last_active_date": "2019-07-11T10:28:32Z",
             "cv_two_day_streak": False,

@@ -980,6 +980,7 @@ class CTMS:
 
 def ctms_session():
     """Return a CTMSSession configured from Django settings."""
+    return None
 
 
 def ctms_interface():

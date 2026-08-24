@@ -520,7 +520,7 @@ def record_common_voice_update(data):
     user_data = get_user_data(email=email, extra_fields=["id", "email_id"])
     new_data = {
         "source_url": "https://voice.mozilla.org",
-        "newsletters": [settings.COMMON_VOICE_NEWSLETTER],
+        "newsletters": {settings.COMMON_VOICE_NEWSLETTER: True},
     }
     for k, v in dcopy.items():
         new_data["cv_" + k] = v

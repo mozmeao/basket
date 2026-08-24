@@ -8,7 +8,7 @@ import requests_mock
 from freezegun import freeze_time
 
 from basket.news.backends import braze
-from basket.news.backends.braze import Braze, optin_to_boolean
+from basket.news.backends.braze import Braze, BrazeNotConfigured, optin_to_boolean
 
 
 @pytest.fixture
@@ -16,11 +16,45 @@ def braze_client():
     return braze.BrazeInterface("http://test.com", "test_api_key")
 
 
+@pytest.fixture
+def unconfigured_braze_client():
+    with pytest.warns(UserWarning, match="Braze API key is not configured"):
+        return braze.BrazeInterface("http://test.com", "")
+
+
 def test_braze_client_no_api_key():
     with pytest.warns(UserWarning, match="Braze API key is not configured"):
         braze_client = braze.BrazeInterface("http://test.com", "")
     assert braze_client.active is False
     assert braze_client.track_user("test@test.com") is None
+
+
+def test_get_raises_when_not_configured(unconfigured_braze_client):
+    braze_instance = Braze(unconfigured_braze_client)
+
+    with pytest.raises(BrazeNotConfigured):
+        braze_instance.get(email="test@example.com")
+
+
+def test_add_raises_when_not_configured(unconfigured_braze_client):
+    braze_instance = Braze(unconfigured_braze_client)
+
+    with pytest.raises(BrazeNotConfigured):
+        braze_instance.add({"email": "test@example.com", "email_id": "123"})
+
+
+def test_update_raises_when_not_configured(unconfigured_braze_client):
+    braze_instance = Braze(unconfigured_braze_client)
+
+    with pytest.raises(BrazeNotConfigured):
+        braze_instance.update({"email_id": "123"}, {"first_name": "Test"})
+
+
+def test_delete_raises_when_not_configured(unconfigured_braze_client):
+    braze_instance = Braze(unconfigured_braze_client)
+
+    with pytest.raises(BrazeNotConfigured):
+        braze_instance.delete("test@example.com")
 
 
 def test_braze_client_no_base_url():

@@ -445,6 +445,9 @@ class Braze:
 
         @param data: user data to add as a new user.
         """
+        if not self.interface.active:
+            raise BrazeNotConfigured()
+
         braze_user_data = self.to_vendor(None, data)
         external_id = braze_user_data["attributes"][0]["external_id"]
         self.interface.save_user(braze_user_data)
@@ -474,6 +477,9 @@ class Braze:
         @param existing_data: current user record
         @param update_data: dict of new data
         """
+        if not self.interface.active:
+            raise BrazeNotConfigured()
+
         braze_user_data = self.to_vendor(existing_data, update_data)
         external_id = braze_user_data["attributes"][0]["external_id"]
         self.interface.save_user(braze_user_data)
@@ -519,6 +525,9 @@ class Braze:
         @return: deleted user data if successful
         @raises: BrazeUserNotFoundByEmailError
         """
+        if not self.interface.active:
+            raise BrazeNotConfigured()
+
         data = self.interface.export_users(email=email, fields_to_export=["external_id", "user_aliases"])
         if not data["users"]:
             raise BrazeUserNotFoundByEmailError

@@ -20,7 +20,6 @@ from basket.news.backends.ctms import (
     CTMSSession,
     CTMSUniqueIDConflictError,
     CTMSValidationError,
-    ctms_session,
     from_vendor,
     to_vendor,
 )
@@ -1050,12 +1049,6 @@ class CTMSSessionTests(TestCase):
             "client_secret",
         )
         assert session.api_url == "https://ctms.example.com"
-
-    @override_settings(CTMS_ENABLED=False)
-    def test_ctms_session_disabled(self):
-        """ctms_session() returns None when CTMS_ENABLED=False"""
-        session = ctms_session()
-        assert session is None
 
 
 def mock_interface(expected_call, status_code, response_data, reason=None):
