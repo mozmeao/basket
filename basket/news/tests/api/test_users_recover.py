@@ -7,7 +7,7 @@ import pytest
 
 from basket import errors
 from basket.news.schemas import ErrorSchema, OkSchema
-from basket.news.tests.api import _TestAPIwCTMSBase
+from basket.news.tests.api import _TestAPIwBrazeBase
 from basket.news.utils import (
     MSG_USER_NOT_FOUND,
     email_block_list_cache,
@@ -15,7 +15,7 @@ from basket.news.utils import (
 
 
 @pytest.mark.django_db
-class TestUsersRecoverAPI(_TestAPIwCTMSBase):
+class TestUsersRecoverAPI(_TestAPIwBrazeBase):
     def setup_method(self, method):
         super().setup_method(method)
         self.url = reverse("api.v1:users.recover")
@@ -50,9 +50,9 @@ class TestUsersRecoverAPI(_TestAPIwCTMSBase):
             assert mock_send.called is False
 
     def test_good_email(self):
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
             with patch("basket.news.tasks.send_recovery_message.delay", autospec=True) as mock_send:
-                mock_ctms.get.return_value = self._user_data()
+                braze_mock.get.return_value = self._user_data()
                 resp = self.client.post(self.url, {"email": self.email}, content_type="application/json")
                 assert resp.status_code == 200, resp.content
                 data = resp.json()
@@ -71,8 +71,8 @@ class TestUsersRecoverAPI(_TestAPIwCTMSBase):
         assert "value is not a valid email address" in data["desc"]
 
     def test_no_user_data(self):
-        with patch("basket.news.utils.ctms", spec_set=["get"]) as mock_ctms:
-            mock_ctms.get.return_value = None
+        with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
+            braze_mock.get.return_value = None
             resp = self.client.post(self.url, {"email": self.email}, content_type="application/json")
             assert resp.status_code == 404
             data = resp.json()

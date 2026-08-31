@@ -14,8 +14,8 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fi
 from basket import metrics
 from basket.base.decorators import rq_task
 from basket.base.utils import is_valid_uuid
-from basket.news.backends.ctms import ctms, process_country, process_lang
-from basket.news.newsletters import newsletter_obj, slug_to_vendor_id, vendor_id_to_slug
+from basket.news.country_codes import SFDC_COUNTRIES_LIST, convert_country_3_to_2
+from basket.news.newsletters import is_supported_newsletter_language, newsletter_obj, slug_to_vendor_id, vendor_id_to_slug
 
 log = logging.getLogger(__name__)
 
@@ -91,6 +91,13 @@ class BrazeEndpoint(Enum):
     SUBSCRIPTION_USER_STATUS = "/subscription/user/status"
     USERS_ADD_ALIAS = "/users/alias/new"
     USERS_IDENTIFY = "/users/identify"
+
+
+class BrazeNotConfigured(Exception):
+    """Braze is not configured."""
+
+    def __str__(self):
+        return "Braze is not configured"
 
 
 class BrazeInterface:
@@ -384,6 +391,8 @@ class Braze:
         @param fxa_id: external ID from FxA
         @return: dict, or None if not found
         """
+        if not self.interface.active:
+            raise BrazeNotConfigured()
 
         user_response = self.interface.export_users(
             email,
@@ -427,27 +436,6 @@ class Braze:
 
             return self.from_vendor(user_data, subscriptions)
 
-        # If we only have an outdated token or the Braze fxa_id migrations haven't been
-        # completed we won't be able to look up the user. We add a temporary shim here which
-        # will fetch the email from CTMS. This shim can be disabled/removed after the migration
-        # is complete.
-        elif not email and (fxa_id or token) and settings.BRAZE_CTMS_SHIM_ENABLE:
-            lookup_type = "fxa_id" if fxa_id else "token"
-            try:
-                ctms_response = ctms.get(token=token, fxa_id=fxa_id)
-                if ctms_response:
-                    ctms_email = ctms_response.get("email")
-                    if ctms_email:
-                        result = self.get(email=ctms_email)
-                        if result:
-                            metrics.incr("news.backends.braze.get", tags=[f"status:not_found_ctms_resolved_braze_found_by_{lookup_type}"])
-                        else:
-                            metrics.incr("news.backends.braze.get", tags=[f"status:not_found_ctms_resolved_braze_not_found_by_{lookup_type}"])
-                        return result
-                metrics.incr("news.backends.braze.get", tags=["status:not_found_ctms_not_resolved"])
-            except Exception:
-                metrics.incr("news.backends.braze.get", tags=["status:not_found_ctms_not_resolved"])
-                log.warn("Unable to fetch email from CTMS in braze.get shim")
         else:
             metrics.incr("news.backends.braze.get", tags=["status:not_found"])
 
@@ -457,6 +445,9 @@ class Braze:
 
         @param data: user data to add as a new user.
         """
+        if not self.interface.active:
+            raise BrazeNotConfigured()
+
         braze_user_data = self.to_vendor(None, data)
         external_id = braze_user_data["attributes"][0]["external_id"]
         self.interface.save_user(braze_user_data)
@@ -486,6 +477,9 @@ class Braze:
         @param existing_data: current user record
         @param update_data: dict of new data
         """
+        if not self.interface.active:
+            raise BrazeNotConfigured()
+
         braze_user_data = self.to_vendor(existing_data, update_data)
         external_id = braze_user_data["attributes"][0]["external_id"]
         self.interface.save_user(braze_user_data)
@@ -531,6 +525,9 @@ class Braze:
         @return: deleted user data if successful
         @raises: BrazeUserNotFoundByEmailError
         """
+        if not self.interface.active:
+            raise BrazeNotConfigured()
+
         data = self.interface.export_users(email=email, fields_to_export=["external_id", "user_aliases"])
         if not data["users"]:
             raise BrazeUserNotFoundByEmailError
@@ -690,6 +687,32 @@ def process_braze_country(country):
         return process_country(country)
     except ValueError:
         return None
+
+
+def process_country(raw_country):
+    """Convert to 2-letter country, and throw out unknown countries."""
+    if raw_country is not None:
+        country = raw_country.strip().lower()
+        if len(country) == 3:
+            new_country = convert_country_3_to_2(country)
+            if new_country:
+                country = new_country
+
+        if country not in SFDC_COUNTRIES_LIST:
+            raise ValueError(f"{country} not in SFDC_COUNTRIES_LIST")
+        return country
+
+
+def process_lang(raw_lang):
+    """Ensure language is supported."""
+    if raw_lang is not None:
+        lang = raw_lang.strip()
+        if lang.lower() in settings.EXTRA_SUPPORTED_LANGS:
+            return lang
+        elif is_supported_newsletter_language(lang):
+            return lang[:2].lower()
+    # Use the default language (English) for unsupported languages
+    return "en"
 
 
 braze_tx = Braze(BrazeInterface(settings.BRAZE_BASE_API_URL, settings.BRAZE_API_KEY))

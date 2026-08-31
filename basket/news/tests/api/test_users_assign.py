@@ -33,8 +33,7 @@ class TestUsersAssignAPI(_TestAPIBase):
             headers=self.auth,
         )
 
-    def test_valid_request_enqueues_braze_task(self, settings):
-        settings.BRAZE_ONLY_WRITE_ENABLE = True
+    def test_valid_request_enqueues_braze_task(self):
         token = str(uuid.uuid4())
         with patch("basket.news.tasks.braze_assign_external_id.delay", autospec=True) as mock_task:
             resp = self.client.post(
@@ -46,16 +45,6 @@ class TestUsersAssignAPI(_TestAPIBase):
             assert resp.status_code == 200, resp.content
             self.validate_schema(resp.json(), OkSchema)
             mock_task.assert_called_once_with({"email": None, "basket_token": token, "fxa_id": None})
-
-    def test_noop_when_braze_not_write_backend(self, settings):
-        # Backend-gated: with no Braze write flag set, nothing is dispatched but the call succeeds.
-        settings.BRAZE_PARALLEL_WRITE_ENABLE = False
-        settings.BRAZE_ONLY_WRITE_ENABLE = False
-        with patch("basket.news.tasks.braze_assign_external_id.delay", autospec=True) as mock_task:
-            resp = self.valid_request()
-            assert resp.status_code == 200, resp.content
-            self.validate_schema(resp.json(), OkSchema)
-            mock_task.assert_not_called()
 
     def test_missing_auth_is_401(self):
         with patch("basket.news.tasks.braze_assign_external_id.delay", autospec=True) as mock_task:
@@ -90,7 +79,6 @@ class TestUsersAssignAPI(_TestAPIBase):
     def test_blank_email_with_token_is_accepted(self, settings):
         # Braze Liquid may send an empty email alongside a real identifier; the blank email
         # is coerced to None (not rejected by EmailStr) and the token is used.
-        settings.BRAZE_ONLY_WRITE_ENABLE = True
         token = str(uuid.uuid4())
         with patch("basket.news.tasks.braze_assign_external_id.delay", autospec=True) as mock_task:
             resp = self.client.post(
