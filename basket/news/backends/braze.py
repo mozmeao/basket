@@ -249,6 +249,7 @@ class BrazeInterface:
 
         if external_id:
             data["external_ids"] = [external_id]
+            data["user_aliases"].append({"alias_name": external_id, "alias_label": "basket_token"})
 
         if fields_to_export:
             data["fields_to_export"] = fields_to_export
