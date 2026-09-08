@@ -250,13 +250,16 @@ class BrazeInterface:
         if external_id:
             data["external_ids"] = [external_id]
             data["user_aliases"].append({"alias_name": external_id, "alias_label": "basket_token"})
-            data["user_aliases"].append({"alias_name": external_id.replace("-", ""), "alias_label": "fxa_id"})
 
         if fields_to_export:
             data["fields_to_export"] = fields_to_export
 
         if fxa_id:
             data["user_aliases"].append({"alias_name": fxa_id, "alias_label": "fxa_id"})
+        elif external_id:
+            # if we're trying to look up a user based on an fxa_id a hyphenated UUID is given
+            # Braze stores unhyphenated UUIDs so we need to handle that here
+            data["user_aliases"].append({"alias_name": external_id.replace("-", ""), "alias_label": "fxa_id"})
 
         return self._request(BrazeEndpoint.USERS_EXPORT_IDS, data)
 

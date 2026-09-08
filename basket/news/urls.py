@@ -24,7 +24,9 @@ class UUIDConverter:
         return uuid.UUID(value)
 
     def to_url(self, value):
-        return str(uuid.UUID(str(value)))
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return str(uuid.UUID(value))
 
 
 register_converter(UUIDConverter, "uuidconverter")
