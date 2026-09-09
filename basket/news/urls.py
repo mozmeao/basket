@@ -1,6 +1,4 @@
-import uuid
-
-from django.urls import path, register_converter
+from django.urls import path
 
 from .views import (
     common_voice_goals,
@@ -16,28 +14,13 @@ from .views import (
     user_meta,
 )
 
-
-class UUIDConverter:
-    regex = r"[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}"
-
-    def to_python(self, value):
-        return uuid.UUID(value)
-
-    def to_url(self, value):
-        if isinstance(value, uuid.UUID):
-            return str(value)
-        return str(uuid.UUID(value))
-
-
-register_converter(UUIDConverter, "uuidconverter")
-
 urlpatterns = (
     path("common-voice-goals/", common_voice_goals),
     path("subscribe/", subscribe, name="subscribe"),
-    path("unsubscribe/<uuidconverter:token>/", unsubscribe, name="unsubscribe"),
-    path("user/<uuidconverter:token>/", user, name="user"),
-    path("user-meta/<uuidconverter:token>/", user_meta),
-    path("confirm/<uuidconverter:token>/", confirm),
+    path("unsubscribe/<uuid:token>/", unsubscribe, name="unsubscribe"),
+    path("user/<uuid:token>/", user, name="user"),
+    path("user-meta/<uuid:token>/", user_meta),
+    path("confirm/<uuid:token>/", confirm),
     path("lookup-user/", lookup_user, name="lookup_user"),
     path("recover/", send_recovery_message, name="send_recovery_message"),
     path("custom_unsub_reason/", custom_unsub_reason),
