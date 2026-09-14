@@ -23,6 +23,11 @@ from basket.news.backends.braze import (
     braze,
     braze_tx,
 )
+from basket.news.backends.ctms import (
+    CTMSNotFoundByAltIDError,
+    CTMSUniqueIDConflictError,
+    ctms,
+)
 from basket.news.models import (
     BrazeTxEmailMessage,
     Newsletter,
@@ -55,6 +60,7 @@ def fxa_source_url(metrics):
 @rq_task
 def fxa_email_changed(
     data,
+    use_braze_backend=False,
     pre_generated_token=None,
     **kwargs,
 ):
@@ -68,14 +74,20 @@ def fxa_email_changed(
         return
 
     # Update backend
-    user_data = get_user_data(fxa_id=fxa_id, extra_fields=["id", "email_id"])
+    user_data = get_user_data(fxa_id=fxa_id, extra_fields=["id", "email_id"], use_braze_backend=use_braze_backend)
     if user_data:
-        braze.update(user_data, {"fxa_primary_email": email})
+        if use_braze_backend:
+            braze.update(user_data, {"fxa_primary_email": email})
+        else:
+            ctms.update(user_data, {"fxa_primary_email": email})
     else:
         # FxA record not found, try email
-        user_data = get_user_data(email=email, extra_fields=["id", "email_id"])
+        user_data = get_user_data(email=email, extra_fields=["id", "email_id"], use_braze_backend=use_braze_backend)
         if user_data:
-            braze.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
+            if use_braze_backend:
+                braze.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
+            else:
+                ctms.update(user_data, {"fxa_id": fxa_id, "fxa_primary_email": email})
         else:
             # No matching record for Email or FxA ID. Create one.
             data = {
@@ -86,7 +98,11 @@ def fxa_email_changed(
             }
 
             backend_data = data.copy()
-            contact = braze.add(backend_data)
+            contact = None
+            if use_braze_backend:
+                contact = braze.add(backend_data)
+            else:
+                contact = ctms.add(backend_data)
             if contact:
                 data["email_id"] = contact["email"]["email_id"]
             metrics.incr("news.tasks.fxa_email_changed.user_not_found")
@@ -94,34 +110,38 @@ def fxa_email_changed(
     cache.set(cache_key, ts, 7200)  # 2 hr
 
 
-def set_user_fxa_id(user_data, fxa_id):
+def set_user_fxa_id(user_data, fxa_id, use_braze_backend=False):
     """Write the fxa_id alias for an existing user who doesn't have one yet."""
-    braze.update(user_data, {"fxa_id": fxa_id})
+    if use_braze_backend:
+        braze.update(user_data, {"fxa_id": fxa_id})
+    else:
+        ctms.update(user_data, {"fxa_id": fxa_id})
 
 
-def fxa_direct_update_contact(
-    fxa_id,
-    data,
-):
+def fxa_direct_update_contact(fxa_id, data, use_braze_backend=False):
     """Set some small data for a contact with an FxA ID
 
     Ignore if contact with FxA ID can't be found
     """
     try:
-        braze.update_by_fxa_id(fxa_id, data)
-    except BrazeUserNotFoundByFxaIdError:
+        if use_braze_backend:
+            braze.update_by_fxa_id(fxa_id, data)
+        else:
+            ctms.update_by_alt_id("fxa_id", fxa_id, data)
+    except (CTMSNotFoundByAltIDError, BrazeUserNotFoundByFxaIdError):
         # No associated record found, skip this update.
         pass
 
 
 @rq_task
-def fxa_delete(data, **kwargs):
-    fxa_direct_update_contact(data["uid"], {"fxa_deleted": True})
+def fxa_delete(data, use_braze_backend=False, **kwargs):
+    fxa_direct_update_contact(data["uid"], {"fxa_deleted": True}, use_braze_backend)
 
 
 @rq_task
 def fxa_verified(
     data,
+    use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
 ):
@@ -155,7 +175,7 @@ def fxa_verified(
     newsletters.append(settings.FXA_REGISTER_NEWSLETTER)
     new_data["newsletters"] = newsletters
 
-    user_data = get_fxa_user_data(fxa_id, email)
+    user_data = get_fxa_user_data(fxa_id, email, use_braze_backend)
     # don't overwrite the user's language if already set
     if not (user_data and user_data.get("lang")):
         new_data["lang"] = lang
@@ -164,6 +184,7 @@ def fxa_verified(
         SUBSCRIBE,
         new_data,
         user_data,
+        use_braze_backend=use_braze_backend,
         should_send_tx_messages=should_send_tx_messages,
         pre_generated_token=pre_generated_token,
     )
@@ -172,6 +193,7 @@ def fxa_verified(
 @rq_task
 def fxa_newsletters_update(
     data,
+    use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
 ):
@@ -190,6 +212,7 @@ def fxa_newsletters_update(
         SUBSCRIBE,
         new_data,
         get_fxa_user_data(fxa_id, email),
+        use_braze_backend=use_braze_backend,
         should_send_tx_messages=should_send_tx_messages,
         pre_generated_token=pre_generated_token,
     )
@@ -198,6 +221,7 @@ def fxa_newsletters_update(
 @rq_task
 def fxa_login(
     data,
+    use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
 ):
@@ -217,21 +241,29 @@ def fxa_login(
                 "source_url": fxa_source_url(metrics_context),
                 "country": data.get("countryCode", ""),
             },
+            use_braze_backend=use_braze_backend,
             should_send_tx_messages=should_send_tx_messages,
             pre_generated_token=pre_generated_token,
         )
 
 
 @rq_task
-def update_user_meta(token, data):
+def update_user_meta(token, data, use_braze_backend=False):
     """Update a user's metadata, not newsletters"""
-    braze.update_by_token(token, data)
+    if use_braze_backend:
+        braze.update_by_token(token, data)
+    else:
+        try:
+            ctms.update_by_alt_id("token", token, data)
+        except CTMSNotFoundByAltIDError:
+            raise
 
 
 @rq_task
 def upsert_user(
     api_call_type,
     data,
+    use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
 ):
@@ -250,7 +282,9 @@ def upsert_user(
             token=data.get("token"),
             email=data.get("email"),
             extra_fields=["id", "email_id"],
+            use_braze_backend=use_braze_backend,
         ),
+        use_braze_backend=use_braze_backend,
         should_send_tx_messages=should_send_tx_messages,
         pre_generated_token=pre_generated_token,
     )
@@ -260,6 +294,7 @@ def upsert_contact(
     api_call_type,
     data,
     user_data,
+    use_braze_backend=False,
     should_send_tx_messages=True,
     pre_generated_token=None,
 ):
@@ -313,7 +348,7 @@ def upsert_contact(
         if not newsletters:
             # Only transactional messages found, nothing else to do.
             return None, None
-    elif update_data.get("optout"):
+    elif use_braze_backend and update_data.get("optout"):
         # Unsubscribe from all current Braze newsletters if user is opting out
         newsletters = cur_newsletters if cur_newsletters and api_call_type == UNSUBSCRIBE else []
 
@@ -360,9 +395,15 @@ def upsert_contact(
         token = update_data["token"] = pre_generated_token or generate_token()
 
         if settings.MAINTENANCE_MODE:
-            braze_add_or_update.delay(update_data)
+            if use_braze_backend:
+                braze_add_or_update.delay(update_data)
+            else:
+                ctms_add_or_update.delay(update_data)
         else:
-            braze.add(update_data)
+            if use_braze_backend:
+                braze.add(update_data)
+            else:
+                ctms.add(update_data)
 
         if send_confirm and settings.SEND_CONFIRM_MESSAGES and should_send_tx_messages:
             send_confirm_message.delay(
@@ -389,9 +430,15 @@ def upsert_contact(
         token = update_data["token"] = pre_generated_token or generate_token()
 
     if settings.MAINTENANCE_MODE:
-        braze_add_or_update.delay(update_data, user_data)
+        if use_braze_backend:
+            braze_add_or_update.delay(update_data, user_data)
+        else:
+            ctms_add_or_update.delay(update_data, user_data)
     else:
-        braze.update(user_data, update_data)
+        if use_braze_backend:
+            braze.update(user_data, update_data)
+        else:
+            ctms.update(user_data, update_data)
 
     # In the rare case the user hasn't confirmed their email and is subscribing to the same newsletter, send the confirmation again.
     # We catch this by checking if the user `optin` is `False` and if the `update_data["newsletters"]` is empty.
@@ -405,7 +452,12 @@ def upsert_contact(
 
     if send_confirm and settings.SEND_CONFIRM_MESSAGES and should_send_tx_messages:
         if not data.get("email"):
-            user = braze.get(token=data["token"])
+            user = None
+            if use_braze_backend:
+                user = braze.get(token=data["token"])
+            else:
+                user = ctms.get(token=data["token"])
+
             if user:
                 data["email"] = user["email"]
 
@@ -425,6 +477,27 @@ def braze_add_or_update(update_data, user_data=None):
         braze.add(update_data)
     else:
         braze.update(user_data, update_data)
+
+
+@rq_task
+def ctms_add_or_update(update_data, user_data=None):
+    """
+    Add or update contact data when maintainance mode is completed.
+    """
+    if user_data:
+        ctms.update(user_data, update_data)
+        return
+
+    try:
+        ctms.add(update_data)
+    except CTMSUniqueIDConflictError:
+        # Try as an update
+        user_data = get_user_data(email=update_data["email"], extra_fields=["email_id"])
+        if not user_data:
+            raise
+        update_data.pop("token", None)
+        update_data.pop("email_id", None)
+        ctms.update(user_data, update_data)
 
 
 @rq_task
@@ -457,7 +530,7 @@ def send_confirm_message(email, token, lang, message_type):
 
 
 @rq_task
-def confirm_user(token, extra_metrics_tags=None):
+def confirm_user(token, use_braze_backend=False, extra_metrics_tags=None):
     """
     Confirm any pending subscriptions for the user with this token.
 
@@ -477,6 +550,7 @@ def confirm_user(token, extra_metrics_tags=None):
     user_data = get_user_data(
         token=token,
         extra_fields=["email_id"],
+        use_braze_backend=use_braze_backend,
     )
 
     if user_data is None:
@@ -488,17 +562,23 @@ def confirm_user(token, extra_metrics_tags=None):
         return
 
     if not ("email" in user_data and user_data["email"]):
-        raise BasketError("token has no email in Braze")
+        raise BasketError(f"token has no email in {'Braze' if use_braze_backend else 'CTMS'}")
 
-    braze.update(user_data, {"optin": True, "optout": False})
+    if use_braze_backend:
+        braze.update(user_data, {"optin": True, "optout": False})
+    else:
+        ctms.update(user_data, {"optin": True})
 
 
 @rq_task
-def update_custom_unsub(token, reason):
+def update_custom_unsub(token, reason, use_braze_backend=False):
     """Record a user's custom unsubscribe reason."""
     try:
-        braze.update_by_token(token, {"unsub_reason": reason})
-    except BrazeUserNotFoundByTokenError:
+        if use_braze_backend:
+            braze.update_by_token(token, {"unsub_reason": reason})
+        else:
+            ctms.update_by_alt_id("token", token, {"reason": reason})
+    except (CTMSNotFoundByAltIDError, BrazeUserNotFoundByTokenError):
         # No record found for that token, nothing to do.
         pass
 
@@ -520,16 +600,16 @@ def record_common_voice_update(data):
     user_data = get_user_data(email=email, extra_fields=["id", "email_id"])
     new_data = {
         "source_url": "https://voice.mozilla.org",
-        "newsletters": {settings.COMMON_VOICE_NEWSLETTER: True},
+        "newsletters": [settings.COMMON_VOICE_NEWSLETTER],
     }
     for k, v in dcopy.items():
         new_data["cv_" + k] = v
 
     if user_data:
-        braze.update(user_data, new_data)
+        ctms.update(user_data, new_data)
     else:
         new_data.update({"email": email, "token": generate_token()})
-        braze.add(new_data)
+        ctms.add(new_data)
 
 
 # Braze client errors that won't succeed on retry (unlike rate-limit / 5xx / connection
@@ -616,7 +696,7 @@ def braze_assign_external_id(data):
         metrics.incr("news.tasks.braze_assign_external_id", tags=["status:braze_client_error"])
 
 
-def get_fxa_user_data(fxa_id, email):
+def get_fxa_user_data(fxa_id, email, use_braze_backend=False):
     """
     Return a user data dict, just like `get_user_data` below, but ensure we have
     a good FxA contact
@@ -629,15 +709,18 @@ def get_fxa_user_data(fxa_id, email):
     """
     user_data = None
     # try getting user data with the fxa_id first
-    user_data_fxa = get_user_data(fxa_id=fxa_id, extra_fields=["id", "email_id"])
+    user_data_fxa = get_user_data(fxa_id=fxa_id, extra_fields=["id", "email_id"], use_braze_backend=use_braze_backend)
     if user_data_fxa:
         user_data = user_data_fxa
         # If email doesn't match, update FxA primary email field with the new email.
         if user_data_fxa["email"] != email:
-            braze.update(user_data_fxa, {"fxa_primary_email": email})
+            if use_braze_backend:
+                braze.update(user_data_fxa, {"fxa_primary_email": email})
+            else:
+                ctms.update(user_data_fxa, {"fxa_primary_email": email})
 
     # if we still don't have user data try again with email this time
     if not user_data:
-        user_data = get_user_data(email=email, extra_fields=["id", "email_id"])
+        user_data = get_user_data(email=email, extra_fields=["id", "email_id"], use_braze_backend=use_braze_backend)
 
     return user_data
