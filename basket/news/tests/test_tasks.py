@@ -7,6 +7,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 
 from basket.news.backends.braze import BRAZE_OPTIMAL_DELAY
+from basket.news.backends.ctms import CTMSNotFoundByAltIDError
 from basket.news.models import BrazeTxEmailMessage, FailedTask
 from basket.news.tasks import (
     SUBSCRIBE,
@@ -243,11 +244,11 @@ class FxALoginTests(TestCase):
         upsert_mock.delay.assert_not_called()
 
 
-@patch("basket.news.tasks.braze", spec_set=["update", "add"])
+@patch("basket.news.tasks.ctms", spec_set=["update", "add"])
 @patch("basket.news.tasks.get_user_data")
 @patch("basket.news.tasks.cache")
 class FxAEmailChangedTests(TestCase):
-    def test_timestamps_older_message(self, cache_mock, gud_mock, braze_mock):
+    def test_timestamps_older_message(self, cache_mock, gud_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -257,9 +258,9 @@ class FxAEmailChangedTests(TestCase):
         # ts higher in cache, should no-op
         gud_mock.return_value = {"id": "1234"}
         fxa_email_changed(data)
-        braze_mock.update.assert_not_called()
+        ctms_mock.update.assert_not_called()
 
-    def test_timestamps_newer_message(self, cache_mock, gud_mock, braze_mock):
+    def test_timestamps_newer_message(self, cache_mock, gud_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -269,12 +270,12 @@ class FxAEmailChangedTests(TestCase):
         gud_mock.return_value = {"id": "1234"}
         # ts higher in message, do the things
         fxa_email_changed(data)
-        braze_mock.update.assert_called_once_with(
+        ctms_mock.update.assert_called_once_with(
             ANY,
             {"fxa_primary_email": data["email"]},
         )
 
-    def test_timestamps_nothin_cached(self, cache_mock, gud_mock, braze_mock):
+    def test_timestamps_nothin_cached(self, cache_mock, gud_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -283,9 +284,9 @@ class FxAEmailChangedTests(TestCase):
         cache_mock.get.return_value = 0
         gud_mock.return_value = {"id": "1234"}
         fxa_email_changed(data)
-        braze_mock.update.assert_called_with(ANY, {"fxa_primary_email": data["email"]})
+        ctms_mock.update.assert_called_with(ANY, {"fxa_primary_email": data["email"]})
 
-    def test_fxa_id_not_found(self, cache_mock, gud_mock, braze_mock):
+    def test_fxa_id_not_found(self, cache_mock, gud_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -296,16 +297,16 @@ class FxAEmailChangedTests(TestCase):
         fxa_email_changed(data)
         gud_mock.assert_has_calls(
             [
-                call(fxa_id=data["uid"], extra_fields=["id", "email_id"]),
-                call(email=data["email"], extra_fields=["id", "email_id"]),
+                call(fxa_id=data["uid"], extra_fields=["id", "email_id"], use_braze_backend=False),
+                call(email=data["email"], extra_fields=["id", "email_id"], use_braze_backend=False),
             ],
         )
-        braze_mock.update.assert_called_with(
+        ctms_mock.update.assert_called_with(
             {"id": "1234"},
             {"fxa_id": data["uid"], "fxa_primary_email": data["email"]},
         )
 
-    def test_fxa_id_nor_email_found(self, cache_mock, gud_mock, braze_mock):
+    def test_fxa_id_nor_email_found(self, cache_mock, gud_mock, ctms_mock):
         data = {
             "ts": 1234.567,
             "uid": "the-fxa-id-for-el-dudarino",
@@ -314,16 +315,16 @@ class FxAEmailChangedTests(TestCase):
         cache_mock.get.return_value = 0
         gud_mock.return_value = None
         email_id = str(uuid4())
-        braze_mock.add.return_value = {"email": {"email_id": email_id}}
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         fxa_email_changed(data)
         gud_mock.assert_has_calls(
             [
-                call(fxa_id=data["uid"], extra_fields=["id", "email_id"]),
-                call(email=data["email"], extra_fields=["id", "email_id"]),
+                call(fxa_id=data["uid"], extra_fields=["id", "email_id"], use_braze_backend=False),
+                call(email=data["email"], extra_fields=["id", "email_id"], use_braze_backend=False),
             ],
         )
-        braze_mock.update.assert_not_called()
-        braze_mock.add.assert_called_with(
+        ctms_mock.update.assert_not_called()
+        ctms_mock.add.assert_called_with(
             {
                 "email": data["email"],
                 "token": ANY,
@@ -336,7 +337,7 @@ class FxAEmailChangedTests(TestCase):
         self,
         cache_mock,
         gud_mock,
-        braze_mock,
+        ctms_mock,
     ):
         data = {
             "ts": 1234.567,
@@ -345,16 +346,16 @@ class FxAEmailChangedTests(TestCase):
         }
         cache_mock.get.return_value = 0
         gud_mock.return_value = None
-        braze_mock.add.return_value = None
+        ctms_mock.add.return_value = None
         fxa_email_changed(data)
         gud_mock.assert_has_calls(
             [
-                call(fxa_id=data["uid"], extra_fields=["id", "email_id"]),
-                call(email=data["email"], extra_fields=["id", "email_id"]),
+                call(fxa_id=data["uid"], extra_fields=["id", "email_id"], use_braze_backend=False),
+                call(email=data["email"], extra_fields=["id", "email_id"], use_braze_backend=False),
             ],
         )
-        braze_mock.update.assert_not_called()
-        braze_mock.add.assert_called_with(
+        ctms_mock.update.assert_not_called()
+        ctms_mock.add.assert_called_with(
             {
                 "email": data["email"],
                 "token": ANY,
@@ -363,7 +364,8 @@ class FxAEmailChangedTests(TestCase):
             },
         )
 
-    def test_without_pre_generated_token(self, cache_mock, gud_mock, braze_mock):
+    @patch("basket.news.tasks.braze")
+    def test_without_pre_generated_token(self, braze_mock, cache_mock, gud_mock, ctms_mock):
         gud_mock.return_value = None
         data = {
             "ts": 1234.567,
@@ -371,7 +373,7 @@ class FxAEmailChangedTests(TestCase):
             "email": "the-dudes-new-email@example.com",
         }
 
-        fxa_email_changed(data, pre_generated_token=None)
+        fxa_email_changed(data, pre_generated_token=None, use_braze_backend=True)
 
         braze_mock.add.assert_called_with_subset(
             {
@@ -381,7 +383,8 @@ class FxAEmailChangedTests(TestCase):
             }
         )
 
-    def test_with_pre_generated_token(self, cache_mock, gud_mock, braze_mock):
+    @patch("basket.news.tasks.braze")
+    def test_with_pre_generated_token(self, braze_mock, cache_mock, gud_mock, ctms_mock):
         gud_mock.return_value = None
         data = {
             "ts": 1234.567,
@@ -389,7 +392,7 @@ class FxAEmailChangedTests(TestCase):
             "email": "the-dudes-new-email@example.com",
         }
 
-        fxa_email_changed(data, pre_generated_token="ABC123")
+        fxa_email_changed(data, pre_generated_token="ABC123", use_braze_backend=True)
 
         braze_mock.add.assert_called_with(
             {
@@ -400,11 +403,13 @@ class FxAEmailChangedTests(TestCase):
             }
         )
 
+    @patch("basket.news.tasks.braze")
     def test_user_found_by_fxa_id(
         self,
+        braze_mock,
         cache_mock,
         gud_mock,
-        braze_mock,
+        ctms_mock,
     ):
         user_data = {"id": "1234", "email_id": "123ABC"}
         gud_mock.return_value = user_data
@@ -415,18 +420,20 @@ class FxAEmailChangedTests(TestCase):
             "email": "the-dudes-new-email@example.com",
         }
 
-        fxa_email_changed(data)
+        fxa_email_changed(data, use_braze_backend=True)
 
         braze_mock.update.assert_called_once_with(
             user_data,
             {"fxa_primary_email": "the-dudes-new-email@example.com"},
         )
 
+    @patch("basket.news.tasks.braze")
     def test_user_found_by_email(
         self,
+        braze_mock,
         cache_mock,
         gud_mock,
-        braze_mock,
+        ctms_mock,
     ):
         first_user_data = None
         second_user_data = {"id": "1234", "email_id": "123ABC"}
@@ -439,7 +446,7 @@ class FxAEmailChangedTests(TestCase):
             "email": "the-dudes-new-email@example.com",
         }
 
-        fxa_email_changed(data)
+        fxa_email_changed(data, use_braze_backend=True)
 
         braze_mock.update.assert_called_once_with(
             second_user_data,
@@ -447,13 +454,13 @@ class FxAEmailChangedTests(TestCase):
         )
 
 
-@patch("basket.news.tasks.braze")
+@patch("basket.news.tasks.ctms")
 @patch("basket.news.tasks.get_user_data")
 class CommonVoiceGoalsTests(TestCase):
-    def test_new_user(self, gud_mock, braze_mock):
+    def test_new_user(self, gud_mock, ctms_mock):
         gud_mock.return_value = None
         email_id = str(uuid4())
-        braze_mock.add.return_value = {"email": {"email_id": email_id}}
+        ctms_mock.add.return_value = {"email": {"email_id": email_id}}
         data = {
             "email": "dude@example.com",
             "first_contribution_date": "2018-06-27T14:56:58Z",
@@ -469,14 +476,14 @@ class CommonVoiceGoalsTests(TestCase):
             "email": "dude@example.com",
             "token": ANY,
             "source_url": "https://voice.mozilla.org",
-            "newsletters": {settings.COMMON_VOICE_NEWSLETTER: True},
+            "newsletters": [settings.COMMON_VOICE_NEWSLETTER],
             "cv_first_contribution_date": "2018-06-27T14:56:58Z",
             "cv_last_active_date": "2019-07-11T10:28:32Z",
             "cv_two_day_streak": False,
         }
-        braze_mock.add.assert_called_with(insert_data)
+        ctms_mock.add.assert_called_with(insert_data)
 
-    def test_existing_user(self, gud_mock, braze_mock):
+    def test_existing_user(self, gud_mock, ctms_mock):
         gud_mock.return_value = {"id": "the-duder", "email_id": str(uuid4())}
         data = {
             "email": "dude@example.com",
@@ -491,51 +498,84 @@ class CommonVoiceGoalsTests(TestCase):
         assert orig_data == data
         update_data = {
             "source_url": "https://voice.mozilla.org",
-            "newsletters": {settings.COMMON_VOICE_NEWSLETTER: True},
+            "newsletters": [settings.COMMON_VOICE_NEWSLETTER],
             "cv_first_contribution_date": "2018-06-27T14:56:58Z",
             "cv_last_active_date": "2019-07-11T10:28:32Z",
             "cv_two_day_streak": False,
         }
-        braze_mock.update.assert_called_with(gud_mock(), update_data)
+        ctms_mock.update.assert_called_with(gud_mock(), update_data)
 
 
-@patch("basket.news.tasks.braze")
+@patch("basket.news.tasks.ctms")
 class TestUpdateCustomUnsub(TestCase):
     token = "the-token"
     reason = "I would like less emails."
 
-    def test_normal(self, braze_mock):
+    def test_normal(self, mock_ctms):
         """The reason is updated for the token"""
         update_custom_unsub(self.token, self.reason)
-        braze_mock.update_by_token.assert_called_once_with(
+        mock_ctms.update_by_alt_id.assert_called_once_with(
+            "token",
             self.token,
-            {"unsub_reason": self.reason},
+            {"reason": self.reason},
         )
 
-    def test_error_raised(self, braze_mock):
+    def test_no_ctms_record(self, mock_ctms):
+        """If there is no CTMS record, updates are skipped."""
+        mock_ctms.updates_by_alt_id.side_effect = CTMSNotFoundByAltIDError(
+            "token",
+            self.token,
+        )
+        update_custom_unsub(self.token, self.reason)
+        mock_ctms.update_by_alt_id.assert_called_once_with(
+            "token",
+            self.token,
+            {"reason": self.reason},
+        )
+
+    def test_error_raised(self, mock_ctms):
         """A SF exception is not re-raised"""
         update_custom_unsub(self.token, self.reason)
-        braze_mock.get.assert_not_called()
+        mock_ctms.get.assert_not_called()
 
 
-@patch("basket.news.tasks.braze")
+@patch("basket.news.tasks.ctms")
 class TestUpdateUserMeta(TestCase):
     token = "the-token"
     data = {"first_name": "Edmund", "last_name": "Gettier"}
 
-    def test_normal(self, braze_mock):
+    def test_normal(self, mock_ctms):
         """The data is updated for the token"""
         update_user_meta(self.token, self.data)
-        braze_mock.update_by_token.assert_called_once_with(
+        mock_ctms.update_by_alt_id.assert_called_once_with(
+            "token",
+            self.token,
+            self.data,
+        )
+
+    def test_no_ctms_record(self, mock_ctms):
+        """If there is no CTMS record, an exception is raised."""
+        mock_ctms.update_by_alt_id.side_effect = CTMSNotFoundByAltIDError(
+            "token",
+            self.token,
+        )
+        self.assertRaises(
+            CTMSNotFoundByAltIDError,
+            update_user_meta,
+            self.token,
+            self.data,
+        )
+        mock_ctms.update_by_alt_id.assert_called_once_with(
+            "token",
             self.token,
             self.data,
         )
 
 
-@patch("basket.news.tasks.braze", spec_set=["update"])
+@patch("basket.news.tasks.ctms", spec_set=["update"])
 @patch("basket.news.tasks.get_user_data")
 class TestGetFxaUserData(TestCase):
-    def test_found_by_fxa_id_email_match(self, mock_gud, braze_mock):
+    def test_found_by_fxa_id_email_match(self, mock_gud, mock_ctms):
         """A user can be found by FxA ID."""
         user_data = {
             "id": "1234",
@@ -551,10 +591,11 @@ class TestGetFxaUserData(TestCase):
         mock_gud.assert_called_once_with(
             fxa_id="123",
             extra_fields=["id", "email_id"],
+            use_braze_backend=False,
         )
-        braze_mock.update.assert_not_called()
+        mock_ctms.update.assert_not_called()
 
-    def test_found_by_fxa_id_email_mismatch(self, mock_gud, braze_mock):
+    def test_found_by_fxa_id_email_mismatch(self, mock_gud, mock_ctms):
         """If the FxA user has a different FxA email, set fxa_primary_email."""
         user_data = {
             "id": "1234",
@@ -570,8 +611,9 @@ class TestGetFxaUserData(TestCase):
         mock_gud.assert_called_once_with(
             fxa_id="123",
             extra_fields=["id", "email_id"],
+            use_braze_backend=False,
         )
-        braze_mock.update.assert_called_once_with(
+        mock_ctms.update.assert_called_once_with(
             user_data,
             {"fxa_primary_email": "fxa@example.com"},
         )
@@ -592,19 +634,35 @@ class TestGetFxaUserData(TestCase):
         mock_gud.assert_any_call(
             fxa_id="123",
             extra_fields=["id", "email_id"],
+            use_braze_backend=False,
         )
         mock_gud.assert_called_with(
             email="test@example.com",
             extra_fields=["id", "email_id"],
+            use_braze_backend=False,
         )
         mock_ctms.update.assert_not_called()
 
 
-@patch("basket.news.tasks.braze", spec_set=["update_by_fxa_id"])
+@patch("basket.news.tasks.ctms", spec_set=["update_by_alt_id"])
 class TestFxaDelete(TestCase):
-    def test_delete(self, braze_mock):
+    def test_delete(self, mock_ctms):
         fxa_delete({"uid": "123"})
-        braze_mock.update_by_fxa_id.assert_called_once_with(
+        mock_ctms.update_by_alt_id.assert_called_once_with(
+            "fxa_id",
+            "123",
+            {"fxa_deleted": True},
+        )
+
+    def test_delete_ctms_not_found_succeeds(self, mock_ctms):
+        """If the CTMS record is not found by FxA ID, the exception is caught."""
+        mock_ctms.update_by_alt_id.side_effect = CTMSNotFoundByAltIDError(
+            "fxa_id",
+            "123",
+        )
+        fxa_delete({"uid": "123"})
+        mock_ctms.update_by_alt_id.assert_called_once_with(
+            "fxa_id",
             "123",
             {"fxa_deleted": True},
         )
@@ -668,7 +726,7 @@ class TestUpsertContact(TestCase):
 
         braze_mock.slug_to_vendor_id.return_value = "d13cf2a4-0bc9-44a9-a923-9a5689c67351"
 
-        upsert_contact("SUBSCRIBE", data, None, pre_generated_token=None)
+        upsert_contact("SUBSCRIBE", data, None, pre_generated_token=None, use_braze_backend=True)
 
         braze_mock.add.assert_called_with_subset(
             {"createDate": 1526996035.498, "email": "thedude@example.com", "uid": "the-fxa-id", "locale": "en-US,en", "newsletters": {"test": True}}
@@ -680,7 +738,7 @@ class TestUpsertContact(TestCase):
 
         braze_mock.slug_to_vendor_id.return_value = "d13cf2a4-0bc9-44a9-a923-9a5689c67351"
 
-        upsert_contact("SUBSCRIBE", data, None, pre_generated_token="ABC123")
+        upsert_contact("SUBSCRIBE", data, None, pre_generated_token="ABC123", use_braze_backend=True)
 
         braze_mock.add.assert_called_once_with(
             {
