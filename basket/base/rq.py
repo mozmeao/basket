@@ -191,7 +191,9 @@ def store_task_exception_handler(job, *exc_info):
     if job._status == JobStatus.FAILED:
         # Check if this is something we ignore and don't attempt to retry.
         # If so, abort any retries, log to sentry, and return/skip the rest.
-        if ignore_error(exc_info[1]):
+        # TypeErrors (e.g. wrong/missing/unexpected arguments) indicate a bug
+        # in the call site or task signature so retrying won't help.
+        if isinstance(exc_info[1], TypeError) or ignore_error(exc_info[1]):
             job.retries_left = 0
             sentry_capture(exc_info[1], "ignored")
         else:

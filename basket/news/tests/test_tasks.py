@@ -1,3 +1,4 @@
+import inspect
 from copy import deepcopy
 from unittest.mock import ANY, Mock, call, patch
 from uuid import uuid4
@@ -7,6 +8,7 @@ from django.test import TestCase
 from django.test.utils import override_settings
 
 from basket.news.backends.braze import BRAZE_OPTIMAL_DELAY
+from basket.news.management.commands.process_fxa_queue import FXA_EVENT_TYPES
 from basket.news.models import BrazeTxEmailMessage, FailedTask
 from basket.news.tasks import (
     SUBSCRIBE,
@@ -28,6 +30,19 @@ from basket.news.tasks import (
 from basket.news.utils import iso_format_unix_timestamp
 
 
+class FxaQueueTaskSignatureTest(TestCase):
+    """
+    Test that unknown parameters are processed into **kwargs where
+    they can later be filtered out
+    """
+
+    def test_fxa_event_tasks_accept_kwargs(self):
+        for event_type, task in FXA_EVENT_TYPES.items():
+            params = inspect.signature(task).parameters
+            accepts_any_kwarg = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
+            assert accepts_any_kwarg, f"{task.__name__} (event {event_type!r}) must accept **kwargs"
+
+
 class RetryTaskTest(TestCase):
     """Test that we can retry a task"""
 
@@ -37,9 +52,9 @@ class RetryTaskTest(TestCase):
     @patch("basket.base.rq.Queue.enqueue")
     def test_retry_task(self, mock_enqueue, mock_random, info):
         mock_random.randrange.side_effect = [60, 90]
-        TASK_NAME = "news.tasks.update_phonebook"
-        args = [1, 2]
-        kwargs = {"token": 3}
+        TASK_NAME = "basket.news.tasks.update_user_meta"
+        args = ["some-token", {"foo": "bar"}]
+        kwargs = {}
         failed_task = FailedTask(
             name=TASK_NAME,
             task_id=4,

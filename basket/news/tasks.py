@@ -99,10 +99,7 @@ def set_user_fxa_id(user_data, fxa_id):
     braze.update(user_data, {"fxa_id": fxa_id})
 
 
-def fxa_direct_update_contact(
-    fxa_id,
-    data,
-):
+def fxa_direct_update_contact(fxa_id, data, **kwargs):
     """Set some small data for a contact with an FxA ID
 
     Ignore if contact with FxA ID can't be found
@@ -120,11 +117,7 @@ def fxa_delete(data, **kwargs):
 
 
 @rq_task
-def fxa_verified(
-    data,
-    should_send_tx_messages=True,
-    pre_generated_token=None,
-):
+def fxa_verified(data, should_send_tx_messages=True, pre_generated_token=None, **kwargs):
     """Add new FxA users"""
     # if we're not using the sandbox ignore testing domains
     if email_is_testing(data["email"]):
@@ -170,11 +163,7 @@ def fxa_verified(
 
 
 @rq_task
-def fxa_newsletters_update(
-    data,
-    should_send_tx_messages=True,
-    pre_generated_token=None,
-):
+def fxa_newsletters_update(data, should_send_tx_messages=True, pre_generated_token=None, **kwargs):
     email = data["email"]
     fxa_id = data["uid"]
     new_data = {
@@ -196,11 +185,7 @@ def fxa_newsletters_update(
 
 
 @rq_task
-def fxa_login(
-    data,
-    should_send_tx_messages=True,
-    pre_generated_token=None,
-):
+def fxa_login(data, should_send_tx_messages=True, pre_generated_token=None, **kwargs):
     email = data["email"]
     # if we're not using the sandbox ignore testing domains
     if email_is_testing(email):
