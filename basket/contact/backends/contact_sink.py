@@ -19,7 +19,7 @@ class ContactSink(ABC):
         cta - optional, action requested by user
 
     Additional "basic" fields:
-        accepted_terms - whether the user accepted the privacy terms
+        accepted_terms - whether the user accepted the privacy terms; validated only, not stored
 
     Additional "enterprise" fields:
         business_phone - optional, business phone number, max 255 chars

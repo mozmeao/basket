@@ -32,7 +32,6 @@ _COLUMNS = [
     "support_needs",
     "timeline",
     "message",
-    "accepted_terms",
 ]
 
 
