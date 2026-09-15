@@ -37,47 +37,47 @@ class TestUsersConfirmAPI(_TestAPIBase):
 
     def test_good_email(self):
         # Test that the `optin` is set to True.
-        with patch("basket.news.tasks.ctms", spec_set=["update"]) as mock_ctms:
+        with patch("basket.news.tasks.braze", spec_set=["update"]) as braze_mock:
             with patch("basket.news.tasks.get_user_data", autospec=True) as get_user_data:
                 get_user_data.return_value = self._user_data()
                 resp = self.client.post(self.url)
                 assert resp.status_code == 200, resp.content
                 data = resp.json()
                 self.validate_schema(data, OkSchema)
-                mock_ctms.update.assert_called_with(self.user_data, {"optin": True})
+                braze_mock.update.assert_called_with(self.user_data, {"optin": True, "optout": False})
 
     def test_good_email_already_confirmed(self):
         # Test that `ctms.update` is not called if already confirmed.
-        with patch("basket.news.tasks.ctms", spec_set=["update"]) as mock_ctms:
+        with patch("basket.news.tasks.braze", spec_set=["update"]) as braze_mock:
             with patch("basket.news.tasks.get_user_data", autospec=True) as get_user_data:
                 get_user_data.return_value = self._user_data(optin=True)
                 resp = self.client.post(self.url)
                 assert resp.status_code == 200, resp.content
                 data = resp.json()
                 self.validate_schema(data, OkSchema)
-                mock_ctms.update.assert_not_called()
+                braze_mock.update.assert_not_called()
 
     def test_no_user_data(self):
         # Test that `ctms.update` is not called if no user.
-        with patch("basket.news.tasks.ctms", spec_set=["update"]) as mock_ctms:
+        with patch("basket.news.tasks.braze", spec_set=["update"]) as braze_mock:
             with patch("basket.news.tasks.get_user_data", autospec=True) as get_user_data:
                 get_user_data.return_value = None
                 resp = self.client.post(self.url)
                 assert resp.status_code == 200, resp.content
                 data = resp.json()
                 self.validate_schema(data, OkSchema)
-                mock_ctms.update.assert_not_called()
+                braze_mock.update.assert_not_called()
 
     def test_user_has_no_email(self):
         # Test that `ctms.update` is not called if user has no email.
-        with patch("basket.news.tasks.ctms", spec_set=["update"]) as mock_ctms:
+        with patch("basket.news.tasks.braze", spec_set=["update"]) as braze_mock:
             with patch("basket.news.tasks.get_user_data", autospec=True) as get_user_data:
                 get_user_data.return_value = self._user_data(email=None)
                 resp = self.client.post(self.url)
                 assert resp.status_code == 200, resp.content
                 data = resp.json()
                 self.validate_schema(data, OkSchema)
-                mock_ctms.update.assert_not_called()
+                braze_mock.update.assert_not_called()
 
     # 4xx errors
 
@@ -90,7 +90,7 @@ class TestUsersConfirmAPI(_TestAPIBase):
         count = settings.EMAIL_SUBSCRIBE_RATE_LIMIT.split("/")[0]
         cache.clear()
 
-        with patch("basket.news.tasks.ctms", spec_set=["update"]) as mock_ctms:
+        with patch("basket.news.tasks.braze", spec_set=["update"]) as braze_mock:
             with patch("basket.news.tasks.get_user_data", autospec=True) as get_user_data:
                 get_user_data.return_value = self._user_data()
                 for _ in range(int(count)):
@@ -98,8 +98,8 @@ class TestUsersConfirmAPI(_TestAPIBase):
                     assert resp.status_code == 200, resp.content
                 data = resp.json()
                 self.validate_schema(data, OkSchema)
-                mock_ctms.update.assert_called_with(self.user_data, {"optin": True})
-                mock_ctms.reset_mock()
+                braze_mock.update.assert_called_with(self.user_data, {"optin": True, "optout": False})
+                braze_mock.reset_mock()
                 assert cache.has_key(f"throttle_token_{self.token}")
 
                 # Second request should be throttled.
@@ -110,7 +110,7 @@ class TestUsersConfirmAPI(_TestAPIBase):
                 assert data["status"] == "error"
                 assert data["code"] == errors.BASKET_USAGE_ERROR
                 assert "Rate limit exceeded" in data["desc"]
-                mock_ctms.update.assert_not_called()
+                braze_mock.update.assert_not_called()
                 metricsmock.assert_incr_once("api.throttled", tags=["path:api.v1.users.confirm"])
 
         cache.clear()

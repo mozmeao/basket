@@ -224,25 +224,6 @@ BRAZE_MESSAGE_ID_MAP = {
     "firefox-mobile-welcome": "download-firefox-mobile",
 }
 
-BRAZE_PARALLEL_WRITE_ENABLE = config("BRAZE_PARALLEL_WRITE_ENABLE", parser=bool, default="false")
-BRAZE_ONLY_WRITE_ENABLE = config("BRAZE_ONLY_WRITE_ENABLE", parser=bool, default="false")
-BRAZE_READ_WITH_FALLBACK_ENABLE = config("BRAZE_READ_WITH_FALLBACK_ENABLE", parser=bool, default="false")
-BRAZE_ONLY_READ_ENABLE = config("BRAZE_ONLY_READ_ENABLE", parser=bool, default="false")
-BRAZE_CTMS_SHIM_ENABLE = config("BRAZE_CTMS_SHIM_ENABLE", parser=bool, default="false")
-
-# Mozilla CTMS
-CTMS_ENV = config("CTMS_ENV", default="").lower()
-CTMS_ENABLED = config("CTMS_ENABLED", parser=bool, default="false")
-if CTMS_ENV == "stage":
-    default_url = "https://ctms.stage.mozilla-ess.mozit.cloud"
-elif CTMS_ENV == "prod":
-    default_url = "https://ctms.prod.mozilla-ess.mozit.cloud"
-else:
-    default_url = ""
-CTMS_URL = config("CTMS_URL", default=default_url)
-CTMS_CLIENT_ID = config("CTMS_CLIENT_ID", default="") if not UNITTEST else "test"
-CTMS_CLIENT_SECRET = config("CTMS_CLIENT_SECRET", default="") if not UNITTEST else "test"
-
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_HEADERS = (*default_headers, "x-api-key")
 CORS_URLS_REGEX = r"^/(api/|news/|subscribe)"

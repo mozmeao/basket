@@ -261,6 +261,25 @@ class TestRQUtils:
         mock_sentry_sdk.isolation_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
 
     @patch("basket.base.rq.sentry_sdk")
+    def test_rq_exception_error_ignore_type_error(self, mock_sentry_sdk, metricsmock):
+        """TypeErrors indicate a bug, not a transient failure, so they're never retried."""
+        job = Job.create(func=print, meta={"task_name": "job.type_error"}, connection=self.queue.connection)
+        job.retries_left = 2
+        job.set_status(JobStatus.FAILED)
+
+        with pytest.raises(TypeError) as e:
+            raise TypeError("unexpected keyword argument 'foo'")
+
+        store_task_exception_handler(job, e.type, e.value, e.tb)
+
+        assert job.retries_left == 0
+        metricsmock.assert_not_incr("base.tasks.failed")
+        metricsmock.assert_not_incr("base.tasks.retried")
+
+        assert mock_sentry_sdk.capture_exception.call_count == 1
+        mock_sentry_sdk.isolation_scope.return_value.__enter__.return_value.set_tag.assert_called_once_with("action", "ignored")
+
+    @patch("basket.base.rq.sentry_sdk")
     def test_rq_exception_handler_snitch(self, mock_sentry_sdk):
         """
         Test that the exception handler returns early if it's a snitch job.

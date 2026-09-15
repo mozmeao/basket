@@ -5,14 +5,12 @@ from unittest.mock import call, patch
 from django.conf import settings
 from django.contrib.auth.models import Permission, User
 from django.test import Client
-from django.test.utils import override_settings
 from django.urls import reverse
 
 import pytest
 
 from basket.base.forms import EmailForm, EmailListForm
 from basket.news.backends.braze import BrazeUserNotFoundByEmailError
-from basket.news.backends.ctms import CTMSNotFoundByEmailError
 
 TEST_DATA_DIR = Path(__file__).resolve().parent.joinpath("data")
 
@@ -61,24 +59,6 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
         assert isinstance(response.context["dsar_form"], EmailListForm)
         assert response.context["dsar_output"] is None
 
-    def test_post_valid_emails_ctms(self):
-        self._create_admin_user()
-        self._login_admin_user()
-        with patch("basket.admin.ctms", spec_set=["delete"]) as mock_ctms:
-            mock_ctms.delete.side_effect = [
-                [{"email_id": "123", "fxa_id": "", "mofo_contact_id": ""}],
-                [{"email_id": "456", "fxa_id": "string", "mofo_contact_id": ""}],
-                [{"email_id": "789", "fxa_id": "string", "mofo_contact_id": "string"}],
-            ]
-            response = self.client.post(self.url, {"emails": "test1@example.com\ntest2@example.com\ntest3@example.com"}, follow=True)
-
-        assert response.status_code == 200
-        assert mock_ctms.delete.call_count == 3
-        assert "DELETED test1@example.com from CTMS (ctms id: 123)." in response.context["dsar_output"]
-        assert "DELETED test2@example.com from CTMS (ctms id: 456). fxa: YES." in response.context["dsar_output"]
-        assert "DELETED test3@example.com from CTMS (ctms id: 789). fxa: YES. mofo: YES." in response.context["dsar_output"]
-
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
     def test_post_valid_emails_braze(self):
         self._create_admin_user()
         self._login_admin_user()
@@ -96,18 +76,6 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
         assert "DELETED test2@example.com from Braze (external_id: 456). fxa: YES." in response.context["dsar_output"]
         assert "DELETED test3@example.com from Braze (external_id: 789). fxa: YES. mofo: YES." in response.context["dsar_output"]
 
-    def test_post_valid_email_ctms(self):
-        self._create_admin_user()
-        self._login_admin_user()
-        with patch("basket.admin.ctms", spec_set=["delete"]) as mock_ctms:
-            mock_ctms.delete.return_value = [{"email_id": "123", "fxa_id": "", "mofo_contact_id": ""}]
-            response = self.client.post(self.url, {"emails": "test@example.com"}, follow=True)
-
-        assert response.status_code == 200
-        assert mock_ctms.delete.called
-        assert "DELETED test@example.com from CTMS (ctms id: 123)." in response.context["dsar_output"]
-
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
     def test_post_valid_email_braze(self):
         self._create_admin_user()
         self._login_admin_user()
@@ -119,18 +87,6 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
         assert mock_braze.delete.called
         assert "DELETED test@example.com from Braze (external_id: 123)." in response.context["dsar_output"]
 
-    def test_post_unknown_ctms_user(self, mocker):
-        self._create_admin_user()
-        self._login_admin_user()
-        with patch("basket.admin.ctms", spec_set=["delete"]) as mock_ctms:
-            mock_ctms.delete.side_effect = CTMSNotFoundByEmailError("unknown@example.com")
-            response = self.client.post(self.url, {"emails": "unknown@example.com"}, follow=True)
-
-        assert response.status_code == 200
-        assert mock_ctms.delete.called
-        assert "unknown@example.com not found in CTMS" in response.context["dsar_output"]
-
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
     def test_post_unknown_braze_user(self, mocker):
         self._create_admin_user()
         self._login_admin_user()
@@ -142,19 +98,6 @@ class TestAdminDSARDeleteView(DSARViewTestBase):
         assert mock_braze.delete.called
         assert "unknown@example.com not found in Braze" in response.context["dsar_output"]
 
-    def test_post_invalid_email_ctms(self, mocker):
-        self._create_admin_user()
-        self._login_admin_user()
-        with patch("basket.admin.ctms", spec_set=["delete"]) as mock_ctms:
-            mock_ctms.delete.side_effect = CTMSNotFoundByEmailError
-            response = self.client.post(self.url, {"emails": "invalid@email"}, follow=True)
-
-        assert response.status_code == 200
-        assert not mock_ctms.delete.called
-        assert response.context["dsar_output"] is None
-        assert response.context["dsar_form"].errors == {"emails": ["Invalid email: invalid@email"]}
-
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
     def test_post_invalid_email_braze(self, mocker):
         self._create_admin_user()
         self._login_admin_user()
@@ -187,20 +130,6 @@ class TestAdminDSARInfoView(DSARViewTestBase):
         assert isinstance(response.context["dsar_form"], EmailForm)
         assert "dsar_contact" not in response.context
 
-    def test_post_valid_email_ctms(self):
-        self._create_admin_user()
-        self._login_admin_user()
-        user_data = self._get_test_data()
-        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
-            mock_ctms.interface.get_by_alternate_id.return_value = user_data
-            response = self.client.post(self.url, {"email": "test@example.com"}, follow=True)
-
-        assert response.status_code == 200
-        mock_ctms.interface.get_by_alternate_id.assert_called_with(primary_email="test@example.com")
-        assert b"User Info (from CTMS)" in response.content
-        assert response.context["dsar_contact"]["token"] == "0723e863-cff2-4f74-b492-82b861732d19"
-
-    @override_settings(BRAZE_ONLY_READ_ENABLE=True)
     def test_post_valid_email_braze(self):
         self._create_admin_user()
         self._login_admin_user()
@@ -214,31 +143,6 @@ class TestAdminDSARInfoView(DSARViewTestBase):
         assert b"User Info (from Braze)" in response.content
         assert response.context["dsar_contact"]["token"] == mock_user_data["token"]
 
-    def test_post_unknown_ctms_user(self, mocker):
-        self._create_admin_user()
-        self._login_admin_user()
-        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
-            # it may throw this error
-            mock_ctms.interface.get_by_alternate_id.side_effect = CTMSNotFoundByEmailError("unknown@example.com")
-            response = self.client.post(self.url, {"email": "unknown@example.com"}, follow=True)
-
-        assert response.status_code == 200
-        assert mock_ctms.interface.get_by_alternate_id.called
-        assert b"User not found in CTMS" in response.content
-
-    def test_post_unknown_ctms_user_empty_list(self, mocker):
-        self._create_admin_user()
-        self._login_admin_user()
-        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
-            # it may also return an empty list
-            mock_ctms.interface.get_by_alternate_id.return_value = []
-            response = self.client.post(self.url, {"email": "unknown@example.com"}, follow=True)
-
-        assert response.status_code == 200
-        assert mock_ctms.interface.get_by_alternate_id.called
-        assert b"User not found in CTMS" in response.content
-
-    @override_settings(BRAZE_ONLY_READ_ENABLE=True)
     def test_post_unknown_braze_user(self, mocker):
         self._create_admin_user()
         self._login_admin_user()
@@ -251,49 +155,6 @@ class TestAdminDSARInfoView(DSARViewTestBase):
         assert mock_braze.get.called
         assert b"User not found in Braze" in response.content
 
-    @override_settings(BRAZE_READ_WITH_FALLBACK_ENABLE=True)
-    def test_post_unknown_braze_user_found_in_ctms_fallback(self):
-        self._create_admin_user()
-        self._login_admin_user()
-        user_data = self._get_test_data()
-        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
-            with patch("basket.admin.braze", spec_set=["get"]) as mock_braze:
-                mock_braze.get.return_value = None
-                mock_ctms.interface.get_by_alternate_id.return_value = user_data
-                response = self.client.post(self.url, {"email": "test@example.com"}, follow=True)
-            assert response.status_code == 200
-            mock_braze.get.assert_called_with(email="test@example.com")
-            mock_ctms.interface.get_by_alternate_id.assert_called_with(primary_email="test@example.com")
-            assert b"User Info (from CTMS)" in response.content
-            assert response.context["dsar_contact"]["token"] == "0723e863-cff2-4f74-b492-82b861732d19"
-
-    @override_settings(BRAZE_READ_WITH_FALLBACK_ENABLE=True)
-    def test_post_unknown_braze_not_found_in_ctms_fallback(self, mocker):
-        self._create_admin_user()
-        self._login_admin_user()
-        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
-            with patch("basket.admin.braze", spec_set=["get"]) as mock_braze:
-                mock_braze.get.return_value = None
-                mock_ctms.interface.get_by_alternate_id.side_effect = CTMSNotFoundByEmailError("unknown@example.com")
-                response = self.client.post(self.url, {"email": "unknown@example.com"}, follow=True)
-
-            assert response.status_code == 200
-            assert mock_braze.get.called
-            assert mock_ctms.interface.get_by_alternate_id.called
-            assert b"User not found in CTMS or Braze" in response.content
-
-    def test_post_invalid_email_ctms(self, mocker):
-        self._create_admin_user()
-        self._login_admin_user()
-        with patch("basket.admin.ctms", spec_set=["interface"]) as mock_ctms:
-            response = self.client.post(self.url, {"email": "invalid@email"}, follow=True)
-
-        assert response.status_code == 200
-        assert not mock_ctms.interface.get_by_alternate_id.called
-        assert "dsar_contact" not in response.context
-        assert response.context["dsar_form"].errors == {"email": ["Enter a valid email address."]}
-
-    @override_settings(BRAZE_ONLY_READ_ENABLE=True)
     def test_post_invalid_email_braze(self, mocker):
         self._create_admin_user()
         self._login_admin_user()
@@ -326,31 +187,6 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         assert isinstance(response.context["dsar_form"], EmailListForm)
         assert response.context["dsar_output"] is None
 
-    def test_post_valid_emails_ctms(self):
-        self._create_admin_user()
-        self._login_admin_user()
-        with patch("basket.admin.ctms", spec_set=["get", "interface"]) as mock_ctms:
-            mock_ctms.get.side_effect = [
-                {"email_id": "123", "fxa_id": "", "mofo_contact_id": ""},
-                {"email_id": "456", "fxa_id": "string", "mofo_contact_id": ""},
-                {"email_id": "789", "fxa_id": "string", "mofo_contact_id": "string"},
-            ]
-            response = self.client.post(self.url, {"emails": "test1@example.com\ntest2@example.com\ntest3@example.com"}, follow=True)
-
-        assert response.status_code == 200
-        assert mock_ctms.get.call_count == 3
-        mock_ctms.interface.patch_by_email_id.assert_has_calls(
-            [
-                call("123", self.update_data),
-                call("456", self.update_data),
-                call("789", self.update_data),
-            ]
-        )
-        assert "UNSUBSCRIBED test1@example.com (ctms id: 123)." in response.context["dsar_output"]
-        assert "UNSUBSCRIBED test2@example.com (ctms id: 456)." in response.context["dsar_output"]
-        assert "UNSUBSCRIBED test3@example.com (ctms id: 789)." in response.context["dsar_output"]
-
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
     def test_post_valid_emails_braze(self):
         self._create_admin_user()
         self._login_admin_user()
@@ -382,19 +218,6 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         assert "UNSUBSCRIBED test2@example.com (Braze external id: 456)." in response.context["dsar_output"]
         assert "UNSUBSCRIBED test3@example.com (Braze external id: 789)." in response.context["dsar_output"]
 
-    def test_post_valid_email_ctms(self):
-        self._create_admin_user()
-        self._login_admin_user()
-        with patch("basket.admin.ctms", spec_set=["get", "interface"]) as mock_ctms:
-            mock_ctms.get.return_value = {"email_id": "123", "fxa_id": "", "mofo_contact_id": ""}
-            response = self.client.post(self.url, {"emails": "test@example.com"}, follow=True)
-
-        assert response.status_code == 200
-        assert mock_ctms.get.called
-        mock_ctms.interface.patch_by_email_id.assert_called_with("123", self.update_data)
-        assert "UNSUBSCRIBED test@example.com (ctms id: 123)." in response.context["dsar_output"]
-
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
     def test_post_valid_email_braze(self):
         self._create_admin_user()
         self._login_admin_user()
@@ -411,19 +234,6 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         )
         assert "UNSUBSCRIBED test@example.com (Braze external id: 123)." in response.context["dsar_output"]
 
-    def test_post_unknown_ctms_user(self, mocker):
-        self._create_admin_user()
-        self._login_admin_user()
-        with patch("basket.admin.ctms", spec_set=["get", "interface"]) as mock_ctms:
-            mock_ctms.get.return_value = None
-            response = self.client.post(self.url, {"emails": "unknown@example.com"}, follow=True)
-
-        assert response.status_code == 200
-        assert mock_ctms.get.called
-        assert not mock_ctms.interface.patch_by_email_id.called
-        assert "unknown@example.com not found in CTMS" in response.context["dsar_output"]
-
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
     def test_post_unknown_braze_user(self, mocker):
         self._create_admin_user()
         self._login_admin_user()
@@ -436,27 +246,14 @@ class TestAdminDSARUnsubView(DSARViewTestBase):
         assert not mock_braze.update.called
         assert "unknown@example.com not found in Braze" in response.context["dsar_output"]
 
-    def test_post_invalid_email_ctms(self, mocker):
-        self._create_admin_user()
-        self._login_admin_user()
-        with patch("basket.admin.ctms", spec_set=["get", "interface"]) as mock_ctms:
-            response = self.client.post(self.url, {"emails": "invalid@email"}, follow=True)
-
-        assert response.status_code == 200
-        assert not mock_ctms.get.called
-        assert not mock_ctms.interface.patch_by_email_id.called
-        assert response.context["dsar_output"] is None
-        assert response.context["dsar_form"].errors == {"emails": ["Invalid email: invalid@email"]}
-
-    @override_settings(BRAZE_ONLY_WRITE_ENABLE=True)
     def test_post_invalid_email_braze(self, mocker):
         self._create_admin_user()
         self._login_admin_user()
-        with patch("basket.admin.ctms", spec_set=["get", "update"]) as mock_braze:
+        with patch("basket.admin.braze", spec_set=["get", "update"]) as braze_mock:
             response = self.client.post(self.url, {"emails": "invalid@email"}, follow=True)
 
         assert response.status_code == 200
-        assert not mock_braze.get.called
-        assert not mock_braze.update.called
+        assert not braze_mock.get.called
+        assert not braze_mock.update.called
         assert response.context["dsar_output"] is None
         assert response.context["dsar_form"].errors == {"emails": ["Invalid email: invalid@email"]}

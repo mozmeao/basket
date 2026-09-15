@@ -21,14 +21,8 @@ from email_validator import EmailNotValidError, validate_email
 
 # Get error codes from basket-client so users see the same definitions
 from basket import errors, metrics
-from basket.news.backends.braze import braze
+from basket.news.backends.braze import BrazeNotConfigured, braze
 from basket.news.backends.common import NewsletterException
-from basket.news.backends.ctms import (
-    CTMSError,
-    CTMSNotConfigured,
-    CTMSNotFoundByAltIDError,
-    ctms,
-)
 from basket.news.models import APIUser, BlockedEmail
 from basket.news.newsletters import (
     newsletter_group_newsletter_slugs,
@@ -251,7 +245,6 @@ def get_user_data(
     fxa_id=None,
     extra_fields=None,
     masked=False,
-    use_braze_backend=False,
     omit_extra_braze_fields=False,
 ):
     """
@@ -300,20 +293,17 @@ def get_user_data(
 
     backend_user = None
     try:
-        if use_braze_backend:
-            backend_user = braze.get(
-                token=token,
-                email=email,
-                fxa_id=fxa_id,
-            )
-        else:
-            backend_user = ctms.get(
-                token=token,
-                email=email,
-                fxa_id=fxa_id,
-            )
-    except CTMSNotFoundByAltIDError:
-        return None
+        backend_user = braze.get(
+            token=token,
+            email=email,
+            fxa_id=fxa_id,
+        )
+    except BrazeNotConfigured as exc:
+        raise NewsletterException(
+            "Email service provider auth failure",
+            error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
+            status_code=500,
+        ) from exc
     except requests.exceptions.HTTPError as exc:
         if exc.response.status_code == 401:
             raise NewsletterException(
@@ -327,28 +317,16 @@ def get_user_data(
                 error_code=errors.BASKET_NETWORK_FAILURE,
                 status_code=400,
             ) from exc
-    except CTMSNotConfigured as exc:
-        raise NewsletterException(
-            "Email service provider auth failure",
-            error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
-            status_code=500,
-        ) from exc
-    except CTMSError as exc:
-        raise NewsletterException(
-            str(exc),
-            error_code=errors.BASKET_NETWORK_FAILURE,
-            status_code=400,
-        ) from exc
 
     if not backend_user:
         return None
 
-    allowed_fields = BRAZE_USER_ALLOWED_FIELDS if use_braze_backend and not omit_extra_braze_fields else ALLOWED_USER_FIELDS
+    allowed_fields = BRAZE_USER_ALLOWED_FIELDS if not omit_extra_braze_fields else ALLOWED_USER_FIELDS
     # Only return fields in `ALLOWED_USER_FIELDS` or in the `extra_fields` arg.
     allowed = set(allowed_fields + extra_fields)
     user = {fn: backend_user[fn] for fn in allowed if fn in backend_user}
 
-    user["has_fxa"] = bool(backend_user.get("fxa_id")) or (use_braze_backend and backend_user.get("has_fxa", False))
+    user["has_fxa"] = bool(backend_user.get("fxa_id")) or (backend_user.get("has_fxa", False))
 
     if masked:
         # mask all emails
@@ -360,7 +338,7 @@ def get_user_data(
     return user
 
 
-def get_user(token=None, email=None, masked=True, use_braze_backend=False):
+def get_user(token=None, email=None, masked=True):
     if settings.MAINTENANCE_MODE and not settings.MAINTENANCE_READ_ONLY:
         # can't return user data during maintenance
         return HttpResponseJSON(
@@ -378,7 +356,6 @@ def get_user(token=None, email=None, masked=True, use_braze_backend=False):
             email,
             masked=masked,
             omit_extra_braze_fields=masked,
-            use_braze_backend=use_braze_backend,
         )
         status_code = 200
     except NewsletterException as e:
