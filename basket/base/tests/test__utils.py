@@ -36,6 +36,8 @@ def test_pre_sentry_sanitisation__before_send_setup():
 
     assert SENSITIVE_FIELDS_TO_MASK_ENTIRELY == [
         "amo_id",
+        "country",
+        "countryCode",
         "custom_id",
         "email",
         "first_name",
@@ -80,6 +82,8 @@ example_unsanitised_data = {
     "amo_id": "These items are on our blocklist and should be removed entirely",
     "fxa_id": "These items are on our blocklist and should be removed entirely",
     "uid": "These items are on our blocklist and should be removed entirely",
+    "country": "These items are on our blocklist and should be removed entirely",
+    "countryCode": "These items are on our blocklist and should be removed entirely",
 }
 
 expected_sanitised_data = {
@@ -105,6 +109,8 @@ expected_sanitised_data = {
     "amo_id": "********",
     "fxa_id": "********",
     "uid": "********",
+    "country": "********",
+    "countryCode": "********",
 }
 
 
