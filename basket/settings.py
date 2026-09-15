@@ -295,6 +295,8 @@ K8S_POD_NAME = config("K8S_POD_NAME", default="")
 # https://github.com/laiyongtao/sentry-processor
 SENSITIVE_FIELDS_TO_MASK_ENTIRELY = [
     "amo_id",
+    "country",
+    "countryCode",
     "custom_id",
     "email",
     "first_name",
@@ -346,6 +348,25 @@ if not UNITTEST:
         before_send=before_send,
     )
 
+_processor = DesensitizationProcessor(
+    with_default_keys=True,
+    sensitive_keys=SENSITIVE_FIELDS_TO_MASK_ENTIRELY,
+)
+
+_rx = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+
+
+def scrub_function(record):
+    if record.args:
+        if isinstance(record.args, dict):
+            record.args = _processor.filter_extra(record.args)
+        else:
+            record.args = tuple(_processor.filter_extra(a) for a in record.args)
+    record.msg = _rx.sub(_processor.MASK, record.getMessage())
+    record.args = None
+    return True
+
+
 STATSD_HOST = config("STATSD_HOST", default=get_default_gateway_linux())
 STATSD_PORT = config("STATSD_PORT", parser=int, default="8125")
 STATSD_PREFIX = config("STATSD_PREFIX", default=K8S_NAMESPACE)
@@ -386,11 +407,15 @@ LOGGING = {
     "formatters": {
         "verbose": {"format": "%(levelname)s %(asctime)s %(module)s %(message)s"},
     },
+    "filters": {
+        "std_scrub": {"()": lambda: scrub_function},
+    },
     "handlers": {
         "console": {
             "level": "DEBUG",
             "class": "logging.StreamHandler",
             "formatter": "verbose",
+            "filters": ["std_scrub"],
         },
         "null": {"class": "logging.NullHandler"},
     },
