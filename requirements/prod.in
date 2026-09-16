@@ -31,7 +31,7 @@ redis==6.2.0  # Held at 6.x: redis-py 8 changes connection_pool.connection_kwarg
 rq==2.11.0
 rq-scheduler==0.14.0
 sentry-processor==0.0.1
-sentry-sdk==2.67.1
+sentry-sdk==2.69.1
 user-agents==2.2.0
 whitenoise==6.12.0
 google-cloud-storage==3.13.1
