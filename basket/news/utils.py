@@ -21,7 +21,16 @@ from email_validator import EmailNotValidError, validate_email
 
 # Get error codes from basket-client so users see the same definitions
 from basket import errors, metrics
-from basket.news.backends.braze import BrazeNotConfigured, braze
+from basket.news.backends.braze import (
+    BrazeClientError,
+    BrazeForbiddenError,
+    BrazeInternalServerError,
+    BrazeNotConfigured,
+    BrazeNotFoundError,
+    BrazeRateLimitError,
+    BrazeUnauthorizedError,
+    braze,
+)
 from basket.news.backends.common import NewsletterException
 from basket.news.models import APIUser, BlockedEmail
 from basket.news.newsletters import (
@@ -298,7 +307,7 @@ def get_user_data(
             email=email,
             fxa_id=fxa_id,
         )
-    except BrazeNotConfigured as exc:
+    except (BrazeNotConfigured, BrazeUnauthorizedError) as exc:
         raise NewsletterException(
             "Email service provider auth failure",
             error_code=errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE,
@@ -317,6 +326,19 @@ def get_user_data(
                 error_code=errors.BASKET_NETWORK_FAILURE,
                 status_code=400,
             ) from exc
+    except (
+        BrazeForbiddenError,
+        BrazeNotFoundError,
+        BrazeRateLimitError,
+        BrazeInternalServerError,
+        BrazeClientError,
+        requests.exceptions.ConnectionError,
+    ) as exc:
+        raise NewsletterException(
+            str(exc),
+            error_code=errors.BASKET_NETWORK_FAILURE,
+            status_code=400,
+        ) from exc
 
     if not backend_user:
         return None

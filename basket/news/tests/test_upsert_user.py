@@ -607,7 +607,7 @@ class UpsertUserTests(TestCase):
         confirm_mock.delay.assert_not_called()
 
     @patch("basket.news.tasks.send_tx_messages")
-    def test_send_transactional(self, get_user_mock, braze_mock, _, __):
+    def test_send_transactional(self, send_tx_mock, get_user_mock, braze_mock, confirm_mock):
         """Subscribing to a transactional should send a transactional email"""
         get_user_mock.return_value = None  # Does not exist yet
         data = {
@@ -619,6 +619,6 @@ class UpsertUserTests(TestCase):
         with patch("basket.news.models.BrazeTxEmailMessage.objects.get_tx_message_ids") as get_tx_message_ids:
             get_tx_message_ids.return_value = ["download-foo"]
             upsert_user(SUBSCRIBE, data)
-            braze_mock.assert_called_with(token=None, email="dude@example.com", extra_fields=["id", "email_id"])
-            assert braze_mock.called
+            get_user_mock.assert_called_with(token=None, email="dude@example.com", extra_fields=["id", "email_id"])
             braze_mock.update.assert_not_called()
+            send_tx_mock.assert_called_with(self.email, "en", ["download-foo"])

@@ -96,8 +96,8 @@ class _TestAPIwBrazeBase(_TestAPIBase):
             assert data["code"] == errors.BASKET_EMAIL_PROVIDER_AUTH_FAILURE
             assert data["desc"] == "Email service provider auth failure"
 
-    def test_ctms_unauthorized(self):
-        # Test CTMS unauthorized returns a 500 error.
+    def test_braze_unauthorized(self):
+        # Test Braze unauthorized returns a 500 error.
         with patch("basket.news.utils.braze", spec_set=["get"]) as braze_mock:
             braze_mock.get.side_effect = self.braze_error(401, "Unauthorized", "Not authenticated")
             resp = self.valid_request()

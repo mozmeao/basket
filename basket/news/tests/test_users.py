@@ -213,9 +213,9 @@ class TestLookupUser(TestCase):
         assert rsp.status_code == 404
 
     @patch("basket.news.utils.braze", spec_set=["get"])
-    def test_ctms_user_not_authenticated(self, ctms_mock):
-        """If CTMS is not authenticated, an exception is raised"""
-        ctms_mock.get.side_effect = self.ctms_error(
+    def test_braze_user_not_authenticated(self, braze_mock):
+        """If Braze is not authenticated, an exception is raised"""
+        braze_mock.get.side_effect = self.ctms_error(
             401,
             "Unauthorized",
             "Not authenticated",

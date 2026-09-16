@@ -198,8 +198,18 @@ class QueuedTask(models.Model):
         return f"{self.name} {self.args} {self.kwargs}"
 
     def retry(self):
+        task_kwargs = self.kwargs
+
+        # fxa_* tasks accept a catch-all **kwargs for extra data we don't want
+        # to replay; drop anything not in the task's named parameters.
+        if self.name.rsplit(".", 1)[-1].startswith("fxa_"):
+            func = import_string(self.name)
+            params = inspect.signature(func).parameters
+            known_params = {name for name, p in params.items() if p.kind != inspect.Parameter.VAR_KEYWORD}
+            task_kwargs = {key: val for key, val in task_kwargs.items() if key in known_params}
+
         kwargs = get_enqueue_kwargs(self.name)
-        get_queue().enqueue(self.name, args=self.args, kwargs=self.kwargs, **kwargs)
+        get_queue().enqueue(self.name, args=self.args, kwargs=task_kwargs, **kwargs)
         # Forget the old task.
         self.delete()
 
