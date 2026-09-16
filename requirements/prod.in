@@ -13,7 +13,7 @@ django-watchman==1.5.0
 Django>=5.2.16,<6.0
 email-validator==2.3.0
 everett==3.5.0
-granian==2.7.9
+granian==2.8.2
 hiredis==3.4.0
 ipaddress==1.0.23
 legacy-cgi==2.6.4  # To satisfy pinning requirement: pyfxa -> hawkauthlib ->  webob -> legacy-cgi
