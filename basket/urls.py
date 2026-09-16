@@ -13,7 +13,7 @@ from basket.news.views import fxa_callback, fxa_start
 
 api.add_router("api/v1/news/", news_router)
 api.add_router("api/v1/users/", user_router)
-api.add_router("api/v1/contact/enterprise", contact_router)
+api.add_router("api/v1/contact/", contact_router)
 
 urlpatterns = [
     path("", TemplateView.as_view(template_name="home.html")),
