@@ -354,6 +354,11 @@ _processor = DesensitizationProcessor(
 )
 
 _rx = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+_keys = "|".join(re.escape(k) for k in SENSITIVE_FIELDS_TO_MASK_ENTIRELY)
+_kv = re.compile(
+    rf"""(['"](?:{_keys})['"]\s*:\s*)(?:'[^']*'|"[^"]*"|[^,}}\]]+)""",
+    re.IGNORECASE,
+)
 
 
 def scrub_function(record):
@@ -362,7 +367,8 @@ def scrub_function(record):
             record.args = _processor.filter_extra(record.args)
         else:
             record.args = tuple(_processor.filter_extra(a) for a in record.args)
-    record.msg = _rx.sub(_processor.MASK, record.getMessage())
+    message = _kv.sub(lambda m: m.group(1) + f"'{_processor.MASK}'", record.getMessage())
+    record.msg = _rx.sub(_processor.MASK, message)
     record.args = None
     return True
 
