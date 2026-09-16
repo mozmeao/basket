@@ -14,13 +14,13 @@ asgiref==3.12.1 \
     # via
     #   django
     #   django-cors-headers
-boto3==1.43.37 \
-    --hash=sha256:cf7e75963229b337d1b0e37c46de6f3c2c2290d186157729c8e7afb12909bfc0 \
-    --hash=sha256:f409f931e836f2f24e168e8f93901010cb8055c7f2ddcfcfbd72b25f8c4e306c
+boto3==1.43.91 \
+    --hash=sha256:5ff948cfac8bff72227930e0894a8542731e1998634d1ffd8a074c20a90af919 \
+    --hash=sha256:98643e500883bf6fcd13d04bb19da983bf97e5f1c600fc11470ce45437fa96b4
     # via -r requirements/prod.in
-botocore==1.43.90 \
-    --hash=sha256:65f3394ef07314e45c92a90120988531d651136390d464a94938a92f665893f7 \
-    --hash=sha256:a139ed601e8b8fb1d730022355fe2b284b8c15cfe9ac0f100254a35d2273e1d3
+botocore==1.43.96 \
+    --hash=sha256:3ef7c8c40738bb42a40eb0ac3dc2d9f1698946541874ae9b505e49f289272805 \
+    --hash=sha256:c21153a07b97e8497f4ffa83e340a055f3f479b074e6eedf7d0562a9bc861cac
     # via
     #   boto3
     #   s3transfer
