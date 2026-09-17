@@ -8,7 +8,7 @@ from django.urls import path
 from django.utils.decorators import method_decorator
 
 from basket.base.forms import EmailForm, EmailListForm
-from basket.news.backends.braze import BrazeUserNotFoundByEmailError, braze
+from basket.news.backends.braze import BrazeNotConfigured, BrazeUserNotFoundByEmailError, braze
 from basket.news.newsletters import slug_to_vendor_id
 from basket.news.utils import UNSUBSCRIBE, parse_newsletters
 
@@ -102,7 +102,7 @@ class BasketAdminSite(admin.AdminSite):
                     context["vendor"] = "Braze"
                     try:
                         contact = braze.get(email=email)
-                    except BrazeUserNotFoundByEmailError:
+                    except (BrazeUserNotFoundByEmailError, BrazeNotConfigured):
                         contact = None
                     else:
                         # response could be 200 with an empty list
@@ -146,7 +146,12 @@ class BasketAdminSite(admin.AdminSite):
                 def handler(emails):
                     # Process the emails.
                     for email in emails:
-                        contact = braze.get(email=email)
+                        try:
+                            contact = braze.get(email=email)
+                        except BrazeNotConfigured:
+                            output.append(f"{email}: Braze is not configured")
+                            continue
+
                         if contact:
                             email_id = contact["email_id"]
                             try:
@@ -165,6 +170,8 @@ class BasketAdminSite(admin.AdminSite):
                             except BrazeUserNotFoundByEmailError:
                                 # should never reach here, but best to catch it anyway
                                 output.append(f"{email} not found in Braze")
+                            except BrazeNotConfigured:
+                                output.append(f"{email}: Braze is not configured")
                             else:
                                 output.append(f"UNSUBSCRIBED {email} (Braze external id: {email_id}).")
                         else:
@@ -204,6 +211,8 @@ class BasketAdminSite(admin.AdminSite):
                             data = braze.delete(email)
                         except BrazeUserNotFoundByEmailError:
                             output.append(f"{email} not found in Braze")
+                        except BrazeNotConfigured:
+                            output.append(f"{email}: Braze is not configured")
                         else:
                             for contact in data:
                                 email_id = contact["email_id"]

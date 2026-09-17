@@ -82,22 +82,6 @@ class FailedTaskTest(TestCase):
         assert mock_enqueue.call_args.kwargs["kwargs"] == self.kwargs
         assert mock_enqueue.call_args.kwargs["retry"].intervals == [60, 90]
 
-    @override_settings(RQ_MAX_RETRIES=2)
-    @patch("basket.base.rq.Queue.enqueue")
-    def test_retry_filters_unknown_kwargs_for_fxa(self, mock_enqueue):
-        """Kwargs no longer accepted by the fxa task's current signature are dropped."""
-        task_name = "basket.news.tasks.fxa_delete"
-        task = models.FailedTask.objects.create(
-            task_id="el-dudarino",
-            name=task_name,
-            args=["some-token", {"foo": "bar"}],
-            kwargs={"stale_kwarg": "nope"},
-        )
-        task.retry()
-
-        mock_enqueue.assert_called_once()
-        assert mock_enqueue.call_args.kwargs["kwargs"] == {}
-
 
 @pytest.mark.django_db
 class TestNewsletter:

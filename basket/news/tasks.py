@@ -208,7 +208,7 @@ def fxa_login(data, should_send_tx_messages=True, pre_generated_token=None, **kw
 
 
 @rq_task
-def update_user_meta(token, data):
+def update_user_meta(token, data, **kwargs):
     """Update a user's metadata, not newsletters"""
     braze.update_by_token(token, data)
 
@@ -219,6 +219,7 @@ def upsert_user(
     data,
     should_send_tx_messages=True,
     pre_generated_token=None,
+    **kwargs,
 ):
     """
     Update or insert (upsert) a contact record
@@ -247,6 +248,7 @@ def upsert_contact(
     user_data,
     should_send_tx_messages=True,
     pre_generated_token=None,
+    **kwargs
 ):
     """
     Update or insert (upsert) a contact record
@@ -442,7 +444,7 @@ def send_confirm_message(email, token, lang, message_type):
 
 
 @rq_task
-def confirm_user(token, extra_metrics_tags=None):
+def confirm_user(token, extra_metrics_tags=None, **kwargs):
     """
     Confirm any pending subscriptions for the user with this token.
 
@@ -479,7 +481,7 @@ def confirm_user(token, extra_metrics_tags=None):
 
 
 @rq_task
-def update_custom_unsub(token, reason):
+def update_custom_unsub(token, reason, **kwargs):
     """Record a user's custom unsubscribe reason."""
     try:
         braze.update_by_token(token, {"unsub_reason": reason})
