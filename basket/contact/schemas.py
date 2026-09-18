@@ -6,25 +6,18 @@ from .validators import reject_urls, validate_name_shape
 BLOCKED_EMAIL_DOMAINS = frozenset({"mailinator.com", "tempmail.com", "guerrillamail.com", "throwaway.email", "10minutemail.com"})
 
 
-class ContactEnterpriseSchema(Schema):
+class ContactSchema(Schema):
     first_name: str = Field(..., min_length=1, max_length=100)
     last_name: str = Field(..., min_length=1, max_length=100)
     company: str = Field(..., min_length=1, max_length=200)
     job_title: str = Field(..., min_length=1, max_length=150)
     business_email: EmailStr = Field(..., min_length=1, max_length=255)
-    business_phone: str = Field(default="", max_length=255)
-    company_size: str = Field(default="", max_length=255)
     country: str = Field(..., min_length=1, max_length=255)
     opt_in: str = Field(default="False")
-    website: str = Field(default="")
     lead_source: str = Field(default="", max_length=255)
     cta: str = Field(default="", max_length=255)
+    # Honeypot: real users never fill this in.
     office_fax: str = Field(default="")
-    firefox_use_stage: str = Field(..., min_length=1, max_length=100)
-    deployment_size: str = Field(..., min_length=1, max_length=100)
-    support_needs: str = Field(..., min_length=1, max_length=200)
-    timeline: str = Field(..., min_length=1, max_length=100)
-    message: str = Field(default="", max_length=2500)
 
     @field_validator("first_name", "last_name", "company")
     @classmethod
@@ -43,3 +36,17 @@ class ContactEnterpriseSchema(Schema):
         if domain in BLOCKED_EMAIL_DOMAINS:
             raise ValueError("Email domain is not allowed.")
         return v
+
+
+class ContactBasicSchema(ContactSchema):
+    accepted_terms: str = Field(..., min_length=1, max_length=255)
+
+
+class ContactEnterpriseSchema(ContactSchema):
+    business_phone: str = Field(default="", max_length=255)
+    company_size: str = Field(default="", max_length=255)
+    firefox_use_stage: str = Field(..., min_length=1, max_length=100)
+    deployment_size: str = Field(..., min_length=1, max_length=100)
+    support_needs: str = Field(..., min_length=1, max_length=200)
+    timeline: str = Field(..., min_length=1, max_length=100)
+    message: str = Field(default="", max_length=2500)

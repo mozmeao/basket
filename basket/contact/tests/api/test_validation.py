@@ -36,7 +36,6 @@ class TestContactEnterpriseAPI(_TestAPIBase):
             "company_size": "big",
             "country": "Canada",
             "opt_in": "true",
-            "website": "",
             "firefox_use_stage": "currently_deploy,piloting",
             "deployment_size": "1",
             "support_needs": "planning_evaluating,deployment_config,security_compliance",
@@ -58,7 +57,7 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
-    def test_success_if_website_exists(self):
+    def test_success_if_unknown_field_exists(self):
         payload = self.valid_payload()
         payload["website"] = "www.firefox.com"
         resp = self.client.post(self.url, data=payload, content_type="application/json")
@@ -159,6 +158,14 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         assert resp.status_code == 422
 
     # --- Missing fields ---
+
+    def test_opt_in_stays_optional(self):
+        # opt_in is optional on every form and defaults to "False".
+        payload = self.valid_payload()
+        del payload["opt_in"]
+        resp = self.client.post(self.url, data=payload, content_type="application/json")
+        assert resp.status_code == 200
+        assert self._mock_delay.call_args.args[0]["opt_in"] == "False"
 
     def test_rejects_missing_first_name(self):
         payload = self.valid_payload()
@@ -276,5 +283,4 @@ class TestContactEnterpriseAPI(_TestAPIBase):
         self._mock_delay.assert_called_once()
         submitted = self._mock_delay.call_args[0][0]
         assert submitted["business_email"] == "jane@acme.com"
-        assert "website" not in submitted
         assert "office_fax" not in submitted

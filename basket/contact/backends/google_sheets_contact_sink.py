@@ -14,6 +14,27 @@ _SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 _APPEND_URL = "https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{range}:append"
 
 
+# Column order of the sheet. Every form writes here; fields a form does not collect
+# are left blank, so new columns only ever get appended.
+_COLUMNS = [
+    "first_name",
+    "last_name",
+    "company",
+    "job_title",
+    "business_email",
+    "business_phone",
+    "country",
+    "opt_in",
+    "lead_source",
+    "cta",
+    "firefox_use_stage",
+    "deployment_size",
+    "support_needs",
+    "timeline",
+    "message",
+]
+
+
 class GoogleSheetsContactSink(ContactSink):
     def submit(self, contact: dict) -> None:
         credentials = Credentials.from_service_account_info(
@@ -22,23 +43,7 @@ class GoogleSheetsContactSink(ContactSink):
         )
         session = AuthorizedSession(credentials)
 
-        row = [
-            contact["first_name"],
-            contact["last_name"],
-            contact["company"],
-            contact["job_title"],
-            contact["business_email"],
-            contact["business_phone"],
-            contact["country"],
-            contact["opt_in"],
-            contact["lead_source"],
-            contact["cta"],
-            contact["firefox_use_stage"],
-            contact["deployment_size"],
-            contact["support_needs"],
-            contact["timeline"],
-            contact["message"],
-        ]
+        row = [contact.get(column, "") for column in _COLUMNS]
 
         url = _APPEND_URL.format(
             spreadsheet_id=settings.GOOGLE_SHEETS_CONTACT_SPREADSHEET_ID,
