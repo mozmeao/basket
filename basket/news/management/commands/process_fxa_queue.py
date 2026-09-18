@@ -19,7 +19,6 @@ from basket.news.tasks import (
     fxa_newsletters_update,
     fxa_verified,
 )
-from basket.news.utils import generate_token
 
 FXA_EVENT_TYPES = {
     "delete": fxa_delete,
@@ -104,32 +103,10 @@ class Command(BaseCommand):
 
                     enqueue_in = BRAZE_OPTIMAL_DELAY if should_delay_execution(event_type, event) else None
                     try:
-                        if settings.BRAZE_PARALLEL_WRITE_ENABLE:
-                            pre_generated_token = generate_token()
-                            FXA_EVENT_TYPES[event_type].delay(
-                                event,
-                                use_braze_backend=True,
-                                should_send_tx_messages=False,
-                                pre_generated_token=pre_generated_token,
-                                enqueue_in=enqueue_in,
-                            )
-                            FXA_EVENT_TYPES[event_type].delay(
-                                event,
-                                use_braze_backend=False,
-                                should_send_tx_messages=True,
-                                pre_generated_token=pre_generated_token,
-                            )
-                        elif settings.BRAZE_ONLY_WRITE_ENABLE:
-                            FXA_EVENT_TYPES[event_type].delay(
-                                event,
-                                use_braze_backend=True,
-                                enqueue_in=enqueue_in,
-                            )
-                        else:
-                            FXA_EVENT_TYPES[event_type].delay(
-                                event,
-                                use_braze_backend=False,
-                            )
+                        FXA_EVENT_TYPES[event_type].delay(
+                            event,
+                            enqueue_in=enqueue_in,
+                        )
                     except Exception:
                         # something's wrong with the queue. try again.
                         metrics.incr("fxa.events.message", tags=["info:queue_error", f"event:{event_type}"])

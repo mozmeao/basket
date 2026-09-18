@@ -271,7 +271,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
         response = views.subscribe(request)
         self.assertEqual(response.status_code, 200)
         self.assertFalse(self.update_user_task.called)
-        metricsmock.assert_incr_once("news.views.subscribe", tags=["info:email_blocked"])
+        metricsmock.assert_incr_once("news.views.subscribe", tags=["info:email_blocked", "backend:braze"])
 
     @mock_metrics
     def test_no_source_url_referrer(self, metricsmock):
@@ -306,7 +306,7 @@ class SubscribeTests(ViewsPatcherMixin, TestCase):
             optin=False,
             sync=False,
         )
-        metricsmock.assert_incr_once("news.views.subscribe", tags=["info:use_referrer"])
+        metricsmock.assert_incr_once("news.views.subscribe", tags=["info:use_referrer", "backend:braze"])
 
     def test_source_url_overrides_referrer(self):
         """Test source_url used when referrer also provided."""
@@ -895,7 +895,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TasksPatcherMixin, Test
             ttl=settings.FXA_OAUTH_TOKEN_TTL,
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
-        metricsmock.assert_incr_once("news.views.fxa_callback", tags=["status:success"])
+        metricsmock.assert_incr_once("news.views.fxa_callback", tags=["status:success", "backend:braze"])
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-token/?fxa=1"
         self.get_user_data.assert_called_with_subset(email="dude@example.com", fxa_id="abc123")
 
@@ -925,7 +925,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TasksPatcherMixin, Test
             ttl=settings.FXA_OAUTH_TOKEN_TTL,
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
-        metricsmock.assert_incr_once("news.views.fxa_callback", tags=["status:success"])
+        metricsmock.assert_incr_once("news.views.fxa_callback", tags=["status:success", "backend:braze"])
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
         self.get_user_data.assert_called_with_subset(email="dude@example.com", fxa_id=None)
         self.upsert_contact.assert_called_with_subset(
@@ -966,7 +966,7 @@ class FxAPrefCenterOauthCallbackTests(ViewsPatcherMixin, TasksPatcherMixin, Test
             ttl=settings.FXA_OAUTH_TOKEN_TTL,
         )
         fxa_profile_mock.get_profile.assert_called_with("access-token")
-        metricsmock.assert_incr_once("news.views.fxa_callback", tags=["status:success"])
+        metricsmock.assert_incr_once("news.views.fxa_callback", tags=["status:success", "backend:braze"])
         assert resp["location"] == "https://www.mozilla.org/newsletter/existing/the-new-token/?fxa=1"
         self.get_user_data.assert_called_with_subset(email="dude@example.com", fxa_id=None)
         self.upsert_contact.assert_called_with_subset(
