@@ -242,14 +242,7 @@ def upsert_user(
     )
 
 
-def upsert_contact(
-    api_call_type,
-    data,
-    user_data,
-    should_send_tx_messages=True,
-    pre_generated_token=None,
-    **kwargs
-):
+def upsert_contact(api_call_type, data, user_data, should_send_tx_messages=True, pre_generated_token=None, **kwargs):
     """
     Update or insert (upsert) a contact record
 
