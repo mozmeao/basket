@@ -27,7 +27,7 @@ pyOpenSSL==26.4.0  # Paired with cryptography above: 26.4.0 requires cryptograph
 pysilverpop==0.2.6
 PyYAML==6.0.3
 regex==2026.7.19
-redis==6.2.0  # Held at 6.x: redis-py 8 changes connection_pool.connection_kwargs defaults, which breaks test_get_redis_connection
+redis==8.1.0  # Held at 6.x: redis-py 8 changes connection_pool.connection_kwargs defaults, which breaks test_get_redis_connection
 rq==2.12.0
 rq-scheduler==0.14.0
 sentry-processor==0.0.1
