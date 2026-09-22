@@ -238,6 +238,10 @@ ASSIGN_RATE_LIMIT = config("ASSIGN_RATE_LIMIT", default="4/5m")
 # Endpoint-wide backstop; size to total expected Braze volume. Tune via env.
 ASSIGN_GLOBAL_RATE_LIMIT = config("ASSIGN_GLOBAL_RATE_LIMIT", default="1000/m")
 CONTACT_ENTERPRISE_RATE_LIMIT = config("CONTACT_ENTERPRISE_RATE_LIMIT", default="5/h")
+# Inbound `/api/v1/intake/` form submissions: X-Basket-Signature timestamp freshness window.
+INTAKE_SIGNATURE_TOLERANCE_SECONDS = config("INTAKE_SIGNATURE_TOLERANCE_SECONDS", parser=int, default="300")
+# Per-partner (X-Api-Key), not per-IP -- this is authenticated server-to-server traffic.
+INTAKE_RATE_LIMIT = config("INTAKE_RATE_LIMIT", default="60/m")
 ENTERPRISE_CONTACT_SINK = config("ENTERPRISE_CONTACT_SINK", default="google_sheets")
 GOOGLE_SHEETS_CONTACT_SPREADSHEET_ID = config("GOOGLE_SHEETS_CONTACT_SPREADSHEET_ID", default="")
 GOOGLE_SHEETS_CONTACT_CREDENTIALS_JSON = config("GOOGLE_SHEETS_CONTACT_CREDENTIALS_JSON", default="")
