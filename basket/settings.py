@@ -175,6 +175,7 @@ ROOT_URLCONF = "basket.urls"
 INSTALLED_APPS = (
     "basket.base",
     "basket.news",
+    "basket.contact",
     "corsheaders",
     "product_details",
     "mozilla_django_oidc",
