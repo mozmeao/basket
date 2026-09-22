@@ -94,6 +94,22 @@ class WebhookIdentifierThrottle(MultiPeriodThrottle):
         }
 
 
+class ApiKeyThrottle(MultiPeriodThrottle):
+    """
+    Limits the rate of API calls, keyed on the X-Api-Key header value.
+    """
+
+    def get_cache_key(self, request) -> str | None:
+        api_key = request.headers.get("X-Api-Key")
+        if not api_key:
+            return None
+
+        return self.cache_format % {
+            "scope": "api_key",
+            "ident": api_key,
+        }
+
+
 class WebhookGlobalThrottle(MultiPeriodThrottle):
     """
     Endpoint-wide rate limit keyed on a constant, so it can't be escaped by varying or

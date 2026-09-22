@@ -1,3 +1,5 @@
+from typing import Any
+
 from ninja import Schema
 from pydantic import EmailStr, Field, field_validator
 
@@ -50,3 +52,9 @@ class ContactEnterpriseSchema(ContactSchema):
     support_needs: str = Field(..., min_length=1, max_length=200)
     timeline: str = Field(..., min_length=1, max_length=100)
     message: str = Field(default="", max_length=2500)
+
+
+class IntakeSchema(Schema):
+    form_id: str = Field(..., min_length=1, max_length=255)
+    data: dict[str, Any]
+    source_url: str = Field(default="", max_length=2000)

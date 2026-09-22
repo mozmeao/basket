@@ -1,3 +1,4 @@
+import secrets
 from uuid import uuid4
 
 from django.conf import settings
@@ -14,6 +15,11 @@ from basket.news.fields import LocaleField
 def get_uuid():
     """Needed because Django can't make migrations when using lambda."""
     return str(uuid4())
+
+
+def get_hmac_secret():
+    """Needed because Django can't make migrations when using lambda."""
+    return secrets.token_hex(32)
 
 
 class BlockedEmail(models.Model):
@@ -143,6 +149,17 @@ class APIUser(models.Model):
     enabled = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
     last_accessed = models.DateTimeField(null=True, blank=True)
+    allowed_form_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Form intake `form_id` slugs this user may submit to. Empty list = unrestricted.",
+    )
+    hmac_secret = models.CharField(
+        max_length=64,
+        blank=True,
+        default=get_hmac_secret,
+        help_text="Signing secret for /api/v1/intake/ requests (X-Basket-Signature). Never sent over the wire.",
+    )
 
     class Meta:
         verbose_name = "API User"
