@@ -156,7 +156,6 @@ class APIUser(models.Model):
     )
     hmac_secret = models.CharField(
         max_length=64,
-        blank=True,
         default=get_hmac_secret,
         help_text="Signing secret for /api/v1/intake/ requests (X-Basket-Signature). Never sent over the wire.",
     )
@@ -166,6 +165,32 @@ class APIUser(models.Model):
 
     def __str__(self):  # pragma: no cover
         return f"{self.name} ({self.api_key})"
+
+    @classmethod
+    def get_valid(cls, api_key: str) -> "APIUser | None":
+        """
+        Looks up an API key, returning the APIUser if it's valid and enabled.
+
+        Updates the `last_accessed` field and emits the same metric `is_valid` does,
+        so any caller of this lookup (not just the boolean-only `is_valid` path) shows
+        up in API-user access tracking.
+
+        Returns:
+            APIUser | None: the matched user if valid and enabled, None otherwise.
+
+        """
+        try:
+            obj = cls.objects.get(api_key=api_key)
+            if obj.enabled:
+                obj.last_accessed = now()
+                obj.save(update_fields=["last_accessed"])
+                metrics.incr("api.key.is_valid", tags=["value:true"])
+                return obj
+        except APIUser.DoesNotExist:
+            pass
+
+        metrics.incr("api.key.is_valid", tags=["value:false"])
+        return None
 
     @classmethod
     def is_valid(cls, api_key: str) -> bool:
@@ -178,18 +203,7 @@ class APIUser(models.Model):
             bool: True if the API key is valid and enabled, False otherwise.
 
         """
-        try:
-            obj = cls.objects.get(api_key=api_key)
-            if obj.enabled:
-                obj.last_accessed = now()
-                obj.save(update_fields=["last_accessed"])
-                metrics.incr("api.key.is_valid", tags=["value:true"])
-                return True
-        except APIUser.DoesNotExist:
-            pass
-
-        metrics.incr("api.key.is_valid", tags=["value:false"])
-        return False
+        return cls.get_valid(api_key) is not None
 
 
 def _is_query_dict(arg):

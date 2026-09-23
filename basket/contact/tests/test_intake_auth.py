@@ -75,3 +75,30 @@ class TestIntakeAuth:
         request = _request(rf, b'{"form_id": "other", "data": {}}', ts, sig)
         with pytest.raises(IntakeUnauthorized):
             IntakeAuth().authenticate(request, api_user.api_key)
+
+    def test_empty_hmac_secret_rejected(self, rf, api_user):
+        # Not reachable via the admin anymore (blank=True was removed), but fail closed
+        # for any row that still has one rather than signing with a guessable empty key.
+        api_user.hmac_secret = ""
+        api_user.save()
+        ts, sig = _sign(api_user, BODY)
+        request = _request(rf, BODY, ts, sig)
+        with pytest.raises(IntakeUnauthorized):
+            IntakeAuth().authenticate(request, api_user.api_key)
+
+    def test_replayed_signature_rejected(self, rf, api_user):
+        ts, sig = _sign(api_user, BODY)
+        first = _request(rf, BODY, ts, sig)
+        assert IntakeAuth().authenticate(first, api_user.api_key) == api_user
+
+        second = _request(rf, BODY, ts, sig)
+        with pytest.raises(IntakeUnauthorized):
+            IntakeAuth().authenticate(second, api_user.api_key)
+
+    def test_successful_auth_updates_last_accessed(self, rf, api_user):
+        assert api_user.last_accessed is None
+        ts, sig = _sign(api_user, BODY)
+        request = _request(rf, BODY, ts, sig)
+        IntakeAuth().authenticate(request, api_user.api_key)
+        api_user.refresh_from_db()
+        assert api_user.last_accessed is not None

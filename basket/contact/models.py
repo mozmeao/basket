@@ -34,7 +34,7 @@ class FormDestination(models.Model):
 class FormSubmission(models.Model):
     route = models.ForeignKey(FormRoute, on_delete=models.PROTECT, related_name="submissions")
     payload = models.JSONField(help_text="Raw, unmodified CMS data")
-    source_url = models.URLField(blank=True)
+    source_url = models.URLField(blank=True, max_length=2000)
     received_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS, default="queued")
 
