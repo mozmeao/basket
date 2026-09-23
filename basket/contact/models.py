@@ -43,9 +43,17 @@ class FormDestination(models.Model):
         # full_clean() still calls this even when field_map already failed its own
         # required check and is None, so guard rather than crash on .items().
         if self.dest_type == "gsheet" and self.field_map:
+            if not isinstance(self.field_map, dict):
+                raise ValidationError({"field_map": "gsheet field_map must be a JSON object mapping CMS field to header text."})
+
             bad = {field: header for field, header in self.field_map.items() if not isinstance(header, str) or not header.strip()}
             if bad:
                 raise ValidationError({"field_map": f"gsheet field_map values must be non-empty header text: {bad}"})
+
+            headers = list(self.field_map.values())
+            duplicates = {header for header in headers if headers.count(header) > 1}
+            if duplicates:
+                raise ValidationError({"field_map": f"gsheet field_map headers must be unique -- mapped more than once: {duplicates}"})
 
 
 class FormSubmission(models.Model):
