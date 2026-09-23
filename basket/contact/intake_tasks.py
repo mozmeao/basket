@@ -23,8 +23,15 @@ def _get_session() -> AuthorizedSession:
     return AuthorizedSession(credentials)
 
 
+def _quote_tab(tab: str) -> str:
+    # Sheets A1 notation requires a sheet/tab name to be single-quoted whenever it
+    # contains a space or other special character; quoting unconditionally is safe
+    # for plain names too. An embedded quote is escaped by doubling it.
+    return "'" + tab.replace("'", "''") + "'"
+
+
 def _fetch_header_row(session: AuthorizedSession, sheet_id: str, tab: str) -> list:
-    url = _VALUES_URL.format(spreadsheet_id=sheet_id, range=f"{tab}!1:1")
+    url = _VALUES_URL.format(spreadsheet_id=sheet_id, range=f"{_quote_tab(tab)}!1:1")
     response = session.get(url, timeout=_REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     rows = response.json().get("values", [])
@@ -34,7 +41,7 @@ def _fetch_header_row(session: AuthorizedSession, sheet_id: str, tab: str) -> li
 def _fetch_row_count(session: AuthorizedSession, sheet_id: str, tab: str) -> int:
     # One-time bootstrap for a destination's row counter, so it starts after
     # whatever's already in the sheet instead of overwriting it.
-    url = _VALUES_URL.format(spreadsheet_id=sheet_id, range=tab)
+    url = _VALUES_URL.format(spreadsheet_id=sheet_id, range=_quote_tab(tab))
     response = session.get(url, timeout=_REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     return len(response.json().get("values", []))
@@ -95,7 +102,7 @@ def _build_row(data: dict, field_map: dict, headers: list) -> list:
 
 def _write_row(session: AuthorizedSession, sheet_id: str, tab: str, row_number: int, row: list) -> None:
     # Writes to an explicit row rather than appending -- see _claim_row for why.
-    url = _VALUES_URL.format(spreadsheet_id=sheet_id, range=f"{tab}!A{row_number}")
+    url = _VALUES_URL.format(spreadsheet_id=sheet_id, range=f"{_quote_tab(tab)}!A{row_number}")
     response = session.put(url, params={"valueInputOption": "RAW"}, json={"values": [row]}, timeout=_REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
 

@@ -83,11 +83,30 @@ class TestDeliverToGsheet:
     def test_writes_row_and_marks_delivered(self, submission, destination, mock_session):
         deliver_to_gsheet(submission.id, destination.id)
 
-        assert mock_session.get.call_args.args[0].endswith("/sheet-id/values/Responses!1:1")
+        assert mock_session.get.call_args.args[0].endswith("/sheet-id/values/'Responses'!1:1")
         assert mock_session.put.call_args.kwargs["json"]["values"] == [["a@b.com", "Jane"]]
-        assert mock_session.put.call_args.args[0].endswith("/sheet-id/values/Responses!A2")
+        assert mock_session.put.call_args.args[0].endswith("/sheet-id/values/'Responses'!A2")
         submission.refresh_from_db()
         assert submission.status == "delivered"
+
+    def test_quotes_tab_names_with_spaces_for_a1_notation(self, route, mock_session):
+        # Regression: a tab literally named "Form Responses 1" (Google Sheets' own
+        # default tab name) breaks unquoted A1 ranges.
+        destination = FormDestination.objects.create(
+            route=route,
+            dest_type="gsheet",
+            label="Sheet",
+            config={"sheet_id": "sheet-id", "tab": "Form Responses 1"},
+            field_map={"email": "Email", "first_name": "First Name"},
+            active=True,
+            next_row=2,
+        )
+        submission = FormSubmission.objects.create(route=route, payload={"data": {"email": "a@b.com", "first_name": "Jane"}})
+
+        deliver_to_gsheet(submission.id, destination.id)
+
+        assert mock_session.get.call_args.args[0].endswith("/sheet-id/values/'Form Responses 1'!1:1")
+        assert mock_session.put.call_args.args[0].endswith("/sheet-id/values/'Form Responses 1'!A2")
 
     def test_claims_rows_sequentially_across_deliveries(self, route, destination, mock_session):
         # Regression: relying on the Sheets API's `values.append` to auto-detect "the

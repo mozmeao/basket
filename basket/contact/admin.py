@@ -7,6 +7,7 @@ from .models import FormDestination, FormRoute, FormSubmission
 class FormDestinationInline(admin.TabularInline):
     model = FormDestination
     extra = 1
+    readonly_fields = ["next_row"]
 
 
 @admin.register(FormRoute)
@@ -23,8 +24,8 @@ class FormRouteAdmin(admin.ModelAdmin):
                 self.message_user(request, f"{route.form_id}: no active destinations to test.", messages.WARNING)
                 continue
 
-            # Cover every mapped field, not just email/first_name; values are clearly
-            # marked as test data since this delivers to the real destination.
+            # Cover every mapped field; values are clearly marked as test data since
+            # this delivers to the real destination.
             fields = {field for destination in destinations for field in destination.field_map} | {"email", "first_name"}
             data = {field: f"basket-admin-test_{field}" for field in fields}
             data["email"] = "basket-admin-test_email@example.invalid"

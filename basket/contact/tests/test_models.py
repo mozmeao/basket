@@ -31,7 +31,7 @@ class TestFormDestination:
         assert dest.active is True
 
     def test_only_gsheet_is_offered(self):
-        # v1 deliberately restricts this -- the fan-out loop has no else branch, so
+        # v1 deliberately restricts this, the fan-out loop has no else branch, so
         # adding a dest_type here without a matching task would silently enqueue nothing.
         assert DEST_TYPES == [("gsheet", "Google Sheet")]
 
@@ -66,6 +66,20 @@ class TestFormDestination:
         # required-field check and is None -- it doesn't stop at the first error.
         dest = FormDestination(route=route, dest_type="gsheet", label="Sheet", config={}, field_map=None)
         dest.clean()  # should not raise AttributeError
+
+    def test_clean_rejects_non_dict_field_map(self, route):
+        # JSONField accepts any JSON value -- a truthy list or string must raise a
+        # clean ValidationError, not AttributeError from calling .items() on it.
+        dest = FormDestination(route=route, dest_type="gsheet", label="Sheet", config={}, field_map=["email"])
+        with pytest.raises(ValidationError):
+            dest.clean()
+
+    def test_clean_rejects_duplicate_mapped_headers(self, route):
+        # Two CMS fields mapped to the same header silently overwrite each other at
+        # delivery time -- reject it during validation instead.
+        dest = FormDestination(route=route, dest_type="gsheet", label="Sheet", config={}, field_map={"email": "Contact", "phone": "Contact"})
+        with pytest.raises(ValidationError):
+            dest.clean()
 
 
 @pytest.mark.django_db
