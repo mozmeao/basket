@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
 
 import pytest
@@ -42,6 +43,29 @@ class TestFormDestination:
     def test_str(self, route):
         dest = FormDestination.objects.create(route=route, dest_type="gsheet", label="Sheet", config={}, field_map={})
         assert str(dest) == "Sheet (gsheet)"
+
+    def test_clean_accepts_header_text(self, route):
+        dest = FormDestination(
+            route=route, dest_type="gsheet", label="Sheet", config={}, field_map={"email": "Business Email", "first_name": "First Name"}
+        )
+        dest.clean()  # should not raise
+
+    def test_clean_rejects_empty_string_values(self, route):
+        dest = FormDestination(route=route, dest_type="gsheet", label="Sheet", config={}, field_map={"email": "  "})
+        with pytest.raises(ValidationError):
+            dest.clean()
+
+    def test_clean_rejects_non_string_values(self, route):
+        # A common mistake -- e.g. pasting a number or boolean instead of header text.
+        dest = FormDestination(route=route, dest_type="gsheet", label="Sheet", config={}, field_map={"email": 1})
+        with pytest.raises(ValidationError):
+            dest.clean()
+
+    def test_clean_does_not_crash_when_field_map_is_none(self, route):
+        # full_clean() still calls clean() even when field_map already failed its own
+        # required-field check and is None -- it doesn't stop at the first error.
+        dest = FormDestination(route=route, dest_type="gsheet", label="Sheet", config={}, field_map=None)
+        dest.clean()  # should not raise AttributeError
 
 
 @pytest.mark.django_db

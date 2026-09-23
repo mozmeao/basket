@@ -1,7 +1,7 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
-DEST_TYPES = [("gsheet", "Google Sheet")]
-# v1 only offers gsheet as an admin choice. more destinations will follow.
+DEST_TYPES = [("gsheet", "Google Sheet")]  # v1 only offers gsheet
 
 STATUS = [("queued", "queued"), ("delivered", "delivered"), ("failed", "failed")]
 
@@ -22,13 +22,30 @@ class FormDestination(models.Model):
     dest_type = models.CharField(max_length=20, choices=DEST_TYPES)
     label = models.CharField(max_length=255)
     config = models.JSONField(help_text='gsheet: {"sheet_id": "...", "tab": "Responses"}')
-    field_map = models.JSONField(help_text='gsheet: {"email": "A", "first_name": "B"} -- CMS field to column letter')
+    field_map = models.JSONField(
+        help_text='gsheet: {"email": "Business Email", "first_name": "First Name"} -- CMS field to the '
+        "sheet's own header text (row 1), matched at delivery time -- not a fixed column letter, so "
+        "reordering columns or adding new ones later doesn't misalign already-delivered rows."
+    )
     active = models.BooleanField(default=True)
-    # No ignore_unmapped field -- v1 always discards unmapped fields at delivery time,
-    # matching what's stated in the Springfield-facing contract.
+    # v1 always discards unmapped fields at delivery time -- no ignore_unmapped field.
+    next_row = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Sheet row the next gsheet delivery will claim; managed automatically, do not edit.",
+    )
 
     def __str__(self):  # pragma: no cover
         return f"{self.label} ({self.dest_type})"
+
+    def clean(self):
+        super().clean()
+        # full_clean() still calls this even when field_map already failed its own
+        # required check and is None, so guard rather than crash on .items().
+        if self.dest_type == "gsheet" and self.field_map:
+            bad = {field: header for field, header in self.field_map.items() if not isinstance(header, str) or not header.strip()}
+            if bad:
+                raise ValidationError({"field_map": f"gsheet field_map values must be non-empty header text: {bad}"})
 
 
 class FormSubmission(models.Model):
@@ -40,3 +57,17 @@ class FormSubmission(models.Model):
 
     def __str__(self):  # pragma: no cover
         return f"{self.route.form_id} @ {self.received_at:%Y-%m-%d %H:%M}"
+
+
+class FormDeliveryClaim(models.Model):
+    # Makes row-claiming idempotent across RQ retries: a retried delivery reuses the
+    # row it already claimed instead of claiming a new one and orphaning the old row.
+    submission = models.ForeignKey(FormSubmission, on_delete=models.CASCADE, related_name="delivery_claims")
+    destination = models.ForeignKey(FormDestination, on_delete=models.CASCADE, related_name="delivery_claims")
+    row_number = models.PositiveIntegerField()
+
+    class Meta:
+        unique_together = ("submission", "destination")
+
+    def __str__(self):  # pragma: no cover
+        return f"{self.submission_id} -> {self.destination_id} @ row {self.row_number}"
