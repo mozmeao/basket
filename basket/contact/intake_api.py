@@ -38,7 +38,8 @@ def intake_unauthorized(request, exc):
 def submit_intake(request, payload: IntakeSchema):
     api_user = request.auth
 
-    if api_user.allowed_form_ids and payload.form_id not in api_user.allowed_form_ids:
+    allowed_form_ids = api_user.allowed_form_ids
+    if not isinstance(allowed_form_ids, list) or (allowed_form_ids and payload.form_id not in allowed_form_ids):
         return 403, {"status": "error", "detail": "form_id not permitted for this api user"}
 
     try:
