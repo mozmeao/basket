@@ -69,7 +69,8 @@ class IntakeAuth(APIKeyHeader):
         # it doesn't stop the same valid signature being resubmitted. cache.add is
         # atomic: it stores the key only if absent, so this can't race a concurrent
         # replay attempt.
-        if not cache.add(f"intake:sig:{signature}", True, timeout=settings.INTAKE_SIGNATURE_TOLERANCE_SECONDS):
+        replay_ttl = max(1, int(timestamp + settings.INTAKE_SIGNATURE_TOLERANCE_SECONDS - time.time()) + 1)
+        if not cache.add(f"intake:sig:{signature}", True, timeout=replay_ttl):
             raise IntakeUnauthorized()
 
         return user
