@@ -1,45 +1,102 @@
 import json
 
 from django.conf import settings
+from django.db import transaction
 
 from google.auth.transport.requests import AuthorizedSession
 from google.oauth2.service_account import Credentials
 
 from basket.base.decorators import rq_task
 
-from .models import FormDestination, FormSubmission
+from .models import FormDeliveryClaim, FormDestination, FormSubmission
 
 _SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-_APPEND_URL = "https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{range}:append"
+_VALUES_URL = "https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{range}"
+_REQUEST_TIMEOUT_SECONDS = 10
 
 
-def _column_to_index(column: str) -> int:
-    """Convert a spreadsheet column letter ("A", "B", ..., "AA", ...) to a 0-based index."""
-    index = 0
-    for char in column.upper():
-        index = index * 26 + (ord(char) - ord("A") + 1)
-    return index - 1
-
-
-def _build_row(data: dict, field_map: dict) -> list:
-    """Map CMS field values to column positions, filling gaps with "" so the row lines
-    up correctly regardless of which columns are actually mapped. Fields in `data` with
-    no entry in `field_map` are silently dropped -- v1 always discards unmapped fields."""
-    if not field_map:
-        return []
-    positions = {_column_to_index(column): data.get(field, "") for field, column in field_map.items()}
-    width = max(positions) + 1
-    return [positions.get(i, "") for i in range(width)]
-
-
-def _append_row(sheet_id: str, tab: str, row: list) -> None:
+def _get_session() -> AuthorizedSession:
     credentials = Credentials.from_service_account_info(
         json.loads(settings.GOOGLE_SHEETS_CONTACT_CREDENTIALS_JSON),
         scopes=_SCOPES,
     )
-    session = AuthorizedSession(credentials)
-    url = _APPEND_URL.format(spreadsheet_id=sheet_id, range=tab)
-    response = session.post(url, params={"valueInputOption": "RAW"}, json={"values": [row]})
+    return AuthorizedSession(credentials)
+
+
+def _fetch_header_row(session: AuthorizedSession, sheet_id: str, tab: str) -> list:
+    url = _VALUES_URL.format(spreadsheet_id=sheet_id, range=f"{tab}!1:1")
+    response = session.get(url, timeout=_REQUEST_TIMEOUT_SECONDS)
+    response.raise_for_status()
+    rows = response.json().get("values", [])
+    return rows[0] if rows else []
+
+
+def _fetch_row_count(session: AuthorizedSession, sheet_id: str, tab: str) -> int:
+    # One-time bootstrap for a destination's row counter, so it starts after
+    # whatever's already in the sheet instead of overwriting it.
+    url = _VALUES_URL.format(spreadsheet_id=sheet_id, range=tab)
+    response = session.get(url, timeout=_REQUEST_TIMEOUT_SECONDS)
+    response.raise_for_status()
+    return len(response.json().get("values", []))
+
+
+def _claim_row(session: AuthorizedSession, submission_id: int, destination_id: int, sheet_id: str, tab: str) -> int:
+    # Row number is tracked in the DB and reserved under a row lock, not derived by
+    # re-reading the sheet on every delivery -- that was both a race (two concurrent
+    # deliveries could read the same row count) and, on a large sheet, an ever-growing
+    # read on every single submission.
+    #
+    # Idempotent per (submission, destination): if this submission already claimed a
+    # row (e.g. an RQ retry after a write failure), reuse it instead of claiming a new
+    # one and orphaning the old row.
+    claim = FormDeliveryClaim.objects.filter(submission_id=submission_id, destination_id=destination_id).first()
+    if claim:
+        return claim.row_number
+
+    # Bootstrapping a brand-new destination's counter means reading the whole sheet --
+    # do that outside the lock so a slow Sheets response doesn't block other deliveries
+    # to this destination; re-check next_row once inside the lock in case of a race.
+    destination = FormDestination.objects.get(pk=destination_id)
+    prefetched_row_count = None if destination.next_row is not None else _fetch_row_count(session, sheet_id, tab)
+
+    with transaction.atomic():
+        destination = FormDestination.objects.select_for_update().get(pk=destination_id)
+        if destination.next_row is None:
+            prefetched_row_count = prefetched_row_count if prefetched_row_count is not None else _fetch_row_count(session, sheet_id, tab)
+            destination.next_row = prefetched_row_count + 1
+        row_number = destination.next_row
+        destination.next_row += 1
+        destination.save(update_fields=["next_row"])
+        claim, _created = FormDeliveryClaim.objects.get_or_create(
+            submission_id=submission_id,
+            destination_id=destination_id,
+            defaults={"row_number": row_number},
+        )
+    return claim.row_number
+
+
+def _build_row(data: dict, field_map: dict, headers: list) -> list:
+    # Matches field_map's header text against the sheet's actual header row, so
+    # reordered/added columns don't misalign the row. Unmapped fields are dropped.
+    if not field_map:
+        return []
+
+    positions = {}
+    for field, header in field_map.items():
+        try:
+            index = headers.index(header)
+        except ValueError:
+            raise ValueError(f"header {header!r} not found in the destination's sheet header row -- check field_map") from None
+        positions[index] = data.get(field, "")
+
+    width = max(positions) + 1
+    return [positions.get(i, "") for i in range(width)]
+
+
+def _write_row(session: AuthorizedSession, sheet_id: str, tab: str, row_number: int, row: list) -> None:
+    # Writes to an explicit row rather than appending -- see _claim_row for why.
+    url = _VALUES_URL.format(spreadsheet_id=sheet_id, range=f"{tab}!A{row_number}")
+    response = session.put(url, params={"valueInputOption": "RAW"}, json={"values": [row]}, timeout=_REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
 
 
@@ -49,8 +106,13 @@ def deliver_to_gsheet(submission_id, destination_id):
     destination = FormDestination.objects.get(pk=destination_id)
 
     try:
-        row = _build_row(submission.payload["data"], destination.field_map)
-        _append_row(destination.config["sheet_id"], destination.config["tab"], row)
+        session = _get_session()
+        sheet_id = destination.config["sheet_id"]
+        tab = destination.config["tab"]
+        headers = _fetch_header_row(session, sheet_id, tab)
+        row = _build_row(submission.payload["data"], destination.field_map, headers)
+        row_number = _claim_row(session, submission_id, destination_id, sheet_id, tab)
+        _write_row(session, sheet_id, tab, row_number, row)
     except Exception:
         submission.status = "failed"
         submission.save(update_fields=["status"])
