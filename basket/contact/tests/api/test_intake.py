@@ -90,3 +90,29 @@ class TestIntakeAPI(_TestAPIBase):
         submission = FormSubmission.objects.get(route=self.route)
         assert submission.status == "queued"
         assert submission.payload["data"]["email"] == "a@b.com"
+
+    def test_long_source_url_within_schema_limit_is_saved(self, mocker):
+        # Real-world URLs with tracking params routinely exceed 200 chars -- the
+        # schema (2000) and FormSubmission.source_url (also 2000) need to agree, or
+        # this fails at the database layer instead of returning a clean validation error.
+        mocker.patch("basket.contact.intake_api.deliver_to_gsheet.delay")
+        long_url = "https://example.com/?" + "utm_param=value&" * 20
+        assert 200 < len(long_url) <= 2000
+        resp = self._post({"form_id": "enterprise-contact", "data": {}, "source_url": long_url})
+        assert resp.status_code == 200
+        submission = FormSubmission.objects.get(route=self.route)
+        assert submission.source_url == long_url
+
+    def test_replayed_request_returns_generic_401(self):
+        # _post/_sign would compute a fresh timestamp+signature each call, so replaying
+        # requires literally resending the same body and headers, not just resubmitting.
+        body = json.dumps({"form_id": "enterprise-contact", "data": {"email": "a@b.com"}}).encode()
+        ts, sig = _sign(self.api_user, body)
+        headers = {"X-Api-Key": self.api_user.api_key, "X-Basket-Signature": f"t={ts},v1={sig}"}
+
+        first = self.client.post(self.url, data=body, content_type="application/json", headers=headers)
+        assert first.status_code == 200
+
+        second = self.client.post(self.url, data=body, content_type="application/json", headers=headers)
+        assert second.status_code == 401
+        assert second.json() == {"status": "error", "detail": "unauthorized", "code": errors.BASKET_AUTH_ERROR}

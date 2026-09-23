@@ -3,6 +3,7 @@ import hmac
 import time
 
 from django.conf import settings
+from django.core.cache import cache
 
 from ninja.errors import HttpError
 from ninja.security import APIKeyHeader
@@ -41,10 +42,15 @@ class IntakeAuth(APIKeyHeader):
     param_name = "X-Api-Key"
 
     def authenticate(self, request, key):
-        try:
-            user = APIUser.objects.get(api_key=key, enabled=True)
-        except APIUser.DoesNotExist:
-            raise IntakeUnauthorized() from None
+        user = APIUser.get_valid(key)
+        if user is None:
+            raise IntakeUnauthorized()
+
+        if not user.hmac_secret:
+            # blank=True was removed from the model, but existing rows (or anything
+            # bypassing form validation) could still have one -- fail closed rather
+            # than sign with a publicly-known empty key.
+            raise IntakeUnauthorized()
 
         timestamp, signature = _parse_signature_header(request.headers.get("X-Basket-Signature", ""))
         if timestamp is None or signature is None:
@@ -56,6 +62,14 @@ class IntakeAuth(APIKeyHeader):
         signed_content = f"{timestamp}.".encode() + request.body
         expected = hmac.new(user.hmac_secret.encode(), signed_content, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected, signature):
+            raise IntakeUnauthorized()
+
+        # Reject replay of a previously-accepted signature within its own freshness
+        # window -- the timestamp check above only bounds *how old* a signature can be,
+        # it doesn't stop the same valid signature being resubmitted. cache.add is
+        # atomic: it stores the key only if absent, so this can't race a concurrent
+        # replay attempt.
+        if not cache.add(f"intake:sig:{signature}", True, timeout=settings.INTAKE_SIGNATURE_TOLERANCE_SECONDS):
             raise IntakeUnauthorized()
 
         return user
