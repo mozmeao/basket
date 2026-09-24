@@ -40,7 +40,7 @@ class FormDestination(models.Model):
     def clean(self):
         super().clean()
         # full_clean() calls this even after required-field errors, so values may be empty.
-        if self.dest_type == "gsheet" and self.config is not None:
+        if self.dest_type == "gsheet" and self.config:
             if not isinstance(self.config, dict):
                 raise ValidationError({"config": "gsheet config must be a JSON object."})
             missing = [key for key in ("sheet_id", "tab") if not isinstance(self.config.get(key), str) or not self.config[key].strip()]
