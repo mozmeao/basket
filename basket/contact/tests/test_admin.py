@@ -4,7 +4,7 @@ from django.contrib.admin.sites import site
 
 import pytest
 
-from basket.contact.admin import FormRouteAdmin, FormSubmissionAdmin
+from basket.contact.admin import FormDeliveryInline, FormRouteAdmin, FormSubmissionAdmin
 from basket.contact.models import FormDestination, FormRoute, FormSubmission
 
 
@@ -60,9 +60,7 @@ class TestTestDeliveryAction:
         assert "failed" in message_user.call_args.args[1]
 
     def test_dummy_data_covers_every_mapped_field(self, admin_instance, route, rf):
-        # Regression: the dummy payload used to hardcode only email/first_name, so any
-        # field_map entry referencing something else (e.g. a custom column) always got
-        # written as blank in the test, even though the mapping itself was correct.
+        # Regression: dummy data used to cover only email/first_name.
         FormDestination.objects.create(
             route=route,
             dest_type="gsheet",
@@ -85,9 +83,7 @@ class TestTestDeliveryAction:
         mock_deliver.assert_called_once()
 
     def test_dummy_data_is_clearly_marked_as_test_data(self, admin_instance, route, rf):
-        # Real destinations get real data written to them by this action -- every
-        # value must be unmistakably synthetic, not something that reads as a
-        # plausible real lead (e.g. a normal-looking email address).
+        # This writes to real destinations, so values must be obviously synthetic.
         FormDestination.objects.create(route=route, dest_type="gsheet", label="Sheet", config={}, field_map={"email": "Email"}, active=True)
         request = rf.get("/admin/")
 
@@ -118,3 +114,10 @@ class TestFormSubmissionAdmin:
         assert admin_instance.has_add_permission(None) is False
         assert admin_instance.has_change_permission(None) is False
         assert admin_instance.has_delete_permission(None) is False
+
+    def test_shows_per_destination_deliveries_read_only(self):
+        inline = FormDeliveryInline(FormSubmission, site)
+        assert FormDeliveryInline in FormSubmissionAdmin.inlines
+        assert inline.has_add_permission(None) is False
+        assert inline.can_delete is False
+        assert set(inline.readonly_fields) == {"destination", "status", "row_number"}

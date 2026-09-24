@@ -8,7 +8,7 @@ from google.oauth2.service_account import Credentials
 
 from basket.base.decorators import rq_task
 
-from .models import FormDeliveryClaim, FormDestination, FormSubmission
+from .models import FormDelivery, FormDestination, FormSubmission
 
 _SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 _VALUES_URL = "https://sheets.googleapis.com/v4/spreadsheets/{spreadsheet_id}/values/{range}"
@@ -24,9 +24,7 @@ def _get_session() -> AuthorizedSession:
 
 
 def _quote_tab(tab: str) -> str:
-    # Sheets A1 notation requires a sheet/tab name to be single-quoted whenever it
-    # contains a space or other special character; quoting unconditionally is safe
-    # for plain names too. An embedded quote is escaped by doubling it.
+    # A1 notation needs tab names with spaces quoted; embedded quotes are doubled.
     return "'" + tab.replace("'", "''") + "'"
 
 
@@ -39,52 +37,35 @@ def _fetch_header_row(session: AuthorizedSession, sheet_id: str, tab: str) -> li
 
 
 def _fetch_row_count(session: AuthorizedSession, sheet_id: str, tab: str) -> int:
-    # One-time bootstrap for a destination's row counter, so it starts after
-    # whatever's already in the sheet instead of overwriting it.
     url = _VALUES_URL.format(spreadsheet_id=sheet_id, range=_quote_tab(tab))
     response = session.get(url, timeout=_REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     return len(response.json().get("values", []))
 
 
-def _claim_row(session: AuthorizedSession, submission_id: int, destination_id: int, sheet_id: str, tab: str) -> int:
-    # Row number is tracked in the DB and reserved under a row lock, not derived by
-    # re-reading the sheet on every delivery -- that was both a race (two concurrent
-    # deliveries could read the same row count) and, on a large sheet, an ever-growing
-    # read on every single submission.
-    #
-    # Idempotent per (submission, destination): if this submission already claimed a
-    # row (e.g. an RQ retry after a write failure), reuse it instead of claiming a new
-    # one and orphaning the old row.
-    claim = FormDeliveryClaim.objects.filter(submission_id=submission_id, destination_id=destination_id).first()
-    if claim:
-        return claim.row_number
+def _claim_row(session: AuthorizedSession, delivery: FormDelivery, sheet_id: str, tab: str) -> int:
+    if delivery.row_number is not None:
+        return delivery.row_number
 
-    # Bootstrapping a brand-new destination's counter means reading the whole sheet --
-    # do that outside the lock so a slow Sheets response doesn't block other deliveries
-    # to this destination; re-check next_row once inside the lock in case of a race.
-    destination = FormDestination.objects.get(pk=destination_id)
-    prefetched_row_count = None if destination.next_row is not None else _fetch_row_count(session, sheet_id, tab)
+    # Fetched before locking so a slow Sheets call can't block other deliveries.
+    destination = FormDestination.objects.get(pk=delivery.destination_id)
+    existing_rows = _fetch_row_count(session, sheet_id, tab) if destination.next_row is None else None
 
     with transaction.atomic():
-        destination = FormDestination.objects.select_for_update().get(pk=destination_id)
+        destination = FormDestination.objects.select_for_update().get(pk=delivery.destination_id)
+        delivery.refresh_from_db(fields=["row_number"])
+        if delivery.row_number is not None:  # claimed by a concurrent attempt while we waited
+            return delivery.row_number
         if destination.next_row is None:
-            prefetched_row_count = prefetched_row_count if prefetched_row_count is not None else _fetch_row_count(session, sheet_id, tab)
-            destination.next_row = prefetched_row_count + 1
-        row_number = destination.next_row
+            destination.next_row = existing_rows + 1
+        delivery.row_number = destination.next_row
         destination.next_row += 1
         destination.save(update_fields=["next_row"])
-        claim, _created = FormDeliveryClaim.objects.get_or_create(
-            submission_id=submission_id,
-            destination_id=destination_id,
-            defaults={"row_number": row_number},
-        )
-    return claim.row_number
+        delivery.save(update_fields=["row_number"])
+    return delivery.row_number
 
 
 def _build_row(data: dict, field_map: dict, headers: list) -> list:
-    # Matches field_map's header text against the sheet's actual header row, so
-    # reordered/added columns don't misalign the row. Unmapped fields are dropped.
     if not field_map:
         return []
 
@@ -101,16 +82,33 @@ def _build_row(data: dict, field_map: dict, headers: list) -> list:
 
 
 def _write_row(session: AuthorizedSession, sheet_id: str, tab: str, row_number: int, row: list) -> None:
-    # Writes to an explicit row rather than appending -- see _claim_row for why.
+    # Explicit row, not values:append, which misplaces rows when the header row has gaps.
     url = _VALUES_URL.format(spreadsheet_id=sheet_id, range=f"{_quote_tab(tab)}!A{row_number}")
     response = session.put(url, params={"valueInputOption": "RAW"}, json={"values": [row]}, timeout=_REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
+
+
+def _record_outcome(delivery: FormDelivery, status: str) -> None:
+    # Locked so concurrent destination tasks can't race on the rollup.
+    with transaction.atomic():
+        submission = FormSubmission.objects.select_for_update().get(pk=delivery.submission_id)
+        delivery.status = status
+        delivery.save(update_fields=["status"])
+        statuses = set(submission.deliveries.values_list("status", flat=True))
+        if "failed" in statuses:
+            submission.status = "failed"
+        elif statuses == {"delivered"}:
+            submission.status = "delivered"
+        else:
+            submission.status = "queued"
+        submission.save(update_fields=["status"])
 
 
 @rq_task
 def deliver_to_gsheet(submission_id, destination_id):
     submission = FormSubmission.objects.get(pk=submission_id)
     destination = FormDestination.objects.get(pk=destination_id)
+    delivery, _created = FormDelivery.objects.get_or_create(submission=submission, destination=destination)
 
     try:
         session = _get_session()
@@ -118,12 +116,10 @@ def deliver_to_gsheet(submission_id, destination_id):
         tab = destination.config["tab"]
         headers = _fetch_header_row(session, sheet_id, tab)
         row = _build_row(submission.payload["data"], destination.field_map, headers)
-        row_number = _claim_row(session, submission_id, destination_id, sheet_id, tab)
+        row_number = _claim_row(session, delivery, sheet_id, tab)
         _write_row(session, sheet_id, tab, row_number, row)
     except Exception:
-        submission.status = "failed"
-        submission.save(update_fields=["status"])
+        _record_outcome(delivery, "failed")
         raise
 
-    submission.status = "delivered"
-    submission.save(update_fields=["status"])
+    _record_outcome(delivery, "delivered")

@@ -2,8 +2,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from basket.contact.intake_tasks import _build_row, deliver_to_gsheet
-from basket.contact.models import FormDeliveryClaim, FormDestination, FormRoute, FormSubmission
+from basket.contact.intake_tasks import _build_row, _claim_row, deliver_to_gsheet
+from basket.contact.models import FormDelivery, FormDestination, FormRoute, FormSubmission
 
 
 class TestBuildRow:
@@ -27,8 +27,6 @@ class TestBuildRow:
         assert row == ["a@b.com", ""]
 
     def test_header_reordering_does_not_misalign_values(self):
-        # The whole point of matching by header text: the sheet's columns can be in
-        # any order, or have extra columns, and the mapping still lands correctly.
         row = _build_row(
             {"email": "a@b.com", "first_name": "Jane"},
             {"email": "Email", "first_name": "First Name"},
@@ -53,6 +51,19 @@ def destination(route):
         dest_type="gsheet",
         label="Sheet",
         config={"sheet_id": "sheet-id", "tab": "Responses"},
+        field_map={"email": "Email", "first_name": "First Name"},
+        active=True,
+        next_row=2,
+    )
+
+
+@pytest.fixture
+def second_destination(route):
+    return FormDestination.objects.create(
+        route=route,
+        dest_type="gsheet",
+        label="Other Sheet",
+        config={"sheet_id": "other-sheet", "tab": "Responses"},
         field_map={"email": "Email", "first_name": "First Name"},
         active=True,
         next_row=2,
@@ -90,8 +101,7 @@ class TestDeliverToGsheet:
         assert submission.status == "delivered"
 
     def test_quotes_tab_names_with_spaces_for_a1_notation(self, route, mock_session):
-        # Regression: a tab literally named "Form Responses 1" (Google Sheets' own
-        # default tab name) breaks unquoted A1 ranges.
+        # "Form Responses 1" is Google Sheets' default tab name.
         destination = FormDestination.objects.create(
             route=route,
             dest_type="gsheet",
@@ -109,12 +119,7 @@ class TestDeliverToGsheet:
         assert mock_session.put.call_args.args[0].endswith("/sheet-id/values/'Form Responses 1'!A2")
 
     def test_claims_rows_sequentially_across_deliveries(self, route, destination, mock_session):
-        # Regression: relying on the Sheets API's `values.append` to auto-detect "the
-        # table" proved unreliable with a sparse/discontiguous header row -- it could
-        # append dozens of columns out, or even merge a new row's values into an
-        # unrelated existing row. Tracking the row number ourselves and incrementing
-        # it under a DB lock removes that ambiguity, and lets two deliveries to the
-        # same destination land on consecutive rows instead of racing for the same one.
+        # Regression: values:append misplaced rows when the header row had gaps.
         first = FormSubmission.objects.create(route=route, payload={"data": {"email": "a@b.com", "first_name": "Jane"}})
         second = FormSubmission.objects.create(route=route, payload={"data": {"email": "c@d.com", "first_name": "Bob"}})
 
@@ -157,9 +162,7 @@ class TestDeliverToGsheet:
         assert submission.status == "failed"
 
     def test_retry_after_write_failure_reuses_the_same_claimed_row(self, submission, destination, mock_session):
-        # Regression: RQ retries `deliver_to_gsheet` from scratch on failure. If the
-        # sheet write fails after the row was already claimed, a naive retry would
-        # claim a fresh row and orphan the first one. The claim must be reused instead.
+        # Regression: RQ retries from scratch, which used to claim a fresh row each time.
         mock_session.put.return_value.raise_for_status.side_effect = Exception("boom")
         with pytest.raises(Exception, match="boom"):
             deliver_to_gsheet(submission.id, destination.id)
@@ -170,15 +173,57 @@ class TestDeliverToGsheet:
         first_attempt, retry = mock_session.put.call_args_list
         assert first_attempt.args[0].endswith("!A2")
         assert retry.args[0].endswith("!A2")
-        assert FormDeliveryClaim.objects.filter(submission=submission, destination=destination).count() == 1
+        delivery = FormDelivery.objects.get(submission=submission, destination=destination)
+        assert delivery.status == "delivered"
         destination.refresh_from_db()
         assert destination.next_row == 3
         submission.refresh_from_db()
         assert submission.status == "delivered"
 
+    def test_claim_row_reuses_a_row_claimed_while_waiting_for_the_lock(self, submission, destination, mock_session):
+        # `stale` was loaded before a concurrent attempt claimed row 2, so next_row must not move.
+        stale = FormDelivery.objects.create(submission=submission, destination=destination)
+        FormDelivery.objects.filter(pk=stale.pk).update(row_number=2)
+        FormDestination.objects.filter(pk=destination.pk).update(next_row=3)
+
+        assert _claim_row(mock_session, stale, "sheet-id", "Responses") == 2
+
+        destination.refresh_from_db()
+        assert destination.next_row == 3
+        mock_session.get.assert_not_called()
+
+    def test_submission_fails_if_any_destination_fails(self, submission, destination, second_destination, mock_session):
+        # Regression: a later success used to overwrite an earlier failure.
+        def fake_put(url, **kwargs):
+            response = MagicMock()
+            if "other-sheet" in url:
+                response.raise_for_status.side_effect = Exception("boom")
+            return response
+
+        mock_session.put.side_effect = fake_put
+
+        with pytest.raises(Exception, match="boom"):
+            deliver_to_gsheet(submission.id, second_destination.id)
+        deliver_to_gsheet(submission.id, destination.id)
+
+        submission.refresh_from_db()
+        assert submission.status == "failed"
+        assert FormDelivery.objects.get(submission=submission, destination=destination).status == "delivered"
+        assert FormDelivery.objects.get(submission=submission, destination=second_destination).status == "failed"
+
+    def test_submission_stays_queued_until_every_destination_delivers(self, submission, destination, second_destination, mock_session):
+        FormDelivery.objects.create(submission=submission, destination=destination)
+        FormDelivery.objects.create(submission=submission, destination=second_destination)
+
+        deliver_to_gsheet(submission.id, destination.id)
+        submission.refresh_from_db()
+        assert submission.status == "queued"
+
+        deliver_to_gsheet(submission.id, second_destination.id)
+        submission.refresh_from_db()
+        assert submission.status == "delivered"
+
     def test_marks_failed_when_header_not_found(self, route, mock_session):
-        # Regression: a field_map header that doesn't exist in the sheet used to
-        # silently misalign or corrupt the row instead of failing clearly.
         destination = FormDestination.objects.create(
             route=route,
             dest_type="gsheet",
@@ -196,4 +241,7 @@ class TestDeliverToGsheet:
         assert submission.status == "failed"
         mock_session.put.assert_not_called()
         destination.refresh_from_db()
-        assert destination.next_row is None  # never claimed a row for a submission that can't be written
+        assert destination.next_row is None
+        delivery = FormDelivery.objects.get(submission=submission, destination=destination)
+        assert delivery.status == "failed"
+        assert delivery.row_number is None

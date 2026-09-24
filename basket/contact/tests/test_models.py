@@ -31,8 +31,7 @@ class TestFormDestination:
         assert dest.active is True
 
     def test_only_gsheet_is_offered(self):
-        # v1 deliberately restricts this, the fan-out loop has no else branch, so
-        # adding a dest_type here without a matching task would silently enqueue nothing.
+        # The fan-out only handles gsheet, so a new type here would silently enqueue nothing.
         assert DEST_TYPES == [("gsheet", "Google Sheet")]
 
     def test_deleting_route_cascades_to_destinations(self, route):
@@ -56,27 +55,43 @@ class TestFormDestination:
             dest.clean()
 
     def test_clean_rejects_non_string_values(self, route):
-        # A common mistake -- e.g. pasting a number or boolean instead of header text.
         dest = FormDestination(route=route, dest_type="gsheet", label="Sheet", config={}, field_map={"email": 1})
         with pytest.raises(ValidationError):
             dest.clean()
 
     def test_clean_does_not_crash_when_field_map_is_none(self, route):
-        # full_clean() still calls clean() even when field_map already failed its own
-        # required-field check and is None -- it doesn't stop at the first error.
         dest = FormDestination(route=route, dest_type="gsheet", label="Sheet", config={}, field_map=None)
-        dest.clean()  # should not raise AttributeError
+        dest.clean()  # should not raise
+
+    def test_clean_accepts_complete_gsheet_config(self, route):
+        dest = FormDestination(
+            route=route, dest_type="gsheet", label="Sheet", config={"sheet_id": "abc", "tab": "Responses"}, field_map={"email": "Email"}
+        )
+        dest.clean()  # should not raise
+
+    def test_clean_rejects_gsheet_config_missing_tab(self, route):
+        # Regression: used to pass, then fail every delivery with KeyError: 'tab'.
+        dest = FormDestination(route=route, dest_type="gsheet", label="Sheet", config={"sheet_id": "abc"}, field_map={"email": "Email"})
+        with pytest.raises(ValidationError, match="tab"):
+            dest.clean()
+
+    def test_clean_rejects_blank_or_non_string_config_values(self, route):
+        dest = FormDestination(route=route, dest_type="gsheet", label="Sheet", config={"sheet_id": 123, "tab": " "}, field_map={"email": "Email"})
+        with pytest.raises(ValidationError, match="sheet_id, tab"):
+            dest.clean()
+
+    def test_clean_rejects_non_dict_config(self, route):
+        dest = FormDestination(route=route, dest_type="gsheet", label="Sheet", config=["abc"], field_map={"email": "Email"})
+        with pytest.raises(ValidationError):
+            dest.clean()
 
     def test_clean_rejects_non_dict_field_map(self, route):
-        # JSONField accepts any JSON value -- a truthy list or string must raise a
-        # clean ValidationError, not AttributeError from calling .items() on it.
+        # Must be a ValidationError, not an AttributeError from .items().
         dest = FormDestination(route=route, dest_type="gsheet", label="Sheet", config={}, field_map=["email"])
         with pytest.raises(ValidationError):
             dest.clean()
 
     def test_clean_rejects_duplicate_mapped_headers(self, route):
-        # Two CMS fields mapped to the same header silently overwrite each other at
-        # delivery time -- reject it during validation instead.
         dest = FormDestination(route=route, dest_type="gsheet", label="Sheet", config={}, field_map={"email": "Contact", "phone": "Contact"})
         with pytest.raises(ValidationError):
             dest.clean()

@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
-DEST_TYPES = [("gsheet", "Google Sheet")]  # v1 only offers gsheet
+DEST_TYPES = [("gsheet", "Google Sheet")]
 
 STATUS = [("queued", "queued"), ("delivered", "delivered"), ("failed", "failed")]
 
@@ -28,7 +28,6 @@ class FormDestination(models.Model):
         "reordering columns or adding new ones later doesn't misalign already-delivered rows."
     )
     active = models.BooleanField(default=True)
-    # v1 always discards unmapped fields at delivery time -- no ignore_unmapped field.
     next_row = models.PositiveIntegerField(
         null=True,
         blank=True,
@@ -40,8 +39,14 @@ class FormDestination(models.Model):
 
     def clean(self):
         super().clean()
-        # full_clean() still calls this even when field_map already failed its own
-        # required check and is None, so guard rather than crash on .items().
+        # full_clean() calls this even after required-field errors, so values may be empty.
+        if self.dest_type == "gsheet" and self.config:
+            if not isinstance(self.config, dict):
+                raise ValidationError({"config": "gsheet config must be a JSON object."})
+            missing = [key for key in ("sheet_id", "tab") if not isinstance(self.config.get(key), str) or not self.config[key].strip()]
+            if missing:
+                raise ValidationError({"config": f"gsheet config needs non-empty values for: {', '.join(missing)}"})
+
         if self.dest_type == "gsheet" and self.field_map:
             if not isinstance(self.field_map, dict):
                 raise ValidationError({"field_map": "gsheet field_map must be a JSON object mapping CMS field to header text."})
@@ -67,12 +72,12 @@ class FormSubmission(models.Model):
         return f"{self.route.form_id} @ {self.received_at:%Y-%m-%d %H:%M}"
 
 
-class FormDeliveryClaim(models.Model):
-    # Makes row-claiming idempotent across RQ retries: a retried delivery reuses the
-    # row it already claimed instead of claiming a new one and orphaning the old row.
-    submission = models.ForeignKey(FormSubmission, on_delete=models.CASCADE, related_name="delivery_claims")
-    destination = models.ForeignKey(FormDestination, on_delete=models.CASCADE, related_name="delivery_claims")
-    row_number = models.PositiveIntegerField()
+class FormDelivery(models.Model):
+    # Per-destination status, plus the claimed row so an RQ retry reuses it.
+    submission = models.ForeignKey(FormSubmission, on_delete=models.CASCADE, related_name="deliveries")
+    destination = models.ForeignKey(FormDestination, on_delete=models.CASCADE, related_name="deliveries")
+    status = models.CharField(max_length=20, choices=STATUS, default="queued")
+    row_number = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         unique_together = ("submission", "destination")
