@@ -1,5 +1,5 @@
 APScheduler==3.11.3
-boto3==1.43.91
+boto3==1.43.96
 contextlib2==21.6.0
 cryptography==50.0.1  # Bumping this requires bumping pyOpenSSL in step: pyOpenSSL 26.2.0 caps cryptography<49
 dj-database-url==3.1.2
