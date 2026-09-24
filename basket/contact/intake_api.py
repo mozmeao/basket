@@ -53,10 +53,9 @@ def submit_intake(request, payload: IntakeSchema):
         source_url=payload.source_url,
     )
 
-    for destination in route.destinations.filter(active=True):
-        if destination.dest_type == "gsheet":
-            # Up front, so the rollup stays "queued" until every destination reports.
-            FormDelivery.objects.create(submission=submission, destination=destination)
-            deliver_to_gsheet.delay(submission.id, destination.id)
+    destinations = [destination for destination in route.destinations.filter(active=True) if destination.dest_type == "gsheet"]
+    FormDelivery.objects.bulk_create(FormDelivery(submission=submission, destination=destination) for destination in destinations)
+    for destination in destinations:
+        deliver_to_gsheet.delay(submission.id, destination.id)
 
     return {"status": "queued"}
