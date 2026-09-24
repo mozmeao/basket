@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 
 from .intake_tasks import deliver_to_gsheet
-from .models import FormDestination, FormRoute, FormSubmission
+from .models import FormDelivery, FormDestination, FormRoute, FormSubmission
 
 
 class FormDestinationInline(admin.TabularInline):
@@ -24,8 +24,6 @@ class FormRouteAdmin(admin.ModelAdmin):
                 self.message_user(request, f"{route.form_id}: no active destinations to test.", messages.WARNING)
                 continue
 
-            # Cover every mapped field; values are clearly marked as test data since
-            # this delivers to the real destination.
             fields = {field for destination in destinations for field in destination.field_map} | {"email", "first_name"}
             data = {field: f"basket-admin-test_{field}" for field in fields}
             data["email"] = "basket-admin-test_email@example.invalid"
@@ -47,15 +45,26 @@ class FormRouteAdmin(admin.ModelAdmin):
                     self.message_user(request, f"{route.form_id} -> {destination.label}: delivered successfully.", messages.SUCCESS)
 
 
+class FormDeliveryInline(admin.TabularInline):
+    model = FormDelivery
+    fields = ["destination", "status", "row_number"]
+    readonly_fields = ["destination", "status", "row_number"]
+    extra = 0
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(FormSubmission)
 class FormSubmissionAdmin(admin.ModelAdmin):
+    inlines = [FormDeliveryInline]
     list_display = ["route", "status", "received_at", "source_url"]
     list_filter = ["status", "route"]
     readonly_fields = ["route", "payload", "source_url", "received_at", "status"]
 
     def has_add_permission(self, request):
-        # Append-only audit trail -- created only by the intake endpoint (or the
-        # FormRoute "test delivery" action), never by hand.
+        # Audit trail: only the intake endpoint and the test action create these.
         return False
 
     def has_change_permission(self, request, obj=None):

@@ -21,7 +21,14 @@ class TestIntakeAPI(_TestAPIBase):
         self.url = reverse("api.v1:intake.submit")
         self.api_user = APIUser.objects.create(name="springfield", enabled=True, allowed_form_ids=["enterprise-contact"])
         self.route = FormRoute.objects.create(form_id="enterprise-contact", name="Enterprise Contact", active=True, created_by="dev@example.com")
-        FormDestination.objects.create(route=self.route, dest_type="gsheet", label="Sheet", config={}, field_map={"email": "A"}, active=True)
+        FormDestination.objects.create(
+            route=self.route,
+            dest_type="gsheet",
+            label="Sheet",
+            config={"sheet_id": "sheet-id", "tab": "Responses"},
+            field_map={"email": "Email"},
+            active=True,
+        )
 
     def _post(self, body_dict, api_key=None, sign_ts=None, sign_body=None):
         body = json.dumps(body_dict).encode()
@@ -46,6 +53,14 @@ class TestIntakeAPI(_TestAPIBase):
 
     def test_bad_api_key_returns_generic_401(self):
         resp = self._post({"form_id": "enterprise-contact", "data": {}}, api_key="nope")
+        assert resp.status_code == 401
+        assert resp.json() == {"status": "error", "detail": "unauthorized", "code": errors.BASKET_AUTH_ERROR}
+
+    def test_missing_api_key_header_returns_generic_401(self):
+        # ninja calls authenticate() with key=None, so this still gets our custom body.
+        body = json.dumps({"form_id": "enterprise-contact", "data": {}}).encode()
+        ts, sig = _sign(self.api_user, body)
+        resp = self.client.post(self.url, data=body, content_type="application/json", headers={"X-Basket-Signature": f"t={ts},v1={sig}"})
         assert resp.status_code == 401
         assert resp.json() == {"status": "error", "detail": "unauthorized", "code": errors.BASKET_AUTH_ERROR}
 
@@ -83,6 +98,17 @@ class TestIntakeAPI(_TestAPIBase):
         resp = self.valid_request()
         assert resp.status_code == 200
         mock_delay.assert_not_called()
+
+    def test_creates_a_queued_delivery_per_active_destination(self, mocker):
+        mocker.patch("basket.contact.intake_api.deliver_to_gsheet.delay")
+        config = {"sheet_id": "sheet-id", "tab": "Responses"}
+        FormDestination.objects.create(route=self.route, dest_type="gsheet", label="Second", config=config, field_map={"email": "Email"}, active=True)
+        FormDestination.objects.create(route=self.route, dest_type="gsheet", label="Off", config=config, field_map={"email": "Email"}, active=False)
+
+        self.valid_request()
+
+        submission = FormSubmission.objects.get(route=self.route)
+        assert set(submission.deliveries.values_list("destination__label", "status")) == {("Sheet", "queued"), ("Second", "queued")}
 
     def test_submission_is_recorded_with_raw_payload(self, mocker):
         mocker.patch("basket.contact.intake_api.deliver_to_gsheet.delay")
