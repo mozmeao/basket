@@ -1,3 +1,4 @@
+import re
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -83,9 +84,32 @@ def mock_session(settings):
         patch("basket.contact.intake_tasks.AuthorizedSession") as session_cls,
     ):
         session = session_cls.return_value
-        get_response = MagicMock()
-        get_response.json.return_value = {"values": [["Email", "First Name"]]}
-        session.get.return_value = get_response
+        # Remembers PUTs so row counts reflect earlier deliveries.
+        sheet = {1: ["Email", "First Name"]}
+
+        def fake_get(url, **kwargs):
+            response = MagicMock()
+            single_row = re.search(r"!(\d+):\1$", url)
+            if single_row:
+                row = sheet.get(int(single_row.group(1)))
+                response.json.return_value = {"values": [row]} if row else {}
+            else:
+                values = [sheet.get(i, []) for i in range(1, max(sheet) + 1)]
+                response.json.return_value = {"values": values}
+            return response
+
+        def fake_put(url, **kwargs):
+            response = session.put.return_value
+            try:
+                response.raise_for_status()
+            except Exception:
+                return response  # a failed write doesn't land in the sheet
+            sheet[int(url.rsplit("!A", 1)[1])] = kwargs["json"]["values"][0]
+            return response
+
+        session.get.side_effect = fake_get
+        session.put.side_effect = fake_put
+        session.sheet = sheet
         yield session
 
 
@@ -94,7 +118,7 @@ class TestDeliverToGsheet:
     def test_writes_row_and_marks_delivered(self, submission, destination, mock_session):
         deliver_to_gsheet(submission.id, destination.id)
 
-        assert mock_session.get.call_args.args[0].endswith("/sheet-id/values/'Responses'!1:1")
+        assert any(call.args[0].endswith("/sheet-id/values/'Responses'!1:1") for call in mock_session.get.call_args_list)
         assert mock_session.put.call_args.kwargs["json"]["values"] == [["a@b.com", "Jane"]]
         assert mock_session.put.call_args.args[0].endswith("/sheet-id/values/'Responses'!A2")
         submission.refresh_from_db()
@@ -115,7 +139,7 @@ class TestDeliverToGsheet:
 
         deliver_to_gsheet(submission.id, destination.id)
 
-        assert mock_session.get.call_args.args[0].endswith("/sheet-id/values/'Form Responses 1'!1:1")
+        assert any(call.args[0].endswith("/sheet-id/values/'Form Responses 1'!1:1") for call in mock_session.get.call_args_list)
         assert mock_session.put.call_args.args[0].endswith("/sheet-id/values/'Form Responses 1'!A2")
 
     def test_claims_rows_sequentially_across_deliveries(self, route, destination, mock_session):
@@ -135,22 +159,47 @@ class TestDeliverToGsheet:
     def test_bootstraps_row_counter_from_sheet_when_unset(self, submission, destination, mock_session):
         destination.next_row = None
         destination.save(update_fields=["next_row"])
-
-        def fake_get(url, **kwargs):
-            response = MagicMock()
-            if url.endswith("!1:1"):
-                response.json.return_value = {"values": [["Email", "First Name"]]}
-            else:
-                response.json.return_value = {"values": [["Email", "First Name"], ["existing@example.com", "Old"]]}
-            return response
-
-        mock_session.get.side_effect = fake_get
+        mock_session.sheet[2] = ["existing@example.com", "Old"]
 
         deliver_to_gsheet(submission.id, destination.id)
 
         assert mock_session.put.call_args.args[0].endswith("!A3")
         destination.refresh_from_db()
         assert destination.next_row == 4
+
+    def test_skips_rows_added_to_the_sheet_after_the_counter_was_set(self, submission, destination, mock_session):
+        mock_session.sheet.update({i: ["x@example.com", "X"] for i in range(2, 102)})
+
+        deliver_to_gsheet(submission.id, destination.id)
+
+        assert mock_session.put.call_args.args[0].endswith("!A102")
+        destination.refresh_from_db()
+        assert destination.next_row == 103
+
+    def test_fills_the_row_freed_by_a_deletion(self, submission, destination, mock_session):
+        FormDestination.objects.filter(pk=destination.pk).update(next_row=102)
+        mock_session.sheet.update({i: ["x@example.com", "X"] for i in range(2, 101)})
+
+        deliver_to_gsheet(submission.id, destination.id)
+
+        assert mock_session.put.call_args.args[0].endswith("!A101")
+
+    @pytest.mark.parametrize("status", ["queued", "failed"])
+    def test_skips_rows_claimed_by_deliveries_not_yet_written(self, route, submission, destination, mock_session, status):
+        pending = FormSubmission.objects.create(route=route, payload={"data": {"email": "c@d.com", "first_name": "Bob"}})
+        FormDelivery.objects.create(submission=pending, destination=destination, status=status, row_number=5)
+
+        deliver_to_gsheet(submission.id, destination.id)
+
+        assert mock_session.put.call_args.args[0].endswith("!A6")
+
+    def test_ignores_rows_claimed_by_delivered_deliveries(self, route, submission, destination, mock_session):
+        done = FormSubmission.objects.create(route=route, payload={"data": {"email": "c@d.com", "first_name": "Bob"}})
+        FormDelivery.objects.create(submission=done, destination=destination, status="delivered", row_number=5)
+
+        deliver_to_gsheet(submission.id, destination.id)
+
+        assert mock_session.put.call_args.args[0].endswith("!A2")
 
     def test_marks_failed_and_reraises_on_error(self, submission, destination, mock_session):
         mock_session.put.return_value.raise_for_status.side_effect = Exception("boom")
@@ -179,6 +228,55 @@ class TestDeliverToGsheet:
         assert destination.next_row == 3
         submission.refresh_from_db()
         assert submission.status == "delivered"
+
+    def test_retry_claims_a_fresh_row_if_the_claimed_one_was_filled_meanwhile(self, submission, destination, mock_session):
+        mock_session.put.return_value.raise_for_status.side_effect = Exception("boom")
+        with pytest.raises(Exception, match="boom"):
+            deliver_to_gsheet(submission.id, destination.id)
+
+        mock_session.sheet[2] = ["manual@example.com", "Manual"]
+        mock_session.put.return_value.raise_for_status.side_effect = None
+        deliver_to_gsheet(submission.id, destination.id)
+
+        assert mock_session.put.call_args.args[0].endswith("!A3")
+        assert mock_session.sheet[2] == ["manual@example.com", "Manual"]
+        delivery = FormDelivery.objects.get(submission=submission, destination=destination)
+        assert delivery.row_number == 3
+        assert delivery.status == "delivered"
+
+    def test_retry_fills_the_gap_left_by_a_deletion_while_it_waited(self, submission, destination, mock_session):
+        mock_session.sheet.update({i: ["x@example.com", "X"] for i in range(2, 102)})
+        mock_session.put.return_value.raise_for_status.side_effect = Exception("boom")
+        with pytest.raises(Exception, match="boom"):
+            deliver_to_gsheet(submission.id, destination.id)
+        assert mock_session.put.call_args.args[0].endswith("!A102")
+
+        del mock_session.sheet[101]
+        mock_session.put.return_value.raise_for_status.side_effect = None
+        deliver_to_gsheet(submission.id, destination.id)
+
+        assert mock_session.put.call_args.args[0].endswith("!A101")
+        assert FormDelivery.objects.get(submission=submission, destination=destination).row_number == 101
+
+    def test_retry_rewrites_its_own_row_if_the_earlier_write_landed(self, submission, destination, mock_session):
+        mock_session.sheet[2] = ["a@b.com", "Jane"]
+        FormDelivery.objects.create(submission=submission, destination=destination, status="failed", row_number=2)
+
+        deliver_to_gsheet(submission.id, destination.id)
+
+        assert mock_session.put.call_args.args[0].endswith("!A2")
+        assert max(mock_session.sheet) == 2
+
+    def test_retry_recognizes_its_own_row_when_sheets_dropped_trailing_blanks(self, route, destination, mock_session):
+        submission = FormSubmission.objects.create(route=route, payload={"data": {"email": "a@b.com"}})
+        mock_session.sheet[2] = ["a@b.com"]
+        FormDelivery.objects.create(submission=submission, destination=destination, status="failed", row_number=2)
+
+        deliver_to_gsheet(submission.id, destination.id)
+
+        assert mock_session.put.call_args.args[0].endswith("!A2")
+        assert mock_session.put.call_args.kwargs["json"]["values"] == [["a@b.com", ""]]
+        assert max(mock_session.sheet) == 2
 
     def test_claim_row_reuses_a_row_claimed_while_waiting_for_the_lock(self, submission, destination, mock_session):
         # `stale` was loaded before a concurrent attempt claimed row 2, so next_row must not move.
