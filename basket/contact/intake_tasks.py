@@ -2,6 +2,7 @@ import json
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Max
 
 from google.auth.transport.requests import AuthorizedSession
 from google.oauth2.service_account import Credentials
@@ -43,23 +44,41 @@ def _fetch_row_count(session: AuthorizedSession, sheet_id: str, tab: str) -> int
     return len(response.json().get("values", []))
 
 
+def _fetch_row(session: AuthorizedSession, sheet_id: str, tab: str, row_number: int) -> list:
+    url = _VALUES_URL.format(spreadsheet_id=sheet_id, range=f"{_quote_tab(tab)}!{row_number}:{row_number}")
+    response = session.get(url, timeout=_REQUEST_TIMEOUT_SECONDS)
+    response.raise_for_status()
+    rows = response.json().get("values", [])
+    return rows[0] if rows else []
+
+
+def _trim(cells: list) -> list:
+    # Sheets omits trailing empty cells, so compare rows with those trimmed.
+    cells = [str(cell) for cell in cells]
+    while cells and cells[-1] == "":
+        cells.pop()
+    return cells
+
+
 def _claim_row(session: AuthorizedSession, delivery: FormDelivery, sheet_id: str, tab: str) -> int:
     if delivery.row_number is not None:
         return delivery.row_number
-
-    # Fetched before locking so a slow Sheets call can't block other deliveries.
-    destination = FormDestination.objects.get(pk=delivery.destination_id)
-    existing_rows = _fetch_row_count(session, sheet_id, tab) if destination.next_row is None else None
 
     with transaction.atomic():
         destination = FormDestination.objects.select_for_update().get(pk=delivery.destination_id)
         delivery.refresh_from_db(fields=["row_number"])
         if delivery.row_number is not None:  # claimed by a concurrent attempt while we waited
             return delivery.row_number
-        if destination.next_row is None:
-            destination.next_row = existing_rows + 1
-        delivery.row_number = destination.next_row
-        destination.next_row += 1
+        # Under the lock so concurrent claims see each other's writes; skip rows claimed but not yet written.
+        existing_rows = _fetch_row_count(session, sheet_id, tab)
+        reserved = (
+            FormDelivery.objects.filter(destination=destination, row_number__isnull=False)
+            .exclude(status="delivered")
+            .aggregate(highest=Max("row_number"))["highest"]
+        )
+        delivery.row_number = max(existing_rows, reserved or 0) + 1
+        # Unused; kept current for the admin and old pods mid-deploy.
+        destination.next_row = delivery.row_number + 1
         destination.save(update_fields=["next_row"])
         delivery.save(update_fields=["row_number"])
     return delivery.row_number
@@ -116,7 +135,14 @@ def deliver_to_gsheet(submission_id, destination_id):
         tab = destination.config["tab"]
         headers = _fetch_header_row(session, sheet_id, tab)
         row = _build_row(submission.payload["data"], destination.field_map, headers)
+        is_retry = delivery.row_number is not None
         row_number = _claim_row(session, delivery, sheet_id, tab)
+        existing = _trim(_fetch_row(session, sheet_id, tab, row_number))
+        # Keep the row if it already holds our data, or is an empty fresh claim; otherwise re-claim.
+        if not (existing == _trim(row) or (not existing and not is_retry)):
+            FormDelivery.objects.filter(pk=delivery.pk).update(row_number=None)
+            delivery.row_number = None
+            row_number = _claim_row(session, delivery, sheet_id, tab)
         _write_row(session, sheet_id, tab, row_number, row)
     except Exception:
         _record_outcome(delivery, "failed")
