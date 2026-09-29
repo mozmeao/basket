@@ -258,6 +258,18 @@ class TestDeliverToGsheet:
         assert mock_session.put.call_args.args[0].endswith("!A101")
         assert FormDelivery.objects.get(submission=submission, destination=destination).row_number == 101
 
+    def test_retry_keeps_its_empty_row_when_rows_were_appended_below_it(self, submission, destination, mock_session):
+        mock_session.put.return_value.raise_for_status.side_effect = Exception("boom")
+        with pytest.raises(Exception, match="boom"):
+            deliver_to_gsheet(submission.id, destination.id)
+
+        mock_session.sheet.update({i: ["x@example.com", "X"] for i in range(3, 11)})
+        mock_session.put.return_value.raise_for_status.side_effect = None
+        deliver_to_gsheet(submission.id, destination.id)
+
+        assert mock_session.put.call_args.args[0].endswith("!A2")
+        assert FormDelivery.objects.get(submission=submission, destination=destination).row_number == 2
+
     def test_retry_rewrites_its_own_row_if_the_earlier_write_landed(self, submission, destination, mock_session):
         mock_session.sheet[2] = ["a@b.com", "Jane"]
         FormDelivery.objects.create(submission=submission, destination=destination, status="failed", row_number=2)

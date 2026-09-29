@@ -138,8 +138,9 @@ def deliver_to_gsheet(submission_id, destination_id):
         is_retry = delivery.row_number is not None
         row_number = _claim_row(session, delivery, sheet_id, tab)
         existing = _trim(_fetch_row(session, sheet_id, tab, row_number))
-        # Keep the row if it already holds our data, or is an empty fresh claim; otherwise re-claim.
-        if not (existing == _trim(row) or (not existing and not is_retry)):
+        # Keep the row if it holds our data, or is empty and not stranded past the end by deletions.
+        stranded = is_retry and not existing and row_number > _fetch_row_count(session, sheet_id, tab) + 1
+        if not (existing == _trim(row) or (not existing and not stranded)):
             FormDelivery.objects.filter(pk=delivery.pk).update(row_number=None)
             delivery.row_number = None
             row_number = _claim_row(session, delivery, sheet_id, tab)
