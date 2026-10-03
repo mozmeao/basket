@@ -446,9 +446,9 @@ google-api-core==2.38.0 \
     # via
     #   google-cloud-core
     #   google-cloud-storage
-google-auth==2.58.0 \
-    --hash=sha256:55e30cf15e737de92c5323d78cda8a83fcd57e7ffbaf900c4600039fd60a80fd \
-    --hash=sha256:8a9c4645bb4c8e91668fb1934b95ae6a8687084232753639220ba9bf04a1610d
+google-auth==2.58.1 \
+    --hash=sha256:1480461d8b2347e679af758f4003700ea79a59b603c9134e18bfa95e8004ee70 \
+    --hash=sha256:66a63572d0ab629554768544df04018d79178c0bd7439ba31683ac576b79024d
     # via
     #   -r requirements/prod.in
     #   google-api-core
