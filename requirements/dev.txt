@@ -21,13 +21,13 @@ asgiref==3.12.1 \
     #   -r requirements/prod.txt
     #   django
     #   django-cors-headers
-boto3==1.43.91 \
-    --hash=sha256:5ff948cfac8bff72227930e0894a8542731e1998634d1ffd8a074c20a90af919 \
-    --hash=sha256:98643e500883bf6fcd13d04bb19da983bf97e5f1c600fc11470ce45437fa96b4
+boto3==1.43.103 \
+    --hash=sha256:524821052527f6446d249bf710847b032d9b12135e346c9751777a0a2811cf04 \
+    --hash=sha256:574796187eb4e4fcaaf5c1b88c1724a1ba5a95bc27aeae5573676178666acc71
     # via -r requirements/prod.txt
-botocore==1.43.100 \
-    --hash=sha256:34c3232bc0f895091a15249903b3cab1148f5787f12389caa2d54a9175428d51 \
-    --hash=sha256:b6e64e38e3c03663a0c20d3d207afd97a0409dbc27e4e43384ac3f93cb61279f
+botocore==1.43.108 \
+    --hash=sha256:ab9d16c6b4350aaa54ed28202dfa2998b2d735fdbf3247eb60af469d8d48a5b8 \
+    --hash=sha256:ee4f75cf3bdbb0da7912e089950e8112f692016539d939312c771499958e6cfd
     # via
     #   -r requirements/prod.txt
     #   boto3
