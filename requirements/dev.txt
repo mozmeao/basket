@@ -21,9 +21,9 @@ asgiref==3.12.1 \
     #   -r requirements/prod.txt
     #   django
     #   django-cors-headers
-boto3==1.43.98 \
-    --hash=sha256:1ec732e023fb29c12dc8520f925b5bbbed29eeb36b5764b5a5c26052d7c721f7 \
-    --hash=sha256:7454f666a9e852a56db0a7fa23be33a899f64e27828930eac43c3edba7b34e17
+boto3==1.43.104 \
+    --hash=sha256:d26ad9b8f6066e9be90c78c1f8f0cdd82e33e0a363a1ccc5ab01008b0e48c7fd \
+    --hash=sha256:dc0c4b5c217fa38792d6b2e3c89b0d26220fd938dc173e48adab45d2d05e6977
     # via -r requirements/prod.txt
 botocore==1.43.108 \
     --hash=sha256:ab9d16c6b4350aaa54ed28202dfa2998b2d735fdbf3247eb60af469d8d48a5b8 \
