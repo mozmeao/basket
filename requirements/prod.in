@@ -1,7 +1,7 @@
 APScheduler==3.11.3
 boto3==1.43.98
 contextlib2==21.6.0
-cryptography==50.0.1  # Bumping this requires bumping pyOpenSSL in step: pyOpenSSL 26.2.0 caps cryptography<49
+cryptography==50.0.2  # Bumping this requires bumping pyOpenSSL in step: pyOpenSSL 26.2.0 caps cryptography<49
 dj-database-url==3.1.2
 django-allow-cidr==0.8.0
 django-cache-url==3.4.6
