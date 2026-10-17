@@ -596,10 +596,6 @@ granian==2.8.3 \
     --hash=sha256:e3b37aed51ac45c80730a9085ac93dfe63b74ea1090af5de32117add0ccc71ab \
     --hash=sha256:f0c7bbfa3bf127e3577f61bcd1667e6ae7967366c629710d4e2327392ec4d517
     # via -r requirements/prod.in
-hawkauthlib==2.0.0 \
-    --hash=sha256:935878d3a75832aa76f78ddee13491f1466cbd69a8e7e4248902763cf9953ba9 \
-    --hash=sha256:effd64a2572e3c0d9090b55ad2180b36ad50e7760bea225cb6ce2248f421510d
-    # via pyfxa
 hiredis==3.4.2 \
     --hash=sha256:018fdee902038f74b21e18a6d2fe7819bb63bdaec878d9d5f27280005b778ad7 \
     --hash=sha256:01a71476d6e43aa7c1f4fbb8a90acc1b850bd0a86391adf4c2fca8c11b57e7c4 \
@@ -733,9 +729,7 @@ jmespath==1.1.0 \
 legacy-cgi==2.6.4 \
     --hash=sha256:7e235ce58bf1e25d1fc9b2d299015e4e2cd37305eccafec1e6bac3fc04b878cd \
     --hash=sha256:abb9dfc7835772f7c9317977c63253fd22a7484b5c9bbcdca60a29dcce97c577
-    # via
-    #   -r requirements/prod.in
-    #   webob
+    # via -r requirements/prod.in
 lxml==6.1.3 \
     --hash=sha256:032a0a97eed428bd143c75a11118238546424ceb2fa311cca5f073aa44658dc4 \
     --hash=sha256:05f5bce9af14fd1506997594bd81cee6d9c6b58ea80a39c058327aa6371ed9e9 \
@@ -1284,9 +1278,9 @@ pydantic-core==2.46.5 \
     --hash=sha256:fc8515076c11f3cfdf4fb142dcca0fe384b1230a3b5415458ac84f3e0903ec13 \
     --hash=sha256:ff218293c9c806138dca139765e3b067621be52bcd93cdc14c7711be7ddc90a9
     # via pydantic
-pyfxa==0.8.2 \
-    --hash=sha256:0d7e5d42a67fed8415e01a50b5ba99c6741c4c81cbc3b80a19cbd9c4a4b96e01 \
-    --hash=sha256:82afce7e92a3c3a0526c62935db45ad9caf195e249a23d0137816e9759e95a5c
+pyfxa==0.9.0 \
+    --hash=sha256:6b605f4f862ae8e474ce71122685c1f5ea042ebe4f1ebc96ffe0f82f76c5955d \
+    --hash=sha256:7c795c5aeaf3321440c39bc72685f09695924a4828fe1a9346ae50f573bc7524
     # via -r requirements/prod.in
 pyjwt==2.15.1 \
     --hash=sha256:42d59d631f7768a1028a64c7ff581a9bf7519804daf91fc5b6c56e30eec5e193 \
@@ -1617,10 +1611,6 @@ user-agents==2.2.0 \
     --hash=sha256:a98c4dc72ecbc64812c4534108806fb0a0b3a11ec3fd1eafe807cee5b0a942e7 \
     --hash=sha256:d36d25178db65308d1458c5fa4ab39c9b2619377010130329f3955e7626ead26
     # via -r requirements/prod.in
-webob==1.8.11 \
-    --hash=sha256:4addd1d38d6a7fbe0eda22d45f25a40d74c8b290f3a99c0ac3d4023cf21f2da2 \
-    --hash=sha256:aa8c27231070b135c025e567a9cd7eda03f4df71352ffaac740cb6a75f0f81a5
-    # via hawkauthlib
 whitenoise==6.12.0 \
     --hash=sha256:f723ebb76a112e98816ff80fcea0a6c9b8ecde835f8ddda25df7a30a3c2db6ad \
     --hash=sha256:fc5e8c572e33ebf24795b47b6a7da8da3c00cff2349f5b04c02f28d0cc5a3cc2
