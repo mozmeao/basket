@@ -22,7 +22,7 @@ markus[datadog]==5.2.0
 mozilla-django-oidc==5.0.2
 msgpack-python==0.5.6
 mysqlclient==2.3.0
-PyFxA==0.8.2
+PyFxA==0.9.0
 pyOpenSSL==26.4.0  # Paired with cryptography above: 26.4.0 requires cryptography>=49,<51
 pysilverpop==0.2.6
 PyYAML==6.0.3
