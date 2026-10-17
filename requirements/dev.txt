@@ -608,9 +608,9 @@ google-cloud-core==2.8.0 \
     # via
     #   -r requirements/prod.txt
     #   google-cloud-storage
-google-cloud-storage==3.14.1 \
-    --hash=sha256:8f0fe2b74bd80ddcbd67247a3b47b81035a0a4f448569ed358fa40a46c940118 \
-    --hash=sha256:b24e74b493c60b19b83462933a83bb831e45b6ca4924b0d75eac8e176b58b3a7
+google-cloud-storage==3.17.0 \
+    --hash=sha256:0b89283fccf84745bae75bbefdbda8393e5323471071a2ba24ab437407141171 \
+    --hash=sha256:4373aa6328e070c31c97aa236f1600a239dfd3c85e5870cdf3dc2a928dfe0bca
     # via -r requirements/prod.txt
 google-crc32c==1.9.0 \
     --hash=sha256:0568b17ed90ac596f29400d99e243fd0cc6276766183def888d1bf8d1dc13827 \
