@@ -172,6 +172,10 @@ class TestWebhookHmacSignature:
         request = self._request(header=f"t={int(time.time())},v1={'0' * 64}")
         assert WebhookHmacSignature().authenticate(request, self.user.api_key) is None
 
+    def test_non_ascii_signature(self):
+        request = self._request(header=f"t={int(time.time())},v1=é")
+        assert WebhookHmacSignature().authenticate(request, self.user.api_key) is None
+
     def test_signed_with_another_users_secret(self):
         other = APIUser.objects.create(name="other")
         request = self._signed(user=other)

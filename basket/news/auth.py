@@ -46,7 +46,7 @@ def verify_signature(request, secret, replay_scope):
         return "stale_timestamp"
 
     expected = hmac.new(secret.encode(), f"{timestamp}.".encode() + request.body, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(expected, signature):
+    if not hmac.compare_digest(expected.encode(), signature.encode()):
         return "mismatch"
 
     replay_ttl = max(1, int(timestamp + settings.INTAKE_SIGNATURE_TOLERANCE_SECONDS - time.time()) + 1)
