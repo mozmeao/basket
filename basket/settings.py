@@ -232,13 +232,11 @@ CORS_URLS_REGEX = r"^/(api/|news/|subscribe)"
 # view rate limiting
 RATELIMIT_VIEW = "basket.news.views.ratelimited"
 EMAIL_SUBSCRIBE_RATE_LIMIT = config("EMAIL_SUBSCRIBE_RATE_LIMIT", default="4/5m")
-# Inbound `/users/assign/` webhook: shared bearer secret + per-identifier rate limit.
-ASSIGN_WEBHOOK_SECRET = config("ASSIGN_WEBHOOK_SECRET", default="")
+# Inbound `/users/assign/` webhook: per-identifier rate limit.
 ASSIGN_RATE_LIMIT = config("ASSIGN_RATE_LIMIT", default="4/5m")
 # Endpoint-wide backstop; size to total expected Braze volume. Tune via env.
 ASSIGN_GLOBAL_RATE_LIMIT = config("ASSIGN_GLOBAL_RATE_LIMIT", default="1000/m")
 CONTACT_ENTERPRISE_RATE_LIMIT = config("CONTACT_ENTERPRISE_RATE_LIMIT", default="5/h")
-# Inbound `/api/v1/intake/` form submissions: X-Basket-Signature timestamp freshness window.
 INTAKE_SIGNATURE_TOLERANCE_SECONDS = config("INTAKE_SIGNATURE_TOLERANCE_SECONDS", parser=int, default="300")
 # Per-partner (X-Api-Key), not per-IP -- this is authenticated server-to-server traffic.
 INTAKE_RATE_LIMIT = config("INTAKE_RATE_LIMIT", default="60/m")

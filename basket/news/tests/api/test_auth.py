@@ -1,3 +1,4 @@
+import time
 from unittest.mock import Mock, patch
 
 from django.test import RequestFactory
@@ -5,6 +6,7 @@ from django.test import RequestFactory
 import fxa.errors
 import pytest
 
+from basket.contact.tests.conftest import sign_intake_body as _sign
 from basket.news.auth import (
     AUTHORIZED,
     UNAUTHORIZED,
@@ -12,7 +14,7 @@ from basket.news.auth import (
     HeaderApiKey,
     QueryApiKey,
     Unauthorized,
-    WebhookBearerToken,
+    WebhookHmacSignature,
 )
 from basket.news.models import APIUser
 
@@ -131,37 +133,67 @@ class TestUnauthorized:
         assert Unauthorized()(request) == UNAUTHORIZED
 
 
+BODY = b'{"basket_token": "abc"}'
+
+
 @pytest.mark.django_db
-class TestWebhookBearerToken:
+class TestWebhookHmacSignature:
     def setup_method(self):
-        self.request = RequestFactory()
+        self.rf = RequestFactory()
+        self.user = APIUser.objects.create(name="braze")
 
-    def test_valid_secret(self, settings):
-        settings.ASSIGN_WEBHOOK_SECRET = "webhook-secret"
-        request = self.request.post("/")
-        assert WebhookBearerToken().authenticate(request, "webhook-secret") == AUTHORIZED
+    def _request(self, body=BODY, header=None):
+        extra = {"HTTP_X_BASKET_SIGNATURE": header} if header is not None else {}
+        return self.rf.post("/", data=body, content_type="application/json", **extra)
 
-    def test_invalid_secret(self, settings):
-        settings.ASSIGN_WEBHOOK_SECRET = "webhook-secret"
-        request = self.request.post("/")
-        assert WebhookBearerToken().authenticate(request, "nope") is None
+    def _signed(self, body=BODY, timestamp=None, user=None):
+        ts, sig = _sign(user or self.user, body, timestamp=timestamp)
+        return self._request(body, f"t={ts},v1={sig}")
 
-    def test_unset_secret_rejects_all(self, settings):
-        # An empty/unset secret must never authenticate (even with an empty token).
-        settings.ASSIGN_WEBHOOK_SECRET = ""
-        request = self.request.post("/")
-        assert WebhookBearerToken().authenticate(request, "") is None
-        assert WebhookBearerToken().authenticate(request, "anything") is None
+    def test_valid_key_and_signature(self):
+        assert WebhookHmacSignature().authenticate(self._signed(), self.user.api_key) == AUTHORIZED
 
-    def test_scope_secret_rejected_by_apiuser_auth(self, settings):
-        # The webhook secret must NOT authenticate APIUser-based endpoints.
-        settings.ASSIGN_WEBHOOK_SECRET = "webhook-secret"
-        request = self.request.get("/", HTTP_X_API_KEY="webhook-secret")
-        assert HeaderApiKey().authenticate(request, "webhook-secret") is None
+    def test_unknown_key(self):
+        assert WebhookHmacSignature().authenticate(self._signed(), "nope") is None
 
-    def test_scope_apiuser_key_rejected_by_webhook_auth(self, settings):
-        # An APIUser key must NOT authenticate the webhook endpoint.
-        settings.ASSIGN_WEBHOOK_SECRET = "webhook-secret"
-        APIUser.objects.create(api_key="apiuser-key")
-        request = self.request.post("/")
-        assert WebhookBearerToken().authenticate(request, "apiuser-key") is None
+    def test_disabled_key(self):
+        self.user.enabled = False
+        self.user.save()
+        assert WebhookHmacSignature().authenticate(self._signed(), self.user.api_key) is None
+
+    def test_missing_signature(self):
+        assert WebhookHmacSignature().authenticate(self._request(), self.user.api_key) is None
+
+    def test_malformed_signature(self):
+        request = self._request(header="garbage")
+        assert WebhookHmacSignature().authenticate(request, self.user.api_key) is None
+
+    def test_bad_signature(self):
+        request = self._request(header=f"t={int(time.time())},v1={'0' * 64}")
+        assert WebhookHmacSignature().authenticate(request, self.user.api_key) is None
+
+    def test_signed_with_another_users_secret(self):
+        other = APIUser.objects.create(name="other")
+        request = self._signed(user=other)
+        assert WebhookHmacSignature().authenticate(request, self.user.api_key) is None
+
+    def test_tampered_body(self):
+        ts, sig = _sign(self.user, BODY)
+        request = self._request(b'{"basket_token": "other"}', f"t={ts},v1={sig}")
+        assert WebhookHmacSignature().authenticate(request, self.user.api_key) is None
+
+    def test_stale_timestamp(self, settings):
+        stale = int(time.time()) - settings.INTAKE_SIGNATURE_TOLERANCE_SECONDS - 1
+        request = self._signed(timestamp=stale)
+        assert WebhookHmacSignature().authenticate(request, self.user.api_key) is None
+
+    def test_empty_hmac_secret_rejected(self):
+        self.user.hmac_secret = ""
+        self.user.save()
+        assert WebhookHmacSignature().authenticate(self._signed(), self.user.api_key) is None
+
+    def test_replayed_signature_rejected(self):
+        ts, sig = _sign(self.user, BODY)
+        header = f"t={ts},v1={sig}"
+        assert WebhookHmacSignature().authenticate(self._request(header=header), self.user.api_key) == AUTHORIZED
+        assert WebhookHmacSignature().authenticate(self._request(header=header), self.user.api_key) is None

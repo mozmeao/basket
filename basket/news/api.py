@@ -13,7 +13,7 @@ from basket import errors, metrics
 from basket.base.throttling import TokenThrottle, WebhookGlobalThrottle, WebhookIdentifierThrottle
 from basket.base.utils import is_valid_uuid
 from basket.news import tasks
-from basket.news.auth import AUTHORIZED, FxaBearerToken, HeaderApiKey, QueryApiKey, Unauthorized, WebhookBearerToken
+from basket.news.auth import AUTHORIZED, FxaBearerToken, HeaderApiKey, QueryApiKey, Unauthorized, WebhookHmacSignature
 from basket.news.models import Newsletter
 from basket.news.schemas import (
     AssignExternalIdSchema,
@@ -187,7 +187,7 @@ def lookup_user(request, email: str | None = None, token: uuid.UUID | None = Non
     "/assign/",
     url_name="users.assign",
     description="Webhook: assign an external_id to a user that only has a backend user alias",
-    auth=[WebhookBearerToken()],
+    auth=[WebhookHmacSignature()],
     throttle=[
         WebhookIdentifierThrottle(settings.ASSIGN_RATE_LIMIT),
         WebhookGlobalThrottle(settings.ASSIGN_GLOBAL_RATE_LIMIT),
@@ -198,8 +198,6 @@ def lookup_user(request, email: str | None = None, token: uuid.UUID | None = Non
     },
 )
 def assign_external_id(request, body: AssignExternalIdSchema):
-    # Auth is enforced by `WebhookBearerToken` (no `Unauthorized()` fallback in `auth=[...]`),
-    # so django-ninja returns 401 before this handler runs — no in-view auth check needed.
     if not (body.email or body.basket_token or body.fxa_id):
         return 400, {
             "status": "error",
