@@ -1,7 +1,10 @@
+import hashlib
+import hmac
+import time
 from abc import ABC
 
 from django.conf import settings
-from django.utils.crypto import constant_time_compare
+from django.core.cache import cache
 
 import fxa.errors
 import sentry_sdk
@@ -19,6 +22,40 @@ UNAUTHORIZED = "unauthorized"
 # If that is `False` either return a 401 or return a 200 with a different payload.
 
 
+def parse_signature_header(header_value):
+    """Parse `t=<timestamp>,v1=<hex digest>` into (timestamp, signature), or (None, None)."""
+    parts = {}
+    for chunk in header_value.split(","):
+        key, _, value = chunk.partition("=")
+        if value:
+            parts[key.strip()] = value.strip()
+
+    try:
+        return int(parts["t"]), parts["v1"]
+    except (KeyError, ValueError):
+        return None, None
+
+
+def verify_signature(request, secret, replay_scope):
+    """Check `X-Basket-Signature` on `request`; return None if valid, else a short failure reason."""
+    timestamp, signature = parse_signature_header(request.headers.get("X-Basket-Signature", ""))
+    if timestamp is None or signature is None:
+        return "missing_or_malformed"
+
+    if abs(time.time() - timestamp) > settings.INTAKE_SIGNATURE_TOLERANCE_SECONDS:
+        return "stale_timestamp"
+
+    expected = hmac.new(secret.encode(), f"{timestamp}.".encode() + request.body, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, signature):
+        return "mismatch"
+
+    replay_ttl = max(1, int(timestamp + settings.INTAKE_SIGNATURE_TOLERANCE_SECONDS - time.time()) + 1)
+    if not cache.add(f"{replay_scope}:sig:{signature}", True, timeout=replay_ttl):
+        return "replay"
+
+    return None
+
+
 class APIUserIsValid:
     def authenticate(self, request, key):
         if APIUser.is_valid(key):
@@ -33,17 +70,28 @@ class HeaderApiKey(APIUserIsValid, APIKeyHeader):
     param_name = "X-Api-Key"
 
 
-class WebhookBearerToken(HttpBearer):
-    def authenticate(self, request, token):
-        secret = settings.ASSIGN_WEBHOOK_SECRET
-        if not secret:
-            # Fail-closed, but emit a metric so a deploy that forgot the secret is visible.
-            metrics.incr("news.auth.webhook_bearer", tags=["result:rejected", "reason:not_configured"])
-            return None
-        if constant_time_compare(token, secret):
-            metrics.incr("news.auth.webhook_bearer", tags=["result:accepted"])
-            return AUTHORIZED
-        metrics.incr("news.auth.webhook_bearer", tags=["result:rejected", "reason:mismatch"])
+class WebhookHmacSignature(APIKeyHeader):
+    """`X-Api-Key` identifies the APIUser, then `X-Basket-Signature` must verify against that user's `hmac_secret`."""
+
+    param_name = "X-Api-Key"
+
+    def authenticate(self, request, key):
+        user = APIUser.get_valid(key)
+        if user is None:
+            return self._reject("unknown_key")
+
+        if not user.hmac_secret:
+            return self._reject("no_secret")
+
+        failure = verify_signature(request, user.hmac_secret, "assign")
+        if failure:
+            return self._reject(failure)
+
+        metrics.incr("news.auth.webhook_hmac", tags=["result:accepted"])
+        return AUTHORIZED
+
+    def _reject(self, reason):
+        metrics.incr("news.auth.webhook_hmac", tags=["result:rejected", f"reason:{reason}"])
         return None
 
 
