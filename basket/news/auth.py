@@ -17,6 +17,7 @@ from basket.news.utils import get_fxa_clients
 
 AUTHORIZED = "authorized"
 UNAUTHORIZED = "unauthorized"
+SIGNATURE_HEADER = "X-Basket-Signature"
 
 # NOTE: In our API we can check `request.auth == AUTHORIZED` to see if the user is authenticated.
 # If that is `False` either return a 401 or return a 200 with a different payload.
@@ -38,7 +39,7 @@ def parse_signature_header(header_value):
 
 def verify_signature(request, secret, replay_scope):
     """Check `X-Basket-Signature` on `request`; return None if valid, else a short failure reason."""
-    timestamp, signature = parse_signature_header(request.headers.get("X-Basket-Signature", ""))
+    timestamp, signature = parse_signature_header(request.headers.get(SIGNATURE_HEADER, ""))
     if timestamp is None or signature is None:
         return "missing_or_malformed"
 
