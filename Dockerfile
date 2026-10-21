@@ -45,7 +45,7 @@ WORKDIR /app
 # Install runtime dependencies and create non-root user
 COPY docker/bin/apt-install /usr/local/bin/
 RUN <<EOT
-apt-install default-libmysqlclient-dev libxslt1.1 libxml2
+apt-install ca-certificates default-libmysqlclient-dev libxslt1.1 libxml2
 adduser --uid 1000 --disabled-password --gecos '' --no-create-home webdev
 chown webdev:webdev /app
 EOT
