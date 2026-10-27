@@ -1,5 +1,6 @@
 .git
 .env
+.venv
 *.db
 
 gha-creds-*.json

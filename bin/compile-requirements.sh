@@ -6,15 +6,7 @@
 
 set -exo pipefail
 
-export UV_CUSTOM_COMPILE_COMMAND="just compile-requirements"
-
-# We need this installed, but we don't want it to live in the main requirements
-# We will need to periodically review this pinning
-
-pip install -U uv
-
-# Purge old requirements/*.txt files so we get our subdeps automatically upgraded if allowed
-rm -f requirements/*.txt
-
-uv pip compile --generate-hashes --no-strip-extras requirements/prod.in -o requirements/prod.txt
-uv pip compile --generate-hashes --no-strip-extras requirements/dev.in -o requirements/dev.txt
+# Re-resolve everything, so subdeps pick up updates too. The 7-day supply-chain
+# delay is set via `exclude-newer` in `pyproject.toml`, which also explains how
+# to exempt a single package for an urgent fix.
+uv lock --upgrade

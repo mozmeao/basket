@@ -1,3 +1,78 @@
+[project]
+name = "basket"
+version = "0"
+requires-python = "==3.13.*"
+dependencies = [
+    "APScheduler==3.11.3",
+    "boto3==1.43.98",
+    "certifi>=2026.10.19",  # Floor for the eMudhra CA compromise: older releases still trust the compromised intermediates
+    "contextlib2==21.6.0",
+    "cryptography==50.0.1",  # Bumping this requires bumping pyOpenSSL in step: pyOpenSSL 26.2.0 caps cryptography<49
+    "dj-database-url==3.1.2",
+    "django-allow-cidr==0.8.0",
+    "django-cache-url==3.4.6",
+    "django-cors-headers==4.9.0",
+    "django-mozilla-product-details==1.0.3",
+    "django-ninja==1.7.1",
+    "django-ratelimit==4.1.0",
+    "django-watchman==1.5.0",
+    "Django>=5.2.16,<6.0",
+    "email-validator==2.3.0",
+    "everett==3.5.0",
+    "granian==2.8.3",
+    "hiredis==3.4.2",
+    "ipaddress==1.0.23",
+    "legacy-cgi==2.6.4",  # To satisfy pinning requirement: pyfxa -> hawkauthlib ->  webob -> legacy-cgi
+    "lxml==6.1.3",
+    "markus[datadog]==5.2.0",
+    "mozilla-django-oidc==5.0.2",
+    "msgpack-python==0.5.6",
+    "mysqlclient==2.3.0",
+    "PyFxA==0.8.2",
+    "pyOpenSSL==26.4.0",  # Paired with cryptography above: 26.4.0 requires cryptography>=49,<51
+    "pysilverpop==0.2.6",
+    "PyYAML==6.0.3",
+    "regex==2026.9.10",
+    "redis==6.2.0",  # Held at 6.x: redis-py 8 changes connection_pool.connection_kwargs defaults, which breaks test_get_redis_connection
+    "rq==2.12.0",
+    "rq-scheduler==0.14.0",
+    "sentry-processor==0.0.1",
+    "sentry-sdk==2.70.0",
+    "user-agents==2.2.0",
+    "whitenoise==6.12.0",
+    "google-auth==2.59.0",
+    "google-cloud-storage==3.14.1",
+    "pandas==2.3.3",
+    "pyarrow==24.0.0",
+    "tenacity==9.1.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest-cov==7.1.0",
+    "pytest-datadir==1.8.0",
+    "pytest-django==4.14.0",
+    "pytest-mock==3.15.1",
+    "pytest==9.1.1",
+    "requests-mock==1.12.1",
+    "ruff==0.16.9",
+    "watchfiles==1.3.0",  # required for `granian --reload`
+]
+
+[tool.uv]
+# Basket is an application, not an installable package
+package = false
+# Avoids packages uploaded in the last 7 days, reducing supply-chain risk. Dependabot's
+# `cooldown` in `.github/dependabot.yml` matches it. This also blocks Dependabot security
+# updates to a release younger than 7 days.
+#
+# To apply an urgent fix sooner (e.g. a Django security release):
+#   1. Bump the pin above.
+#   2. Exempt just that package by adding `exclude-newer-package = { django = false }` on its own line below `exclude-newer`.
+#   3. Run `uv lock`, which only re-resolves the changed package. Commit both files.
+#   4. Once the release is 7 days old, remove the exemption and run `uv lock` again.
+exclude-newer = "7 days"
+
 [tool.ruff]
 line-length = 150
 indent-width = 4
