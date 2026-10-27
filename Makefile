@@ -65,8 +65,12 @@ clean: ## remove all build, test, coverage, and Python artifacts
 check-requirements: _docker-pull ## identify stale Python requirements that need upgrading
 	@$(DC) run --rm test ./bin/check-pinned-requirements.py
 
-compile-requirements: _docker-pull ## regenerate requirements *.txt files based on *.in files
+compile-requirements: ## update the Python lockfile (uv.lock) using uv
+	@$(DC) build compile-requirements
 	@$(DC) run --rm compile-requirements
 
 install-local-python-deps: ## install Python dependencies for local development
-	@pip install -r requirements/dev.txt
+	@command -v uv >/dev/null || { echo "\`uv\` is required. Install it from https://docs.astral.sh/uv/getting-started/installation/"; exit 1; }
+	@# `--inexact` keeps packages you installed yourself, e.g. `pre-commit`.
+	@uv sync --locked --inexact
+	@[ -n "$$VIRTUAL_ENV" ] || echo "Installed into .venv. Run \`source .venv/bin/activate\` to use it."

@@ -108,7 +108,9 @@ services:
     platform: linux/amd64
 
   compile-requirements:
-    image: mozmeao/basket:builder-${GIT_COMMIT_SHORT:-latest}
+    build:
+      context: .
+      target: uv-lock
     platform: linux/amd64
     command:
       ./bin/compile-requirements.sh
