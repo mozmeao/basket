@@ -25,3 +25,4 @@ python_coverage/
 settings/local.py
 soap_cache_file.json
 test-results
+.venv
