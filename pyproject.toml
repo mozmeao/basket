@@ -15,7 +15,7 @@ dependencies = [
     "django-mozilla-product-details==1.0.3",
     "django-ninja==1.7.1",
     "django-ratelimit==4.1.0",
-    "django-watchman==1.5.0",
+    "django-watchman==2.0.0",
     "Django>=5.2.16,<6.0",
     "email-validator==2.3.0",
     "everett==3.5.0",

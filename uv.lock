@@ -125,7 +125,7 @@ requires-dist = [
     { name = "django-mozilla-product-details", specifier = "==1.0.3" },
     { name = "django-ninja", specifier = "==1.7.1" },
     { name = "django-ratelimit", specifier = "==4.1.0" },
-    { name = "django-watchman", specifier = "==1.5.0" },
+    { name = "django-watchman", specifier = "==2.0.0" },
     { name = "email-validator", specifier = "==2.3.0" },
     { name = "everett", specifier = "==3.5.0" },
     { name = "google-auth", specifier = "==2.59.0" },
@@ -491,14 +491,14 @@ wheels = [
 
 [[package]]
 name = "django-watchman"
-version = "1.5.0"
+version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8f/9c/c5703777a4fcfdf030ba79c6a91e0872da66a89004018bec4f5db15cf7d4/django_watchman-1.5.0.tar.gz", hash = "sha256:924e819e51a10a6e08210cde12588544317d6697725634fccef40b9d675bc19e", size = 22887, upload-time = "2026-03-08T03:19:38.702Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/de/6ebfbc1d3691c98380d855c7660567b330cda8b092f79f46c6ae724eb763/django_watchman-2.0.0.tar.gz", hash = "sha256:e76774b1f515b9f41b58c53ae249c2dfee35711699fa08813b98a15e22ae0d36", size = 25642, upload-time = "2026-11-02T16:34:06.382Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/2a/090b999822578194bf2c4842744429ee8768f3a7c18c3cf95fb0983d7683/django_watchman-1.5.0-py3-none-any.whl", hash = "sha256:cd9b5d9796102db0d49f1162ad30b47e054d1413ce03214c580d19a274c02a0c", size = 16450, upload-time = "2026-03-08T03:19:37.461Z" },
+    { url = "https://files.pythonhosted.org/packages/db/9a/568095de379add56383b8b101d0c22682741c0d60f1d1834dfcc7d5bb2a7/django_watchman-2.0.0-py3-none-any.whl", hash = "sha256:233f4b03225481bfa082606879517e0c22d9a18c453066aa53af2c583aeec16d", size = 18567, upload-time = "2026-11-02T16:34:05.14Z" },
 ]
 
 [[package]]
